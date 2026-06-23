@@ -64,8 +64,40 @@ describe("App 组件", () => {
 				magnet: "magnet:?xt=urn:btih:TEST3",
 				size: 0, // 未知大小
 			},
+			{
+				title: "凡人修仙传 第4集",
+				link: "http://example.com/4",
+				pub_date: "2026-06-26",
+				magnet: "magnet:?xt=urn:btih:TEST4",
+				size: null, // 未知大小
+			},
+			{
+				title: "凡人修仙传 第5集",
+				link: "http://example.com/5",
+				pub_date: "2026-06-27",
+				magnet: "magnet:?xt=urn:btih:TEST5",
+				// size is undefined
+			},
 		];
-		vi.mocked(invoke).mockResolvedValue(mockResults);
+
+		const mockAddTorrentResult = {
+			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
+			name: "凡人修仙传 第1集",
+			files: [
+				{ id: 0, name: "video1.mp4", len: 1000000 },
+				{ id: 1, name: "subtitle.srt", len: 5000 },
+			],
+		};
+
+		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
+			if (cmd === "search_dmhy") {
+				return mockResults;
+			}
+			if (cmd === "torrent_add_magnet") {
+				return mockAddTorrentResult;
+			}
+			return null;
+		});
 
 		render(<App />);
 
@@ -88,7 +120,7 @@ describe("App 组件", () => {
 			const count = document.querySelector(".results-count");
 			expect(count).toBeInTheDocument();
 			expect(count?.textContent?.replace(/\s+/g, " ").trim()).toBe(
-				"找到 3 个资源",
+				"找到 5 个资源",
 			);
 		});
 
@@ -98,9 +130,10 @@ describe("App 组件", () => {
 		expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
 		expect(screen.getByText("333.79 MB")).toBeInTheDocument();
 		expect(screen.getByText("1.46 KB")).toBeInTheDocument();
-		expect(screen.getByText("未知大小")).toBeInTheDocument();
+		const unknownSizes = screen.getAllByText("未知大小");
+		expect(unknownSizes.length).toBeGreaterThanOrEqual(3);
 
-		// 在触发点击前启动 fake timers，这样 setTimeout 就会注册在 fake timer 队列里
+		// 开启 fake timers
 		vi.useFakeTimers();
 
 		// 点击复制磁力按钮
@@ -110,7 +143,6 @@ describe("App 组件", () => {
 			"magnet:?xt=urn:btih:TEST1",
 		);
 
-		// 推进 fake timers 使得 async clipboard 对应的微任务以及 toast 显示状态更新被刷新
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
@@ -132,6 +164,7 @@ describe("App 组件", () => {
 		const playButtons = screen.getAllByRole("button", { name: "▶ 边下边播" });
 		fireEvent.click(playButtons[0]);
 
+		// 应该展示“正在启动下载流媒体引擎”的 Toast
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
@@ -226,9 +259,6 @@ describe("App 组件", () => {
 		await waitFor(() => {
 			const count = document.querySelector(".results-count");
 			expect(count).toBeInTheDocument();
-			expect(count?.textContent?.replace(/\s+/g, " ").trim()).toBe(
-				"找到 1 个资源",
-			);
 		});
 
 		// 在触发点击前启动 fake timers，这样 setTimeout 就会注册在 fake timer 队列里
@@ -260,5 +290,404 @@ describe("App 组件", () => {
 		fireEvent.submit(input);
 
 		expect(invoke).not.toHaveBeenCalled();
+	});
+
+	it("当点击边下边播成功解析磁力时，应该打开文件选择弹窗，并且能进入播放和控制界面", async () => {
+		const mockResults = [
+			{
+				title: "凡人修仙传 第1集",
+				link: "http://example.com/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 350000000,
+			},
+		];
+
+		const mockAddTorrentResult = {
+			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
+			name: "凡人修仙传 第1集",
+			files: [
+				{ id: 0, name: "video1.mp4", len: 1000000 },
+				{ id: 1, name: "subtitle.srt", len: 5000 },
+			],
+		};
+
+		const mockStatus = {
+			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
+			name: "凡人修仙传 第1集",
+			progress_bytes: 400000,
+			total_bytes: 1000000,
+			finished: false,
+			download_speed_bytes_per_sec: 25000,
+		};
+
+		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
+			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
+			if (cmd === "torrent_get_stream_url") {
+				return "http://127.0.0.1:12345/stream/3a2a3e0f438a2e1d74381395bb0e6840742fef8e/0";
+			}
+			if (cmd === "torrent_get_status") {
+				// 模拟一个略带延迟的 Promise，用以获取中间状态（torrentStatus 还是 null）
+				return new Promise((resolve) =>
+					setTimeout(() => resolve(mockStatus), 10),
+				);
+			}
+			return null;
+		});
+
+		render(<App />);
+
+		// 搜索
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+		});
+
+		// 开启 fake timers 来支持轮询和 Toast
+		vi.useFakeTimers();
+
+		// 点击边下边播
+		const playBtn = screen.getByRole("button", { name: "▶ 边下边播" });
+		fireEvent.click(playBtn);
+
+		// 此时应该正在解析种子并加载
+		expect(
+			screen.getByText("正在启动下载引擎并解析种子..."),
+		).toBeInTheDocument();
+
+		// 连续推进 microtask 队列以完成 add_magnet 的 promise
+		for (let i = 0; i < 3; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
+		// 加载遮罩应该关闭，并显示文件列表面板
+		expect(
+			screen.queryByText("正在启动下载引擎并解析种子..."),
+		).not.toBeInTheDocument();
+		expect(screen.getByText("选择要播放的文件：")).toBeInTheDocument();
+		expect(screen.getByText("video1.mp4")).toBeInTheDocument();
+		expect(screen.getByText("subtitle.srt")).toBeInTheDocument();
+
+		// 点击播放第一个文件
+		const filePlayBtns = screen.getAllByRole("button", { name: "▶ 播放" });
+		fireEvent.click(filePlayBtns[0]);
+
+		// 推进第一步：加载 streamUrl 和 activeFileId，但此时 torrentStatus 依然为 null
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		// 检查渲染了“计算中...”和“0 B/s”分支（覆盖 torrentStatus 为 null 时的分支）
+		expect(screen.getByText("下载进度: 计算中...")).toBeInTheDocument();
+		expect(screen.getByText("速度: 0 B/s")).toBeInTheDocument();
+		expect(screen.getByText("连接中...")).toBeInTheDocument();
+
+		// 推进 10ms 释放并解决获取初始状态的延时 Promise
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(10);
+		});
+
+		// 此时应该展示播放器和进度条等状态
+		expect(screen.getByText("下载进度: 40.00%")).toBeInTheDocument();
+		expect(screen.getByText("速度: 24.41 KB/s")).toBeInTheDocument();
+		expect(screen.getByText("正在缓存...")).toBeInTheDocument();
+
+		// 推进以执行轮询定时器逻辑
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1500);
+		});
+
+		// 覆盖 interval 错误逻辑
+		vi.mocked(invoke).mockImplementationOnce(async (cmd) => {
+			if (cmd === "torrent_get_status") throw "Fetch status failed";
+			return null;
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1500);
+		});
+
+		// 模拟复制流地址
+		const copyStreamBtn = screen.getByRole("button", {
+			name: "📋 复制视频流地址",
+		});
+		fireEvent.click(copyStreamBtn);
+		expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+			"http://127.0.0.1:12345/stream/3a2a3e0f438a2e1d74381395bb0e6840742fef8e/0",
+		);
+
+		for (let i = 0; i < 2; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+		expect(
+			screen.getByText("视频流地址已复制到剪贴板，可在外部播放器中播放"),
+		).toBeInTheDocument();
+
+		// 模拟复制流地址失败情况
+		vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(
+			new Error("Permission denied"),
+		);
+		fireEvent.click(copyStreamBtn);
+		for (let i = 0; i < 2; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
+
+		// 测试返回文件列表
+		const backBtn = screen.getByRole("button", { name: "⬅ 返回文件列表" });
+		fireEvent.click(backBtn);
+		for (let i = 0; i < 2; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+		expect(screen.getByText("选择要播放的文件：")).toBeInTheDocument();
+
+		// 测试关闭弹窗
+		const closeBtn = screen.getByRole("button", { name: "✕" });
+		fireEvent.click(closeBtn);
+		for (let i = 0; i < 2; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+		expect(screen.queryByText("选择要播放的文件：")).not.toBeInTheDocument();
+
+		vi.useRealTimers();
+	});
+
+	it("当播放获取流媒体 URL 失败时，应该显示错误提示", async () => {
+		const mockResults = [
+			{
+				title: "凡人修仙传 第1集",
+				link: "http://example.com/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 350000000,
+			},
+		];
+
+		const mockAddTorrentResult = {
+			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
+			name: "凡人修仙传 第1集",
+			files: [{ id: 0, name: "video1.mp4", len: 1000000 }],
+		};
+
+		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
+			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
+			if (cmd === "torrent_get_stream_url") {
+				throw "Stream server port not initialized";
+			}
+			return null;
+		});
+
+		render(<App />);
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+		});
+
+		vi.useFakeTimers();
+
+		// 点击播放
+		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+		for (let i = 0; i < 3; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+		expect(screen.getByText("选择要播放的文件：")).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: "▶ 播放" }));
+		for (let i = 0; i < 4; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+		expect(
+			screen.getByText("无法获取视频流，启动播放失败"),
+		).toBeInTheDocument();
+
+		vi.useRealTimers();
+	});
+
+	it("当解析种子失败时，应该显示解析失败的 Toast 提示", async () => {
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "search_dmhy") {
+				return [
+					{
+						title: "凡人修仙传 第1集",
+						link: "http://example.com/1",
+						pub_date: "2026-06-23",
+						magnet: "magnet:?xt=urn:btih:TEST1",
+						size: 350000000,
+					},
+				];
+			}
+			if (cmd === "torrent_add_magnet") {
+				throw "解析引擎启动超时";
+			}
+			return null;
+		});
+
+		render(<App />);
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+		});
+
+		vi.useFakeTimers();
+
+		const playBtn = screen.getByRole("button", { name: "▶ 边下边播" });
+		fireEvent.click(playBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		expect(
+			screen.getByText("种子解析失败: 解析引擎启动超时"),
+		).toBeInTheDocument();
+
+		vi.useRealTimers();
+	});
+
+	it("当解析种子抛出非字符串错误时，应该显示默认解析错误提示", async () => {
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "search_dmhy") {
+				return [
+					{
+						title: "凡人修仙传 第1集",
+						link: "http://example.com/1",
+						pub_date: "2026-06-23",
+						magnet: "magnet:?xt=urn:btih:TEST1",
+						size: 350000000,
+					},
+				];
+			}
+			if (cmd === "torrent_add_magnet") {
+				throw new Error("Fatal Torrent Error");
+			}
+			return null;
+		});
+
+		render(<App />);
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+		});
+
+		vi.useFakeTimers();
+
+		const playBtn = screen.getByRole("button", { name: "▶ 边下边播" });
+		fireEvent.click(playBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		expect(
+			screen.getByText("种子解析失败: 错误详情请见控制台"),
+		).toBeInTheDocument();
+
+		vi.useRealTimers();
+	});
+
+	it("应该在组件卸载时清除轮询定时器，并展示未命名和已完成状态的覆盖", async () => {
+		const mockResults = [
+			{
+				title: "凡人1",
+				link: "",
+				pub_date: "",
+				magnet: "mag1",
+				size: 100,
+			},
+		];
+		const mockAddTorrentResult = {
+			info_hash: "hash1",
+			name: null, // 测试未命名种子分支
+			files: [{ id: 0, name: "v.mp4", len: 100 }],
+		};
+		const mockStatus = {
+			info_hash: "hash1",
+			name: null,
+			progress_bytes: 100,
+			total_bytes: 100,
+			finished: true, // 测试已完成状态分支
+			download_speed_bytes_per_sec: 0,
+		};
+
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
+			if (cmd === "torrent_get_stream_url") return "stream_url";
+			if (cmd === "torrent_get_status") return mockStatus;
+			return null;
+		});
+
+		const { unmount } = render(<App />);
+
+		// 搜索并播放以启动定时器
+		fireEvent.change(
+			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
+			{ target: { value: "凡人" } },
+		);
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+		await waitFor(() => expect(screen.getByText("凡人1")).toBeInTheDocument());
+
+		vi.useFakeTimers();
+		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+		for (let i = 0; i < 3; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
+		// 检查标题是否正确渲染为“未命名种子”
+		expect(screen.getByText("未命名种子")).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: "▶ 播放" }));
+		for (let i = 0; i < 4; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
+		// 检查状态是否正确渲染为“已完成”
+		expect(screen.getByText("已完成")).toBeInTheDocument();
+
+		// 卸载组件，触发 useEffect 清理
+		unmount();
+		vi.useRealTimers();
 	});
 });

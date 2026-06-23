@@ -1,5 +1,6 @@
 pub mod crawler;
 pub mod torrent;
+pub mod torrent_manager;
 
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)

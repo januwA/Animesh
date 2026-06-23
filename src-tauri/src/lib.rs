@@ -1,5 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use animesh_core::torrent::{AddTorrentResult, TorrentManager, TorrentStatusInfo};
+use animesh_core::torrent::{AddTorrentResult, TorrentStatusInfo};
+use animesh_core::torrent_manager::TorrentManager;
 use std::sync::Arc;
 use tauri::Manager;
 
