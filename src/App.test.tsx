@@ -23,6 +23,7 @@ Object.defineProperty(navigator, "clipboard", {
 
 describe("App 组件", () => {
 	beforeEach(() => {
+		window.location.hash = "";
 		vi.clearAllMocks();
 		vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
 	});
