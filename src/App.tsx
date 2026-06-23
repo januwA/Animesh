@@ -5,8 +5,10 @@ import {
 } from "react-router-dom";
 import Layout from "./components/Layout";
 import { AppContextProvider } from "./context/AppContext";
+import Downloads from "./pages/Downloads";
 import Home from "./pages/Home";
 import Player from "./pages/Player";
+import Settings from "./pages/Settings";
 import TorrentDetail from "./pages/TorrentDetail";
 import "./App.css";
 
@@ -26,6 +28,14 @@ const routes = [
 			{
 				path: "play/:infoHash/:fileId",
 				element: <Player />,
+			},
+			{
+				path: "downloads",
+				element: <Downloads />,
+			},
+			{
+				path: "settings",
+				element: <Settings />,
 			},
 		],
 	},

@@ -30,4 +30,5 @@ export interface TorrentStatusInfo {
 	total_bytes: number;
 	finished: boolean;
 	download_speed_bytes_per_sec: number;
+	paused: boolean;
 }

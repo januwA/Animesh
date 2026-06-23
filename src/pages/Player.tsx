@@ -108,9 +108,15 @@ export default function Player() {
 	};
 
 	const handleBackToFileList = () => {
-		navigate(
-			`/torrent?magnet=${encodeURIComponent(magnet)}&title=${encodeURIComponent(title)}`,
-		);
+		if (magnet) {
+			navigate(
+				`/torrent?magnet=${encodeURIComponent(magnet)}&title=${encodeURIComponent(title)}`,
+			);
+		} else {
+			navigate(
+				`/torrent?infoHash=${infoHash}&title=${encodeURIComponent(title)}`,
+			);
+		}
 	};
 
 	return (

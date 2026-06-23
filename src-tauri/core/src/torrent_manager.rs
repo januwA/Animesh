@@ -8,6 +8,7 @@ use axum::{
     Router,
 };
 use librqbit::{AddTorrent, ManagedTorrent, Session};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, SeekFrom};
@@ -17,11 +18,21 @@ use tokio_util::io::ReaderStream;
 pub struct TorrentManager {
     pub session: Arc<Session>,
     pub port: u16,
+    pub download_dir: Arc<std::sync::RwLock<PathBuf>>,
+    pub settings_path: PathBuf,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AppSettings {
+    pub download_dir: String,
 }
 
 impl TorrentManager {
-    pub async fn new(download_dir: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
-        let session = Session::new(download_dir).await?;
+    pub async fn new(
+        download_dir: PathBuf,
+        settings_path: PathBuf,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let session = Session::new(download_dir.clone()).await?;
 
         // 启动 Axum 服务器并监听随机空闲端口
         let listener = TcpListener::bind("127.0.0.1:0").await?;
@@ -35,15 +46,99 @@ impl TorrentManager {
             axum::serve(listener, app).await.unwrap();
         });
 
-        Ok(Self { session, port })
+        Ok(Self {
+            session,
+            port,
+            download_dir: Arc::new(std::sync::RwLock::new(download_dir)),
+            settings_path,
+        })
+    }
+
+    pub fn get_download_dir(&self) -> String {
+        self.download_dir
+            .read()
+            .unwrap()
+            .to_string_lossy()
+            .to_string()
+    }
+
+    pub fn set_download_dir(&self, dir: String) -> Result<(), Box<dyn std::error::Error>> {
+        let path = PathBuf::from(&dir);
+        std::fs::create_dir_all(&path)?;
+
+        let settings = AppSettings { download_dir: dir };
+        let file = std::fs::File::create(&self.settings_path)?;
+        serde_json::to_writer_pretty(file, &settings)?;
+
+        *self.download_dir.write().unwrap() = path;
+        Ok(())
+    }
+
+    pub async fn pause_torrent(
+        &self,
+        info_hash_hex: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let torrent = self
+            .find_torrent_by_hex(info_hash_hex)
+            .ok_or_else(|| "Torrent not found".to_string())?;
+        self.session.pause(&torrent).await?;
+        Ok(())
+    }
+
+    pub async fn resume_torrent(
+        &self,
+        info_hash_hex: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let torrent = self
+            .find_torrent_by_hex(info_hash_hex)
+            .ok_or_else(|| "Torrent not found".to_string())?;
+        self.session.unpause(&torrent).await?;
+        Ok(())
+    }
+
+    pub async fn delete_torrent(
+        &self,
+        info_hash_hex: &str,
+        delete_files: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use librqbit::api::TorrentIdOrHash;
+        let id = TorrentIdOrHash::try_from(info_hash_hex)?;
+        self.session.delete(id, delete_files).await?;
+        Ok(())
+    }
+
+    pub fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
+        self.session.with_torrents(|iter| {
+            iter.map(|(_, torrent)| {
+                let stats = torrent.stats();
+                let speed = stats
+                    .live
+                    .as_ref()
+                    .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
+                    .unwrap_or(0);
+                let hex = format_hash(&torrent.info_hash().0);
+                TorrentStatusInfo {
+                    info_hash: hex,
+                    name: torrent.name(),
+                    progress_bytes: stats.progress_bytes,
+                    total_bytes: stats.total_bytes,
+                    finished: stats.finished,
+                    download_speed_bytes_per_sec: speed,
+                    paused: torrent.is_paused(),
+                }
+            })
+            .collect()
+        })
     }
 
     pub async fn add_magnet(
         &self,
         magnet: &str,
     ) -> Result<AddTorrentResult, Box<dyn std::error::Error>> {
+        let output_folder = self.get_download_dir();
         let options = librqbit::AddTorrentOptions {
             overwrite: true,
+            output_folder: Some(output_folder),
             ..Default::default()
         };
         let response = self
@@ -96,7 +191,25 @@ impl TorrentManager {
             total_bytes: stats.total_bytes,
             finished: stats.finished,
             download_speed_bytes_per_sec: speed,
+            paused: torrent.is_paused(),
         })
+    }
+
+    pub fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
+        let torrent = self.find_torrent_by_hex(info_hash_hex)?;
+        torrent
+            .with_metadata(|meta| {
+                meta.file_infos
+                    .iter()
+                    .enumerate()
+                    .map(|(id, fi)| FileDetails {
+                        id,
+                        name: fi.relative_filename.to_string_lossy().to_string(),
+                        len: fi.len,
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .ok()
     }
 
     pub fn get_stream_url(&self, info_hash_hex: &str, file_id: usize) -> String {
@@ -203,7 +316,8 @@ mod tests {
             .unwrap()
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_{}", nanos));
-        let manager = TorrentManager::new(dir).await;
+        let settings_path = dir.join("settings.json");
+        let manager = TorrentManager::new(dir, settings_path).await;
         if let Err(e) = &manager {
             panic!("Manager initialization failed: {:?}", e);
         }
@@ -252,5 +366,74 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_自定义下载目录_逻辑() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("animesh_test_manager_settings_{}", nanos));
+        let settings_path = dir.join("settings.json");
+        let manager = TorrentManager::new(dir.clone(), settings_path.clone())
+            .await
+            .unwrap();
+
+        // 验证初始下载目录
+        assert_eq!(
+            manager.get_download_dir(),
+            dir.to_string_lossy().to_string()
+        );
+
+        // 修改下载目录
+        let new_dir = dir.join("custom_downloads");
+        let new_dir_str = new_dir.to_string_lossy().to_string();
+        manager.set_download_dir(new_dir_str.clone()).unwrap();
+
+        // 验证内存更新
+        assert_eq!(manager.get_download_dir(), new_dir_str);
+
+        // 验证设置文件被写入
+        assert!(settings_path.exists());
+        let content = std::fs::read_to_string(&settings_path).unwrap();
+        let parsed: AppSettings = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed.download_dir, new_dir_str);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_种子管理控制_未找到种子时的错误处理() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("animesh_test_manager_control_{}", nanos));
+        let settings_path = dir.join("settings.json");
+        let manager = TorrentManager::new(dir, settings_path).await.unwrap();
+
+        // 验证列表初始为空
+        let list = manager.list_torrents();
+        assert!(list.is_empty());
+
+        let test_hash = "3a2a3e0f438a2e1d74381395bb0e6840742fef8e";
+
+        // 验证不存在的种子获取文件列表返回 None
+        assert!(manager.get_torrent_files(test_hash).is_none());
+
+        // 验证不存在的种子暂停报错
+        let res_pause = manager.pause_torrent(test_hash).await;
+        assert!(res_pause.is_err());
+
+        // 验证不存在的种子恢复报错
+        let res_resume = manager.resume_torrent(test_hash).await;
+        assert!(res_resume.is_err());
+
+        // 验证不存在的种子删除报错
+        let res_delete = manager.delete_torrent(test_hash, false).await;
+        assert!(res_delete.is_err());
     }
 }

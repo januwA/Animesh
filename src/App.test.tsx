@@ -10,8 +10,11 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import App from "./App";
 import { AppContextProvider, useAppContext } from "./context/AppContext";
+import Downloads from "./pages/Downloads";
 import Player from "./pages/Player";
+import Settings from "./pages/Settings";
 import TorrentDetail from "./pages/TorrentDetail";
+import type { TorrentStatusInfo } from "./types";
 
 vi.mock("@tauri-apps/api/core", () => ({
 	invoke: vi.fn(),
@@ -865,7 +868,7 @@ describe("App 组件", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("未提供有效的磁力链接")).toBeInTheDocument();
+			expect(screen.getByText(/未提供有效的磁力链接/)).toBeInTheDocument();
 		});
 	});
 
@@ -1036,5 +1039,144 @@ describe("App 组件", () => {
 			</AppContextProvider>,
 		);
 		unmount();
+	});
+
+	it("应该可以渲染下载管理页面并展示下载任务列表，并且支持暂停、继续和删除操作", async () => {
+		const mockTorrents: TorrentStatusInfo[] = [
+			{
+				info_hash: "hash111",
+				name: "动漫视频1",
+				progress_bytes: 500,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 100,
+				paused: false,
+			},
+			{
+				info_hash: "hash222",
+				name: "动漫视频2",
+				progress_bytes: 1000,
+				total_bytes: 1000,
+				finished: true,
+				download_speed_bytes_per_sec: 0,
+				paused: false,
+			},
+		];
+
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "torrent_list") {
+				return mockTorrents;
+			}
+			if (cmd === "torrent_pause") {
+				mockTorrents[0].paused = true;
+				return null;
+			}
+			if (cmd === "torrent_resume") {
+				mockTorrents[0].paused = false;
+				return null;
+			}
+			if (cmd === "torrent_delete") {
+				return null;
+			}
+			return null;
+		});
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/downloads"]}>
+					<Routes>
+						<Route path="/downloads" element={<Downloads />} />
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		// 检查标题和列表
+		await waitFor(() => {
+			expect(screen.getByText("📥 下载管理")).toBeInTheDocument();
+			expect(screen.getByText("动漫视频1")).toBeInTheDocument();
+			expect(screen.getByText("动漫视频2")).toBeInTheDocument();
+		});
+
+		// 检查进度和速度
+		expect(screen.getByText(/进度: 50/)).toBeInTheDocument();
+		expect(screen.getByText(/网速: 100 B/)).toBeInTheDocument();
+
+		// 测试暂停操作
+		const pauseBtn = screen.getByTitle("暂停下载");
+		fireEvent.click(pauseBtn);
+		await waitFor(() => {
+			expect(invoke).toHaveBeenCalledWith("torrent_pause", {
+				infoHash: "hash111",
+			});
+		});
+
+		// 测试删除按钮触发弹窗
+		const deleteBtn = screen.getAllByTitle("删除下载")[0];
+		fireEvent.click(deleteBtn);
+		expect(screen.getByText("删除下载任务")).toBeInTheDocument();
+
+		// 点击确认删除
+		const confirmDeleteBtn = screen.getByText("确认删除");
+		fireEvent.click(confirmDeleteBtn);
+		await waitFor(() => {
+			expect(invoke).toHaveBeenCalledWith("torrent_delete", {
+				infoHash: "hash111",
+				deleteFiles: false,
+			});
+		});
+	});
+
+	it("应该可以渲染设置页面并可以更改下载路径", async () => {
+		let currentDir = "C:\\Downloads";
+
+		// biome-ignore lint/suspicious/noExplicitAny: mock implementation args
+		vi.mocked(invoke).mockImplementation(async (cmd, args: any) => {
+			if (cmd === "settings_get") {
+				return { download_dir: currentDir };
+			}
+			if (cmd === "select_directory") {
+				return "D:\\CustomDownloads";
+			}
+			if (cmd === "settings_set_download_dir") {
+				currentDir = args.dir;
+				return null;
+			}
+			return null;
+		});
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/settings"]}>
+					<Routes>
+						<Route path="/settings" element={<Settings />} />
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		// 检查输入框内的值
+		await waitFor(() => {
+			const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+			expect(input).toHaveValue("C:\\Downloads");
+		});
+
+		// 点击选择目录
+		const selectBtn = screen.getByText("选择目录");
+		fireEvent.click(selectBtn);
+		await waitFor(() => {
+			expect(invoke).toHaveBeenCalledWith("select_directory");
+			const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+			expect(input).toHaveValue("D:\\CustomDownloads");
+		});
+
+		// 点击保存
+		const saveBtn = screen.getByText("保存设置");
+		fireEvent.click(saveBtn);
+		await waitFor(() => {
+			expect(invoke).toHaveBeenCalledWith("settings_set_download_dir", {
+				dir: "D:\\CustomDownloads",
+			});
+		});
 	});
 });

@@ -1,12 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft, FileVideo, Film, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppContext } from "../context/AppContext";
-import type { AddTorrentResult } from "../types";
+import type { AddTorrentResult, FileDetails } from "../types";
 import { formatBytes } from "../utils";
 
 export default function TorrentDetail() {
@@ -14,15 +14,24 @@ export default function TorrentDetail() {
 	const [searchParams] = useSearchParams();
 	const magnet = searchParams.get("magnet") || "";
 	const title = searchParams.get("title") || "";
+	const infoHash = searchParams.get("infoHash") || "";
 
 	const { showToast } = useAppContext();
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [torrent, setTorrent] = useState<AddTorrentResult | null>(null);
 
+	const handleBack = useCallback(() => {
+		if (infoHash && !magnet) {
+			navigate("/downloads");
+		} else {
+			navigate("/");
+		}
+	}, [infoHash, magnet, navigate]);
+
 	useEffect(() => {
-		if (!magnet) {
-			setError("未提供有效的磁力链接");
+		if (!magnet && !infoHash) {
+			setError("未提供有效的磁力链接或种子 Hash");
 			setLoading(false);
 			return;
 		}
@@ -31,47 +40,73 @@ export default function TorrentDetail() {
 		setLoading(true);
 		setError(null);
 
-		// Resolve magnet
-		invoke<AddTorrentResult>("torrent_add_magnet", { magnet })
-			.then((result) => {
-				if (isMounted) {
-					setTorrent(result);
-					setLoading(false);
-					showToast(`种子元数据解析成功，获取到 ${result.files.length} 个文件`);
-				}
-			})
-			.catch((err) => {
-				if (isMounted) {
-					console.error("Failed to add torrent:", err);
-					const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
-					setError(errMsg);
-					setLoading(false);
-					showToast(`种子解析失败: ${errMsg}`, 10000);
-				}
-			});
+		if (magnet) {
+			// Resolve magnet
+			invoke<AddTorrentResult>("torrent_add_magnet", { magnet })
+				.then((result) => {
+					if (isMounted) {
+						setTorrent(result);
+						setLoading(false);
+						showToast(
+							`种子元数据解析成功，获取到 ${result.files.length} 个文件`,
+						);
+					}
+				})
+				.catch((err) => {
+					if (isMounted) {
+						console.error("Failed to add torrent:", err);
+						const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
+						setError(errMsg);
+						setLoading(false);
+						showToast(`种子解析失败: ${errMsg}`, 10000);
+					}
+				});
+		} else if (infoHash) {
+			// Resolve by existing info hash
+			invoke<FileDetails[]>("torrent_get_files", { infoHash })
+				.then((files) => {
+					if (isMounted) {
+						setTorrent({
+							info_hash: infoHash,
+							name: title || "已缓存种子",
+							files,
+						});
+						setLoading(false);
+					}
+				})
+				.catch((err) => {
+					if (isMounted) {
+						console.error("Failed to fetch torrent files:", err);
+						const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
+						setError(errMsg);
+						setLoading(false);
+						showToast(`获取文件列表失败: ${errMsg}`, 10000);
+					}
+				});
+		}
 
 		return () => {
 			isMounted = false;
 		};
-	}, [magnet, showToast]);
+	}, [magnet, infoHash, title, showToast]);
 
 	// Listen to Escape key to go back, keeping test compatibility
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
-				navigate("/");
+				handleBack();
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [navigate]);
+	}, [handleBack]);
 
 	const handleStartPlayback = (fileId: number, fileName: string) => {
 		if (!torrent) return;
 		navigate(
 			`/play/${torrent.info_hash}/${fileId}?magnet=${encodeURIComponent(
 				magnet,
-			)}&title=${encodeURIComponent(title)}&fileName=${encodeURIComponent(
+			)}&title=${encodeURIComponent(title || torrent.name || "")}&fileName=${encodeURIComponent(
 				fileName,
 			)}`,
 		);
@@ -88,12 +123,8 @@ export default function TorrentDetail() {
 				<p className="text-sm text-muted-foreground max-w-md">
 					首次连接 Peer 并下载 Metadata 可能需要较长时间，请稍等
 				</p>
-				<Button
-					variant="outline"
-					onClick={() => navigate("/")}
-					className="mt-4"
-				>
-					取消解析并返回
+				<Button variant="outline" onClick={handleBack} className="mt-4">
+					{infoHash && !magnet ? "取消并返回下载管理" : "取消解析并返回"}
 				</Button>
 			</div>
 		);
@@ -109,12 +140,8 @@ export default function TorrentDetail() {
 				<p className="text-sm text-muted-foreground max-w-md">
 					{error || "未知错误"}
 				</p>
-				<Button
-					variant="outline"
-					onClick={() => navigate("/")}
-					className="mt-4"
-				>
-					返回搜索页面
+				<Button variant="outline" onClick={handleBack} className="mt-4">
+					{infoHash && !magnet ? "返回下载管理" : "返回搜索页面"}
 				</Button>
 			</div>
 		);
@@ -142,17 +169,17 @@ export default function TorrentDetail() {
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={() => navigate("/")}
+						onClick={handleBack}
 						className="h-8 gap-1 text-muted-foreground hover:text-foreground self-start md:self-auto"
 					>
 						<ArrowLeft className="h-4 w-4" />
-						返回搜索
+						{infoHash && !magnet ? "返回下载管理" : "返回搜索"}
 					</Button>
 					<Button
 						variant="ghost"
 						size="sm"
 						className="h-8 w-8 hover:bg-white/5 text-muted-foreground hover:text-foreground rounded-full flex items-center justify-center"
-						onClick={() => navigate("/")}
+						onClick={handleBack}
 					>
 						✕
 					</Button>

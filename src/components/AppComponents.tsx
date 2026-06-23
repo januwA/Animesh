@@ -1,5 +1,15 @@
-import { Clock, Globe, HardDrive, Loader2, Search, X } from "lucide-react";
+import {
+	Clock,
+	Download,
+	Globe,
+	HardDrive,
+	Loader2,
+	Search,
+	Settings as SettingsIcon,
+	X,
+} from "lucide-react";
 import type { FormEvent } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
 	Alert,
 	AlertAction,
@@ -20,14 +30,55 @@ import { formatBytes } from "../utils";
 
 // 页面头部组件
 export function AppHeader() {
+	const location = useLocation();
+
+	const navItems = [
+		{ path: "/", label: "搜索视频", icon: <Search className="h-3.5 w-3.5" /> },
+		{
+			path: "/downloads",
+			label: "下载管理",
+			icon: <Download className="h-3.5 w-3.5" />,
+		},
+		{
+			path: "/settings",
+			label: "设置选项",
+			icon: <SettingsIcon className="h-3.5 w-3.5" />,
+		},
+	];
+
 	return (
-		<header className="text-center mb-10 space-y-3">
-			<h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-md select-none">
-				Animesh
-			</h1>
-			<p className="text-muted-foreground text-sm font-light tracking-wide">
-				BT 边下边播 & 磁力聚合搜索客户端
-			</p>
+		<header className="mb-10 space-y-5 flex flex-col items-center">
+			<div className="text-center space-y-1.5">
+				<Link to="/">
+					<h1 className="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent drop-shadow-md select-none cursor-pointer hover:opacity-90 transition-opacity">
+						Animesh
+					</h1>
+				</Link>
+				<p className="text-muted-foreground text-xs font-light tracking-wide">
+					BT 边下边播 & 磁力聚合搜索客户端
+				</p>
+			</div>
+
+			{/* 导航标签栏 */}
+			<nav className="flex bg-card/40 border border-white/5 p-1 rounded-xl shadow-lg backdrop-blur-md">
+				{navItems.map((item) => {
+					const isActive = location.pathname === item.path;
+					return (
+						<Link
+							key={item.path}
+							to={item.path}
+							className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 ${
+								isActive
+									? "bg-primary text-primary-foreground shadow-md"
+									: "text-muted-foreground hover:text-foreground hover:bg-white/5"
+							}`}
+						>
+							{item.icon}
+							<span>{item.label}</span>
+						</Link>
+					);
+				})}
+			</nav>
 		</header>
 	);
 }
