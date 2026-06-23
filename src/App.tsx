@@ -55,7 +55,7 @@ function App() {
 		null,
 	);
 
-	const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+	const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	const showToast = (text: string) => {
 		const id = Date.now() + Math.random();
