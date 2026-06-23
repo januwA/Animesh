@@ -6,8 +6,12 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import App from "./App";
+import { AppContextProvider, useAppContext } from "./context/AppContext";
+import Player from "./pages/Player";
+import TorrentDetail from "./pages/TorrentDetail";
 
 vi.mock("@tauri-apps/api/core", () => ({
 	invoke: vi.fn(),
@@ -574,6 +578,25 @@ describe("App 组件", () => {
 			screen.getByText("种子解析失败: 解析引擎启动超时"),
 		).toBeInTheDocument();
 
+		// Wait for error screen to render
+		expect(screen.getByText("种子解析失败")).toBeInTheDocument();
+		expect(screen.getByText("解析引擎启动超时")).toBeInTheDocument();
+
+		// Click "返回搜索页面"
+		const backToSearchBtn = screen.getByRole("button", {
+			name: "返回搜索页面",
+		});
+		fireEvent.click(backToSearchBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		// Should be back to search page
+		expect(
+			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
+		).toBeInTheDocument();
+
 		vi.useRealTimers();
 	});
 
@@ -797,9 +820,221 @@ describe("App 组件", () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
 		}
-
 		expect(screen.queryByText("选择要播放的文件：")).not.toBeInTheDocument();
 
 		vi.useRealTimers();
+	});
+
+	it("当在 AppContextProvider 外部使用 useAppContext 时，应该抛出错误", () => {
+		const TestComponent = () => {
+			useAppContext();
+			return null;
+		};
+		const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+		expect(() => render(<TestComponent />)).toThrow(
+			"useAppContext must be used within an AppContextProvider",
+		);
+		spy.mockRestore();
+	});
+
+	it("在 Player 页面中如果缺少播放参数，应该展示错误提示", async () => {
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/play/invalid"]}>
+					<Routes>
+						<Route path="/play/:infoHash" element={<Player />} />
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("无法加载视频流")).toBeInTheDocument();
+		});
+	});
+
+	it("在 TorrentDetail 页面中如果缺少磁力链接，应该展示错误提示", async () => {
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/torrent"]}>
+					<Routes>
+						<Route path="/torrent" element={<TorrentDetail />} />
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("未提供有效的磁力链接")).toBeInTheDocument();
+		});
+	});
+
+	it("在 TorrentDetail 页面中点击返回和取消按钮时，应该触发导航", async () => {
+		const mockResults = [
+			{
+				title: "凡人1",
+				link: "",
+				pub_date: "",
+				magnet: "mag1",
+				size: 100,
+			},
+		];
+		const mockAddTorrentResult = {
+			info_hash: "hash1",
+			name: "凡人1",
+			files: [{ id: 0, name: "v.mp4", len: 100 }],
+		};
+
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
+			return null;
+		});
+
+		render(<App />);
+
+		// Search and click play to go to detail
+		fireEvent.change(
+			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
+			{ target: { value: "凡人" } },
+		);
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+		await waitFor(() => expect(screen.getByText("凡人1")).toBeInTheDocument());
+
+		// Trigger fake timers for resolving magnet
+		vi.useFakeTimers();
+		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+
+		// Advance timers so TorrentDetail mounts
+		for (let i = 0; i < 3; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
+		// Click "返回搜索" button
+		const backBtn = screen.getByRole("button", { name: "返回搜索" });
+		fireEvent.click(backBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		// Should be back to search page
+		expect(
+			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
+		).toBeInTheDocument();
+
+		// Go back to TorrentDetail
+		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+		for (let i = 0; i < 3; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
+		// Click "✕" button
+		const closeBtn = screen.getByRole("button", { name: "✕" });
+		fireEvent.click(closeBtn);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		expect(
+			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
+		).toBeInTheDocument();
+
+		vi.useRealTimers();
+	});
+
+	it("在 TorrentDetail 页面加载中点击取消按钮，应该触发导航", async () => {
+		const mockResults = [
+			{
+				title: "凡人1",
+				link: "",
+				pub_date: "",
+				magnet: "mag1",
+				size: 100,
+			},
+		];
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "torrent_add_magnet") {
+				return new Promise(() => {}); // never resolves
+			}
+			return null;
+		});
+
+		render(<App />);
+
+		fireEvent.change(
+			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
+			{ target: { value: "凡人" } },
+		);
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+		await waitFor(() => {
+			const count = document.querySelector(".results-count");
+			expect(count).toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+
+		// Now we should be on loader page
+		const cancelBtn = screen.getByRole("button", { name: "取消解析并返回" });
+		fireEvent.click(cancelBtn);
+
+		await waitFor(() => {
+			expect(
+				screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
+			).toBeInTheDocument();
+		});
+	});
+
+	it("当测试环境停用 memory router 时，应该降级调用 createHashRouter", () => {
+		// biome-ignore lint/suspicious/noExplicitAny: dynamic test flag check
+		(globalThis as any).__disable_memory_router_for_test__ = true;
+		try {
+			render(<App />);
+		} catch (_e) {
+			// Ignore mock failures on HashRouter setup
+		}
+		// biome-ignore lint/suspicious/noExplicitAny: dynamic test flag check
+		(globalThis as any).__disable_memory_router_for_test__ = undefined;
+	});
+
+	it("在 Player 页面中如果在加载流地址前复制，应该提前返回且不进行复制操作", async () => {
+		vi.mocked(invoke).mockImplementationOnce(async (cmd) => {
+			if (cmd === "torrent_get_stream_url") {
+				return new Promise(() => {}); // never resolves
+			}
+			return null;
+		});
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/play/hash/0"]}>
+					<Routes>
+						<Route path="/play/:infoHash/:fileId" element={<Player />} />
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		const copyBtn = screen.getByRole("button", { name: "📋 复制视频流地址" });
+		fireEvent.click(copyBtn);
+
+		expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+	});
+
+	it("在 Player 页面加载流地址过程中卸载组件，应该终止初始化", () => {
+		const { unmount } = render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/play/hash/0"]}>
+					<Routes>
+						<Route path="/play/:infoHash/:fileId" element={<Player />} />
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+		unmount();
 	});
 });

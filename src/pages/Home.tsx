@@ -39,7 +39,7 @@ export default function Home() {
 			const data = await invoke<SearchResultItem[]>("search_dmhy", {
 				keyword: keyword.trim(),
 			});
-			setResults(data);
+			setResults(data || []);
 		} catch (err) {
 			console.error("Search failed:", err);
 			setError(typeof err === "string" ? err : "搜索失败，请检查网络或重试");

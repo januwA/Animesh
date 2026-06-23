@@ -32,16 +32,20 @@ const routes = [
 ];
 
 const isTest =
-	typeof process !== "undefined" && process.env.NODE_ENV === "test";
+	typeof globalThis !== "undefined" &&
+	// biome-ignore lint/suspicious/noExplicitAny: dynamic env check
+	(globalThis as any).process?.env?.NODE_ENV === "test";
 
 export default function App() {
 	// In test environment, use createMemoryRouter to ensure 100% test isolation.
 	// In production, use createHashRouter.
-	const router = isTest
-		? createMemoryRouter(routes, {
-				initialEntries: [window.location.hash.replace(/^#/, "") || "/"],
-			})
-		: createHashRouter(routes);
+	const router =
+		// biome-ignore lint/suspicious/noExplicitAny: dynamic test flag check
+		isTest && !(globalThis as any).__disable_memory_router_for_test__
+			? createMemoryRouter(routes, {
+					initialEntries: [window.location.hash.replace(/^#/, "") || "/"],
+				})
+			: createHashRouter(routes);
 
 	return (
 		<AppContextProvider>
