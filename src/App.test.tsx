@@ -690,4 +690,115 @@ describe("App 组件", () => {
 		unmount();
 		vi.useRealTimers();
 	});
+
+	it("当点击 Toast 提示的关闭按钮时，应该立即关闭 Toast 提示", async () => {
+		vi.mocked(invoke).mockResolvedValue([
+			{
+				title: "凡人修仙传 第1集",
+				link: "http://example.com/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 350000000,
+			},
+		]);
+
+		render(<App />);
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+		});
+
+		vi.useFakeTimers();
+
+		const copyBtn = screen.getByRole("button", { name: "🧲 复制磁力" });
+		fireEvent.click(copyBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		const toastText = "磁力链接已复制到剪贴板";
+		expect(screen.getByText(toastText)).toBeInTheDocument();
+
+		// 点击关闭提示按钮
+		const closeToastBtn = screen.getByLabelText("关闭提示");
+		fireEvent.click(closeToastBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		expect(screen.queryByText(toastText)).not.toBeInTheDocument();
+
+		vi.useRealTimers();
+	});
+
+	it("当按下 Escape 键时，应该关闭种子解析弹窗", async () => {
+		const mockResults = [
+			{
+				title: "凡人修仙传 第1集",
+				link: "http://example.com/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 350000000,
+			},
+		];
+
+		const mockAddTorrentResult = {
+			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
+			name: "凡人修仙传 第1集",
+			files: [{ id: 0, name: "video1.mp4", len: 1000000 }],
+		};
+
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
+			return null;
+		});
+
+		render(<App />);
+
+		fireEvent.change(
+			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
+			{ target: { value: "凡人" } },
+		);
+		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+		});
+
+		vi.useFakeTimers();
+
+		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+
+		for (let i = 0; i < 3; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
+		// 检查弹窗渲染
+		expect(screen.getByText("选择要播放的文件：")).toBeInTheDocument();
+
+		// 按下 Escape 键
+		const dialogElement = screen.getByRole("dialog");
+		fireEvent.keyDown(dialogElement, { key: "Escape", code: "Escape" });
+
+		for (let i = 0; i < 2; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
+		expect(screen.queryByText("选择要播放的文件：")).not.toBeInTheDocument();
+
+		vi.useRealTimers();
+	});
 });

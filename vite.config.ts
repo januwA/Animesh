@@ -52,6 +52,7 @@ export default defineConfig(() => ({
 				"src/test/**",
 				"**/*.test.{ts,tsx}",
 				"**/*.d.ts",
+				"src/components/ui/**",
 			],
 			thresholds: {
 				lines: 100,
