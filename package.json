@@ -1,26 +1,41 @@
 {
-  "name": "animesh",
-  "private": true,
-  "version": "0.1.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri"
-  },
-  "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2"
-  },
-  "devDependencies": {
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^6.0.2",
-    "typescript": "~6.0.3",
-    "vite": "^8.0.16",
-    "@tauri-apps/cli": "^2"
-  }
+	"name": "animesh",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "tsc && vite build",
+		"preview": "vite preview",
+		"tauri": "tauri",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:rust": "cargo test --manifest-path src-tauri/Cargo.toml -p animesh_core",
+		"test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml -p animesh_core --fail-under-lines 90",
+		"check:apply": "biome check --write --no-errors-on-unmatched",
+		"check": "biome check --no-errors-on-unmatched",
+		"typecheck": "tsc --noEmit",
+		"test:coverage": "vitest run --coverage"
+	},
+	"dependencies": {
+		"@tauri-apps/api": "^2",
+		"@tauri-apps/plugin-opener": "^2",
+		"react": "^19.1.0",
+		"react-dom": "^19.1.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.0",
+		"@tauri-apps/cli": "^2",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.2",
+		"@types/react": "^19.1.8",
+		"@types/react-dom": "^19.1.6",
+		"@vitejs/plugin-react": "^6.0.2",
+		"@vitest/coverage-v8": "^4.1.9",
+		"jsdom": "^29.1.1",
+		"lefthook": "^2.1.9",
+		"typescript": "~6.0.3",
+		"vite": "^8.0.16",
+		"vitest": "^4.1.9"
+	}
 }
