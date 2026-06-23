@@ -1,0 +1,292 @@
+use axum::{
+    body::Body,
+    extract::{Path, State},
+    http::{header, HeaderMap, StatusCode},
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
+use librqbit::{AddTorrent, ManagedTorrent, Session};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::sync::Arc;
+use tokio::io::{AsyncReadExt, AsyncSeekExt, SeekFrom};
+use tokio::net::TcpListener;
+use tokio_util::io::ReaderStream;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct FileDetails {
+    pub id: usize,
+    pub name: String,
+    pub len: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AddTorrentResult {
+    pub info_hash: String,
+    pub name: Option<String>,
+    pub files: Vec<FileDetails>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct TorrentStatusInfo {
+    pub info_hash: String,
+    pub name: Option<String>,
+    pub progress_bytes: u64,
+    pub total_bytes: u64,
+    pub finished: bool,
+    pub download_speed_bytes_per_sec: u64,
+}
+
+pub struct TorrentManager {
+    pub session: Arc<Session>,
+    pub port: u16,
+}
+
+impl TorrentManager {
+    pub async fn new(download_dir: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
+        let session = Session::new(download_dir).await?;
+
+        // 启动 Axum 服务器并监听随机空闲端口
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let port = listener.local_addr()?.port();
+
+        let app = Router::new()
+            .route("/stream/:info_hash/:file_id", get(stream_handler))
+            .with_state(session.clone());
+
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        Ok(Self { session, port })
+    }
+
+    pub async fn add_magnet(
+        &self,
+        magnet: &str,
+    ) -> Result<AddTorrentResult, Box<dyn std::error::Error>> {
+        let response = self
+            .session
+            .add_torrent(AddTorrent::from_url(magnet), None)
+            .await?;
+        let handle = response
+            .into_handle()
+            .ok_or("Failed to get torrent handle")?;
+
+        // 等待种子解析出元数据
+        handle.wait_until_initialized().await?;
+
+        let info_hash = format_hash(&handle.info_hash().0);
+        let name = handle.name();
+
+        let files = handle.with_metadata(|meta| {
+            meta.file_infos
+                .iter()
+                .enumerate()
+                .map(|(id, fi)| FileDetails {
+                    id,
+                    name: fi.relative_filename.to_string_lossy().to_string(),
+                    len: fi.len,
+                })
+                .collect::<Vec<_>>()
+        })?;
+
+        Ok(AddTorrentResult {
+            info_hash,
+            name,
+            files,
+        })
+    }
+
+    pub fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
+        let torrent = self.find_torrent_by_hex(info_hash_hex)?;
+        let stats = torrent.stats();
+
+        let speed = stats
+            .live
+            .as_ref()
+            .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
+            .unwrap_or(0);
+
+        Some(TorrentStatusInfo {
+            info_hash: info_hash_hex.to_string(),
+            name: torrent.name(),
+            progress_bytes: stats.progress_bytes,
+            total_bytes: stats.total_bytes,
+            finished: stats.finished,
+            download_speed_bytes_per_sec: speed,
+        })
+    }
+
+    pub fn get_stream_url(&self, info_hash_hex: &str, file_id: usize) -> String {
+        format!(
+            "http://127.0.0.1:{}/stream/{}/{}",
+            self.port, info_hash_hex, file_id
+        )
+    }
+
+    fn find_torrent_by_hex(&self, hex_hash: &str) -> Option<Arc<ManagedTorrent>> {
+        self.session.with_torrents(|iter| {
+            for (_, torrent) in iter {
+                let hex = format_hash(&torrent.info_hash().0);
+                if hex.eq_ignore_ascii_case(hex_hash) {
+                    return Some(torrent.clone());
+                }
+            }
+            None
+        })
+    }
+}
+
+fn format_hash(bytes: &[u8; 20]) -> String {
+    bytes
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect::<String>()
+}
+
+async fn stream_handler(
+    Path((info_hash_hex, file_id)): Path<(String, usize)>,
+    State(session): State<Arc<Session>>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, StatusCode> {
+    let torrent = session
+        .with_torrents(|iter| {
+            for (_, torrent) in iter {
+                let hex = format_hash(&torrent.info_hash().0);
+                if hex.eq_ignore_ascii_case(&info_hash_hex) {
+                    return Some(torrent.clone());
+                }
+            }
+            None
+        })
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let stream = torrent
+        .stream(file_id)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let file_len = stream.len();
+
+    let range_header = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
+
+    let response = if let Some(range) = range_header {
+        if let Some(parsed) = parse_range(range, file_len) {
+            let (start, end) = parsed;
+            let content_length = end - start + 1;
+
+            let mut mut_stream = stream;
+            mut_stream
+                .seek(SeekFrom::Start(start))
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            let limited = mut_stream.take(content_length);
+            let body_stream = ReaderStream::new(limited);
+
+            let mut headers = HeaderMap::new();
+            headers.insert(header::CONTENT_TYPE, "video/mp4".parse().unwrap());
+            headers.insert(header::CONTENT_LENGTH, content_length.into());
+            headers.insert(
+                header::CONTENT_RANGE,
+                format!("bytes {}-{}/{}", start, end, file_len)
+                    .parse()
+                    .unwrap(),
+            );
+            headers.insert(header::ACCEPT_RANGES, "bytes".parse().unwrap());
+
+            (
+                StatusCode::PARTIAL_CONTENT,
+                headers,
+                Body::from_stream(body_stream),
+            )
+                .into_response()
+        } else {
+            return Err(StatusCode::RANGE_NOT_SATISFIABLE);
+        }
+    } else {
+        let body_stream = ReaderStream::new(stream);
+        let mut headers = HeaderMap::new();
+        headers.insert(header::CONTENT_TYPE, "video/mp4".parse().unwrap());
+        headers.insert(header::CONTENT_LENGTH, file_len.into());
+        headers.insert(header::ACCEPT_RANGES, "bytes".parse().unwrap());
+
+        (StatusCode::OK, headers, Body::from_stream(body_stream)).into_response()
+    };
+
+    Ok(response)
+}
+
+fn parse_range(range_str: &str, file_len: u64) -> Option<(u64, u64)> {
+    if !range_str.starts_with("bytes=") {
+        return None;
+    }
+    let range_part = &range_str["bytes=".len()..];
+    let parts: Vec<&str> = range_part.split('-').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+    let start_str = parts[0].trim();
+    let end_str = parts[1].trim();
+
+    let start = if start_str.is_empty() {
+        return None;
+    } else {
+        start_str.parse::<u64>().ok()?
+    };
+
+    let end = if end_str.is_empty() {
+        file_len - 1
+    } else {
+        end_str.parse::<u64>().ok()?
+    };
+
+    if start > end || start >= file_len {
+        return None;
+    }
+    let end = end.min(file_len - 1);
+
+    Some((start, end))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_解析HTTP_Range_各种格式() {
+        assert_eq!(parse_range("bytes=0-100", 1000), Some((0, 100)));
+        assert_eq!(parse_range("bytes=100-", 1000), Some((100, 999)));
+        assert_eq!(parse_range("bytes=-100", 1000), None); // 本应用只处理 start-end 或 start- 格式
+        assert_eq!(parse_range("invalid", 1000), None);
+        assert_eq!(parse_range("bytes=1000-2000", 1000), None);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_种子管理器的创建和串流逻辑() {
+        // 由于真实的磁力链接下载在测试中非常依赖网络，我们可以使用本地测试目录进行 TorrentManager 初始化测试
+        let dir = std::env::temp_dir().join("animesh_test_manager");
+        let manager = TorrentManager::new(dir).await;
+        assert!(manager.is_ok(), "Manager initialization should succeed");
+        let manager = manager.unwrap();
+
+        assert!(
+            manager.port > 0,
+            "Axum should listen on a valid dynamic port"
+        );
+
+        // 尝试生成 stream url
+        let test_hash = "3a2a3e0f438a2e1d74381395bb0e6840742fef8e";
+        let url = manager.get_stream_url(test_hash, 0);
+        assert!(
+            url.contains(&manager.port.to_string()),
+            "Stream URL should include the port"
+        );
+        assert!(
+            url.contains(test_hash),
+            "Stream URL should include the info hash"
+        );
+    }
+}
