@@ -42,9 +42,13 @@ impl TorrentManager {
         &self,
         magnet: &str,
     ) -> Result<AddTorrentResult, Box<dyn std::error::Error>> {
+        let options = librqbit::AddTorrentOptions {
+            overwrite: true,
+            ..Default::default()
+        };
         let response = self
             .session
-            .add_torrent(AddTorrent::from_url(magnet), None)
+            .add_torrent(AddTorrent::from_url(magnet), Some(options))
             .await?;
         let handle = response
             .into_handle()
@@ -200,7 +204,9 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_{}", nanos));
         let manager = TorrentManager::new(dir).await;
-        assert!(manager.is_ok(), "Manager initialization should succeed");
+        if let Err(e) = &manager {
+            panic!("Manager initialization failed: {:?}", e);
+        }
         let manager = manager.unwrap();
 
         assert!(
