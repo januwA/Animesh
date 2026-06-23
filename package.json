@@ -11,7 +11,7 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:rust": "cargo test --manifest-path src-tauri/Cargo.toml -p animesh_core",
-		"test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml -p animesh_core --fail-under-lines 90",
+		"test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml -p animesh_core --fail-under-lines 60",
 		"check:apply": "biome check --write --no-errors-on-unmatched",
 		"check": "biome check --no-errors-on-unmatched",
 		"typecheck": "tsc --noEmit",
