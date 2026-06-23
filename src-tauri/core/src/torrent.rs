@@ -258,16 +258,41 @@ mod tests {
     fn 测试_解析HTTP_Range_各种格式() {
         assert_eq!(parse_range("bytes=0-100", 1000), Some((0, 100)));
         assert_eq!(parse_range("bytes=100-", 1000), Some((100, 999)));
-        assert_eq!(parse_range("bytes=-100", 1000), None); // 本应用只处理 start-end 或 start- 格式
+        assert_eq!(parse_range("bytes=-100", 1000), None);
         assert_eq!(parse_range("invalid", 1000), None);
         assert_eq!(parse_range("bytes=1000-2000", 1000), None);
+
+        // 增加解析错误的分支覆盖
+        assert_eq!(parse_range("bytes=abc-100", 1000), None);
+        assert_eq!(parse_range("bytes=100-abc", 1000), None);
+        assert_eq!(parse_range("bytes=200-100", 1000), None);
+        assert_eq!(parse_range("bytes=1000-500", 1000), None);
+        assert_eq!(parse_range("bytes=-", 1000), None);
+        assert_eq!(parse_range("not_bytes=0-100", 1000), None);
+        assert_eq!(parse_range("bytes=0-100-200", 1000), None);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_哈希格式化() {
+        let mut test_bytes = [0u8; 20];
+        test_bytes[0] = 0x1a;
+        test_bytes[19] = 0xff;
+        let hex = format_hash(&test_bytes);
+        assert!(hex.starts_with("1a"));
+        assert!(hex.ends_with("ff"));
+        assert_eq!(hex.len(), 40);
     }
 
     #[tokio::test]
     #[allow(non_snake_case)]
-    async fn 测试_种子管理器的创建和串流逻辑() {
-        // 由于真实的磁力链接下载在测试中非常依赖网络，我们可以使用本地测试目录进行 TorrentManager 初始化测试
-        let dir = std::env::temp_dir().join("animesh_test_manager");
+    async fn 测试_种子管理器及流式接口_综合逻辑() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("animesh_test_manager_{}", nanos));
         let manager = TorrentManager::new(dir).await;
         assert!(manager.is_ok(), "Manager initialization should succeed");
         let manager = manager.unwrap();
@@ -288,5 +313,32 @@ mod tests {
             url.contains(test_hash),
             "Stream URL should include the info hash"
         );
+
+        // 测试未找到种子时的 get_torrent_status 覆盖
+        let status = manager.get_torrent_status(test_hash);
+        assert!(status.is_none());
+
+        // 测试 find_torrent_by_hex
+        let torrent = manager.find_torrent_by_hex(test_hash);
+        assert!(torrent.is_none());
+
+        // 测试 HTTP 流式播放接口_未找到种子
+        let app = Router::new()
+            .route("/stream/:info_hash/:file_id", get(stream_handler))
+            .with_state(manager.session.clone());
+
+        use axum::http::Request;
+        use tower::ServiceExt;
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/stream/3a2a3e0f438a2e1d74381395bb0e6840742fef8e/0")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }
