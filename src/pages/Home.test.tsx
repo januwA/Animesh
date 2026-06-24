@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
 	act,
 	fireEvent,
@@ -10,11 +9,11 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
+import type { DIContainer } from "../di/DIContext";
+import { createDIContainer, DIProvider } from "../di/DIContext";
+import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
+import type { SearchResultItem } from "../types";
 import Home from "./Home";
-
-vi.mock("@tauri-apps/api/core", () => ({
-	invoke: vi.fn(),
-}));
 
 // Mock clipboard API
 Object.defineProperty(navigator, "clipboard", {
@@ -33,7 +32,31 @@ const LocationTracker = () => {
 };
 
 describe("Home 页面组件", () => {
+	let mockTorrentRepository: TorrentRepository;
+	let mockContainer: DIContainer;
+
 	beforeEach(() => {
+		mockTorrentRepository = {
+			searchDmhy: vi.fn(),
+			addTorrentMagnet: vi.fn(),
+			getTorrentFiles: vi.fn(),
+			listTorrents: vi.fn(),
+			pauseTorrent: vi.fn(),
+			resumeTorrent: vi.fn(),
+			deleteTorrent: vi.fn(),
+			getTorrentStreamUrl: vi.fn(),
+			getTorrentStatus: vi.fn(),
+		};
+
+		mockContainer = createDIContainer({
+			torrentRepository: mockTorrentRepository,
+			settingsRepository: {
+				getSettings: vi.fn(),
+				setDownloadDir: vi.fn(),
+				selectDirectory: vi.fn(),
+			},
+		});
+
 		currentLocation.current = null;
 		vi.clearAllMocks();
 		vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
@@ -43,18 +66,26 @@ describe("Home 页面组件", () => {
 		vi.useRealTimers();
 	});
 
-	it("应该正确渲染搜索表单和欢迎指南", () => {
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route index element={<Home />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+	const renderHome = (initialRoute = "/") => {
+		return render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={[initialRoute]}>
+						{initialRoute === "/" && <LocationTracker />}
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route index element={<Home />} />
+								<Route path="torrent" element={<div>TorrentDetail Page</div>} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
 		);
+	};
+
+	it("应该正确渲染搜索表单和欢迎指南", () => {
+		renderHome();
 		expect(
 			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
 		).toBeInTheDocument();
@@ -72,24 +103,9 @@ describe("Home 页面组件", () => {
 			},
 		];
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy") {
-				return mockResults;
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route index element={<Home />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderHome();
 
 		const input = screen.getByPlaceholderText(
 			"输入动漫名称，例如：凡人修仙传...",
@@ -107,28 +123,15 @@ describe("Home 页面组件", () => {
 		expect(document.querySelector(".results-count")?.textContent?.trim()).toBe(
 			"找到 1 个资源",
 		);
-		expect(invoke).toHaveBeenCalledWith("search_dmhy", { keyword: "凡人" });
+		expect(mockTorrentRepository.searchDmhy).toHaveBeenCalledWith("凡人");
 	});
 
 	it("当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy") {
-				return null;
-			}
-			return null;
-		});
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="" element={<Home />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(
+			null as unknown as SearchResultItem[],
 		);
+
+		renderHome();
 
 		const input = screen.getByPlaceholderText(
 			"输入动漫名称，例如：凡人修仙传...",
@@ -144,17 +147,7 @@ describe("Home 页面组件", () => {
 	});
 
 	it("当输入空白关键词并提交时，不应该触发搜索", async () => {
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="" element={<Home />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderHome();
 
 		const input = screen.getByPlaceholderText(
 				"输入动漫名称，例如：凡人修仙传...",
@@ -164,23 +157,15 @@ describe("Home 页面组件", () => {
 		fireEvent.change(input, { target: { value: "   " } });
 		fireEvent.click(button);
 
-		expect(invoke).not.toHaveBeenCalled();
+		expect(mockTorrentRepository.searchDmhy).not.toHaveBeenCalled();
 	});
 
 	it("当搜索失败时，应该显示错误提示", async () => {
-		vi.mocked(invoke).mockRejectedValue("网络请求超时");
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="" element={<Home />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.searchDmhy).mockRejectedValue(
+			"网络请求超时",
 		);
+
+		renderHome();
 
 		const input = screen.getByPlaceholderText(
 			"输入动漫名称，例如：凡人修仙传...",
@@ -194,19 +179,11 @@ describe("Home 页面组件", () => {
 	});
 
 	it("当搜索抛出非字符串错误时，应该显示默认错误提示", async () => {
-		vi.mocked(invoke).mockRejectedValueOnce(new Error("Internal Server Error"));
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="" element={<Home />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.searchDmhy).mockRejectedValueOnce(
+			new Error("Internal Server Error"),
 		);
+
+		renderHome();
 
 		const input = screen.getByPlaceholderText(
 			"输入动漫名称，例如：凡人修仙传...",
@@ -231,19 +208,9 @@ describe("Home 页面组件", () => {
 				size: 350000000,
 			},
 		];
-		vi.mocked(invoke).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="" element={<Home />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderHome();
 
 		const input = screen.getByPlaceholderText(
 			"输入动漫名称，例如：凡人修仙传...",
@@ -280,22 +247,12 @@ describe("Home 页面组件", () => {
 				size: 350000000,
 			},
 		];
-		vi.mocked(invoke).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
 		vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(
 			new Error("Permission denied"),
 		);
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="" element={<Home />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderHome();
 
 		const input = screen.getByPlaceholderText(
 			"输入动漫名称，例如：凡人修仙传...",
@@ -328,21 +285,9 @@ describe("Home 页面组件", () => {
 				size: 350000000,
 			},
 		];
-		vi.mocked(invoke).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route index element={<Home />} />
-							<Route path="torrent" element={<div>TorrentDetail Page</div>} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderHome();
 
 		const input = screen.getByPlaceholderText(
 			"输入动漫名称，例如：凡人修仙传...",

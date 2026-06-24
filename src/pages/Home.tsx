@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,10 +8,11 @@ import {
 	WelcomeGuide,
 } from "../components/AppComponents";
 import { useAppContext } from "../context/AppContext";
-import type { SearchResultItem } from "../types";
+import { useDI } from "../di/DIContext";
 
 export default function Home() {
 	const navigate = useNavigate();
+	const { torrentRepository } = useDI();
 	const {
 		keyword,
 		setKeyword,
@@ -36,11 +36,9 @@ export default function Home() {
 		setHasSearched(true);
 
 		try {
-			const data = await invoke<SearchResultItem[]>("search_dmhy", {
-				keyword: keyword.trim(),
-			});
+			const data = await torrentRepository.searchDmhy(keyword.trim());
 			setResults(data || []);
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error("Search failed:", err);
 			setError(typeof err === "string" ? err : "搜索失败，请检查网络或重试");
 			setResults([]);

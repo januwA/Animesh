@@ -6,10 +6,26 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import {
+	createMemoryRouter,
+	MemoryRouter,
+	Route,
+	Routes,
+} from "react-router-dom";
 import { vi } from "vitest";
-import App from "./App";
+import OriginalApp, { routes } from "./App";
 import { AppContextProvider, useAppContext } from "./context/AppContext";
+
+// Wrap App for testing compatibility to automatically inject a memory router
+const App = (props: Partial<Parameters<typeof OriginalApp>[0]>) => {
+	const router =
+		props.router ||
+		createMemoryRouter(routes, {
+			initialEntries: [window.location.hash.replace(/^#/, "") || "/"],
+		});
+	return <OriginalApp {...props} router={router} />;
+};
+
 import Downloads from "./pages/Downloads";
 import Player from "./pages/Player";
 import Settings from "./pages/Settings";
@@ -990,18 +1006,6 @@ describe("App 组件", () => {
 				screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
 			).toBeInTheDocument();
 		});
-	});
-
-	it("当测试环境停用 memory router 时，应该降级调用 createHashRouter", () => {
-		// biome-ignore lint/suspicious/noExplicitAny: dynamic test flag check
-		(globalThis as any).__disable_memory_router_for_test__ = true;
-		try {
-			render(<App />);
-		} catch (_e) {
-			// Ignore mock failures on HashRouter setup
-		}
-		// biome-ignore lint/suspicious/noExplicitAny: dynamic test flag check
-		(globalThis as any).__disable_memory_router_for_test__ = undefined;
 	});
 
 	it("在 Player 页面中如果在加载流地址前复制，应该提前返回且不进行复制操作", async () => {

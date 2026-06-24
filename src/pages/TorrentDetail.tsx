@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft, FileVideo, Film, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -6,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppContext } from "../context/AppContext";
-import type { AddTorrentResult, FileDetails } from "../types";
+import { useDI } from "../di/DIContext";
+import type { AddTorrentResult } from "../types";
 import { formatBytes } from "../utils";
 
 export default function TorrentDetail() {
@@ -16,6 +16,7 @@ export default function TorrentDetail() {
 	const title = searchParams.get("title") || "";
 	const infoHash = searchParams.get("infoHash") || "";
 
+	const { torrentRepository } = useDI();
 	const { showToast } = useAppContext();
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -42,7 +43,8 @@ export default function TorrentDetail() {
 
 		if (magnet) {
 			// Resolve magnet
-			invoke<AddTorrentResult>("torrent_add_magnet", { magnet })
+			torrentRepository
+				.addTorrentMagnet(magnet)
 				.then((result) => {
 					if (isMounted) {
 						setTorrent(result);
@@ -52,7 +54,7 @@ export default function TorrentDetail() {
 						);
 					}
 				})
-				.catch((err) => {
+				.catch((err: unknown) => {
 					if (isMounted) {
 						console.error("Failed to add torrent:", err);
 						const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
@@ -63,7 +65,8 @@ export default function TorrentDetail() {
 				});
 		} else if (infoHash) {
 			// Resolve by existing info hash
-			invoke<FileDetails[]>("torrent_get_files", { infoHash })
+			torrentRepository
+				.getTorrentFiles(infoHash)
 				.then((files) => {
 					if (isMounted) {
 						setTorrent({
@@ -74,7 +77,7 @@ export default function TorrentDetail() {
 						setLoading(false);
 					}
 				})
-				.catch((err) => {
+				.catch((err: unknown) => {
 					if (isMounted) {
 						console.error("Failed to fetch torrent files:", err);
 						const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
@@ -88,7 +91,7 @@ export default function TorrentDetail() {
 		return () => {
 			isMounted = false;
 		};
-	}, [magnet, infoHash, title, showToast]);
+	}, [magnet, infoHash, title, showToast, torrentRepository]);
 
 	// Listen to Escape key to go back, keeping test compatibility
 	useEffect(() => {

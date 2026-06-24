@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
 	act,
 	fireEvent,
@@ -10,11 +9,10 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
+import type { DIContainer } from "../di/DIContext";
+import { createDIContainer, DIProvider } from "../di/DIContext";
+import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import Downloads from "./Downloads";
-
-vi.mock("@tauri-apps/api/core", () => ({
-	invoke: vi.fn(),
-}));
 
 const currentLocation = {
 	current: null as { pathname: string; search: string } | null,
@@ -25,7 +23,31 @@ const LocationTracker = () => {
 };
 
 describe("Downloads 页面组件", () => {
+	let mockTorrentRepository: TorrentRepository;
+	let mockContainer: DIContainer;
+
 	beforeEach(() => {
+		mockTorrentRepository = {
+			searchDmhy: vi.fn(),
+			addTorrentMagnet: vi.fn(),
+			getTorrentFiles: vi.fn(),
+			listTorrents: vi.fn(),
+			pauseTorrent: vi.fn(),
+			resumeTorrent: vi.fn(),
+			deleteTorrent: vi.fn(),
+			getTorrentStreamUrl: vi.fn(),
+			getTorrentStatus: vi.fn(),
+		};
+
+		mockContainer = createDIContainer({
+			torrentRepository: mockTorrentRepository,
+			settingsRepository: {
+				getSettings: vi.fn(),
+				setDownloadDir: vi.fn(),
+				selectDirectory: vi.fn(),
+			},
+		});
+
 		currentLocation.current = null;
 		vi.clearAllMocks();
 	});
@@ -34,38 +56,41 @@ describe("Downloads 页面组件", () => {
 		vi.useRealTimers();
 	});
 
-	it("应该在加载时渲染加载指示器", async () => {
-		vi.mocked(invoke).mockImplementation(() => new Promise(() => {}));
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/downloads"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="downloads" element={<Downloads />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+	const renderDownloads = () => {
+		return render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/downloads"]}>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="downloads" element={<Downloads />} />
+							</Route>
+							<Route path="/" element={<div>Home Page</div>} />
+							<Route path="/torrent" element={<div>Torrent Page</div>} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
 		);
+	};
+
+	it("应该在加载时渲染加载指示器", async () => {
+		vi.mocked(mockTorrentRepository.listTorrents).mockImplementation(
+			() => new Promise(() => {}),
+		);
+
+		renderDownloads();
 
 		expect(screen.getByText("正在加载下载管理器...")).toBeInTheDocument();
 	});
 
 	it("当获取下载列表失败时，应该显示加载完成和Toast提示", async () => {
-		vi.mocked(invoke).mockRejectedValueOnce("Fetch list failed");
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/downloads"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="downloads" element={<Downloads />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValueOnce(
+			"Fetch list failed",
 		);
+
+		renderDownloads();
 
 		await waitFor(() => {
 			expect(
@@ -76,21 +101,9 @@ describe("Downloads 页面组件", () => {
 	});
 
 	it("当无下载任务时，应该渲染空状态并可以点击返回首页", async () => {
-		vi.mocked(invoke).mockResolvedValue([]);
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue([]);
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/downloads"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="downloads" element={<Downloads />} />
-						</Route>
-						<Route path="/" element={<div>Home Page</div>} />
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderDownloads();
 
 		await waitFor(() => {
 			expect(screen.getByText("没有正在进行的下载任务")).toBeInTheDocument();
@@ -117,19 +130,11 @@ describe("Downloads 页面组件", () => {
 			},
 		];
 
-		vi.mocked(invoke).mockResolvedValue(mockTorrents);
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/downloads"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="downloads" element={<Downloads />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
 		);
+
+		renderDownloads();
 
 		await act(async () => {
 			await vi.runOnlyPendingTimersAsync();
@@ -148,7 +153,9 @@ describe("Downloads 页面组件", () => {
 				paused: false,
 			},
 		];
-		vi.mocked(invoke).mockResolvedValue(updatedTorrents);
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			updatedTorrents,
+		);
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(1500);
@@ -156,7 +163,9 @@ describe("Downloads 页面组件", () => {
 
 		expect(screen.getByText(/进度: 80/)).toBeInTheDocument();
 
-		vi.mocked(invoke).mockRejectedValueOnce(new Error("Network polling error"));
+		vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValueOnce(
+			new Error("Network polling error"),
+		);
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(1500);
@@ -187,22 +196,11 @@ describe("Downloads 页面组件", () => {
 			},
 		];
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_list") return mockTorrents;
-			return null;
-		});
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/downloads"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="downloads" element={<Downloads />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
 		);
+
+		renderDownloads();
 
 		await waitFor(() => {
 			expect(screen.getByText(/hash111/)).toBeInTheDocument();
@@ -218,24 +216,19 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 
-		expect(invoke).toHaveBeenCalledWith("torrent_pause", {
-			infoHash: "hash111",
-		});
+		expect(mockTorrentRepository.pauseTorrent).toHaveBeenCalledWith("hash111");
 		expect(screen.getByText("已暂停任务: hash111")).toBeInTheDocument();
 
 		// 2. Pause action (failure)
-		vi.mocked(invoke).mockRejectedValueOnce("Pause error");
+		vi.mocked(mockTorrentRepository.pauseTorrent).mockRejectedValueOnce(
+			"Pause error",
+		);
 		fireEvent.click(pauseBtn);
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 		expect(screen.getByText("暂停失败，请重试")).toBeInTheDocument();
-
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_list") return mockTorrents;
-			return null;
-		});
 
 		// 3. Resume action (success)
 		const resumeBtn = screen.getByTitle("开始下载");
@@ -245,13 +238,13 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 
-		expect(invoke).toHaveBeenCalledWith("torrent_resume", {
-			infoHash: "hash222",
-		});
+		expect(mockTorrentRepository.resumeTorrent).toHaveBeenCalledWith("hash222");
 		expect(screen.getByText("已开始下载任务: 动漫视频2")).toBeInTheDocument();
 
 		// 4. Resume action (failure)
-		vi.mocked(invoke).mockRejectedValueOnce("Resume error");
+		vi.mocked(mockTorrentRepository.resumeTorrent).mockRejectedValueOnce(
+			"Resume error",
+		);
 		fireEvent.click(resumeBtn);
 
 		await act(async () => {
@@ -273,21 +266,11 @@ describe("Downloads 页面组件", () => {
 			},
 		];
 
-		vi.mocked(invoke).mockResolvedValue(mockTorrents);
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/downloads"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="downloads" element={<Downloads />} />
-						</Route>
-						<Route path="/torrent" element={<div>Torrent Page</div>} />
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
 		);
+
+		renderDownloads();
 
 		await waitFor(() => {
 			expect(screen.getByText("查看文件")).toBeInTheDocument();
@@ -313,19 +296,11 @@ describe("Downloads 页面组件", () => {
 			},
 		];
 
-		vi.mocked(invoke).mockResolvedValue(mockTorrents);
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/downloads"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="downloads" element={<Downloads />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
 		);
+
+		renderDownloads();
 
 		await waitFor(() => {
 			expect(screen.getByTitle("删除下载")).toBeInTheDocument();
@@ -376,20 +351,18 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 
-		expect(invoke).toHaveBeenCalledWith("torrent_delete", {
-			infoHash: "hash111",
-			deleteFiles: true,
-		});
+		expect(mockTorrentRepository.deleteTorrent).toHaveBeenCalledWith(
+			"hash111",
+			true,
+		);
 		expect(
 			screen.getByText("已删除任务及本地文件: hash111"),
 		).toBeInTheDocument();
 
 		// 3. Delete modal failure
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_list") return mockTorrents;
-			if (cmd === "torrent_delete") throw "Delete failed";
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.deleteTorrent).mockRejectedValueOnce(
+			"Delete failed",
+		);
 
 		fireEvent.click(deleteBtn);
 		fireEvent.click(screen.getByRole("button", { name: "确认删除" }));

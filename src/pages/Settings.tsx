@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { Folder, HardDrive, Loader2, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -6,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAppContext } from "../context/AppContext";
+import { useDI } from "../di/DIContext";
 
 export default function Settings() {
 	const navigate = useNavigate();
+	const { settingsRepository } = useDI();
 	const { showToast } = useAppContext();
 	const [downloadDir, setDownloadDir] = useState("");
 	const [loading, setLoading] = useState(true);
@@ -18,9 +19,9 @@ export default function Settings() {
 	useEffect(() => {
 		const loadSettings = async () => {
 			try {
-				const settings = await invoke<{ download_dir: string }>("settings_get");
+				const settings = await settingsRepository.getSettings();
 				setDownloadDir(settings.download_dir);
-			} catch (err) {
+			} catch (err: unknown) {
 				console.error("Failed to load settings:", err);
 				showToast("加载设置失败");
 			} finally {
@@ -28,17 +29,17 @@ export default function Settings() {
 			}
 		};
 		loadSettings();
-	}, [showToast]);
+	}, [showToast, settingsRepository]);
 
 	// Handle native directory selection
 	const handleSelectDir = async () => {
 		try {
-			const selected = await invoke<string | null>("select_directory");
+			const selected = await settingsRepository.selectDirectory();
 			if (selected) {
 				setDownloadDir(selected);
 				showToast("已选择目录，点击保存以生效");
 			}
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error("Failed to select directory:", err);
 			showToast("选择文件夹失败");
 		}
@@ -54,9 +55,9 @@ export default function Settings() {
 
 		setSaving(true);
 		try {
-			await invoke("settings_set_download_dir", { dir: downloadDir.trim() });
+			await settingsRepository.setDownloadDir(downloadDir.trim());
 			showToast("设置已保存，后续下载任务将使用新路径");
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error("Failed to save settings:", err);
 			const errMsg =
 				typeof err === "string"

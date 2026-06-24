@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import { Activity, ArrowLeft, Download, Info, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -6,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAppContext } from "../context/AppContext";
+import { useDI } from "../di/DIContext";
 import type { TorrentStatusInfo } from "../types";
 import { formatBytes } from "../utils";
 
@@ -20,6 +20,7 @@ export default function Player() {
 	const title = searchParams.get("title") || "";
 	const fileName = searchParams.get("fileName") || "正在播放";
 
+	const { torrentRepository } = useDI();
 	const { showToast } = useAppContext();
 	const [streamUrl, setStreamUrl] = useState<string | null>(null);
 	const [torrentStatus, setTorrentStatus] = useState<TorrentStatusInfo | null>(
@@ -42,21 +43,17 @@ export default function Player() {
 
 		const initializePlayback = async () => {
 			try {
-				const url = await invoke<string>("torrent_get_stream_url", {
+				const url = await torrentRepository.getTorrentStreamUrl(
 					infoHash,
-					fileId: parsedFileId,
-				});
+					parsedFileId,
+				);
 
 				if (!isMounted) return;
 				setStreamUrl(url);
 
 				// Get initial status
-				const initialStatus = await invoke<TorrentStatusInfo>(
-					"torrent_get_status",
-					{
-						infoHash,
-					},
-				);
+				const initialStatus =
+					await torrentRepository.getTorrentStatus(infoHash);
 				if (isMounted) {
 					setTorrentStatus(initialStatus);
 					setLoading(false);
@@ -65,20 +62,15 @@ export default function Player() {
 				// Start polling status
 				statusIntervalRef.current = setInterval(async () => {
 					try {
-						const status = await invoke<TorrentStatusInfo>(
-							"torrent_get_status",
-							{
-								infoHash,
-							},
-						);
+						const status = await torrentRepository.getTorrentStatus(infoHash);
 						if (isMounted) {
 							setTorrentStatus(status);
 						}
-					} catch (err) {
+					} catch (err: unknown) {
 						console.error("Failed to fetch torrent status:", err);
 					}
 				}, 1500);
-			} catch (err) {
+			} catch (err: unknown) {
 				console.error("Failed to start playback:", err);
 				if (isMounted) {
 					showToast("无法获取视频流，启动播放失败", 10000);
@@ -95,7 +87,7 @@ export default function Player() {
 				clearInterval(statusIntervalRef.current);
 			}
 		};
-	}, [infoHash, fileId, showToast]);
+	}, [infoHash, fileId, showToast, torrentRepository]);
 
 	const handleCopyStreamUrl = async () => {
 		if (!streamUrl) return;

@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
 	Activity,
 	Download,
@@ -24,11 +23,13 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { useAppContext } from "../context/AppContext";
+import { useDI } from "../di/DIContext";
 import type { TorrentStatusInfo } from "../types";
 import { formatBytes } from "../utils";
 
 export default function Downloads() {
 	const navigate = useNavigate();
+	const { torrentRepository } = useDI();
 	const { showToast } = useAppContext();
 	const [torrents, setTorrents] = useState<TorrentStatusInfo[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -44,12 +45,12 @@ export default function Downloads() {
 	const fetchTorrents = useCallback(
 		async (isInitial = false) => {
 			try {
-				const list = await invoke<TorrentStatusInfo[]>("torrent_list");
+				const list = await torrentRepository.listTorrents();
 				setTorrents(list);
 				if (isInitial) {
 					setLoading(false);
 				}
-			} catch (err) {
+			} catch (err: unknown) {
 				console.error("Failed to fetch torrent list:", err);
 				if (isInitial) {
 					showToast("获取下载列表失败");
@@ -57,7 +58,7 @@ export default function Downloads() {
 				}
 			}
 		},
-		[showToast],
+		[showToast, torrentRepository],
 	);
 
 	// Polling downloads list
@@ -73,10 +74,10 @@ export default function Downloads() {
 	// Pause a download
 	const handlePause = async (infoHash: string, name: string) => {
 		try {
-			await invoke("torrent_pause", { infoHash });
+			await torrentRepository.pauseTorrent(infoHash);
 			showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
 			fetchTorrents();
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error("Failed to pause torrent:", err);
 			showToast("暂停失败，请重试");
 		}
@@ -85,10 +86,10 @@ export default function Downloads() {
 	// Resume a download
 	const handleResume = async (infoHash: string, name: string) => {
 		try {
-			await invoke("torrent_resume", { infoHash });
+			await torrentRepository.resumeTorrent(infoHash);
 			showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
 			fetchTorrents();
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error("Failed to resume torrent:", err);
 			showToast("启动失败，请重试");
 		}
@@ -99,16 +100,16 @@ export default function Downloads() {
 		if (!deleteTarget) return;
 		setDeleting(true);
 		try {
-			await invoke("torrent_delete", {
-				infoHash: deleteTarget.info_hash,
+			await torrentRepository.deleteTorrent(
+				deleteTarget.info_hash,
 				deleteFiles,
-			});
+			);
 			showToast(
 				`已删除任务${deleteFiles ? "及本地文件" : ""}: ${deleteTarget.name || deleteTarget.info_hash.slice(0, 8)}`,
 			);
 			setDeleteTarget(null);
 			fetchTorrents();
-		} catch (err) {
+		} catch (err: unknown) {
 			console.error("Failed to delete torrent:", err);
 			showToast("删除任务失败，请重试");
 		} finally {

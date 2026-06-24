@@ -1,10 +1,8 @@
-import {
-	createHashRouter,
-	createMemoryRouter,
-	RouterProvider,
-} from "react-router-dom";
+import type { createHashRouter } from "react-router-dom";
+import { RouterProvider } from "react-router-dom";
 import Layout from "./components/Layout";
 import { AppContextProvider } from "./context/AppContext";
+import { createDefaultDIContainer, DIProvider } from "./di/DIContext";
 import Downloads from "./pages/Downloads";
 import Home from "./pages/Home";
 import Player from "./pages/Player";
@@ -12,7 +10,7 @@ import Settings from "./pages/Settings";
 import TorrentDetail from "./pages/TorrentDetail";
 import "./App.css";
 
-const routes = [
+export const routes = [
 	{
 		path: "/",
 		element: <Layout />,
@@ -41,25 +39,22 @@ const routes = [
 	},
 ];
 
-const isTest =
-	typeof globalThis !== "undefined" &&
-	// biome-ignore lint/suspicious/noExplicitAny: dynamic env check
-	(globalThis as any).process?.env?.NODE_ENV === "test";
+const defaultContainer = createDefaultDIContainer();
 
-export default function App() {
-	// In test environment, use createMemoryRouter to ensure 100% test isolation.
-	// In production, use createHashRouter.
-	const router =
-		// biome-ignore lint/suspicious/noExplicitAny: dynamic test flag check
-		isTest && !(globalThis as any).__disable_memory_router_for_test__
-			? createMemoryRouter(routes, {
-					initialEntries: [window.location.hash.replace(/^#/, "") || "/"],
-				})
-			: createHashRouter(routes);
+interface AppProps {
+	router: ReturnType<typeof createHashRouter>;
+	// biome-ignore lint/suspicious/noExplicitAny: allow dynamic container injection
+	diContainer?: any;
+}
+
+export default function App({ router, diContainer }: AppProps) {
+	const container = diContainer || defaultContainer;
 
 	return (
-		<AppContextProvider>
-			<RouterProvider router={router} />
-		</AppContextProvider>
+		<DIProvider value={container}>
+			<AppContextProvider>
+				<RouterProvider router={router} />
+			</AppContextProvider>
+		</DIProvider>
 	);
 }
