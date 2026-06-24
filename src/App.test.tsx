@@ -6,6 +6,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
+import type React from "react";
 import {
 	createMemoryRouter,
 	MemoryRouter,
@@ -25,6 +26,12 @@ const App = (props: Partial<Parameters<typeof OriginalApp>[0]>) => {
 		});
 	return <OriginalApp {...props} router={router} />;
 };
+
+import { createDefaultDIContainer, DIProvider } from "./di/DIContext";
+
+const defaultDIContainer = createDefaultDIContainer();
+const renderWithDI = (ui: React.ReactElement) =>
+	render(<DIProvider value={defaultDIContainer}>{ui}</DIProvider>);
 
 import Downloads from "./pages/Downloads";
 import Player from "./pages/Player";
@@ -857,7 +864,7 @@ describe("App 组件", () => {
 	});
 
 	it("在 Player 页面中如果缺少播放参数，应该展示错误提示", async () => {
-		render(
+		renderWithDI(
 			<AppContextProvider>
 				<MemoryRouter initialEntries={["/play/invalid"]}>
 					<Routes>
@@ -873,7 +880,7 @@ describe("App 组件", () => {
 	});
 
 	it("在 TorrentDetail 页面中如果缺少磁力链接，应该展示错误提示", async () => {
-		render(
+		renderWithDI(
 			<AppContextProvider>
 				<MemoryRouter initialEntries={["/torrent"]}>
 					<Routes>
@@ -1016,7 +1023,7 @@ describe("App 组件", () => {
 			return null;
 		});
 
-		render(
+		renderWithDI(
 			<AppContextProvider>
 				<MemoryRouter initialEntries={["/play/hash/0"]}>
 					<Routes>
@@ -1033,7 +1040,7 @@ describe("App 组件", () => {
 	});
 
 	it("在 Player 页面加载流地址过程中卸载组件，应该终止初始化", () => {
-		const { unmount } = render(
+		const { unmount } = renderWithDI(
 			<AppContextProvider>
 				<MemoryRouter initialEntries={["/play/hash/0"]}>
 					<Routes>
@@ -1085,7 +1092,7 @@ describe("App 组件", () => {
 			return null;
 		});
 
-		render(
+		renderWithDI(
 			<AppContextProvider>
 				<MemoryRouter initialEntries={["/downloads"]}>
 					<Routes>
@@ -1149,7 +1156,7 @@ describe("App 组件", () => {
 			return null;
 		});
 
-		render(
+		renderWithDI(
 			<AppContextProvider>
 				<MemoryRouter initialEntries={["/settings"]}>
 					<Routes>

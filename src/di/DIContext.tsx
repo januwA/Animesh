@@ -39,7 +39,9 @@ export const DIProvider = DIContext.Provider;
 export function useDI(): DIContainer {
 	const container = useContext(DIContext);
 	if (!container) {
-		return createDefaultDIContainer();
+		throw new Error(
+			"DIContainer was not provided. Make sure to wrap components with <DIProvider>",
+		);
 	}
 	return container;
 }

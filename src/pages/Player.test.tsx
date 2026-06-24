@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
 	act,
 	fireEvent,
@@ -10,11 +9,10 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
+import type { DIContainer } from "../di/DIContext";
+import { createDIContainer, DIProvider } from "../di/DIContext";
+import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import Player from "./Player";
-
-vi.mock("@tauri-apps/api/core", () => ({
-	invoke: vi.fn(),
-}));
 
 // Mock clipboard API
 Object.defineProperty(navigator, "clipboard", {
@@ -34,7 +32,31 @@ const LocationTracker = () => {
 const getCurrentLocation = () => currentLocation.current;
 
 describe("Player 页面组件", () => {
+	let mockTorrentRepository: TorrentRepository;
+	let mockContainer: DIContainer;
+
 	beforeEach(() => {
+		mockTorrentRepository = {
+			searchDmhy: vi.fn(),
+			addTorrentMagnet: vi.fn(),
+			getTorrentFiles: vi.fn(),
+			listTorrents: vi.fn(),
+			pauseTorrent: vi.fn(),
+			resumeTorrent: vi.fn(),
+			deleteTorrent: vi.fn(),
+			getTorrentStreamUrl: vi.fn(),
+			getTorrentStatus: vi.fn(),
+		};
+
+		mockContainer = createDIContainer({
+			torrentRepository: mockTorrentRepository,
+			settingsRepository: {
+				getSettings: vi.fn(),
+				setDownloadDir: vi.fn(),
+				selectDirectory: vi.fn(),
+			},
+		});
+
 		currentLocation.current = null;
 		vi.clearAllMocks();
 		vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
@@ -44,18 +66,27 @@ describe("Player 页面组件", () => {
 		vi.useRealTimers();
 	});
 
-	it("当缺少播放参数时，应该渲染参数错误提示并Toast", async () => {
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/play/invalid"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="play/:infoHash" element={<Player />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+	const renderPlayer = (initialEntry: string) => {
+		return render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={[initialEntry]}>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="play/:infoHash" element={<Player />} />
+								<Route path="play/:infoHash/:fileId" element={<Player />} />
+								<Route path="torrent" element={<div>Torrent Page</div>} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
 		);
+	};
+
+	it("当缺少播放参数时，应该渲染参数错误提示并Toast", async () => {
+		renderPlayer("/play/invalid");
 
 		await waitFor(() => {
 			expect(screen.getByText("无效的视频播放参数")).toBeInTheDocument();
@@ -76,30 +107,15 @@ describe("Player 页面组件", () => {
 			paused: false,
 		};
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_get_stream_url") {
-				return "http://127.0.0.1:12345/stream/hash123/0";
-			}
-			if (cmd === "torrent_get_status") {
-				return mockStatus;
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter
-					initialEntries={[
-						"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
-					]}
-				>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="play/:infoHash/:fileId" element={<Player />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		renderPlayer(
+			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
 		);
 
 		// Resolve the initial mount microtasks and initialization invokes
@@ -125,12 +141,9 @@ describe("Player 页面组件", () => {
 			download_speed_bytes_per_sec: 0,
 			paused: false,
 		};
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_get_status") {
-				return finishedStatus;
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			finishedStatus,
+		);
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(1500);
@@ -141,7 +154,9 @@ describe("Player 页面组件", () => {
 		expect(screen.getByText("已完成")).toBeInTheDocument();
 
 		// Polling error (should not crash page)
-		vi.mocked(invoke).mockRejectedValueOnce("Fetch status error");
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockRejectedValueOnce(
+			"Fetch status error",
+		);
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(1500);
@@ -151,21 +166,11 @@ describe("Player 页面组件", () => {
 	});
 
 	it("当获取流地址失败时，应该显示错误提示和Toast", async () => {
-		vi.mocked(invoke).mockRejectedValueOnce(
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockRejectedValueOnce(
 			"Stream server port not initialized",
 		);
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/play/hash123/0"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="play/:infoHash/:fileId" element={<Player />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderPlayer("/play/hash123/0");
 
 		await waitFor(() => {
 			expect(
@@ -176,22 +181,12 @@ describe("Player 页面组件", () => {
 	});
 
 	it("当复制视频流地址时，应该支持成功和失败提示，并处理未加载完毕提前点击的情况", async () => {
-		vi.mocked(invoke).mockImplementation(() => new Promise(() => {}));
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockImplementation(
+			() => new Promise(() => {}),
+		);
 
-		const { unmount } = render(
-			<AppContextProvider>
-				<MemoryRouter
-					initialEntries={[
-						"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
-					]}
-				>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="play/:infoHash/:fileId" element={<Player />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		const { unmount } = renderPlayer(
+			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
 		);
 
 		const copyBtn = screen.getByRole("button", { name: "📋 复制视频流地址" });
@@ -200,35 +195,21 @@ describe("Player 页面组件", () => {
 
 		unmount();
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_get_stream_url") return "stream_url";
-			if (cmd === "torrent_get_status") {
-				return {
-					info_hash: "hash123",
-					name: "视频",
-					progress_bytes: 0,
-					total_bytes: 100,
-					finished: false,
-					download_speed_bytes_per_sec: 0,
-				};
-			}
-			return null;
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"stream_url",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "视频",
+			progress_bytes: 0,
+			total_bytes: 100,
+			finished: false,
+			download_speed_bytes_per_sec: 0,
+			paused: false,
 		});
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter
-					initialEntries={[
-						"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
-					]}
-				>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="play/:infoHash/:fileId" element={<Player />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		renderPlayer(
+			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
 		);
 
 		await waitFor(() => {
@@ -263,38 +244,22 @@ describe("Player 页面组件", () => {
 	});
 
 	it("当点击返回按钮时，应该能够根据是否有 magnet 参数分别进行路由跳转", async () => {
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_get_stream_url") return "stream_url";
-			if (cmd === "torrent_get_status") {
-				return {
-					info_hash: "hash123",
-					name: "视频",
-					progress_bytes: 0,
-					total_bytes: 100,
-					finished: false,
-					download_speed_bytes_per_sec: 0,
-				};
-			}
-			return null;
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"stream_url",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "视频",
+			progress_bytes: 0,
+			total_bytes: 100,
+			finished: false,
+			download_speed_bytes_per_sec: 0,
+			paused: false,
 		});
 
 		// 1. Has magnet parameter
-		const render1 = render(
-			<AppContextProvider>
-				<MemoryRouter
-					initialEntries={[
-						"/play/hash123/0?magnet=magnet_url&title=title_val&fileName=file_val",
-					]}
-				>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="play/:infoHash/:fileId" element={<Player />} />
-							<Route path="torrent" element={<div>Torrent Page</div>} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		const render1 = renderPlayer(
+			"/play/hash123/0?magnet=magnet_url&title=title_val&fileName=file_val",
 		);
 
 		await waitFor(() => {
@@ -312,19 +277,7 @@ describe("Player 页面组件", () => {
 		currentLocation.current = null;
 
 		// 2. Does NOT have magnet parameter
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/play/hash123/0?title=title_val"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="play/:infoHash/:fileId" element={<Player />} />
-							<Route path="torrent" element={<div>Torrent Page</div>} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderPlayer("/play/hash123/0?title=title_val");
 
 		await waitFor(() => {
 			expect(
@@ -344,22 +297,11 @@ describe("Player 页面组件", () => {
 			resolveUrlPromise = resolve;
 		});
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_get_stream_url") return urlPromise;
-			return null;
-		});
-
-		const { unmount } = render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/play/hash123/0"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="play/:infoHash/:fileId" element={<Player />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockReturnValue(
+			urlPromise,
 		);
+
+		const { unmount } = renderPlayer("/play/hash123/0");
 
 		unmount();
 

@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
 	act,
 	fireEvent,
@@ -10,11 +9,11 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
+import type { DIContainer } from "../di/DIContext";
+import { createDIContainer, DIProvider } from "../di/DIContext";
+import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
+import type { AddTorrentResult } from "../types";
 import TorrentDetail from "./TorrentDetail";
-
-vi.mock("@tauri-apps/api/core", () => ({
-	invoke: vi.fn(),
-}));
 
 const currentLocation = {
 	current: null as { pathname: string; search: string } | null,
@@ -26,7 +25,31 @@ const LocationTracker = () => {
 const getCurrentLocation = () => currentLocation.current;
 
 describe("TorrentDetail 页面组件", () => {
+	let mockTorrentRepository: TorrentRepository;
+	let mockContainer: DIContainer;
+
 	beforeEach(() => {
+		mockTorrentRepository = {
+			searchDmhy: vi.fn(),
+			addTorrentMagnet: vi.fn(),
+			getTorrentFiles: vi.fn(),
+			listTorrents: vi.fn(),
+			pauseTorrent: vi.fn(),
+			resumeTorrent: vi.fn(),
+			deleteTorrent: vi.fn(),
+			getTorrentStreamUrl: vi.fn(),
+			getTorrentStatus: vi.fn(),
+		};
+
+		mockContainer = createDIContainer({
+			torrentRepository: mockTorrentRepository,
+			settingsRepository: {
+				getSettings: vi.fn(),
+				setDownloadDir: vi.fn(),
+				selectDirectory: vi.fn(),
+			},
+		});
+
 		currentLocation.current = null;
 		vi.clearAllMocks();
 	});
@@ -35,18 +58,31 @@ describe("TorrentDetail 页面组件", () => {
 		vi.useRealTimers();
 	});
 
-	it("当没有提供有效的磁力链接或 Hash 时，应该显示错误提示", async () => {
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="torrent" element={<TorrentDetail />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+	const renderTorrentDetail = (initialEntry: string) => {
+		return render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={[initialEntry]}>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route index element={<div>Home Page</div>} />
+								<Route path="torrent" element={<TorrentDetail />} />
+								<Route path="downloads" element={<div>Downloads Page</div>} />
+								<Route
+									path="play/:infoHash/:fileId"
+									element={<div>Play Page</div>}
+								/>
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
 		);
+	};
+
+	it("当没有提供有效的磁力链接或 Hash 时，应该显示错误提示", async () => {
+		renderTorrentDetail("/torrent");
 
 		await waitFor(() => {
 			expect(
@@ -65,26 +101,11 @@ describe("TorrentDetail 页面组件", () => {
 			],
 		};
 
-		vi.mocked(invoke).mockResolvedValue(mockResult);
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter
-					initialEntries={["/torrent?magnet=magnet_link&title=mock_title"]}
-				>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="torrent" element={<TorrentDetail />} />
-							<Route
-								path="play/:infoHash/:fileId"
-								element={<div>Play Page</div>}
-							/>
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
+			mockResult,
 		);
+
+		renderTorrentDetail("/torrent?magnet=magnet_link&title=mock_title");
 
 		expect(
 			screen.getByText("正在启动下载引擎并解析种子..."),
@@ -108,19 +129,11 @@ describe("TorrentDetail 页面组件", () => {
 
 	it("当解析磁力链接失败时，应该显示相应的解析失败界面（支持 string 错误和非 string 错误）", async () => {
 		// 1. String error
-		vi.mocked(invoke).mockRejectedValueOnce("Resolve timeout");
-
-		const { unmount } = render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?magnet=maglink"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="torrent" element={<TorrentDetail />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValueOnce(
+			"Resolve timeout",
 		);
+
+		const { unmount } = renderTorrentDetail("/torrent?magnet=maglink");
 
 		await waitFor(() => {
 			expect(screen.getByText("Resolve timeout")).toBeInTheDocument();
@@ -129,19 +142,11 @@ describe("TorrentDetail 页面组件", () => {
 		unmount();
 
 		// 2. Non-string error (Error object)
-		vi.mocked(invoke).mockRejectedValueOnce(new Error("Fatal error"));
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?magnet=maglink"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="torrent" element={<TorrentDetail />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValueOnce(
+			new Error("Fatal error"),
 		);
+
+		renderTorrentDetail("/torrent?magnet=maglink");
 
 		await waitFor(() => {
 			expect(screen.getByText("错误详情请见控制台")).toBeInTheDocument();
@@ -151,19 +156,11 @@ describe("TorrentDetail 页面组件", () => {
 	it("应该支持使用 infoHash 获取现有种子的缓存文件列表并渲染", async () => {
 		const mockFiles = [{ id: 0, name: "video.mp4", len: 5000 }];
 
-		vi.mocked(invoke).mockResolvedValue(mockFiles);
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?infoHash=hash789"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="torrent" element={<TorrentDetail />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.getTorrentFiles).mockResolvedValue(
+			mockFiles,
 		);
+
+		renderTorrentDetail("/torrent?infoHash=hash789");
 
 		await waitFor(() => {
 			expect(screen.getByText("已缓存种子")).toBeInTheDocument();
@@ -172,19 +169,11 @@ describe("TorrentDetail 页面组件", () => {
 	});
 
 	it("当使用 infoHash 获取文件列表失败时，应该显示相应的失败错误提示", async () => {
-		vi.mocked(invoke).mockRejectedValueOnce("Get files error");
-
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?infoHash=hash789"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="torrent" element={<TorrentDetail />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.getTorrentFiles).mockRejectedValueOnce(
+			"Get files error",
 		);
+
+		renderTorrentDetail("/torrent?infoHash=hash789");
 
 		await waitFor(() => {
 			expect(screen.getByText("Get files error")).toBeInTheDocument();
@@ -193,21 +182,10 @@ describe("TorrentDetail 页面组件", () => {
 
 	it("应该支持取消或返回操作，并根据是否只有 infoHash 导航到相应的前序页面（包含 Loading、Error 和 Success 状态下的按钮）", async () => {
 		// 1. Loading with infoHash only (should go to downloads)
-		vi.mocked(invoke).mockImplementation(() => new Promise(() => {}));
-		const render1 = render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?infoHash=hash123"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route index element={<div>Home Page</div>} />
-							<Route path="torrent" element={<TorrentDetail />} />
-							<Route path="downloads" element={<div>Downloads Page</div>} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.getTorrentFiles).mockImplementation(
+			() => new Promise(() => {}),
 		);
+		const render1 = renderTorrentDetail("/torrent?infoHash=hash123");
 
 		const cancelBtn1 = screen.getByRole("button", {
 			name: "取消并返回下载管理",
@@ -219,20 +197,10 @@ describe("TorrentDetail 页面组件", () => {
 		currentLocation.current = null;
 
 		// 2. Loading with magnet present (should go to /)
-		const render2 = render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?magnet=maglink"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route index element={<div>Home Page</div>} />
-							<Route path="torrent" element={<TorrentDetail />} />
-							<Route path="downloads" element={<div>Downloads Page</div>} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockImplementation(
+			() => new Promise(() => {}),
 		);
+		const render2 = renderTorrentDetail("/torrent?magnet=maglink");
 
 		const cancelBtn2 = screen.getByRole("button", { name: "取消解析并返回" });
 		fireEvent.click(cancelBtn2);
@@ -242,21 +210,10 @@ describe("TorrentDetail 页面组件", () => {
 		currentLocation.current = null;
 
 		// 3. Error state with infoHash (should go to downloads)
-		vi.mocked(invoke).mockRejectedValueOnce("Fetch error");
-		const render3 = render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?infoHash=hash123"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route index element={<div>Home Page</div>} />
-							<Route path="torrent" element={<TorrentDetail />} />
-							<Route path="downloads" element={<div>Downloads Page</div>} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.getTorrentFiles).mockRejectedValueOnce(
+			"Fetch error",
 		);
+		const render3 = renderTorrentDetail("/torrent?infoHash=hash123");
 
 		await waitFor(() => {
 			expect(
@@ -270,26 +227,13 @@ describe("TorrentDetail 页面组件", () => {
 		currentLocation.current = null;
 
 		// 4. Success state with magnet (should go to /)
-		vi.mocked(invoke).mockResolvedValue({
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue({
 			info_hash: "hash123",
 			name: "测试种子",
 			files: [{ id: 0, name: "file1.mp4", len: 1000 }],
 		});
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?magnet=maglink"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route index element={<div>Home Page</div>} />
-							<Route path="torrent" element={<TorrentDetail />} />
-							<Route path="downloads" element={<div>Downloads Page</div>} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderTorrentDetail("/torrent?magnet=maglink");
 
 		await waitFor(() => {
 			expect(
@@ -303,25 +247,13 @@ describe("TorrentDetail 页面组件", () => {
 	});
 
 	it("应该支持按下 Escape 键退出并导航返回", async () => {
-		vi.mocked(invoke).mockResolvedValue({
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue({
 			info_hash: "hash123",
 			name: "测试种子",
 			files: [{ id: 0, name: "file.mp4", len: 100 }],
 		});
 
-		render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?magnet=maglink"]}>
-					<LocationTracker />
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route index element={<div>Home Page</div>} />
-							<Route path="torrent" element={<TorrentDetail />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
+		renderTorrentDetail("/torrent?magnet=maglink");
 
 		await waitFor(() => {
 			expect(screen.getByText("测试种子")).toBeInTheDocument();
@@ -332,27 +264,16 @@ describe("TorrentDetail 页面组件", () => {
 	});
 
 	it("在加载种子的过程中如果组件卸载，应该正常清理而不设置状态或显示 Toast 提示", async () => {
-		let resolvePromise: (val: unknown) => void = () => {};
-		const mockPromise = new Promise((resolve) => {
+		let resolvePromise: (val: AddTorrentResult) => void = () => {};
+		const mockPromise = new Promise<AddTorrentResult>((resolve) => {
 			resolvePromise = resolve;
 		});
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_add_magnet") return mockPromise;
-			return null;
-		});
-
-		const { unmount } = render(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent?magnet=maglink"]}>
-					<Routes>
-						<Route path="/" element={<Layout />}>
-							<Route path="torrent" element={<TorrentDetail />} />
-						</Route>
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockReturnValue(
+			mockPromise,
 		);
+
+		const { unmount } = renderTorrentDetail("/torrent?magnet=maglink");
 
 		unmount();
 
