@@ -1,4 +1,5 @@
 import {
+	Calendar,
 	Clock,
 	Download,
 	Globe,
@@ -34,6 +35,11 @@ export function AppHeader() {
 
 	const navItems = [
 		{ path: "/", label: "搜索视频", icon: <Search className="h-3.5 w-3.5" /> },
+		{
+			path: "/calendar",
+			label: "新番日历",
+			icon: <Calendar className="h-3.5 w-3.5" />,
+		},
 		{
 			path: "/downloads",
 			label: "下载管理",

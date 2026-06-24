@@ -3,6 +3,7 @@ import { RouterProvider } from "react-router-dom";
 import Layout from "./components/Layout";
 import { AppContextProvider } from "./context/AppContext";
 import { createDefaultDIContainer, DIProvider } from "./di/DIContext";
+import Calendar from "./pages/Calendar";
 import Downloads from "./pages/Downloads";
 import Home from "./pages/Home";
 import Player from "./pages/Player";
@@ -22,6 +23,10 @@ export const routes = [
 			{
 				path: "torrent",
 				element: <TorrentDetail />,
+			},
+			{
+				path: "calendar",
+				element: <Calendar />,
 			},
 			{
 				path: "play/:infoHash/:fileId",
