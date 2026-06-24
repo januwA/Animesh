@@ -154,7 +154,16 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 							target="_blank"
 							rel="noopener noreferrer"
 							className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5 ml-auto transition-colors px-1 py-0.5 rounded bg-white/5 hover:bg-white/10"
-							onClick={(e) => e.stopPropagation()}
+							onClick={async (e) => {
+								e.stopPropagation();
+								e.preventDefault();
+								try {
+									const { openUrl } = await import("@tauri-apps/plugin-opener");
+									await openUrl(item.url);
+								} catch {
+									window.open(item.url, "_blank");
+								}
+							}}
 							title={`在 Bangumi 打开: ${displayName}`}
 						>
 							<Globe className="h-2.5 w-2.5" />

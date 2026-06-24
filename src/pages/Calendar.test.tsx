@@ -8,6 +8,10 @@ import { createDIContainer, DIProvider } from "../di/DIContext";
 import type { BangumiCalendarDay } from "../types";
 import CalendarPage from "./Calendar";
 
+vi.mock("@tauri-apps/plugin-opener", () => ({
+	openUrl: vi.fn(),
+}));
+
 const currentLocation = {
 	current: null as { pathname: string; search: string } | null,
 };
@@ -22,6 +26,7 @@ describe("Calendar 页面组件", () => {
 	beforeEach(() => {
 		currentLocation.current = null;
 		vi.clearAllMocks();
+		vi.spyOn(window, "open").mockImplementation(() => null);
 	});
 
 	const renderCalendar = (
@@ -263,7 +268,10 @@ describe("Calendar 页面组件", () => {
 		rejectPromise(new Error("API error"));
 	});
 
-	it("在 WeeklyCalendar 中，点击详情链接应该在浏览器中打开且不触发搜索", async () => {
+	it("在 WeeklyCalendar 中，点击详情链接应该在浏览器中打开（通过 Tauri Opener 插件）且不触发搜索", async () => {
+		const { openUrl } = await import("@tauri-apps/plugin-opener");
+		vi.mocked(openUrl).mockResolvedValue(undefined);
+
 		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
 		const mockCalendar = [
 			{
@@ -288,11 +296,51 @@ describe("Calendar 页面组件", () => {
 		});
 
 		const detailLink = screen.getByRole("link", { name: "详情" });
-		expect(detailLink).toHaveAttribute("href", "http://example.com/anime");
-		expect(detailLink).toHaveAttribute("target", "_blank");
-
 		fireEvent.click(detailLink);
 
+		await waitFor(() => {
+			expect(openUrl).toHaveBeenCalledWith("http://example.com/anime");
+		});
+		expect(currentLocation.current?.pathname).not.toBe("/");
+	});
+
+	it("在 WeeklyCalendar 中，若 Tauri Opener 插件调用失败应该降级使用 window.open", async () => {
+		const { openUrl } = await import("@tauri-apps/plugin-opener");
+		vi.mocked(openUrl).mockRejectedValue(new Error("Tauri error"));
+
+		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
+		const mockCalendar = [
+			{
+				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+				items: [
+					{
+						id: 1,
+						url: "http://example.com/anime",
+						name: "Anime Original Name",
+						name_cn: "中文动漫名",
+					},
+				],
+			},
+		];
+
+		renderCalendar(
+			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("中文动漫名")).toBeInTheDocument();
+		});
+
+		const detailLink = screen.getByRole("link", { name: "详情" });
+		fireEvent.click(detailLink);
+
+		await waitFor(() => {
+			expect(openUrl).toHaveBeenCalledWith("http://example.com/anime");
+			expect(window.open).toHaveBeenCalledWith(
+				"http://example.com/anime",
+				"_blank",
+			);
+		});
 		expect(currentLocation.current?.pathname).not.toBe("/");
 	});
 
