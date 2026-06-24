@@ -56,6 +56,10 @@ describe("App 组件", () => {
 		window.location.hash = "";
 		vi.clearAllMocks();
 		vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
+		// Mock bangumiRepository to return a non-resolving promise to prevent async state updates and act warnings in tests
+		defaultDIContainer.bangumiRepository = {
+			getCalendar: vi.fn().mockReturnValue(new Promise(() => {})),
+		};
 	});
 
 	afterEach(() => {

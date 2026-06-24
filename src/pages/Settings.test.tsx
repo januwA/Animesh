@@ -42,6 +42,9 @@ describe("Settings 页面组件", () => {
 				getSubtitleVtt: vi.fn(),
 			},
 			settingsRepository: mockSettingsRepository,
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+			},
 		});
 
 		currentLocation.current = null;

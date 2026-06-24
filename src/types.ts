@@ -39,3 +39,41 @@ export interface SubtitleTrackInfo {
 	title: string;
 	codec: string;
 }
+
+export interface BangumiWeekday {
+	en: string;
+	cn: string;
+	ja: string;
+	id: number;
+}
+
+export interface BangumiSubjectImages {
+	large: string;
+	common: string;
+	medium: string;
+	small: string;
+	grid: string;
+}
+
+export interface BangumiSubjectRating {
+	total: number;
+	score: number;
+}
+
+export interface BangumiCalendarItem {
+	id: number;
+	url: string;
+	name: string;
+	name_cn: string;
+	air_date: string;
+	air_weekday: number;
+	rating?: BangumiSubjectRating;
+	rank?: number;
+	images?: BangumiSubjectImages;
+	collection?: { doing: number };
+}
+
+export interface BangumiCalendarDay {
+	weekday: BangumiWeekday;
+	items: BangumiCalendarItem[];
+}

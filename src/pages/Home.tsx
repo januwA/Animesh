@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
 	ErrorBanner,
@@ -7,12 +8,14 @@ import {
 	SearchResultCard,
 	WelcomeGuide,
 } from "../components/AppComponents";
+import { WeeklyCalendar } from "../components/WeeklyCalendar";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
+import type { BangumiCalendarDay } from "../types";
 
 export default function Home() {
 	const navigate = useNavigate();
-	const { torrentRepository } = useDI();
+	const { torrentRepository, bangumiRepository } = useDI();
 	const {
 		keyword,
 		setKeyword,
@@ -26,6 +29,34 @@ export default function Home() {
 		setHasSearched,
 		showToast,
 	} = useAppContext();
+
+	const [calendar, setCalendar] = useState<BangumiCalendarDay[]>([]);
+	const [calendarLoading, setCalendarLoading] = useState(false);
+
+	useEffect(() => {
+		let isMounted = true;
+		setCalendarLoading(true);
+
+		bangumiRepository
+			.getCalendar()
+			.then((data) => {
+				if (isMounted) {
+					setCalendar(data);
+				}
+			})
+			.catch((err: unknown) => {
+				console.error("Failed to fetch calendar:", err);
+			})
+			.finally(() => {
+				if (isMounted) {
+					setCalendarLoading(false);
+				}
+			});
+
+		return () => {
+			isMounted = false;
+		};
+	}, [bangumiRepository]);
 
 	async function handleSearch(e: FormEvent) {
 		e.preventDefault();
@@ -63,6 +94,39 @@ export default function Home() {
 		);
 	};
 
+	const handleAnimeClick = useCallback(
+		(animeName: string) => {
+			setKeyword(animeName);
+			setHasSearched(true);
+			setLoading(true);
+			setError(null);
+
+			torrentRepository
+				.searchDmhy(animeName)
+				.then((data) => {
+					setResults(data || []);
+				})
+				.catch((err: unknown) => {
+					console.error("Search failed:", err);
+					setError(
+						typeof err === "string" ? err : "搜索失败，请检查网络或重试",
+					);
+					setResults([]);
+				})
+				.finally(() => {
+					setLoading(false);
+				});
+		},
+		[
+			torrentRepository,
+			setKeyword,
+			setHasSearched,
+			setLoading,
+			setError,
+			setResults,
+		],
+	);
+
 	return (
 		<>
 			{/* 搜索区域 */}
@@ -89,7 +153,14 @@ export default function Home() {
 						</p>
 					</div>
 				) : !hasSearched ? (
-					<WelcomeGuide />
+					calendar.length > 0 ? (
+						<WeeklyCalendar
+							calendar={calendar}
+							onAnimeClick={handleAnimeClick}
+						/>
+					) : calendarLoading ? null : (
+						<WelcomeGuide />
+					)
 				) : null)}
 
 			{/* 搜索结果列表 */}

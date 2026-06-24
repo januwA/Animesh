@@ -48,6 +48,9 @@ describe("Downloads 页面组件", () => {
 				setDownloadDir: vi.fn(),
 				selectDirectory: vi.fn(),
 			},
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+			},
 		});
 
 		currentLocation.current = null;
