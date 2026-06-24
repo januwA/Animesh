@@ -137,4 +137,39 @@ mod tests {
         assert_eq!(format_vtt_time(61000), "00:01:01.000");
         assert_eq!(format_vtt_time(3661000), "01:01:01.000");
     }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_提取非存在文件的字幕轨道_应返回错误() {
+        let path = Path::new("non_existent_file.mkv");
+        let result = extract_subtitle_tracks(path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to open file"));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_提取非存在文件的字幕VTT_应返回错误() {
+        let path = Path::new("non_existent_file.mkv");
+        let result = extract_subtitle_vtt(path, 1);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to open file"));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_提取无效格式文件的字幕_应返回解析错误() {
+        let temp_path = std::env::temp_dir().join("invalid_mkv_test.mkv");
+        std::fs::write(&temp_path, b"invalid mkv data").unwrap();
+
+        let result_tracks = extract_subtitle_tracks(&temp_path);
+        assert!(result_tracks.is_err());
+        assert!(result_tracks.unwrap_err().contains("Failed to parse MKV"));
+
+        let result_vtt = extract_subtitle_vtt(&temp_path, 1);
+        assert!(result_vtt.is_err());
+        assert!(result_vtt.unwrap_err().contains("Failed to parse MKV"));
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
 }
