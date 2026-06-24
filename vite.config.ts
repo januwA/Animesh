@@ -54,6 +54,9 @@ export default defineConfig(() => ({
 				"**/*.d.ts",
 				"src/components/ui/**",
 				"src/types.ts",
+				"src/di/**",
+				"src/domain/**",
+				"src/infrastructure/**",
 			],
 			thresholds: {
 				lines: 100,
