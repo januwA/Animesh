@@ -1,0 +1,403 @@
+import { invoke } from "@tauri-apps/api/core";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { vi } from "vitest";
+import Layout from "../components/Layout";
+import { AppContextProvider } from "../context/AppContext";
+import Downloads from "./Downloads";
+
+vi.mock("@tauri-apps/api/core", () => ({
+	invoke: vi.fn(),
+}));
+
+const currentLocation = {
+	current: null as { pathname: string; search: string } | null,
+};
+const LocationTracker = () => {
+	currentLocation.current = useLocation();
+	return null;
+};
+
+describe("Downloads 页面组件", () => {
+	beforeEach(() => {
+		currentLocation.current = null;
+		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("应该在加载时渲染加载指示器", async () => {
+		vi.mocked(invoke).mockImplementation(() => new Promise(() => {}));
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/downloads"]}>
+					<Routes>
+						<Route path="/" element={<Layout />}>
+							<Route path="downloads" element={<Downloads />} />
+						</Route>
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		expect(screen.getByText("正在加载下载管理器...")).toBeInTheDocument();
+	});
+
+	it("当获取下载列表失败时，应该显示加载完成和Toast提示", async () => {
+		vi.mocked(invoke).mockRejectedValueOnce("Fetch list failed");
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/downloads"]}>
+					<Routes>
+						<Route path="/" element={<Layout />}>
+							<Route path="downloads" element={<Downloads />} />
+						</Route>
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		await waitFor(() => {
+			expect(
+				screen.queryByText("正在加载下载管理器..."),
+			).not.toBeInTheDocument();
+			expect(screen.getByText("获取下载列表失败")).toBeInTheDocument();
+		});
+	});
+
+	it("当无下载任务时，应该渲染空状态并可以点击返回首页", async () => {
+		vi.mocked(invoke).mockResolvedValue([]);
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/downloads"]}>
+					<LocationTracker />
+					<Routes>
+						<Route path="/" element={<Layout />}>
+							<Route path="downloads" element={<Downloads />} />
+						</Route>
+						<Route path="/" element={<div>Home Page</div>} />
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("没有正在进行的下载任务")).toBeInTheDocument();
+		});
+
+		const btn = screen.getByRole("button", { name: "前往搜索视频" });
+		fireEvent.click(btn);
+
+		expect(currentLocation.current?.pathname).toBe("/");
+	});
+
+	it("应该正确渲染下载任务列表，并轮询更新，且捕获轮询报错", async () => {
+		vi.useFakeTimers();
+
+		const mockTorrents = [
+			{
+				info_hash: "hash111",
+				name: "动漫视频1",
+				progress_bytes: 500,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 100,
+				paused: false,
+			},
+		];
+
+		vi.mocked(invoke).mockResolvedValue(mockTorrents);
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/downloads"]}>
+					<Routes>
+						<Route path="/" element={<Layout />}>
+							<Route path="downloads" element={<Downloads />} />
+						</Route>
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		expect(screen.getByText("动漫视频1")).toBeInTheDocument();
+
+		const updatedTorrents = [
+			{
+				info_hash: "hash111",
+				name: "动漫视频1",
+				progress_bytes: 800,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 200,
+				paused: false,
+			},
+		];
+		vi.mocked(invoke).mockResolvedValue(updatedTorrents);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1500);
+		});
+
+		expect(screen.getByText(/进度: 80/)).toBeInTheDocument();
+
+		vi.mocked(invoke).mockRejectedValueOnce(new Error("Network polling error"));
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1500);
+		});
+
+		expect(screen.getByText("动漫视频1")).toBeInTheDocument();
+	});
+
+	it("应该支持暂停和恢复操作，包括成功和失败分支，并处理没有任务名的情况", async () => {
+		const mockTorrents = [
+			{
+				info_hash: "hash111",
+				name: "",
+				progress_bytes: 100,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 50,
+				paused: false,
+			},
+			{
+				info_hash: "hash222",
+				name: "动漫视频2",
+				progress_bytes: 200,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 0,
+				paused: true,
+			},
+		];
+
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "torrent_list") return mockTorrents;
+			return null;
+		});
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/downloads"]}>
+					<Routes>
+						<Route path="/" element={<Layout />}>
+							<Route path="downloads" element={<Downloads />} />
+						</Route>
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText(/hash111/)).toBeInTheDocument();
+		});
+
+		vi.useFakeTimers();
+
+		// 1. Pause action (success)
+		const pauseBtn = screen.getByTitle("暂停下载");
+		fireEvent.click(pauseBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		expect(invoke).toHaveBeenCalledWith("torrent_pause", {
+			infoHash: "hash111",
+		});
+		expect(screen.getByText("已暂停任务: hash111")).toBeInTheDocument();
+
+		// 2. Pause action (failure)
+		vi.mocked(invoke).mockRejectedValueOnce("Pause error");
+		fireEvent.click(pauseBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		expect(screen.getByText("暂停失败，请重试")).toBeInTheDocument();
+
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "torrent_list") return mockTorrents;
+			return null;
+		});
+
+		// 3. Resume action (success)
+		const resumeBtn = screen.getByTitle("开始下载");
+		fireEvent.click(resumeBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		expect(invoke).toHaveBeenCalledWith("torrent_resume", {
+			infoHash: "hash222",
+		});
+		expect(screen.getByText("已开始下载任务: 动漫视频2")).toBeInTheDocument();
+
+		// 4. Resume action (failure)
+		vi.mocked(invoke).mockRejectedValueOnce("Resume error");
+		fireEvent.click(resumeBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		expect(screen.getByText("启动失败，请重试")).toBeInTheDocument();
+	});
+
+	it("应该支持查看文件操作，正确进行路由跳转", async () => {
+		const mockTorrents = [
+			{
+				info_hash: "hash111",
+				name: "动漫视频1",
+				progress_bytes: 100,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 50,
+				paused: false,
+			},
+		];
+
+		vi.mocked(invoke).mockResolvedValue(mockTorrents);
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/downloads"]}>
+					<LocationTracker />
+					<Routes>
+						<Route path="/" element={<Layout />}>
+							<Route path="downloads" element={<Downloads />} />
+						</Route>
+						<Route path="/torrent" element={<div>Torrent Page</div>} />
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("查看文件")).toBeInTheDocument();
+		});
+
+		const viewBtn = screen.getByRole("button", { name: "查看文件" });
+		fireEvent.click(viewBtn);
+
+		expect(currentLocation.current?.pathname).toBe("/torrent");
+		expect(currentLocation.current?.search).toContain("infoHash=hash111");
+	});
+
+	it("应该支持删除操作，包含删除弹窗、文件删除勾选框、确定删除（成功/失败）及取消", async () => {
+		const mockTorrents = [
+			{
+				info_hash: "hash111",
+				name: null,
+				progress_bytes: 500,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 0,
+				paused: false,
+			},
+		];
+
+		vi.mocked(invoke).mockResolvedValue(mockTorrents);
+
+		render(
+			<AppContextProvider>
+				<MemoryRouter initialEntries={["/downloads"]}>
+					<Routes>
+						<Route path="/" element={<Layout />}>
+							<Route path="downloads" element={<Downloads />} />
+						</Route>
+					</Routes>
+				</MemoryRouter>
+			</AppContextProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByTitle("删除下载")).toBeInTheDocument();
+		});
+
+		vi.useFakeTimers();
+
+		// 1. Open delete modal, close with Escape key (covers onOpenChange)
+		const deleteBtn = screen.getByTitle("删除下载");
+		fireEvent.click(deleteBtn);
+
+		expect(screen.getByText("删除下载任务")).toBeInTheDocument();
+		expect(screen.getByText("hash111")).toBeInTheDocument();
+
+		fireEvent.keyDown(screen.getByRole("dialog"), {
+			key: "Escape",
+			code: "Escape",
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		expect(screen.queryByText("删除下载任务")).not.toBeInTheDocument();
+
+		// 1b. Open delete modal again and click Cancel
+		fireEvent.click(deleteBtn);
+		expect(screen.getByText("删除下载任务")).toBeInTheDocument();
+		const cancelBtn = screen.getByRole("button", { name: "取消" });
+		fireEvent.click(cancelBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		expect(screen.queryByText("删除下载任务")).not.toBeInTheDocument();
+
+		// 2. Open delete modal again, toggle file checkbox, and proceed with success deletion
+		fireEvent.click(deleteBtn);
+		const checkbox = screen.getByLabelText(
+			"同时删除已下载的本地缓存文件 (彻底释放磁盘空间)",
+		);
+		expect(checkbox).toBeInTheDocument();
+		fireEvent.click(checkbox);
+
+		const confirmBtn = screen.getByRole("button", { name: "确认删除" });
+		fireEvent.click(confirmBtn);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		expect(invoke).toHaveBeenCalledWith("torrent_delete", {
+			infoHash: "hash111",
+			deleteFiles: true,
+		});
+		expect(
+			screen.getByText("已删除任务及本地文件: hash111"),
+		).toBeInTheDocument();
+
+		// 3. Delete modal failure
+		vi.mocked(invoke).mockImplementation(async (cmd) => {
+			if (cmd === "torrent_list") return mockTorrents;
+			if (cmd === "torrent_delete") throw "Delete failed";
+			return null;
+		});
+
+		fireEvent.click(deleteBtn);
+		fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+
+		expect(screen.getByText("删除任务失败，请重试")).toBeInTheDocument();
+	});
+});
