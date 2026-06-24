@@ -111,11 +111,13 @@ describe("Settings 页面组件", () => {
 				currentDir = dir;
 			},
 		);
-		vi.mocked(mockSettingsRepository.setProxy).mockImplementation(
-			async (proxy) => {
-				currentProxy = proxy || "";
-			},
-		);
+		vi.mocked(
+			mockSettingsRepository.setProxy as (
+				proxy: string | null,
+			) => Promise<void>,
+		).mockImplementation(async (proxy) => {
+			currentProxy = proxy || "";
+		});
 
 		renderSettings();
 

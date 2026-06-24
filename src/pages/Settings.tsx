@@ -58,7 +58,7 @@ export default function Settings() {
 		setSaving(true);
 		try {
 			await settingsRepository.setDownloadDir(downloadDir.trim());
-			await settingsRepository.setProxy(proxy.trim() || null);
+			await settingsRepository.setProxy?.(proxy.trim() || null);
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
 			console.error("Failed to save settings:", err);
