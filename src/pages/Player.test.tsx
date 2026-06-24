@@ -62,6 +62,15 @@ describe("Player 页面组件", () => {
 		currentLocation.current = null;
 		vi.clearAllMocks();
 		vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
+		Object.defineProperty(HTMLMediaElement.prototype, "textTracks", {
+			configurable: true,
+			writable: true,
+			value: [
+				{
+					mode: "disabled",
+				},
+			],
+		});
 	});
 
 	afterEach(() => {
@@ -313,6 +322,8 @@ describe("Player 页面组件", () => {
 	});
 
 	it("应该成功获取字幕轨道并支持切换字幕轨道", async () => {
+		vi.useFakeTimers();
+
 		const mockStatus = {
 			info_hash: "hash123",
 			name: "测试视频",
@@ -326,6 +337,7 @@ describe("Player 页面组件", () => {
 		const mockSubtracks = [
 			{ id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
 			{ id: 2, language: "chi", title: "Chinese", codec: "S_TEXT/ASS" },
+			{ id: 3, language: "", title: "", codec: "S_TEXT/UTF8" },
 		];
 
 		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
@@ -345,27 +357,138 @@ describe("Player 页面组件", () => {
 			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
 		);
 
-		// Verify the subtitle buttons are rendered
-		await waitFor(() => {
-			expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
-			expect(screen.getByText("English [ENG]")).toBeInTheDocument();
-			expect(screen.getByText("Chinese [CHI]")).toBeInTheDocument();
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
 		});
+
+		// Verify the subtitle buttons are rendered
+		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
+		expect(screen.getByText("English [ENG]")).toBeInTheDocument();
+		expect(screen.getByText("Chinese [CHI]")).toBeInTheDocument();
+		expect(screen.getByText("轨道 3 []")).toBeInTheDocument();
 
 		// Click to select the English subtitle
 		const engBtn = screen.getByRole("button", { name: "English [ENG]" });
 		fireEvent.click(engBtn);
 
-		await waitFor(() => {
-			expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
-				"hash123",
-				0,
-				1,
-			);
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
 		});
 
-		// Verify that "无" button is present and click it
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
+			"hash123",
+			0,
+			1,
+		);
+
+		// Click to select the Chinese subtitle (to trigger revoking of English subtitle prev URL)
+		const chiBtn = screen.getByRole("button", { name: "Chinese [CHI]" });
+		fireEvent.click(chiBtn);
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
+			"hash123",
+			0,
+			2,
+		);
+
+		// Click to select track 3 (to cover empty title, language fallbacks)
+		const track3Btn = screen.getByRole("button", { name: "轨道 3 []" });
+		fireEvent.click(track3Btn);
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
+			"hash123",
+			0,
+			3,
+		);
+
+		// Verify that "无" button is present and click it (to trigger revoking of track 3 prev URL)
 		const disableBtn = screen.getByRole("button", { name: "无" });
 		fireEvent.click(disableBtn);
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+	});
+
+	it("当获取字幕轨道列表失败时，应该优雅处理并打印错误", async () => {
+		const mockStatus = {
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+		};
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
+		vi.mocked(mockTorrentRepository.getSubtitleTracks).mockRejectedValue(
+			new Error("Failed to load tracks"),
+		);
+
+		renderPlayer(
+			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
+		);
+
+		await waitFor(() => {
+			expect(screen.queryByText("字幕轨道:")).not.toBeInTheDocument();
+		});
+	});
+
+	it("当获取字幕VTT失败时，应该显示错误Toast提示", async () => {
+		const mockStatus = {
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+		};
+
+		const mockSubtracks = [
+			{ id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+		];
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
+		vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue(
+			mockSubtracks,
+		);
+		vi.mocked(mockTorrentRepository.getSubtitleVtt).mockRejectedValue(
+			new Error("VTT load error"),
+		);
+
+		renderPlayer(
+			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("English [ENG]")).toBeInTheDocument();
+		});
+
+		const engBtn = screen.getByRole("button", { name: "English [ENG]" });
+		fireEvent.click(engBtn);
+
+		await waitFor(() => {
+			expect(screen.getByText("加载字幕失败，请重试")).toBeInTheDocument();
+		});
 	});
 });
