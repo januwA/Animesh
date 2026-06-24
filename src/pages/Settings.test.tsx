@@ -24,6 +24,7 @@ describe("Settings 页面组件", () => {
 		mockSettingsRepository = {
 			getSettings: vi.fn(),
 			setDownloadDir: vi.fn(),
+			setProxy: vi.fn(),
 			selectDirectory: vi.fn(),
 		};
 
@@ -96,17 +97,23 @@ describe("Settings 页面组件", () => {
 		});
 	});
 
-	it("应该成功加载并显示当前下载目录，且支持输入更改与保存（成功分支）", async () => {
+	it("应该成功加载并显示当前下载目录与代理设置，且支持输入更改与保存（成功分支）", async () => {
 		let currentDir = "C:\\Downloads";
+		let currentProxy = "http://127.0.0.1:7890";
 
 		vi.mocked(mockSettingsRepository.getSettings).mockImplementation(
 			async () => {
-				return { download_dir: currentDir };
+				return { download_dir: currentDir, proxy: currentProxy };
 			},
 		);
 		vi.mocked(mockSettingsRepository.setDownloadDir).mockImplementation(
 			async (dir) => {
 				currentDir = dir;
+			},
+		);
+		vi.mocked(mockSettingsRepository.setProxy).mockImplementation(
+			async (proxy) => {
+				currentProxy = proxy || "";
 			},
 		);
 
@@ -116,10 +123,20 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByPlaceholderText(/选择或输入下载路径/)).toHaveValue(
 				"C:\\Downloads",
 			);
+			expect(
+				screen.getByPlaceholderText(/例如 http:\/\/127.0.0.1:7890/),
+			).toHaveValue("http://127.0.0.1:7890");
 		});
 
 		const input = screen.getByPlaceholderText(/选择或输入下载路径/);
 		fireEvent.change(input, { target: { value: "E:\\NewDownloads" } });
+
+		const proxyInput = screen.getByPlaceholderText(
+			/例如 http:\/\/127.0.0.1:7890/,
+		);
+		fireEvent.change(proxyInput, {
+			target: { value: "socks5://127.0.0.1:1080" },
+		});
 
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);
@@ -127,6 +144,9 @@ describe("Settings 页面组件", () => {
 		await waitFor(() => {
 			expect(mockSettingsRepository.setDownloadDir).toHaveBeenCalledWith(
 				"E:\\NewDownloads",
+			);
+			expect(mockSettingsRepository.setProxy).toHaveBeenCalledWith(
+				"socks5://127.0.0.1:1080",
 			);
 			expect(
 				screen.getByText("设置已保存，后续下载任务将使用新路径"),

@@ -12,8 +12,10 @@ fn greet(name: &str) -> String {
 #[tauri::command]
 async fn search_dmhy(
     keyword: &str,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<Vec<animesh_core::crawler::SearchResultItem>, String> {
-    animesh_core::crawler::search_dmhy(keyword).await
+    let proxy = manager.get_proxy();
+    animesh_core::crawler::search_dmhy(keyword, proxy).await
 }
 
 #[tauri::command]
@@ -147,6 +149,7 @@ fn settings_get(
 ) -> Result<animesh_core::torrent_manager::AppSettings, String> {
     Ok(animesh_core::torrent_manager::AppSettings {
         download_dir: manager.get_download_dir(),
+        proxy: manager.get_proxy(),
     })
 }
 
@@ -158,6 +161,14 @@ fn settings_set_download_dir(
     manager
         .set_download_dir(dir.to_string())
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn settings_set_proxy(
+    proxy: Option<String>,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<(), String> {
+    manager.set_proxy(proxy).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -187,6 +198,7 @@ pub fn run() {
 
             // Read settings if exists, otherwise write defaults
             let mut download_dir = app_data_dir.join("downloads");
+            let mut proxy = None;
             if settings_path.exists() {
                 if let Ok(file) = std::fs::File::open(&settings_path) {
                     if let Ok(settings) = serde_json::from_reader::<
@@ -195,11 +207,13 @@ pub fn run() {
                     >(file)
                     {
                         download_dir = std::path::PathBuf::from(settings.download_dir);
+                        proxy = settings.proxy;
                     }
                 }
             } else {
                 let settings = animesh_core::torrent_manager::AppSettings {
                     download_dir: download_dir.to_string_lossy().to_string(),
+                    proxy: None,
                 };
                 if let Ok(file) = std::fs::File::create(&settings_path) {
                     let _ = serde_json::to_writer_pretty(file, &settings);
@@ -208,7 +222,7 @@ pub fn run() {
             std::fs::create_dir_all(&download_dir).ok();
 
             let manager = tauri::async_runtime::block_on(async {
-                TorrentManager::new(download_dir, settings_path)
+                TorrentManager::new(download_dir, settings_path, proxy)
                     .await
                     .expect("Failed to initialize TorrentManager")
             });
@@ -229,6 +243,7 @@ pub fn run() {
             torrent_list,
             settings_get,
             settings_set_download_dir,
+            settings_set_proxy,
             select_directory,
             torrent_get_subtitle_tracks,
             torrent_get_subtitle_vtt

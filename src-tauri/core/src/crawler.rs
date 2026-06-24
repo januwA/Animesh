@@ -62,15 +62,28 @@ pub fn parse_dmhy_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
 }
 
 /// Search DMHY (动漫花园) RSS for a keyword
-pub async fn search_dmhy(keyword: &str) -> Result<Vec<SearchResultItem>, String> {
+pub async fn search_dmhy(
+    keyword: &str,
+    proxy: Option<String>,
+) -> Result<Vec<SearchResultItem>, String> {
     let encoded_keyword = encode(keyword);
     let url = format!(
         "https://share.dmhy.org/topics/rss/rss.xml?keyword={}",
         encoded_keyword
     );
 
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    let mut builder = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+    if let Some(ref proxy_str) = proxy {
+        if !proxy_str.trim().is_empty() {
+            let reqwest_proxy =
+                reqwest::Proxy::all(proxy_str).map_err(|e| format!("Invalid proxy URL: {}", e))?;
+            builder = builder.proxy(reqwest_proxy);
+        }
+    }
+
+    let client = builder
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 
@@ -137,7 +150,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_search_dmhy_integration() {
-        let results = search_dmhy("凡人").await;
+        let results = search_dmhy("凡人", None).await;
         let items = match results {
             Ok(items) => items,
             Err(e) => {

@@ -1,4 +1,4 @@
-import { Folder, HardDrive, Loader2, Save } from "lucide-react";
+import { Folder, Globe, HardDrive, Loader2, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ export default function Settings() {
 	const { settingsRepository } = useDI();
 	const { showToast } = useAppContext();
 	const [downloadDir, setDownloadDir] = useState("");
+	const [proxy, setProxy] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 
@@ -21,6 +22,7 @@ export default function Settings() {
 			try {
 				const settings = await settingsRepository.getSettings();
 				setDownloadDir(settings.download_dir);
+				setProxy(settings.proxy || "");
 			} catch (err: unknown) {
 				console.error("Failed to load settings:", err);
 				showToast("加载设置失败");
@@ -56,6 +58,7 @@ export default function Settings() {
 		setSaving(true);
 		try {
 			await settingsRepository.setDownloadDir(downloadDir.trim());
+			await settingsRepository.setProxy(proxy.trim() || null);
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
 			console.error("Failed to save settings:", err);
@@ -132,6 +135,36 @@ export default function Settings() {
 							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
 								💡
 								提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="bg-card/40 border-white/5">
+					<CardHeader className="p-5">
+						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+							<Globe className="h-4 w-4 text-primary" />
+							网络设置 (动漫花园代理)
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+						<div className="space-y-2">
+							<label
+								htmlFor="proxy-input"
+								className="text-muted-foreground font-medium"
+							>
+								代理服务器地址
+							</label>
+							<Input
+								id="proxy-input"
+								value={proxy}
+								onChange={(e) => setProxy(e.target.value)}
+								placeholder="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:7890 (留空则不使用代理)"
+								className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+							/>
+							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
+								💡 提示：部分地区可能无法直接访问动漫花园。如果 RSS
+								搜索无结果，可配置代理。支持 HTTP、HTTPS 或 SOCKS5 代理。
 							</p>
 						</div>
 

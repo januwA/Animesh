@@ -19,18 +19,21 @@ pub struct TorrentManager {
     pub session: Arc<Session>,
     pub port: u16,
     pub download_dir: Arc<std::sync::RwLock<PathBuf>>,
+    pub proxy: Arc<std::sync::RwLock<Option<String>>>,
     pub settings_path: PathBuf,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppSettings {
     pub download_dir: String,
+    pub proxy: Option<String>,
 }
 
 impl TorrentManager {
     pub async fn new(
         download_dir: PathBuf,
         settings_path: PathBuf,
+        proxy: Option<String>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let session = Session::new(download_dir.clone()).await?;
 
@@ -50,6 +53,7 @@ impl TorrentManager {
             session,
             port,
             download_dir: Arc::new(std::sync::RwLock::new(download_dir)),
+            proxy: Arc::new(std::sync::RwLock::new(proxy)),
             settings_path,
         })
     }
@@ -66,11 +70,58 @@ impl TorrentManager {
         let path = PathBuf::from(&dir);
         std::fs::create_dir_all(&path)?;
 
-        let settings = AppSettings { download_dir: dir };
+        if let Some(parent) = self.settings_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let mut settings = if self.settings_path.exists() {
+            let file = std::fs::File::open(&self.settings_path)?;
+            serde_json::from_reader(file).unwrap_or_else(|_| AppSettings {
+                download_dir: dir.clone(),
+                proxy: self.get_proxy(),
+            })
+        } else {
+            AppSettings {
+                download_dir: dir.clone(),
+                proxy: self.get_proxy(),
+            }
+        };
+        settings.download_dir = dir;
+
         let file = std::fs::File::create(&self.settings_path)?;
         serde_json::to_writer_pretty(file, &settings)?;
 
         *self.download_dir.write().unwrap() = path;
+        Ok(())
+    }
+
+    pub fn get_proxy(&self) -> Option<String> {
+        self.proxy.read().unwrap().clone()
+    }
+
+    pub fn set_proxy(&self, proxy: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(parent) = self.settings_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let mut settings = if self.settings_path.exists() {
+            let file = std::fs::File::open(&self.settings_path)?;
+            serde_json::from_reader(file).unwrap_or_else(|_| AppSettings {
+                download_dir: self.get_download_dir(),
+                proxy: proxy.clone(),
+            })
+        } else {
+            AppSettings {
+                download_dir: self.get_download_dir(),
+                proxy: proxy.clone(),
+            }
+        };
+        settings.proxy = proxy.clone();
+
+        let file = std::fs::File::create(&self.settings_path)?;
+        serde_json::to_writer_pretty(file, &settings)?;
+
+        *self.proxy.write().unwrap() = proxy;
         Ok(())
     }
 
@@ -317,7 +368,7 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path).await;
+        let manager = TorrentManager::new(dir, settings_path, None).await;
         if let Err(e) = &manager {
             panic!("Manager initialization failed: {:?}", e);
         }
@@ -378,7 +429,7 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_settings_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir.clone(), settings_path.clone())
+        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None)
             .await
             .unwrap();
 
@@ -413,7 +464,7 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_control_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path).await.unwrap();
+        let manager = TorrentManager::new(dir, settings_path, None).await.unwrap();
 
         // 验证列表初始为空
         let list = manager.list_torrents();
@@ -435,5 +486,37 @@ mod tests {
         // 验证不存在的种子删除报错
         let res_delete = manager.delete_torrent(test_hash, false).await;
         assert!(res_delete.is_err());
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_自定义代理_逻辑() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("animesh_test_manager_proxy_{}", nanos));
+        std::fs::create_dir_all(&dir).unwrap();
+        let settings_path = dir.join("settings.json");
+        let manager = TorrentManager::new(dir, settings_path.clone(), None)
+            .await
+            .unwrap();
+
+        // 验证初始代理为空
+        assert_eq!(manager.get_proxy(), None);
+
+        // 修改代理
+        let proxy_str = "http://127.0.0.1:7890".to_string();
+        manager.set_proxy(Some(proxy_str.clone())).unwrap();
+
+        // 验证内存更新
+        assert_eq!(manager.get_proxy(), Some(proxy_str.clone()));
+
+        // 验证设置文件被写入
+        assert!(settings_path.exists());
+        let content = std::fs::read_to_string(&settings_path).unwrap();
+        let parsed: AppSettings = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed.proxy, Some(proxy_str));
     }
 }
