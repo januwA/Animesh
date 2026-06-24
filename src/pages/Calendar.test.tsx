@@ -77,7 +77,7 @@ describe("Calendar 页面组件", () => {
 						id: 1,
 						name: "Anime Original Name",
 						name_cn: "中文动漫名",
-						images: { common: "http://example.com/cover.jpg" },
+						images: { large: "http://example.com/cover.jpg" },
 						rating: { score: 8.5 },
 						collection: { doing: 1200 },
 						rank: 1,
@@ -110,7 +110,7 @@ describe("Calendar 页面组件", () => {
 						id: 1,
 						name: "Anime Original Name",
 						name_cn: "今天动漫",
-						images: { common: "http://example.com/cover.jpg" },
+						images: { large: "http://example.com/cover.jpg" },
 						rating: { score: 8.5 },
 						collection: { doing: 1200 },
 						rank: 1,
@@ -172,7 +172,7 @@ describe("Calendar 页面组件", () => {
 						id: 1,
 						name: "Anime Original Name",
 						name_cn: "中文动漫名",
-						images: { common: "http://example.com/cover.jpg" },
+						images: { large: "http://example.com/cover.jpg" },
 						rating: { score: 8.5 },
 						collection: { doing: 1200 },
 						rank: 1,
@@ -261,5 +261,108 @@ describe("Calendar 页面组件", () => {
 
 		unmount();
 		rejectPromise(new Error("API error"));
+	});
+
+	it("在 WeeklyCalendar 中，点击详情链接应该在浏览器中打开且不触发搜索", async () => {
+		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
+		const mockCalendar = [
+			{
+				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+				items: [
+					{
+						id: 1,
+						url: "http://example.com/anime",
+						name: "Anime Original Name",
+						name_cn: "中文动漫名",
+					},
+				],
+			},
+		];
+
+		renderCalendar(
+			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("中文动漫名")).toBeInTheDocument();
+		});
+
+		const detailLink = screen.getByRole("link", { name: "详情" });
+		expect(detailLink).toHaveAttribute("href", "http://example.com/anime");
+		expect(detailLink).toHaveAttribute("target", "_blank");
+
+		fireEvent.click(detailLink);
+
+		expect(currentLocation.current?.pathname).not.toBe("/");
+	});
+
+	it("在 WeeklyCalendar 中，按下 Enter 键应该触发搜索", async () => {
+		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
+		const mockCalendar = [
+			{
+				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+				items: [
+					{
+						id: 1,
+						name: "Anime Original Name",
+						name_cn: "键盘测试动漫",
+					},
+				],
+			},
+		];
+
+		renderCalendar(
+			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("键盘测试动漫")).toBeInTheDocument();
+		});
+
+		const animeCard = screen.getByTitle("搜索: 键盘测试动漫");
+
+		// 测试非 Enter/Space 键，不应该触发跳转
+		fireEvent.keyDown(animeCard, { key: "Escape" });
+		expect(currentLocation.current?.pathname).not.toBe("/");
+
+		// 测试 Enter 键
+		fireEvent.keyDown(animeCard, { key: "Enter" });
+		expect(currentLocation.current?.pathname).toBe("/");
+		expect(currentLocation.current?.search).toBe(
+			"?keyword=%E9%94%AE%E7%9B%98%E6%B5%8B%E8%AF%95%E5%8A%A8%E6%BC%AB",
+		);
+	});
+
+	it("在 WeeklyCalendar 中，按下空格键应该触发搜索", async () => {
+		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
+		const mockCalendar = [
+			{
+				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+				items: [
+					{
+						id: 1,
+						name: "Anime Original Name",
+						name_cn: "键盘测试动漫",
+					},
+				],
+			},
+		];
+
+		renderCalendar(
+			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("键盘测试动漫")).toBeInTheDocument();
+		});
+
+		const animeCard = screen.getByTitle("搜索: 键盘测试动漫");
+
+		// 测试空格键
+		fireEvent.keyDown(animeCard, { key: " " });
+		expect(currentLocation.current?.pathname).toBe("/");
+		expect(currentLocation.current?.search).toBe(
+			"?keyword=%E9%94%AE%E7%9B%98%E6%B5%8B%E8%AF%95%E5%8A%A8%E6%BC%AB",
+		);
 	});
 });
