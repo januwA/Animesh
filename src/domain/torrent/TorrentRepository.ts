@@ -2,6 +2,7 @@ import type {
 	AddTorrentResult,
 	FileDetails,
 	SearchResultItem,
+	SubtitleTrackInfo,
 	TorrentStatusInfo,
 } from "../../types";
 
@@ -15,4 +16,13 @@ export interface TorrentRepository {
 	getTorrentFiles(infoHash: string): Promise<FileDetails[]>;
 	getTorrentStreamUrl(infoHash: string, fileId: number): Promise<string>;
 	getTorrentStatus(infoHash: string): Promise<TorrentStatusInfo>;
+	getSubtitleTracks(
+		infoHash: string,
+		fileId: number,
+	): Promise<SubtitleTrackInfo[]>;
+	getSubtitleVtt(
+		infoHash: string,
+		fileId: number,
+		trackId: number,
+	): Promise<string>;
 }

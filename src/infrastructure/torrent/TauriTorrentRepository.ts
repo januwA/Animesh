@@ -4,6 +4,7 @@ import type {
 	AddTorrentResult,
 	FileDetails,
 	SearchResultItem,
+	SubtitleTrackInfo,
 	TorrentStatusInfo,
 } from "../../types";
 
@@ -42,5 +43,27 @@ export class TauriTorrentRepository implements TorrentRepository {
 
 	async getTorrentStatus(infoHash: string): Promise<TorrentStatusInfo> {
 		return invoke<TorrentStatusInfo>("torrent_get_status", { infoHash });
+	}
+
+	async getSubtitleTracks(
+		infoHash: string,
+		fileId: number,
+	): Promise<SubtitleTrackInfo[]> {
+		return invoke<SubtitleTrackInfo[]>("torrent_get_subtitle_tracks", {
+			infoHash,
+			fileId,
+		});
+	}
+
+	async getSubtitleVtt(
+		infoHash: string,
+		fileId: number,
+		trackId: number,
+	): Promise<string> {
+		return invoke<string>("torrent_get_subtitle_vtt", {
+			infoHash,
+			fileId,
+			trackId,
+		});
 	}
 }

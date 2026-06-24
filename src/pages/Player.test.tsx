@@ -46,6 +46,8 @@ describe("Player 页面组件", () => {
 			deleteTorrent: vi.fn(),
 			getTorrentStreamUrl: vi.fn(),
 			getTorrentStatus: vi.fn(),
+			getSubtitleTracks: vi.fn(),
+			getSubtitleVtt: vi.fn(),
 		};
 
 		mockContainer = createDIContainer({
@@ -308,5 +310,62 @@ describe("Player 页面组件", () => {
 		await act(async () => {
 			resolveUrlPromise("stream_url_value");
 		});
+	});
+
+	it("应该成功获取字幕轨道并支持切换字幕轨道", async () => {
+		const mockStatus = {
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+		};
+
+		const mockSubtracks = [
+			{ id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+			{ id: 2, language: "chi", title: "Chinese", codec: "S_TEXT/ASS" },
+		];
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
+		vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue(
+			mockSubtracks,
+		);
+		vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+			"WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+		);
+
+		renderPlayer(
+			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
+		);
+
+		// Verify the subtitle buttons are rendered
+		await waitFor(() => {
+			expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
+			expect(screen.getByText("English [ENG]")).toBeInTheDocument();
+			expect(screen.getByText("Chinese [CHI]")).toBeInTheDocument();
+		});
+
+		// Click to select the English subtitle
+		const engBtn = screen.getByRole("button", { name: "English [ENG]" });
+		fireEvent.click(engBtn);
+
+		await waitFor(() => {
+			expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
+				"hash123",
+				0,
+				1,
+			);
+		});
+
+		// Verify that "无" button is present and click it
+		const disableBtn = screen.getByRole("button", { name: "无" });
+		fireEvent.click(disableBtn);
 	});
 });

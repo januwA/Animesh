@@ -54,6 +54,53 @@ fn torrent_get_files(
 }
 
 #[tauri::command]
+fn torrent_get_subtitle_tracks(
+    info_hash: &str,
+    file_id: usize,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<Vec<animesh_core::subtitles::SubtitleTrackInfo>, String> {
+    let download_dir = manager.get_download_dir();
+    let files = manager
+        .get_torrent_files(info_hash)
+        .ok_or_else(|| "Torrent not found".to_string())?;
+    let file_details = files
+        .iter()
+        .find(|f| f.id == file_id)
+        .ok_or_else(|| "File not found".to_string())?;
+
+    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
+    if !path.exists() {
+        return Err("Video file not downloaded or doesn't exist yet".to_string());
+    }
+
+    animesh_core::subtitles::extract_subtitle_tracks(&path)
+}
+
+#[tauri::command]
+fn torrent_get_subtitle_vtt(
+    info_hash: &str,
+    file_id: usize,
+    track_id: u64,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<String, String> {
+    let download_dir = manager.get_download_dir();
+    let files = manager
+        .get_torrent_files(info_hash)
+        .ok_or_else(|| "Torrent not found".to_string())?;
+    let file_details = files
+        .iter()
+        .find(|f| f.id == file_id)
+        .ok_or_else(|| "File not found".to_string())?;
+
+    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
+    if !path.exists() {
+        return Err("Video file not downloaded or doesn't exist yet".to_string());
+    }
+
+    animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
+}
+
+#[tauri::command]
 async fn torrent_pause(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
@@ -182,7 +229,9 @@ pub fn run() {
             torrent_list,
             settings_get,
             settings_set_download_dir,
-            select_directory
+            select_directory,
+            torrent_get_subtitle_tracks,
+            torrent_get_subtitle_vtt
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -46,6 +46,8 @@ describe("Home 页面组件", () => {
 			deleteTorrent: vi.fn(),
 			getTorrentStreamUrl: vi.fn(),
 			getTorrentStatus: vi.fn(),
+			getSubtitleTracks: vi.fn(),
+			getSubtitleVtt: vi.fn(),
 		};
 
 		mockContainer = createDIContainer({

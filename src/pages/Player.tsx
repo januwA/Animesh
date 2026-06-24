@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
-import type { TorrentStatusInfo } from "../types";
+import type { SubtitleTrackInfo, TorrentStatusInfo } from "../types";
 import { formatBytes } from "../utils";
 
 export default function Player() {
@@ -28,7 +28,64 @@ export default function Player() {
 	);
 	const [loading, setLoading] = useState(true);
 
+	const [subtracks, setSubtracks] = useState<SubtitleTrackInfo[]>([]);
+	const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
+	const [subtrackSrc, setSubtrackSrc] = useState<string | null>(null);
+	const [subloading, setSubloading] = useState<boolean>(false);
+	const videoRef = useRef<HTMLVideoElement | null>(null);
+
 	const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	// Clean up subtitle object URL on unmount
+	useEffect(() => {
+		return () => {
+			if (subtrackSrc) {
+				URL.revokeObjectURL(subtrackSrc);
+			}
+		};
+	}, [subtrackSrc]);
+
+	// Force showing the track when loaded
+	useEffect(() => {
+		if (videoRef.current && subtrackSrc) {
+			const video = videoRef.current;
+			const timer = setTimeout(() => {
+				if (video.textTracks && video.textTracks.length > 0) {
+					for (let i = 0; i < video.textTracks.length; i++) {
+						video.textTracks[i].mode = "showing";
+					}
+				}
+			}, 100);
+			return () => clearTimeout(timer);
+		}
+	}, [subtrackSrc]);
+
+	const loadSubtitleVtt = async (trackId: number) => {
+		if (!infoHash || fileId === undefined) return;
+		setSubloading(true);
+		try {
+			const parsedFileId = parseInt(fileId, 10);
+			const vttContent = await torrentRepository.getSubtitleVtt(
+				infoHash,
+				parsedFileId,
+				trackId,
+			);
+			const blob = new Blob([vttContent], { type: "text/vtt" });
+			const url = URL.createObjectURL(blob);
+			setSubtrackSrc((prev) => {
+				if (prev) {
+					URL.revokeObjectURL(prev);
+				}
+				return url;
+			});
+			setSelectedTrackId(trackId);
+		} catch (err: unknown) {
+			console.error("Failed to load subtitle VTT:", err);
+			showToast("加载字幕失败，请重试");
+		} finally {
+			setSubloading(false);
+		}
+	};
 
 	// Load stream URL and setup status polling
 	useEffect(() => {
@@ -57,6 +114,19 @@ export default function Player() {
 				if (isMounted) {
 					setTorrentStatus(initialStatus);
 					setLoading(false);
+				}
+
+				// Fetch subtitle tracks
+				try {
+					const tracks = await torrentRepository.getSubtitleTracks(
+						infoHash,
+						parsedFileId,
+					);
+					if (isMounted) {
+						setSubtracks(tracks || []);
+					}
+				} catch (err: unknown) {
+					console.error("Failed to load subtitle tracks:", err);
 				}
 
 				// Start polling status
@@ -144,15 +214,73 @@ export default function Player() {
 				) : streamUrl ? (
 					/* biome-ignore lint/a11y/useMediaCaption: no captions for local torrent stream */
 					<video
+						ref={videoRef}
 						src={streamUrl}
 						controls
 						autoPlay
 						className="h-full w-full object-contain"
-					/>
+					>
+						{subtrackSrc && (
+							<track
+								key={subtrackSrc}
+								kind="subtitles"
+								src={subtrackSrc}
+								srcLang={
+									subtracks.find((t) => t.id === selectedTrackId)?.language ||
+									"zh"
+								}
+								label={
+									subtracks.find((t) => t.id === selectedTrackId)?.title ||
+									"默认字幕"
+								}
+								default
+							/>
+						)}
+					</video>
 				) : (
 					<div className="text-muted-foreground text-sm">无法加载视频流</div>
 				)}
 			</div>
+
+			{/* Subtitle Tracks Selection */}
+			{!loading && streamUrl && subtracks.length > 0 && (
+				<div className="flex flex-wrap items-center gap-2 p-3 bg-black/20 border border-white/5 rounded-lg">
+					<span className="text-xs font-semibold text-muted-foreground mr-1">
+						字幕轨道:
+					</span>
+					<Button
+						variant={selectedTrackId === null ? "default" : "outline"}
+						size="xs"
+						onClick={() => {
+							setSelectedTrackId(null);
+							setSubtrackSrc((prev) => {
+								if (prev) {
+									URL.revokeObjectURL(prev);
+								}
+								return null;
+							});
+						}}
+					>
+						无
+					</Button>
+					{subtracks.map((track) => (
+						<Button
+							key={track.id}
+							variant={selectedTrackId === track.id ? "default" : "outline"}
+							size="xs"
+							disabled={subloading}
+							onClick={() => loadSubtitleVtt(track.id)}
+						>
+							{subloading && selectedTrackId === track.id ? (
+								<Loader2 className="h-3 w-3 animate-spin mr-1" />
+							) : null}
+							{track.title
+								? `${track.title} [${track.language.toUpperCase()}]`
+								: `轨道 ${track.id} [${track.language.toUpperCase()}]`}
+						</Button>
+					))}
+				</div>
+			)}
 
 			{/* Progress & Speed */}
 			<div className="space-y-4">

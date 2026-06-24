@@ -66,6 +66,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "librqbit",
+ "matroska-demuxer",
  "quick-xml 0.37.5",
  "reqwest 0.12.28",
  "serde",
@@ -2738,6 +2739,12 @@ name = "matchit"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
+
+[[package]]
+name = "matroska-demuxer"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb23384e6bf1431427b45e7db9574146e948ef0cd975018693e6f53eb6d44199"
 
 [[package]]
 name = "memchr"

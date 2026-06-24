@@ -32,3 +32,10 @@ export interface TorrentStatusInfo {
 	download_speed_bytes_per_sec: number;
 	paused: boolean;
 }
+
+export interface SubtitleTrackInfo {
+	id: number;
+	language: string;
+	title: string;
+	codec: string;
+}
