@@ -230,7 +230,7 @@ pub async fn search_bangumi_moe(
 }
 
 fn extract_hash_from_url(url: &str) -> Option<String> {
-    if let Some(last_segment) = url.split('/').last() {
+    if let Some(last_segment) = url.split('/').next_back() {
         let segment = last_segment
             .strip_suffix(".torrent")
             .unwrap_or(last_segment);
