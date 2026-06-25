@@ -54,7 +54,7 @@ describe("Layout 布局组件", () => {
 			},
 			notifyDownloadCompletionUseCase: {
 				execute: mockExecute as () => Promise<void>,
-			},
+			} as any,
 		});
 
 		return render(

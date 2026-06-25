@@ -11,16 +11,16 @@ describe("Bangumi 相关的 UseCase 业务编排", () => {
 		const useCase = new GetBangumiCalendarUseCase(mockRepo);
 		vi.mocked(mockRepo.getCalendar).mockResolvedValueOnce([
 			{
-				weekday: { id: 1, name: "Monday" },
-				bangumis: [{ id: 101, name: "Anime Monday" } as any],
+				weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
+				items: [{ id: 101, name: "Anime Monday" } as any],
 			},
 		]);
 		const results = await useCase.execute();
 		expect(mockRepo.getCalendar).toHaveBeenCalled();
 		expect(results).toEqual([
 			{
-				weekday: { id: 1, name: "Monday" },
-				bangumis: [{ id: 101, name: "Anime Monday" }],
+				weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
+				items: [{ id: 101, name: "Anime Monday" }],
 			},
 		]);
 	});
