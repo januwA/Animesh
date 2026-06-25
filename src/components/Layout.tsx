@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
@@ -6,8 +6,7 @@ import { AppHeader, ToastContainer } from "./AppComponents";
 
 export default function Layout() {
 	const { toasts, removeToast } = useAppContext();
-	const { torrentRepository, notificationRepository } = useDI();
-	const notifiedHashesRef = useRef<Set<string>>(new Set());
+	const { notificationRepository, notifyDownloadCompletionUseCase } = useDI();
 
 	// 请求系统通知权限
 	useEffect(() => {
@@ -24,43 +23,14 @@ export default function Layout() {
 			typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 		if (!isTauri) return;
 
-		let isFirstRun = true;
-
 		const checkDownloads = async () => {
-			try {
-				const list = await torrentRepository.listTorrents();
-				if (Array.isArray(list)) {
-					for (const torrent of list) {
-						if (torrent.finished) {
-							if (isFirstRun) {
-								// 首次加载时将已完成的种子记录下来，避免重复通知旧数据
-								notifiedHashesRef.current.add(torrent.info_hash);
-							} else if (!notifiedHashesRef.current.has(torrent.info_hash)) {
-								notifiedHashesRef.current.add(torrent.info_hash);
-								// 触发原生系统通知
-								await notificationRepository.sendNotification(
-									"下载完成",
-									`动漫 《${torrent.name || "未命名种子"}》 已下载完成！`,
-								);
-							}
-						} else {
-							// 如果种子被重启下载或删除，清除已通知记录
-							if (notifiedHashesRef.current.has(torrent.info_hash)) {
-								notifiedHashesRef.current.delete(torrent.info_hash);
-							}
-						}
-					}
-				}
-				isFirstRun = false;
-			} catch (err) {
-				console.error("Error in background torrent check:", err);
-			}
+			await notifyDownloadCompletionUseCase.execute();
 		};
 
 		checkDownloads();
 		const interval = setInterval(checkDownloads, 3000);
 		return () => clearInterval(interval);
-	}, [torrentRepository, notificationRepository]);
+	}, [notifyDownloadCompletionUseCase]);
 
 	return (
 		<main className="container max-w-4xl mx-auto px-4 py-10 flex flex-col min-h-screen">

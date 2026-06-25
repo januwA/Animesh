@@ -16,7 +16,7 @@ export default function TorrentDetail() {
 	const title = searchParams.get("title") || "";
 	const infoHash = searchParams.get("infoHash") || "";
 
-	const { torrentRepository } = useDI();
+	const { addTorrentMagnetUseCase, getTorrentFilesUseCase } = useDI();
 	const { showToast } = useAppContext();
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -43,8 +43,8 @@ export default function TorrentDetail() {
 
 		if (magnet) {
 			// Resolve magnet
-			torrentRepository
-				.addTorrentMagnet(magnet)
+			addTorrentMagnetUseCase
+				.execute(magnet)
 				.then((result) => {
 					if (isMounted) {
 						setTorrent(result);
@@ -65,8 +65,8 @@ export default function TorrentDetail() {
 				});
 		} else if (infoHash) {
 			// Resolve by existing info hash
-			torrentRepository
-				.getTorrentFiles(infoHash)
+			getTorrentFilesUseCase
+				.execute(infoHash)
 				.then((files) => {
 					if (isMounted) {
 						setTorrent({
@@ -91,7 +91,14 @@ export default function TorrentDetail() {
 		return () => {
 			isMounted = false;
 		};
-	}, [magnet, infoHash, title, showToast, torrentRepository]);
+	}, [
+		magnet,
+		infoHash,
+		title,
+		showToast,
+		addTorrentMagnetUseCase,
+		getTorrentFilesUseCase,
+	]);
 
 	// Listen to Escape key to go back, keeping test compatibility
 	useEffect(() => {

@@ -9,7 +9,8 @@ import { useDI } from "../di/DIContext";
 
 export default function Settings() {
 	const navigate = useNavigate();
-	const { settingsRepository } = useDI();
+	const { getSettingsUseCase, saveSettingsUseCase, selectDirectoryUseCase } =
+		useDI();
 	const { showToast } = useAppContext();
 	const [downloadDir, setDownloadDir] = useState("");
 	const [proxy, setProxy] = useState("");
@@ -20,7 +21,7 @@ export default function Settings() {
 	useEffect(() => {
 		const loadSettings = async () => {
 			try {
-				const settings = await settingsRepository.getSettings();
+				const settings = await getSettingsUseCase.execute();
 				setDownloadDir(settings.download_dir);
 				setProxy(settings.proxy || "");
 			} catch (err: unknown) {
@@ -31,12 +32,12 @@ export default function Settings() {
 			}
 		};
 		loadSettings();
-	}, [showToast, settingsRepository]);
+	}, [showToast, getSettingsUseCase]);
 
 	// Handle native directory selection
 	const handleSelectDir = async () => {
 		try {
-			const selected = await settingsRepository.selectDirectory();
+			const selected = await selectDirectoryUseCase.execute();
 			if (selected) {
 				setDownloadDir(selected);
 				showToast("已选择目录，点击保存以生效");
@@ -57,8 +58,10 @@ export default function Settings() {
 
 		setSaving(true);
 		try {
-			await settingsRepository.setDownloadDir(downloadDir.trim());
-			await settingsRepository.setProxy?.(proxy.trim() || null);
+			await saveSettingsUseCase.execute(
+				downloadDir.trim(),
+				proxy.trim() || null,
+			);
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
 			console.error("Failed to save settings:", err);

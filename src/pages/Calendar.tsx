@@ -7,7 +7,7 @@ import type { BangumiCalendarDay } from "../types";
 
 export default function Calendar() {
 	const navigate = useNavigate();
-	const { bangumiRepository } = useDI();
+	const { getBangumiCalendarUseCase } = useDI();
 	const [calendar, setCalendar] = useState<BangumiCalendarDay[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -17,8 +17,8 @@ export default function Calendar() {
 		setLoading(true);
 		setError(null);
 
-		bangumiRepository
-			.getCalendar()
+		getBangumiCalendarUseCase
+			.execute()
 			.then((data) => {
 				if (isMounted) {
 					setCalendar(data);
@@ -39,7 +39,7 @@ export default function Calendar() {
 		return () => {
 			isMounted = false;
 		};
-	}, [bangumiRepository]);
+	}, [getBangumiCalendarUseCase]);
 
 	const handleAnimeClick = (animeName: string) => {
 		navigate(`/?keyword=${encodeURIComponent(animeName)}`);

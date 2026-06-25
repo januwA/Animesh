@@ -29,7 +29,12 @@ import { formatBytes } from "../utils";
 
 export default function Downloads() {
 	const navigate = useNavigate();
-	const { torrentRepository } = useDI();
+	const {
+		listTorrentsUseCase,
+		pauseTorrentUseCase,
+		resumeTorrentUseCase,
+		deleteTorrentUseCase,
+	} = useDI();
 	const { showToast } = useAppContext();
 	const [torrents, setTorrents] = useState<TorrentStatusInfo[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -45,7 +50,7 @@ export default function Downloads() {
 	const fetchTorrents = useCallback(
 		async (isInitial = false) => {
 			try {
-				const list = await torrentRepository.listTorrents();
+				const list = await listTorrentsUseCase.execute();
 				setTorrents(list);
 				if (isInitial) {
 					setLoading(false);
@@ -58,7 +63,7 @@ export default function Downloads() {
 				}
 			}
 		},
-		[showToast, torrentRepository],
+		[showToast, listTorrentsUseCase],
 	);
 
 	// Polling downloads list
@@ -74,7 +79,7 @@ export default function Downloads() {
 	// Pause a download
 	const handlePause = async (infoHash: string, name: string) => {
 		try {
-			await torrentRepository.pauseTorrent(infoHash);
+			await pauseTorrentUseCase.execute(infoHash);
 			showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
 			fetchTorrents();
 		} catch (err: unknown) {
@@ -86,7 +91,7 @@ export default function Downloads() {
 	// Resume a download
 	const handleResume = async (infoHash: string, name: string) => {
 		try {
-			await torrentRepository.resumeTorrent(infoHash);
+			await resumeTorrentUseCase.execute(infoHash);
 			showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
 			fetchTorrents();
 		} catch (err: unknown) {
@@ -100,10 +105,7 @@ export default function Downloads() {
 		if (!deleteTarget) return;
 		setDeleting(true);
 		try {
-			await torrentRepository.deleteTorrent(
-				deleteTarget.info_hash,
-				deleteFiles,
-			);
+			await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
 			showToast(
 				`已删除任务${deleteFiles ? "及本地文件" : ""}: ${deleteTarget.name || deleteTarget.info_hash.slice(0, 8)}`,
 			);

@@ -33,7 +33,12 @@ export default function Player() {
 		fileName.toLowerCase().includes("h265") ||
 		fileName.toLowerCase().includes("h.265");
 
-	const { torrentRepository } = useDI();
+	const {
+		getTorrentStreamUrlUseCase,
+		getTorrentStatusUseCase,
+		getSubtitleTracksUseCase,
+		getSubtitleVttUseCase,
+	} = useDI();
 	const { showToast } = useAppContext();
 	const [streamUrl, setStreamUrl] = useState<string | null>(null);
 	const [torrentStatus, setTorrentStatus] = useState<TorrentStatusInfo | null>(
@@ -78,7 +83,7 @@ export default function Player() {
 		setSubloading(true);
 		try {
 			const parsedFileId = parseInt(fileId, 10);
-			const vttContent = await torrentRepository.getSubtitleVtt(
+			const vttContent = await getSubtitleVttUseCase.execute(
 				infoHash,
 				parsedFileId,
 				trackId,
@@ -114,7 +119,7 @@ export default function Player() {
 
 		const initializePlayback = async () => {
 			try {
-				const url = await torrentRepository.getTorrentStreamUrl(
+				const url = await getTorrentStreamUrlUseCase.execute(
 					infoHash,
 					parsedFileId,
 				);
@@ -123,8 +128,7 @@ export default function Player() {
 				setStreamUrl(url);
 
 				// Get initial status
-				const initialStatus =
-					await torrentRepository.getTorrentStatus(infoHash);
+				const initialStatus = await getTorrentStatusUseCase.execute(infoHash);
 				if (isMounted) {
 					setTorrentStatus(initialStatus);
 					setLoading(false);
@@ -132,7 +136,7 @@ export default function Player() {
 
 				// Fetch subtitle tracks
 				try {
-					const tracks = await torrentRepository.getSubtitleTracks(
+					const tracks = await getSubtitleTracksUseCase.execute(
 						infoHash,
 						parsedFileId,
 					);
@@ -147,7 +151,7 @@ export default function Player() {
 				// Start polling status
 				statusIntervalRef.current = setInterval(async () => {
 					try {
-						const status = await torrentRepository.getTorrentStatus(infoHash);
+						const status = await getTorrentStatusUseCase.execute(infoHash);
 						if (isMounted) {
 							setTorrentStatus(status);
 						}
@@ -155,7 +159,7 @@ export default function Player() {
 						// If subtitle tracks haven't been loaded yet, try to load them as download progresses
 						if (isMounted && !loadedTracks) {
 							try {
-								const tracks = await torrentRepository.getSubtitleTracks(
+								const tracks = await getSubtitleTracksUseCase.execute(
 									infoHash,
 									parsedFileId,
 								);
@@ -191,7 +195,14 @@ export default function Player() {
 				clearInterval(statusIntervalRef.current);
 			}
 		};
-	}, [infoHash, fileId, showToast, torrentRepository]);
+	}, [
+		infoHash,
+		fileId,
+		showToast,
+		getTorrentStreamUrlUseCase,
+		getTorrentStatusUseCase,
+		getSubtitleTracksUseCase,
+	]);
 
 	const handleCopyStreamUrl = async () => {
 		if (!streamUrl) return;

@@ -14,7 +14,7 @@ import { useDI } from "../di/DIContext";
 export default function Home() {
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
-	const { torrentRepository } = useDI();
+	const { searchTorrentsUseCase } = useDI();
 	const {
 		keyword,
 		setKeyword,
@@ -43,8 +43,8 @@ export default function Home() {
 				setError(null);
 				setSearchParams({}, { replace: true });
 
-				torrentRepository
-					.search(query, searchEngine)
+				searchTorrentsUseCase
+					.execute(query, searchEngine)
 					.then((data) => {
 						setResults(data || []);
 					})
@@ -67,7 +67,7 @@ export default function Home() {
 		setLoading,
 		setError,
 		setResults,
-		torrentRepository,
+		searchTorrentsUseCase,
 		setSearchParams,
 		searchEngine,
 	]);
@@ -81,7 +81,10 @@ export default function Home() {
 		setHasSearched(true);
 
 		try {
-			const data = await torrentRepository.search(keyword.trim(), searchEngine);
+			const data = await searchTorrentsUseCase.execute(
+				keyword.trim(),
+				searchEngine,
+			);
 			setResults(data || []);
 		} catch (err: unknown) {
 			console.error("Search failed:", err);

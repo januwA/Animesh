@@ -1,0 +1,12 @@
+import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
+
+export class SaveSettingsUseCase {
+	constructor(private settingsRepository: SettingsRepository) {}
+
+	async execute(downloadDir: string, proxy: string | null): Promise<void> {
+		await this.settingsRepository.setDownloadDir(downloadDir);
+		if (this.settingsRepository.setProxy) {
+			await this.settingsRepository.setProxy(proxy);
+		}
+	}
+}
