@@ -724,4 +724,34 @@ mod tests {
         );
         assert!(items[0].magnet.starts_with("magnet:?xt=urn:btih:"));
     }
+
+    #[test]
+    fn 测试_解析mikan_rss_无效数据() {
+        let invalid_xml = "<invalid>";
+        let result = parse_mikan_rss(invalid_xml);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to deserialize"));
+    }
+
+    #[test]
+    fn 测试_解析nyaa_rss_无效数据() {
+        let invalid_xml = "<invalid>";
+        let result = parse_nyaa_rss(invalid_xml);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to deserialize"));
+    }
+
+    #[tokio::test]
+    async fn 测试_search_mikan_无效代理() {
+        let result = search_mikan("凡人", Some("://bad".to_string())).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid proxy"));
+    }
+
+    #[tokio::test]
+    async fn 测试_search_nyaa_无效代理() {
+        let result = search_nyaa("凡人", Some("://bad".to_string())).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid proxy"));
+    }
 }
