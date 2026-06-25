@@ -179,34 +179,22 @@ async fn torrent_get_subtitle_vtt(
     track_id: u64,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<String, String> {
+    let download_dir = manager.get_download_dir();
     let files = manager
         .get_torrent_files(info_hash)
         .ok_or_else(|| "Torrent not found".to_string())?;
-    let _file_details = files
+    let file_details = files
         .iter()
         .find(|f| f.id == file_id)
         .ok_or_else(|| "File not found".to_string())?;
 
-    let torrent = manager
-        .session
-        .with_torrents(|iter| {
-            for (_, torrent) in iter {
-                let hex = animesh_core::torrent::format_hash(&torrent.info_hash().0);
-                if hex.eq_ignore_ascii_case(info_hash) {
-                    return Some(torrent.clone());
-                }
-            }
-            None
-        })
-        .ok_or_else(|| "Torrent not found".to_string())?;
-
-    let stream = torrent
-        .stream(file_id)
-        .map_err(|e| format!("Failed to open torrent stream: {}", e))?;
-    let sync_reader = animesh_core::subtitles::SyncReader::new(stream);
+    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
+    if !path.exists() {
+        return Err("Video file not downloaded or doesn't exist yet".to_string());
+    }
 
     match tokio::task::spawn_blocking(move || {
-        animesh_core::subtitles::extract_subtitle_vtt_from_reader(sync_reader, track_id)
+        animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
     })
     .await
     {

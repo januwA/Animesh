@@ -377,15 +377,18 @@ describe("Player 页面组件", () => {
 			await vi.runOnlyPendingTimersAsync();
 		});
 
-		// Verify the subtitle buttons are rendered
+		// Verify the select trigger is rendered
 		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
-		expect(screen.getByText("English [ENG]")).toBeInTheDocument();
-		expect(screen.getByText("Chinese [CHI]")).toBeInTheDocument();
-		expect(screen.getByText("轨道 3 []")).toBeInTheDocument();
+		const selectTrigger = screen.getByRole("combobox");
+		expect(selectTrigger).toBeInTheDocument();
+		expect(selectTrigger).toHaveTextContent("无");
+
+		// Open dropdown
+		fireEvent.click(selectTrigger);
 
 		// Click to select the English subtitle
-		const engBtn = screen.getByRole("button", { name: "English [ENG]" });
-		fireEvent.click(engBtn);
+		const engItem = screen.getByText("English [ENG]");
+		fireEvent.click(engItem);
 
 		await act(async () => {
 			await vi.runOnlyPendingTimersAsync();
@@ -397,9 +400,12 @@ describe("Player 页面组件", () => {
 			1,
 		);
 
+		// Open dropdown again
+		fireEvent.click(selectTrigger);
+
 		// Click to select the Chinese subtitle (to trigger revoking of English subtitle prev URL)
-		const chiBtn = screen.getByRole("button", { name: "Chinese [CHI]" });
-		fireEvent.click(chiBtn);
+		const chiItem = screen.getByText("Chinese [CHI]");
+		fireEvent.click(chiItem);
 
 		await act(async () => {
 			await vi.runOnlyPendingTimersAsync();
@@ -411,9 +417,12 @@ describe("Player 页面组件", () => {
 			2,
 		);
 
+		// Open dropdown again
+		fireEvent.click(selectTrigger);
+
 		// Click to select track 3 (to cover empty title, language fallbacks)
-		const track3Btn = screen.getByRole("button", { name: "轨道 3 []" });
-		fireEvent.click(track3Btn);
+		const track3Item = screen.getByText("轨道 3 []");
+		fireEvent.click(track3Item);
 
 		await act(async () => {
 			await vi.runOnlyPendingTimersAsync();
@@ -425,9 +434,10 @@ describe("Player 页面组件", () => {
 			3,
 		);
 
-		// Verify that "无" button is present and click it (to trigger revoking of track 3 prev URL)
-		const disableBtn = screen.getByRole("button", { name: "无" });
-		fireEvent.click(disableBtn);
+		// Open dropdown again and select "无"
+		fireEvent.click(selectTrigger);
+		const noneItem = screen.getByText("无");
+		fireEvent.click(noneItem);
 
 		await act(async () => {
 			await vi.runOnlyPendingTimersAsync();
@@ -511,11 +521,13 @@ describe("Player 页面组件", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("English [ENG]")).toBeInTheDocument();
+			expect(screen.getByRole("combobox")).toBeInTheDocument();
 		});
 
-		const engBtn = screen.getByRole("button", { name: "English [ENG]" });
-		fireEvent.click(engBtn);
+		// Open dropdown and select English
+		fireEvent.click(screen.getByRole("combobox"));
+		const engItem = screen.getByText("English [ENG]");
+		fireEvent.click(engItem);
 
 		await waitFor(() => {
 			expect(screen.getByText("加载字幕失败，请重试")).toBeInTheDocument();
@@ -570,6 +582,11 @@ describe("Player 页面组件", () => {
 
 		// Verify the subtitle tracks are now loaded and displayed
 		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
+		expect(screen.getByRole("combobox")).toBeInTheDocument();
+		expect(screen.getByRole("combobox")).toHaveTextContent("无");
+
+		// Open dropdown and verify the track exists
+		fireEvent.click(screen.getByRole("combobox"));
 		expect(screen.getByText("English [ENG]")).toBeInTheDocument();
 
 		vi.useRealTimers();

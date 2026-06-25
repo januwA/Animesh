@@ -4,6 +4,13 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
 import type { SubtitleTrackInfo, TorrentStatusInfo } from "../types";
@@ -305,41 +312,60 @@ export default function Player() {
 
 			{/* Subtitle Tracks Selection */}
 			{!loading && streamUrl && subtracks.length > 0 && (
-				<div className="flex flex-wrap items-center gap-2 p-3 bg-black/20 border border-white/5 rounded-lg">
-					<span className="text-xs font-semibold text-muted-foreground mr-1">
+				<div className="flex items-center gap-2.5 p-3 bg-black/20 border border-white/5 rounded-lg">
+					<span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
 						字幕轨道:
 					</span>
-					<Button
-						variant={selectedTrackId === null ? "default" : "outline"}
-						size="xs"
-						onClick={() => {
-							setSelectedTrackId(null);
-							setSubtrackSrc((prev) => {
-								if (prev) {
-									URL.revokeObjectURL(prev);
+					<div className="flex items-center gap-2">
+						<Select
+							value={
+								selectedTrackId === null ? "none" : selectedTrackId.toString()
+							}
+							onValueChange={(val) => {
+								if (val === "none") {
+									setSelectedTrackId(null);
+									setSubtrackSrc((prev) => {
+										if (prev) {
+											URL.revokeObjectURL(prev);
+										}
+										return null;
+									});
+								} else {
+									loadSubtitleVtt(parseInt(val, 10));
 								}
-								return null;
-							});
-						}}
-					>
-						无
-					</Button>
-					{subtracks.map((track) => (
-						<Button
-							key={track.id}
-							variant={selectedTrackId === track.id ? "default" : "outline"}
-							size="xs"
+							}}
 							disabled={subloading}
-							onClick={() => loadSubtitleVtt(track.id)}
 						>
-							{subloading && selectedTrackId === track.id ? (
-								<Loader2 className="h-3 w-3 animate-spin mr-1" />
-							) : null}
-							{track.title
-								? `${track.title} [${track.language.toUpperCase()}]`
-								: `轨道 ${track.id} [${track.language.toUpperCase()}]`}
-						</Button>
-					))}
+							<SelectTrigger className="w-[200px] h-8 text-xs dark:bg-zinc-950/60 border-white/10">
+								<SelectValue placeholder="选择字幕轨道" />
+							</SelectTrigger>
+							<SelectContent
+								position="popper"
+								className="z-50 dark bg-zinc-950 border-white/10 text-white"
+							>
+								<SelectItem
+									value="none"
+									className="hover:bg-white/10 cursor-pointer"
+								>
+									无
+								</SelectItem>
+								{subtracks.map((track) => (
+									<SelectItem
+										key={track.id}
+										value={track.id.toString()}
+										className="hover:bg-white/10 cursor-pointer"
+									>
+										{track.title
+											? `${track.title} [${track.language.toUpperCase()}]`
+											: `轨道 ${track.id} [${track.language.toUpperCase()}]`}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						{subloading && (
+							<Loader2 className="h-4 w-4 text-primary animate-spin" />
+						)}
+					</div>
 				</div>
 			)}
 
