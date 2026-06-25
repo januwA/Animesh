@@ -469,4 +469,34 @@ describe("Home 页面组件", () => {
 			expect(screen.getByText("蜜柑计划资源 1")).toBeInTheDocument();
 		});
 	});
+
+	it("应该支持切换到 Nyaa 搜索引擎并触发对应的搜索逻辑", async () => {
+		const mockResults = [
+			{
+				title: "Nyaa资源 1",
+				link: "https://nyaa.si/view/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TESTNYAA",
+				size: 700000000,
+			},
+		];
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+		renderHome();
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+
+		const select = screen.getByRole("combobox");
+		fireEvent.change(select, { target: { value: "nyaa" } });
+
+		fireEvent.submit(input);
+
+		await waitFor(() => {
+			expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "nyaa");
+			expect(screen.getByText("Nyaa资源 1")).toBeInTheDocument();
+		});
+	});
 });

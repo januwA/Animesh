@@ -133,6 +133,7 @@ export function SearchForm({
 							<SelectItem value="dmhy">动漫花园</SelectItem>
 							<SelectItem value="bangumi_moe">萌番组</SelectItem>
 							<SelectItem value="mikan">蜜柑计划</SelectItem>
+							<SelectItem value="nyaa">Nyaa</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>
@@ -171,7 +172,9 @@ export function SearchLoading({ engine }: { engine?: string }) {
 			? "萌番组"
 			: engine === "mikan"
 				? "蜜柑计划"
-				: "动漫花园";
+				: engine === "nyaa"
+					? "Nyaa"
+					: "动漫花园";
 	return (
 		<div className="flex flex-col items-center justify-center py-20 space-y-4">
 			<Loader2 className="h-10 w-10 text-primary animate-spin" />
