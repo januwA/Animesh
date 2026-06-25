@@ -80,6 +80,7 @@ name = "animesh"
 version = "0.1.0"
 dependencies = [
  "animesh_core",
+ "log",
  "serde_json",
  "tauri",
  "tauri-build",
