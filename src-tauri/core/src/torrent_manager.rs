@@ -190,6 +190,16 @@ impl TorrentManager {
                     .as_ref()
                     .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
                     .unwrap_or(0);
+                let (peers_connected, peers_total) = stats
+                    .live
+                    .as_ref()
+                    .map(|l| {
+                        (
+                            l.snapshot.peer_stats.live as u32,
+                            l.snapshot.peer_stats.seen as u32,
+                        )
+                    })
+                    .unwrap_or((0, 0));
                 let hex = format_hash(&torrent.info_hash().0);
                 TorrentStatusInfo {
                     info_hash: hex,
@@ -199,6 +209,8 @@ impl TorrentManager {
                     finished: stats.finished,
                     download_speed_bytes_per_sec: speed,
                     paused: torrent.is_paused(),
+                    peers_connected,
+                    peers_total,
                 }
             })
             .collect()
@@ -283,6 +295,17 @@ impl TorrentManager {
             .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
             .unwrap_or(0);
 
+        let (peers_connected, peers_total) = stats
+            .live
+            .as_ref()
+            .map(|l| {
+                (
+                    l.snapshot.peer_stats.live as u32,
+                    l.snapshot.peer_stats.seen as u32,
+                )
+            })
+            .unwrap_or((0, 0));
+
         Some(TorrentStatusInfo {
             info_hash: info_hash_hex.to_string(),
             name: torrent.name(),
@@ -291,6 +314,8 @@ impl TorrentManager {
             finished: stats.finished,
             download_speed_bytes_per_sec: speed,
             paused: torrent.is_paused(),
+            peers_connected,
+            peers_total,
         })
     }
 

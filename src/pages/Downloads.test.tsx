@@ -133,6 +133,8 @@ describe("Downloads 页面组件", () => {
 				finished: false,
 				download_speed_bytes_per_sec: 100,
 				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
 			},
 		];
 
@@ -157,6 +159,8 @@ describe("Downloads 页面组件", () => {
 				finished: false,
 				download_speed_bytes_per_sec: 200,
 				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
 			},
 		];
 		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
@@ -190,6 +194,8 @@ describe("Downloads 页面组件", () => {
 				finished: false,
 				download_speed_bytes_per_sec: 50,
 				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
 			},
 			{
 				info_hash: "hash222",
@@ -199,6 +205,8 @@ describe("Downloads 页面组件", () => {
 				finished: false,
 				download_speed_bytes_per_sec: 0,
 				paused: true,
+				peers_connected: 0,
+				peers_total: 0,
 			},
 		];
 
@@ -269,6 +277,8 @@ describe("Downloads 页面组件", () => {
 				finished: false,
 				download_speed_bytes_per_sec: 50,
 				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
 			},
 		];
 
@@ -299,6 +309,8 @@ describe("Downloads 页面组件", () => {
 				finished: false,
 				download_speed_bytes_per_sec: 0,
 				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
 			},
 		];
 

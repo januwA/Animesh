@@ -337,7 +337,7 @@ export default function Player() {
 							<Activity className="h-4 w-4 text-emerald-400" />
 							速度:{" "}
 							{torrentStatus
-								? `${formatBytes(torrentStatus.download_speed_bytes_per_sec)}/s`
+								? `${formatBytes(torrentStatus.download_speed_bytes_per_sec)}/s (连接: ${torrentStatus.peers_connected}/${torrentStatus.peers_total})`
 								: "0 B/s"}
 						</span>
 					</div>
@@ -353,7 +353,7 @@ export default function Player() {
 				</div>
 
 				{/* Stats Grid */}
-				<div className="grid grid-cols-3 gap-3">
+				<div className="grid grid-cols-4 gap-2.5">
 					<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
 						<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
 							已下载
@@ -370,6 +370,16 @@ export default function Player() {
 						</span>
 						<span className="text-sm font-semibold">
 							{torrentStatus ? formatBytes(torrentStatus.total_bytes) : "0 B"}
+						</span>
+					</div>
+					<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
+						<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+							同伴 (连接/发现)
+						</span>
+						<span className="text-sm font-semibold">
+							{torrentStatus
+								? `${torrentStatus.peers_connected} / ${torrentStatus.peers_total}`
+								: "0 / 0"}
 						</span>
 					</div>
 					<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">

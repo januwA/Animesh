@@ -23,6 +23,8 @@ pub struct TorrentStatusInfo {
     pub finished: bool,
     pub download_speed_bytes_per_sec: u64,
     pub paused: bool,
+    pub peers_connected: u32,
+    pub peers_total: u32,
 }
 
 pub fn format_hash(bytes: &[u8; 20]) -> String {

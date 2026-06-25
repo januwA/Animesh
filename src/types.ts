@@ -31,6 +31,8 @@ export interface TorrentStatusInfo {
 	finished: boolean;
 	download_speed_bytes_per_sec: number;
 	paused: boolean;
+	peers_connected: number;
+	peers_total: number;
 }
 
 export interface SubtitleTrackInfo {

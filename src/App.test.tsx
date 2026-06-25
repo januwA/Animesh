@@ -357,6 +357,9 @@ describe("App 组件", () => {
 			total_bytes: 1000000,
 			finished: false,
 			download_speed_bytes_per_sec: 25000,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		};
 
 		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
@@ -436,7 +439,9 @@ describe("App 组件", () => {
 
 		// 此时应该展示播放器和进度条等状态
 		expect(screen.getByText("下载进度: 40.00%")).toBeInTheDocument();
-		expect(screen.getByText("速度: 24.41 KB/s")).toBeInTheDocument();
+		expect(
+			screen.getByText("速度: 24.41 KB/s (连接: 0/0)"),
+		).toBeInTheDocument();
 		expect(screen.getByText("正在缓存...")).toBeInTheDocument();
 
 		// 推进以执行轮询定时器逻辑
@@ -704,6 +709,9 @@ describe("App 组件", () => {
 			total_bytes: 100,
 			finished: true, // 测试已完成状态分支
 			download_speed_bytes_per_sec: 0,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		};
 
 		vi.mocked(invoke).mockImplementation(async (cmd) => {
@@ -1075,6 +1083,8 @@ describe("App 组件", () => {
 				finished: false,
 				download_speed_bytes_per_sec: 100,
 				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
 			},
 			{
 				info_hash: "hash222",
@@ -1084,6 +1094,8 @@ describe("App 组件", () => {
 				finished: true,
 				download_speed_bytes_per_sec: 0,
 				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
 			},
 		];
 

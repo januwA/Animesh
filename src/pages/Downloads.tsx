@@ -226,6 +226,7 @@ export default function Downloads() {
 											<span className="flex items-center gap-1.5 text-muted-foreground">
 												<Activity className="h-3.5 w-3.5 text-emerald-400" />
 												网速: {formatBytes(t.download_speed_bytes_per_sec)}/s
+												(同伴: {t.peers_connected}/{t.peers_total})
 											</span>
 										</div>
 										<Progress value={progress} className="h-2" />

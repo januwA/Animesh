@@ -120,6 +120,8 @@ describe("Player 页面组件", () => {
 			finished: false,
 			download_speed_bytes_per_sec: 100,
 			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		};
 
 		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
@@ -142,7 +144,7 @@ describe("Player 页面组件", () => {
 		expect(screen.getByText("video_name.mp4")).toBeInTheDocument();
 		expect(screen.getByText("来自种子: test_title")).toBeInTheDocument();
 		expect(screen.getByText("下载进度: 40.00%")).toBeInTheDocument();
-		expect(screen.getByText("速度: 100 B/s")).toBeInTheDocument();
+		expect(screen.getByText("速度: 100 B/s (连接: 0/0)")).toBeInTheDocument();
 		expect(screen.getByText("正在缓存...")).toBeInTheDocument();
 		expect(screen.getByText("400 B")).toBeInTheDocument();
 		expect(screen.getByText("1000 B")).toBeInTheDocument();
@@ -155,6 +157,8 @@ describe("Player 页面组件", () => {
 			finished: true,
 			download_speed_bytes_per_sec: 0,
 			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		};
 		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
 			finishedStatus,
@@ -165,7 +169,9 @@ describe("Player 页面组件", () => {
 		});
 
 		expect(screen.getByText("下载进度: 100.00%")).toBeInTheDocument();
-		expect(screen.getByText("速度: 未知大小/s")).toBeInTheDocument();
+		expect(
+			screen.getByText("速度: 未知大小/s (连接: 0/0)"),
+		).toBeInTheDocument();
 		expect(screen.getByText("已完成")).toBeInTheDocument();
 
 		// Polling error (should not crash page)
@@ -221,6 +227,8 @@ describe("Player 页面组件", () => {
 			finished: false,
 			download_speed_bytes_per_sec: 0,
 			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		});
 
 		renderPlayer(
@@ -270,6 +278,8 @@ describe("Player 页面组件", () => {
 			finished: false,
 			download_speed_bytes_per_sec: 0,
 			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		});
 
 		// 1. Has magnet parameter
@@ -336,6 +346,8 @@ describe("Player 页面组件", () => {
 			finished: false,
 			download_speed_bytes_per_sec: 100,
 			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		};
 
 		const mockSubtracks = [
@@ -431,6 +443,8 @@ describe("Player 页面组件", () => {
 			finished: false,
 			download_speed_bytes_per_sec: 100,
 			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		};
 
 		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
@@ -461,6 +475,8 @@ describe("Player 页面组件", () => {
 			finished: false,
 			download_speed_bytes_per_sec: 100,
 			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
 		};
 
 		const mockSubtracks = [
