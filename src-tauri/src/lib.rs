@@ -4,6 +4,24 @@ use animesh_core::torrent_manager::TorrentManager;
 use std::sync::Arc;
 use tauri::Manager;
 
+pub fn trace_log(msg: &str) {
+    use std::io::Write;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let log_line = format!("[unix_time: {}] [TRACE] {}\n", now, msg);
+    print!("{}", log_line);
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(true)
+        .open("trace.log")
+    {
+        let _ = file.write_all(log_line.as_bytes());
+    }
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     animesh_core::greet(name)
@@ -24,12 +42,24 @@ async fn search_torrents(
     engine: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<Vec<animesh_core::crawler::SearchResultItem>, String> {
+    trace_log(&format!(
+        "Entering search_torrents command, keyword: {}, engine: {}",
+        keyword, engine
+    ));
     let proxy = manager.get_proxy();
-    match engine {
+    let res = match engine {
         "dmhy" => animesh_core::crawler::search_dmhy(keyword, proxy).await,
         "bangumi_moe" => animesh_core::crawler::search_bangumi_moe(keyword, proxy).await,
         _ => Err(format!("Unsupported search engine: {}", engine)),
+    };
+    match &res {
+        Ok(items) => trace_log(&format!(
+            "search_torrents completed successfully, found {} items",
+            items.len()
+        )),
+        Err(e) => trace_log(&format!("search_torrents failed with error: {}", e)),
     }
+    res
 }
 
 #[tauri::command]
@@ -37,7 +67,27 @@ async fn torrent_add_magnet(
     magnet: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<AddTorrentResult, String> {
-    manager.add_magnet(magnet).await.map_err(|e| e.to_string())
+    trace_log(&format!(
+        "Entering torrent_add_magnet command, magnet length: {}",
+        magnet.len()
+    ));
+    let clean_magnet = if magnet.len() > 60 {
+        format!("{}...{}", &magnet[0..40], &magnet[magnet.len() - 20..])
+    } else {
+        magnet.to_string()
+    };
+    trace_log(&format!("Processed magnet string: {}", clean_magnet));
+
+    let res = manager.add_magnet(magnet).await.map_err(|e| e.to_string());
+    match &res {
+        Ok(t) => trace_log(&format!(
+            "torrent_add_magnet succeeded, info_hash: {}, files count: {}",
+            t.info_hash,
+            t.files.len()
+        )),
+        Err(e) => trace_log(&format!("torrent_add_magnet failed with error: {}", e)),
+    }
+    res
 }
 
 #[tauri::command]

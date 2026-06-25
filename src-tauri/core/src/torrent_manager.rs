@@ -29,6 +29,24 @@ pub struct AppSettings {
     pub proxy: Option<String>,
 }
 
+fn trace_log(msg: &str) {
+    use std::io::Write;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let log_line = format!("[unix_time: {}] [CORE_TRACE] {}\n", now, msg);
+    print!("{}", log_line);
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(true)
+        .open("trace.log")
+    {
+        let _ = file.write_all(log_line.as_bytes());
+    }
+}
+
 impl TorrentManager {
     pub async fn new(
         download_dir: PathBuf,
@@ -192,21 +210,30 @@ impl TorrentManager {
         &self,
         magnet: &str,
     ) -> Result<AddTorrentResult, Box<dyn std::error::Error>> {
+        trace_log("add_magnet: Entering function");
         let output_folder = self.get_download_dir();
+        trace_log(&format!("add_magnet: output_folder is {}", output_folder));
+
         let options = librqbit::AddTorrentOptions {
             overwrite: true,
             output_folder: Some(output_folder),
             ..Default::default()
         };
+        trace_log("add_magnet: Option prepared, adding to session...");
+
         let response = self
             .session
             .add_torrent(AddTorrent::from_url(magnet), Some(options))
             .await?;
+        trace_log("add_magnet: Added to session successfully, resolving handle...");
+
         let handle = response
             .into_handle()
             .ok_or("Failed to get torrent handle")?;
+        trace_log("add_magnet: Got handle, waiting for metadata initialization...");
 
         // 等待种子解析出元数据，设置 20 秒超时防止无限死等
+        trace_log("add_magnet: Starting wait_until_initialized with 20s timeout...");
         tokio::time::timeout(
             std::time::Duration::from_secs(20),
             handle.wait_until_initialized(),
@@ -214,10 +241,16 @@ impl TorrentManager {
         .await
         .map_err(|_| "解析种子元数据超时，可能该种子目前没有在线的做种者")?
         .map_err(|e| format!("解析种子失败: {}", e))?;
+        trace_log("add_magnet: wait_until_initialized completed successfully!");
 
         let info_hash = format_hash(&handle.info_hash().0);
         let name = handle.name();
+        trace_log(&format!(
+            "add_magnet: info_hash is {}, name is {:?}",
+            info_hash, name
+        ));
 
+        trace_log("add_magnet: Enumerating files...");
         let files = handle.with_metadata(|meta| {
             meta.file_infos
                 .iter()
@@ -229,6 +262,10 @@ impl TorrentManager {
                 })
                 .collect::<Vec<_>>()
         })?;
+        trace_log(&format!(
+            "add_magnet: Enumerated {} files successfully",
+            files.len()
+        ));
 
         Ok(AddTorrentResult {
             info_hash,
