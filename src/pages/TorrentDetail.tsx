@@ -159,12 +159,12 @@ export default function TorrentDetail() {
 			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
 				<div className="space-y-1 flex-1 min-w-0">
 					<h2
-						className="text-xl font-bold truncate pr-4 text-foreground"
+						className="text-xl font-bold break-all pr-4 text-foreground"
 						title={torrent.name || "未命名种子"}
 					>
 						{torrent.name || "未命名种子"}
 					</h2>
-					<p className="text-xs text-muted-foreground font-mono truncate">
+					<p className="text-xs text-muted-foreground font-mono break-all">
 						Hash: {torrent.info_hash}
 					</p>
 				</div>
@@ -211,7 +211,7 @@ export default function TorrentDetail() {
 									<FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 flex-shrink-0" />
 									<div className="min-w-0">
 										<p
-											className="text-sm font-medium text-foreground truncate"
+											className="text-sm font-medium text-foreground break-all"
 											title={file.name}
 										>
 											{file.name}
