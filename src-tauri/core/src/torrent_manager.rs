@@ -39,7 +39,6 @@ fn trace_log(msg: &str) {
     print!("{}", log_line);
     if let Ok(mut file) = std::fs::OpenOptions::new()
         .create(true)
-        .write(true)
         .append(true)
         .open("trace.log")
     {

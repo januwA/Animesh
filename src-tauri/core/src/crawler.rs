@@ -133,7 +133,7 @@ fn parse_size_to_bytes(size_str: &str) -> Option<u64> {
     let mut num_str = String::new();
     let mut unit_str = String::new();
     for c in size_str.chars() {
-        if c.is_digit(10) || c == '.' {
+        if c.is_ascii_digit() || c == '.' {
             num_str.push(c);
         } else if c.is_alphabetic() {
             unit_str.push(c);

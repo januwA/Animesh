@@ -14,7 +14,6 @@ pub fn trace_log(msg: &str) {
     print!("{}", log_line);
     if let Ok(mut file) = std::fs::OpenOptions::new()
         .create(true)
-        .write(true)
         .append(true)
         .open("trace.log")
     {
@@ -139,7 +138,21 @@ fn torrent_get_subtitle_tracks(
         return Err("Video file not downloaded or doesn't exist yet".to_string());
     }
 
-    animesh_core::subtitles::extract_subtitle_tracks(&path)
+    let name_lower = file_details.name.to_lowercase();
+    if !name_lower.ends_with(".mkv") {
+        return Ok(Vec::new());
+    }
+
+    match animesh_core::subtitles::extract_subtitle_tracks(&path) {
+        Ok(tracks) => Ok(tracks),
+        Err(e) => {
+            println!(
+                "[Subtitle] Failed to extract tracks (possibly file is incomplete): {}",
+                e
+            );
+            Ok(Vec::new())
+        }
+    }
 }
 
 #[tauri::command]
