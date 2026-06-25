@@ -22,11 +22,6 @@ pub fn trace_log(msg: &str) {
 }
 
 #[tauri::command]
-fn greet(name: &str) -> String {
-    animesh_core::greet(name)
-}
-
-#[tauri::command]
 async fn search_dmhy(
     keyword: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
@@ -352,7 +347,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             search_dmhy,
             search_torrents,
             torrent_add_magnet,
