@@ -484,7 +484,7 @@ describe("App 组件", () => {
 		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
 
 		// 测试返回文件列表
-		const backBtn = screen.getByRole("button", { name: "⬅ 返回文件列表" });
+		const backBtn = screen.getByRole("button", { name: "返回文件列表" });
 		fireEvent.click(backBtn);
 		for (let i = 0; i < 2; i++) {
 			await act(async () => {

@@ -27,7 +27,17 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 vi.mock("@/components/ui/select", () => {
 	return {
-		Select: ({ children, value, onValueChange, disabled }: any) => (
+		Select: ({
+			children,
+			value,
+			onValueChange,
+			disabled,
+		}: {
+			children: React.ReactNode;
+			value?: string;
+			onValueChange: (v: string) => void;
+			disabled?: boolean;
+		}) => (
 			<select
 				value={value}
 				onChange={(e) => onValueChange(e.target.value)}
@@ -36,12 +46,20 @@ vi.mock("@/components/ui/select", () => {
 				{children}
 			</select>
 		),
-		SelectTrigger: ({ children }: any) => <span>{children}</span>,
-		SelectValue: () => null,
-		SelectContent: ({ children }: any) => <>{children}</>,
-		SelectItem: ({ children, value }: any) => (
-			<option value={value}>{children}</option>
+		SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+			<span>{children}</span>
 		),
+		SelectValue: () => null,
+		SelectContent: ({ children }: { children: React.ReactNode }) => (
+			<>{children}</>
+		),
+		SelectItem: ({
+			children,
+			value,
+		}: {
+			children: React.ReactNode;
+			value: string;
+		}) => <option value={value}>{children}</option>,
 	};
 });
 

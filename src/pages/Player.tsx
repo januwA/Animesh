@@ -202,15 +202,25 @@ export default function Player() {
 						来自种子: {title || "未命名种子"}
 					</p>
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={handleBackToFileList}
-					className="h-8 gap-1 text-muted-foreground hover:text-foreground self-start md:self-auto"
-				>
-					<ArrowLeft className="h-4 w-4" />
-					返回文件列表
-				</Button>
+				<div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={handleCopyStreamUrl}
+						className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+					>
+						📋 复制视频流地址
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={handleBackToFileList}
+						className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+					>
+						<ArrowLeft className="h-4 w-4" />
+						返回文件列表
+					</Button>
+				</div>
 			</div>
 
 			{isUnsupportedFormat && (
@@ -374,26 +384,6 @@ export default function Player() {
 								: "连接中..."}
 						</span>
 					</div>
-				</div>
-
-				{/* Actions */}
-				<div className="flex justify-end gap-3 pt-2">
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={handleCopyStreamUrl}
-						className="gap-1.5 h-9 font-medium"
-					>
-						📋 复制视频流地址
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleBackToFileList}
-						className="gap-1.5 h-9 font-medium"
-					>
-						⬅ 返回文件列表
-					</Button>
 				</div>
 			</div>
 		</div>
