@@ -19,6 +19,12 @@ export default function Player() {
 	const magnet = searchParams.get("magnet") || "";
 	const title = searchParams.get("title") || "";
 	const fileName = searchParams.get("fileName") || "正在播放";
+	const isUnsupportedFormat =
+		fileName.toLowerCase().endsWith(".mkv") ||
+		fileName.toLowerCase().includes("mkv") ||
+		fileName.toLowerCase().includes("hevc") ||
+		fileName.toLowerCase().includes("h265") ||
+		fileName.toLowerCase().includes("h.265");
 
 	const { torrentRepository } = useDI();
 	const { showToast } = useAppContext();
@@ -206,6 +212,30 @@ export default function Player() {
 					返回文件列表
 				</Button>
 			</div>
+
+			{isUnsupportedFormat && (
+				<Alert className="bg-amber-500/5 border-amber-500/20 text-amber-200/90 py-3.5 flex items-start gap-3">
+					<Info className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
+					<div className="flex-1 min-w-0">
+						<AlertTitle className="text-sm font-semibold mb-1">
+							当前视频格式在内置播放器中可能无法播放
+						</AlertTitle>
+						<AlertDescription className="text-xs leading-relaxed text-amber-200/70">
+							当前播放的文件格式为 <strong>MKV / HEVC(H.265)</strong>。出于
+							WebView
+							内核安全和硬解码限制，内置播放器经常会出现黑屏、转圈或仅有声音。如果您无法播放，建议点击右侧按钮复制地址，使用外部播放器播放：
+						</AlertDescription>
+					</div>
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={handleCopyStreamUrl}
+						className="h-8 text-xs font-semibold px-3 flex-shrink-0 self-center"
+					>
+						📋 复制视频流地址
+					</Button>
+				</Alert>
+			)}
 
 			{/* Player Video aspect-ratio */}
 			<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black shadow-inner flex items-center justify-center">
