@@ -246,6 +246,8 @@ mod tests {
         assert_eq!(parse_size_to_bytes("100 KB"), Some(100 * 1024));
         assert_eq!(parse_size_to_bytes(" 500 B "), Some(500));
         assert_eq!(parse_size_to_bytes(""), None);
+        assert_eq!(parse_size_to_bytes("100 B"), Some(100));
+        assert_eq!(parse_size_to_bytes("100 XYZ"), Some(100));
     }
 
     #[test]
@@ -313,6 +315,51 @@ mod tests {
         let result = parse_dmhy_rss(invalid_xml);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Failed to deserialize"));
+    }
+
+    #[test]
+    fn test_parse_bangumi_moe_json_missing_magnet() {
+        let mock_json = r#"{
+            "torrents": [
+                {
+                    "_id": "6a38a56aa9616b2639aa281d",
+                    "title": "测试视频",
+                    "publish_time": "2026-06-22T03:00:58.506Z",
+                    "magnet": null,
+                    "infoHash": "9e7a29997087a067e5e0b6fa50653288bd2aabff",
+                    "size": "500 MB"
+                },
+                {
+                    "_id": "6a38a56aa9616b2639aa281e",
+                    "title": "测试视频2",
+                    "publish_time": "2026-06-22T03:00:58.506Z",
+                    "magnet": null,
+                    "infoHash": null,
+                    "size": null
+                }
+            ]
+        }"#;
+
+        let results = parse_bangumi_moe_json(mock_json).unwrap();
+        assert_eq!(results.len(), 2);
+        assert!(results[0]
+            .magnet
+            .contains("magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff"));
+        assert!(results[1].magnet.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_search_dmhy_invalid_proxy() {
+        let result = search_dmhy("凡人", Some("://bad".to_string())).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid proxy"));
+    }
+
+    #[tokio::test]
+    async fn test_search_bangumi_moe_invalid_proxy() {
+        let result = search_bangumi_moe("凡人", Some("://bad".to_string())).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid proxy"));
     }
 
     #[tokio::test]
