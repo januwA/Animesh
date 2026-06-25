@@ -206,8 +206,14 @@ impl TorrentManager {
             .into_handle()
             .ok_or("Failed to get torrent handle")?;
 
-        // 等待种子解析出元数据
-        handle.wait_until_initialized().await?;
+        // 等待种子解析出元数据，设置 20 秒超时防止无限死等
+        tokio::time::timeout(
+            std::time::Duration::from_secs(20),
+            handle.wait_until_initialized(),
+        )
+        .await
+        .map_err(|_| "解析种子元数据超时，可能该种子目前没有在线的做种者")?
+        .map_err(|e| format!("解析种子失败: {}", e))?;
 
         let info_hash = format_hash(&handle.info_hash().0);
         let name = handle.name();
