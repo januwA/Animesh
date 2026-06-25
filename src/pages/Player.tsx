@@ -376,22 +376,6 @@ export default function Player() {
 					</div>
 				</div>
 
-				{/* Notice */}
-				<Alert className="bg-amber-500/5 border-amber-500/20 text-amber-200/90 py-3.5 flex items-start gap-3">
-					<Info className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
-					<div>
-						<AlertTitle className="text-xs font-semibold mb-1">
-							播放提示：
-						</AlertTitle>
-						<AlertDescription className="text-xs leading-relaxed text-amber-200/70">
-							Tauri 内置网页浏览器支持直接播放主流 <strong>MP4 (H.264)</strong>{" "}
-							格式。 如果视频无法加载（如 MKV、HEVC/H.265
-							等格式），您可以复制下方流地址，在 VLC、PotPlayer
-							等外部播放器中直接打开播放：
-						</AlertDescription>
-					</div>
-				</Alert>
-
 				{/* Actions */}
 				<div className="flex justify-end gap-3 pt-2">
 					<Button
