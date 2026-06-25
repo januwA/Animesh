@@ -77,12 +77,7 @@ describe("Home 页面组件", () => {
 
 	beforeEach(() => {
 		mockTorrentRepository = {
-			search: vi
-				.fn()
-				.mockImplementation((keyword, _engine) =>
-					mockTorrentRepository.searchDmhy(keyword),
-				),
-			searchDmhy: vi.fn(),
+			search: vi.fn(),
 			addTorrentMagnet: vi.fn(),
 			getTorrentFiles: vi.fn(),
 			listTorrents: vi.fn(),
@@ -152,14 +147,14 @@ describe("Home 页面组件", () => {
 				size: 350000000,
 			},
 		];
-		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
 		renderHome("/?keyword=凡人");
 
 		await waitFor(() => {
 			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
 		});
-		expect(mockTorrentRepository.searchDmhy).toHaveBeenCalledWith("凡人");
+		expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "dmhy");
 	});
 
 	it("当输入关键词并搜索成功时，应该显示结果", async () => {
@@ -173,7 +168,7 @@ describe("Home 页面组件", () => {
 			},
 		];
 
-		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
 		renderHome();
 
@@ -193,11 +188,11 @@ describe("Home 页面组件", () => {
 		expect(document.querySelector(".results-count")?.textContent?.trim()).toBe(
 			"找到 1 个资源",
 		);
-		expect(mockTorrentRepository.searchDmhy).toHaveBeenCalledWith("凡人");
+		expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "dmhy");
 	});
 
 	it("当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
-		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(
 			null as unknown as SearchResultItem[],
 		);
 
@@ -227,13 +222,11 @@ describe("Home 页面组件", () => {
 		fireEvent.change(input, { target: { value: "   " } });
 		fireEvent.click(button);
 
-		expect(mockTorrentRepository.searchDmhy).not.toHaveBeenCalled();
+		expect(mockTorrentRepository.search).not.toHaveBeenCalled();
 	});
 
 	it("当搜索失败时，应该显示错误提示", async () => {
-		vi.mocked(mockTorrentRepository.searchDmhy).mockRejectedValue(
-			"网络请求超时",
-		);
+		vi.mocked(mockTorrentRepository.search).mockRejectedValue("网络请求超时");
 
 		renderHome();
 
@@ -249,7 +242,7 @@ describe("Home 页面组件", () => {
 	});
 
 	it("当搜索抛出非字符串错误时，应该显示默认错误提示", async () => {
-		vi.mocked(mockTorrentRepository.searchDmhy).mockRejectedValueOnce(
+		vi.mocked(mockTorrentRepository.search).mockRejectedValueOnce(
 			new Error("Internal Server Error"),
 		);
 
@@ -278,7 +271,7 @@ describe("Home 页面组件", () => {
 				size: 350000000,
 			},
 		];
-		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
 		renderHome();
 
@@ -317,7 +310,7 @@ describe("Home 页面组件", () => {
 				size: 350000000,
 			},
 		];
-		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 		vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(
 			new Error("Permission denied"),
 		);
@@ -355,7 +348,7 @@ describe("Home 页面组件", () => {
 				size: 350000000,
 			},
 		];
-		vi.mocked(mockTorrentRepository.searchDmhy).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
 		renderHome();
 
@@ -388,9 +381,7 @@ describe("Home 页面组件", () => {
 	});
 
 	it("当挂载时从 URL 读取 keyword 触发的搜索失败（字符串错误）时，应该显示错误提示", async () => {
-		vi.mocked(mockTorrentRepository.searchDmhy).mockRejectedValue(
-			"网络请求超时",
-		);
+		vi.mocked(mockTorrentRepository.search).mockRejectedValue("网络请求超时");
 
 		renderHome("/?keyword=凡人");
 
@@ -400,7 +391,7 @@ describe("Home 页面组件", () => {
 	});
 
 	it("当挂载时从 URL 读取 keyword 触发的搜索失败（非字符串错误）时，应该显示默认错误提示", async () => {
-		vi.mocked(mockTorrentRepository.searchDmhy).mockRejectedValue(
+		vi.mocked(mockTorrentRepository.search).mockRejectedValue(
 			new Error("error"),
 		);
 

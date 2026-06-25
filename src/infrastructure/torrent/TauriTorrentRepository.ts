@@ -13,10 +13,6 @@ export class TauriTorrentRepository implements TorrentRepository {
 		return invoke<SearchResultItem[]>("search_torrents", { keyword, engine });
 	}
 
-	async searchDmhy(keyword: string): Promise<SearchResultItem[]> {
-		return this.search(keyword, "dmhy");
-	}
-
 	async listTorrents(): Promise<TorrentStatusInfo[]> {
 		return invoke<TorrentStatusInfo[]>("torrent_list");
 	}

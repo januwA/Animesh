@@ -31,7 +31,6 @@ describe("Settings 页面组件", () => {
 		mockContainer = createDIContainer({
 			torrentRepository: {
 				search: vi.fn(),
-				searchDmhy: vi.fn(),
 				addTorrentMagnet: vi.fn(),
 				getTorrentFiles: vi.fn(),
 				listTorrents: vi.fn(),

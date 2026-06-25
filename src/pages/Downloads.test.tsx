@@ -29,7 +29,6 @@ describe("Downloads 页面组件", () => {
 	beforeEach(() => {
 		mockTorrentRepository = {
 			search: vi.fn(),
-			searchDmhy: vi.fn(),
 			addTorrentMagnet: vi.fn(),
 			getTorrentFiles: vi.fn(),
 			listTorrents: vi.fn(),

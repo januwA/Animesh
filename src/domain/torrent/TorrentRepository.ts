@@ -8,7 +8,6 @@ import type {
 
 export interface TorrentRepository {
 	search(keyword: string, engine: string): Promise<SearchResultItem[]>;
-	searchDmhy(keyword: string): Promise<SearchResultItem[]>;
 	listTorrents(): Promise<TorrentStatusInfo[]>;
 	pauseTorrent(infoHash: string): Promise<void>;
 	resumeTorrent(infoHash: string): Promise<void>;
