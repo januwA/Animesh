@@ -435,6 +435,7 @@ describe("Player 页面组件", () => {
 	});
 
 	it("当获取字幕轨道列表失败时，应该优雅处理并打印错误", async () => {
+		vi.useFakeTimers();
 		const mockStatus = {
 			info_hash: "hash123",
 			name: "测试视频",
@@ -461,9 +462,18 @@ describe("Player 页面组件", () => {
 			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
 		);
 
-		await waitFor(() => {
-			expect(screen.queryByText("字幕轨道:")).not.toBeInTheDocument();
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
 		});
+
+		expect(screen.queryByText("字幕轨道:")).not.toBeInTheDocument();
+
+		// Trigger the interval and wait for the polling catch block to execute
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1500);
+		});
+
+		vi.useRealTimers();
 	});
 
 	it("当获取字幕VTT失败时，应该显示错误Toast提示", async () => {
@@ -510,5 +520,58 @@ describe("Player 页面组件", () => {
 		await waitFor(() => {
 			expect(screen.getByText("加载字幕失败，请重试")).toBeInTheDocument();
 		});
+	});
+
+	it("在初始加载失败后，应该在轮询中成功加载字幕轨道", async () => {
+		vi.useFakeTimers();
+		const mockStatus = {
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		};
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
+
+		// First call fails, second call (polling) succeeds
+		const mockSubtracks = [
+			{ id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+		];
+		vi.mocked(mockTorrentRepository.getSubtitleTracks)
+			.mockRejectedValueOnce(new Error("First try fails"))
+			.mockResolvedValueOnce(mockSubtracks);
+
+		renderPlayer(
+			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
+		);
+
+		// Flush initialization microtasks
+		await act(async () => {
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+
+		expect(screen.queryByText("字幕轨道:")).not.toBeInTheDocument();
+
+		// Advance timers to trigger the polling which will succeed
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1500);
+		});
+
+		// Verify the subtitle tracks are now loaded and displayed
+		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
+		expect(screen.getByText("English [ENG]")).toBeInTheDocument();
+
+		vi.useRealTimers();
 	});
 });

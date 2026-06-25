@@ -119,12 +119,11 @@ fn torrent_get_files(
 }
 
 #[tauri::command]
-fn torrent_get_subtitle_tracks(
+async fn torrent_get_subtitle_tracks(
     info_hash: &str,
     file_id: usize,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<Vec<animesh_core::subtitles::SubtitleTrackInfo>, String> {
-    let download_dir = manager.get_download_dir();
     let files = manager
         .get_torrent_files(info_hash)
         .ok_or_else(|| "Torrent not found".to_string())?;
@@ -132,51 +131,88 @@ fn torrent_get_subtitle_tracks(
         .iter()
         .find(|f| f.id == file_id)
         .ok_or_else(|| "File not found".to_string())?;
-
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err("Video file not downloaded or doesn't exist yet".to_string());
-    }
 
     let name_lower = file_details.name.to_lowercase();
     if !name_lower.ends_with(".mkv") {
         return Ok(Vec::new());
     }
 
-    match animesh_core::subtitles::extract_subtitle_tracks(&path) {
-        Ok(tracks) => Ok(tracks),
-        Err(e) => {
+    let torrent = manager
+        .session
+        .with_torrents(|iter| {
+            for (_, torrent) in iter {
+                let hex = animesh_core::torrent::format_hash(&torrent.info_hash().0);
+                if hex.eq_ignore_ascii_case(info_hash) {
+                    return Some(torrent.clone());
+                }
+            }
+            None
+        })
+        .ok_or_else(|| "Torrent not found".to_string())?;
+
+    let stream = torrent
+        .stream(file_id)
+        .map_err(|e| format!("Failed to open torrent stream: {}", e))?;
+    let sync_reader = animesh_core::subtitles::SyncReader::new(stream);
+
+    match tokio::task::spawn_blocking(move || {
+        animesh_core::subtitles::extract_subtitle_tracks_from_reader(sync_reader)
+    })
+    .await
+    {
+        Ok(Ok(tracks)) => Ok(tracks),
+        Ok(Err(e)) => {
             println!(
                 "[Subtitle] Failed to extract tracks (possibly file is incomplete): {}",
                 e
             );
             Ok(Vec::new())
         }
+        Err(e) => Err(format!("Task spawn error: {}", e)),
     }
 }
 
 #[tauri::command]
-fn torrent_get_subtitle_vtt(
+async fn torrent_get_subtitle_vtt(
     info_hash: &str,
     file_id: usize,
     track_id: u64,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<String, String> {
-    let download_dir = manager.get_download_dir();
     let files = manager
         .get_torrent_files(info_hash)
         .ok_or_else(|| "Torrent not found".to_string())?;
-    let file_details = files
+    let _file_details = files
         .iter()
         .find(|f| f.id == file_id)
         .ok_or_else(|| "File not found".to_string())?;
 
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err("Video file not downloaded or doesn't exist yet".to_string());
-    }
+    let torrent = manager
+        .session
+        .with_torrents(|iter| {
+            for (_, torrent) in iter {
+                let hex = animesh_core::torrent::format_hash(&torrent.info_hash().0);
+                if hex.eq_ignore_ascii_case(info_hash) {
+                    return Some(torrent.clone());
+                }
+            }
+            None
+        })
+        .ok_or_else(|| "Torrent not found".to_string())?;
 
-    animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
+    let stream = torrent
+        .stream(file_id)
+        .map_err(|e| format!("Failed to open torrent stream: {}", e))?;
+    let sync_reader = animesh_core::subtitles::SyncReader::new(stream);
+
+    match tokio::task::spawn_blocking(move || {
+        animesh_core::subtitles::extract_subtitle_vtt_from_reader(sync_reader, track_id)
+    })
+    .await
+    {
+        Ok(result) => result,
+        Err(e) => Err(format!("Task spawn error: {}", e)),
+    }
 }
 
 #[tauri::command]

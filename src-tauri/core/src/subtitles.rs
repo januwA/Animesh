@@ -1,7 +1,9 @@
 use matroska_demuxer::{MatroskaFile, TrackType};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
+use tokio::runtime::Handle;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SubtitleTrackInfo {
@@ -9,6 +11,38 @@ pub struct SubtitleTrackInfo {
     pub language: String,
     pub title: String,
     pub codec: String,
+}
+
+pub struct SyncReader<S> {
+    stream: S,
+    handle: Handle,
+}
+
+impl<S> SyncReader<S> {
+    pub fn new(stream: S) -> Self {
+        Self {
+            stream,
+            handle: Handle::current(),
+        }
+    }
+}
+
+impl<S: tokio::io::AsyncRead + Unpin> Read for SyncReader<S> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.handle.block_on(async {
+            use tokio::io::AsyncReadExt;
+            self.stream.read(buf).await
+        })
+    }
+}
+
+impl<S: tokio::io::AsyncSeek + Unpin> Seek for SyncReader<S> {
+    fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+        self.handle.block_on(async {
+            use tokio::io::AsyncSeekExt;
+            self.stream.seek(pos).await
+        })
+    }
 }
 
 fn strip_ass_tags(text: &str) -> String {
@@ -34,9 +68,10 @@ fn format_vtt_time(ms: u64) -> String {
     format!("{:02}:{:02}:{:02}.{:03}", hours, minutes, seconds, millis)
 }
 
-pub fn extract_subtitle_tracks(path: &Path) -> Result<Vec<SubtitleTrackInfo>, String> {
-    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
-    let mkv = MatroskaFile::open(file).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+pub fn extract_subtitle_tracks_from_reader<R: Read + Seek>(
+    reader: R,
+) -> Result<Vec<SubtitleTrackInfo>, String> {
+    let mkv = MatroskaFile::open(reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
 
     let mut tracks = Vec::new();
     for track in mkv.tracks() {
@@ -57,9 +92,17 @@ pub fn extract_subtitle_tracks(path: &Path) -> Result<Vec<SubtitleTrackInfo>, St
     Ok(tracks)
 }
 
-pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> Result<String, String> {
+pub fn extract_subtitle_tracks(path: &Path) -> Result<Vec<SubtitleTrackInfo>, String> {
     let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
-    let mut mkv = MatroskaFile::open(file).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+    extract_subtitle_tracks_from_reader(file)
+}
+
+pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
+    reader: R,
+    track_id: u64,
+) -> Result<String, String> {
+    let mut mkv =
+        MatroskaFile::open(reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
 
     // Find the track to verify codec
     let track = mkv
@@ -115,6 +158,11 @@ pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> Result<String, String
     }
 
     Ok(vtt)
+}
+
+pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> Result<String, String> {
+    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
+    extract_subtitle_vtt_from_reader(file, track_id)
 }
 
 #[cfg(test)]
