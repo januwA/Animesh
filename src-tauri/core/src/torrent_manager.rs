@@ -35,7 +35,13 @@ impl TorrentManager {
         settings_path: PathBuf,
         proxy: Option<String>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let session = Session::new(download_dir.clone()).await?;
+        #[allow(unused_mut)]
+        let mut opts = librqbit::SessionOptions::default();
+        #[cfg(test)]
+        {
+            opts.disable_dht = true;
+        }
+        let session = Session::new_with_opts(download_dir.clone(), opts).await?;
 
         // 启动 Axum 服务器并监听随机空闲端口
         let listener = TcpListener::bind("127.0.0.1:0").await?;
