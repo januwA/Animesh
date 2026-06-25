@@ -4,7 +4,8 @@ import { vi } from "vitest";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import type { DIContainer } from "../di/DIContext";
-import { createDIContainerForTest, DIProvider } from "../di/DIContext";
+import { DIProvider } from "../di/DIContext";
+import { createDIContainerForTest } from "../test/test-utils";
 import type { BangumiCalendarDay } from "../types";
 import CalendarPage from "./Calendar";
 

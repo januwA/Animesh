@@ -2,7 +2,8 @@ import { act, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import { AppContextProvider } from "../context/AppContext";
-import { createDIContainerForTest, DIProvider } from "../di/DIContext";
+import { DIProvider } from "../di/DIContext";
+import { createDIContainerForTest } from "../test/test-utils";
 import Layout from "./Layout";
 
 describe("Layout 布局组件", () => {

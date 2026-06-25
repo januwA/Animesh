@@ -10,8 +10,9 @@ import { vi } from "vitest";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import type { DIContainer } from "../di/DIContext";
-import { createDIContainerForTest, DIProvider } from "../di/DIContext";
+import { DIProvider } from "../di/DIContext";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
+import { createDIContainerForTest } from "../test/test-utils";
 import Player from "./Player";
 
 // Mock clipboard API
