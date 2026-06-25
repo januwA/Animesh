@@ -10,3 +10,10 @@ globalThis.fetch = vi.fn().mockImplementation(() =>
 		}),
 	),
 );
+
+// Mock @tauri-apps/plugin-notification globally
+vi.mock("@tauri-apps/plugin-notification", () => ({
+	isPermissionGranted: vi.fn().mockResolvedValue(true),
+	requestPermission: vi.fn().mockResolvedValue("granted"),
+	sendNotification: vi.fn(),
+}));

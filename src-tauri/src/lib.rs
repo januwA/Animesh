@@ -307,11 +307,12 @@ pub fn run() {
             .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
             .unwrap_or_else(|| "unknown location".to_string());
         let backtrace = std::backtrace::Backtrace::capture();
-        let log_content = format!(
+        log::error!(
             "Panic occurred at {}:\n{}\nBacktrace:\n{:?}",
-            location, msg, backtrace
+            location,
+            msg,
+            backtrace
         );
-        std::fs::write("panic_log.txt", log_content).ok();
     }));
 
     tauri::Builder::default()

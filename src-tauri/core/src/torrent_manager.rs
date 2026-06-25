@@ -30,20 +30,7 @@ pub struct AppSettings {
 }
 
 fn trace_log(msg: &str) {
-    use std::io::Write;
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    let log_line = format!("[unix_time: {}] [CORE_TRACE] {}\n", now, msg);
-    print!("{}", log_line);
-    if let Ok(mut file) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("trace.log")
-    {
-        let _ = file.write_all(log_line.as_bytes());
-    }
+    log::info!("[CORE_TRACE] {}", msg);
 }
 
 impl TorrentManager {

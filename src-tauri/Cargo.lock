@@ -98,6 +98,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "librqbit",
+ "log",
  "matroska-demuxer",
  "quick-xml 0.37.5",
  "reqwest 0.12.28",
