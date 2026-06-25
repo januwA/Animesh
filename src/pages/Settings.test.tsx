@@ -4,7 +4,7 @@ import { vi } from "vitest";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import type { DIContainer } from "../di/DIContext";
-import { createDIContainer, DIProvider } from "../di/DIContext";
+import { createDIContainerForTest, DIProvider } from "../di/DIContext";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
 import Settings from "./Settings";
 
@@ -28,7 +28,7 @@ describe("Settings 页面组件", () => {
 			selectDirectory: vi.fn(),
 		};
 
-		mockContainer = createDIContainer({
+		mockContainer = createDIContainerForTest({
 			torrentRepository: {
 				search: vi.fn(),
 				addTorrentMagnet: vi.fn(),

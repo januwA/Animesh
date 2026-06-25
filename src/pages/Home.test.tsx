@@ -10,7 +10,7 @@ import { vi } from "vitest";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import type { DIContainer } from "../di/DIContext";
-import { createDIContainer, DIProvider } from "../di/DIContext";
+import { createDIContainerForTest, DIProvider } from "../di/DIContext";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import type { SearchResultItem } from "../types";
 import Home from "./Home";
@@ -90,7 +90,7 @@ describe("Home 页面组件", () => {
 			getSubtitleVtt: vi.fn(),
 		};
 
-		mockContainer = createDIContainer({
+		mockContainer = createDIContainerForTest({
 			torrentRepository: mockTorrentRepository,
 			settingsRepository: {
 				getSettings: vi.fn(),

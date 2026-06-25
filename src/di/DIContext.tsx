@@ -55,9 +55,38 @@ export interface CreateContainerParams {
 	torrentRepository: TorrentRepository;
 	settingsRepository: SettingsRepository;
 	bangumiRepository: BangumiRepository;
+	notificationRepository: NotificationRepository;
+
+	notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
+	searchTorrentsUseCase: SearchTorrentsUseCase;
+	listTorrentsUseCase: ListTorrentsUseCase;
+	pauseTorrentUseCase: PauseTorrentUseCase;
+	resumeTorrentUseCase: ResumeTorrentUseCase;
+	deleteTorrentUseCase: DeleteTorrentUseCase;
+	addTorrentMagnetUseCase: AddTorrentMagnetUseCase;
+	getTorrentFilesUseCase: GetTorrentFilesUseCase;
+	getTorrentStatusUseCase: GetTorrentStatusUseCase;
+	getTorrentStreamUrlUseCase: GetTorrentStreamUrlUseCase;
+	getSubtitleTracksUseCase: GetSubtitleTracksUseCase;
+	getSubtitleVttUseCase: GetSubtitleVttUseCase;
+
+	getSettingsUseCase: GetSettingsUseCase;
+	saveSettingsUseCase: SaveSettingsUseCase;
+	selectDirectoryUseCase: SelectDirectoryUseCase;
+
+	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
+}
+
+export function createDIContainer(params: CreateContainerParams): DIContainer {
+	return { ...params };
+}
+
+export interface CreateContainerParamsForTest {
+	torrentRepository?: TorrentRepository;
+	settingsRepository?: SettingsRepository;
+	bangumiRepository?: BangumiRepository;
 	notificationRepository?: NotificationRepository;
 
-	// Optional UseCases for testing
 	notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
 	searchTorrentsUseCase?: SearchTorrentsUseCase;
 	listTorrentsUseCase?: ListTorrentsUseCase;
@@ -78,10 +107,45 @@ export interface CreateContainerParams {
 	getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
 }
 
-export function createDIContainer(params: CreateContainerParams): DIContainer {
-	const torrentRepo = params.torrentRepository;
+export function createDIContainerForTest(
+	params: CreateContainerParamsForTest,
+): DIContainer {
+	const torrentRepo =
+		params.torrentRepository ||
+		({
+			search: async () => [],
+			listTorrents: async () => [],
+			pauseTorrent: async () => {},
+			resumeTorrent: async () => {},
+			deleteTorrent: async () => {},
+			addTorrentMagnet: async () => ({ info_hash: "", name: "", files: [] }),
+			getTorrentFiles: async () => [],
+			getTorrentStreamUrl: async () => "",
+			getTorrentStatus: async () => ({}) as any,
+			getSubtitleTracks: async () => [],
+			getSubtitleVtt: async () => "",
+		} as TorrentRepository);
+
+	const settingsRepo =
+		params.settingsRepository ||
+		({
+			getSettings: async () => ({ download_dir: "" }),
+			setDownloadDir: async () => {},
+			selectDirectory: async () => null,
+		} as SettingsRepository);
+
+	const bangumiRepo =
+		params.bangumiRepository ||
+		({
+			getCalendar: async () => [],
+		} as BangumiRepository);
+
 	const notificationRepo =
-		params.notificationRepository || new TauriNotificationRepository();
+		params.notificationRepository ||
+		({
+			requestPermission: async () => "denied",
+			sendNotification: async () => {},
+		} as NotificationRepository);
 
 	const notifyUseCase =
 		params.notifyDownloadCompletionUseCase ||
@@ -113,23 +177,20 @@ export function createDIContainer(params: CreateContainerParams): DIContainer {
 		params.getSubtitleVttUseCase || new GetSubtitleVttUseCase(torrentRepo);
 
 	const getSettingsUseCase =
-		params.getSettingsUseCase ||
-		new GetSettingsUseCase(params.settingsRepository);
+		params.getSettingsUseCase || new GetSettingsUseCase(settingsRepo);
 	const saveSettingsUseCase =
-		params.saveSettingsUseCase ||
-		new SaveSettingsUseCase(params.settingsRepository);
+		params.saveSettingsUseCase || new SaveSettingsUseCase(settingsRepo);
 	const selectDirectoryUseCase =
-		params.selectDirectoryUseCase ||
-		new SelectDirectoryUseCase(params.settingsRepository);
+		params.selectDirectoryUseCase || new SelectDirectoryUseCase(settingsRepo);
 
 	const getBangumiCalendarUseCase =
 		params.getBangumiCalendarUseCase ||
-		new GetBangumiCalendarUseCase(params.bangumiRepository);
+		new GetBangumiCalendarUseCase(bangumiRepo);
 
 	return {
 		torrentRepository: torrentRepo,
-		settingsRepository: params.settingsRepository,
-		bangumiRepository: params.bangumiRepository,
+		settingsRepository: settingsRepo,
+		bangumiRepository: bangumiRepo,
 		notificationRepository: notificationRepo,
 
 		notifyDownloadCompletionUseCase: notifyUseCase,

@@ -2,7 +2,7 @@ import { act, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import { AppContextProvider } from "../context/AppContext";
-import { createDIContainer, DIProvider } from "../di/DIContext";
+import { createDIContainerForTest, DIProvider } from "../di/DIContext";
 import Layout from "./Layout";
 
 describe("Layout 布局组件", () => {
@@ -23,7 +23,7 @@ describe("Layout 布局组件", () => {
 	});
 
 	const renderLayout = () => {
-		const mockContainer = createDIContainer({
+		const mockContainer = createDIContainerForTest({
 			torrentRepository: {
 				search: vi.fn(),
 				addTorrentMagnet: vi.fn(),
