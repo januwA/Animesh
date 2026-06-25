@@ -44,6 +44,7 @@ async fn search_torrents(
     let res = match engine {
         "dmhy" => animesh_core::crawler::search_dmhy(keyword, proxy).await,
         "bangumi_moe" => animesh_core::crawler::search_bangumi_moe(keyword, proxy).await,
+        "mikan" => animesh_core::crawler::search_mikan(keyword, proxy).await,
         _ => Err(format!("Unsupported search engine: {}", engine)),
     };
     match &res {

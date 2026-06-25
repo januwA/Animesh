@@ -445,4 +445,37 @@ describe("Home 页面组件", () => {
 			expect(screen.getByText("萌番组资源 1")).toBeInTheDocument();
 		});
 	});
+
+	it("应该支持切换到蜜柑计划搜索引擎并触发对应的搜索逻辑", async () => {
+		const mockResults = [
+			{
+				title: "蜜柑计划资源 1",
+				link: "https://mikanani.me/Home/Episode/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TESTMIKAN",
+				size: 600000000,
+			},
+		];
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+		renderHome();
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+
+		const select = screen.getByRole("combobox");
+		fireEvent.change(select, { target: { value: "mikan" } });
+
+		fireEvent.submit(input);
+
+		await waitFor(() => {
+			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+				"凡人",
+				"mikan",
+			);
+			expect(screen.getByText("蜜柑计划资源 1")).toBeInTheDocument();
+		});
+	});
 });
