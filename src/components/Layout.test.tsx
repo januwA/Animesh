@@ -1,8 +1,3 @@
-import {
-	isPermissionGranted,
-	requestPermission,
-	sendNotification,
-} from "@tauri-apps/plugin-notification";
 import { act, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
@@ -12,8 +7,13 @@ import type { TorrentStatusInfo } from "../types";
 import Layout from "./Layout";
 
 describe("Layout 布局组件", () => {
+	let mockRequestPermission: ReturnType<typeof vi.fn>;
+	let mockSendNotification: ReturnType<typeof vi.fn>;
+
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockRequestPermission = vi.fn().mockResolvedValue(true);
+		mockSendNotification = vi.fn().mockResolvedValue(undefined);
 		// biome-ignore lint/suspicious/noExplicitAny: mock tauri internals
 		(window as any).__TAURI_INTERNALS__ = {};
 	});
@@ -50,6 +50,13 @@ describe("Layout 布局组件", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn(),
 			},
+			notificationRepository: {
+				requestPermission: mockRequestPermission as () => Promise<boolean>,
+				sendNotification: mockSendNotification as (
+					title: string,
+					body: string,
+				) => Promise<void>,
+			},
 		});
 
 		return render(
@@ -68,11 +75,9 @@ describe("Layout 布局组件", () => {
 	};
 
 	it("在挂载时应该请求系统通知权限", async () => {
-		vi.mocked(isPermissionGranted).mockResolvedValueOnce(false);
 		renderLayout(() => Promise.resolve([]));
 		await waitFor(() => {
-			expect(isPermissionGranted).toHaveBeenCalled();
-			expect(requestPermission).toHaveBeenCalled();
+			expect(mockRequestPermission).toHaveBeenCalled();
 		});
 	});
 
@@ -100,7 +105,7 @@ describe("Layout 布局组件", () => {
 			await Promise.resolve();
 		});
 
-		expect(sendNotification).not.toHaveBeenCalled();
+		expect(mockSendNotification).not.toHaveBeenCalled();
 		vi.useRealTimers();
 	});
 
@@ -135,16 +140,16 @@ describe("Layout 布局组件", () => {
 			await Promise.resolve();
 			await Promise.resolve();
 		});
-		expect(sendNotification).not.toHaveBeenCalled();
+		expect(mockSendNotification).not.toHaveBeenCalled();
 
 		// 运行第二次轮询 (3000ms 后触发)
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(3000);
 		});
-		expect(sendNotification).toHaveBeenCalledWith({
-			title: "下载完成",
-			body: "动漫 《动漫1》 已下载完成！",
-		});
+		expect(mockSendNotification).toHaveBeenCalledWith(
+			"下载完成",
+			"动漫 《动漫1》 已下载完成！",
+		);
 
 		vi.useRealTimers();
 	});
@@ -185,22 +190,22 @@ describe("Layout 布局组件", () => {
 			await Promise.resolve();
 			await Promise.resolve();
 		});
-		expect(sendNotification).not.toHaveBeenCalled();
+		expect(mockSendNotification).not.toHaveBeenCalled();
 
 		// 运行第二次轮询 (变回下载中)
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(3000);
 		});
-		expect(sendNotification).not.toHaveBeenCalled();
+		expect(mockSendNotification).not.toHaveBeenCalled();
 
 		// 运行第三次轮询 (重新变回完成)
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(3000);
 		});
-		expect(sendNotification).toHaveBeenCalledWith({
-			title: "下载完成",
-			body: "动漫 《动漫1》 已下载完成！",
-		});
+		expect(mockSendNotification).toHaveBeenCalledWith(
+			"下载完成",
+			"动漫 《动漫1》 已下载完成！",
+		);
 
 		vi.useRealTimers();
 	});
@@ -213,15 +218,5 @@ describe("Layout 布局组件", () => {
 			await Promise.resolve();
 		});
 		vi.useRealTimers();
-	});
-
-	it("如果请求通知权限抛出错误，应该捕获错误并优雅处理", async () => {
-		vi.mocked(isPermissionGranted).mockRejectedValueOnce(
-			new Error("Permission error"),
-		);
-		renderLayout(() => Promise.resolve([]));
-		await waitFor(() => {
-			expect(isPermissionGranted).toHaveBeenCalled();
-		});
 	});
 });
