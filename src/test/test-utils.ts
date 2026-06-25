@@ -83,7 +83,7 @@ export function createDIContainerForTest(
 	const notificationRepo =
 		params.notificationRepository ||
 		({
-			requestPermission: async () => "denied",
+			requestPermission: async () => false,
 			sendNotification: async () => {},
 		} as NotificationRepository);
 
