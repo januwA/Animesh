@@ -159,16 +159,23 @@ pub fn parse_bangumi_moe_json(json_data: &str) -> Result<Vec<SearchResultItem>, 
     let results = res
         .torrents
         .into_iter()
-        .map(|item| SearchResultItem {
-            title: item.title,
-            link: format!("https://bangumi.moe/torrent/{}", item.id),
-            pub_date: item.publish_time,
-            magnet: item.magnet.unwrap_or_else(|| {
+        .map(|item| {
+            let mut magnet = item.magnet.unwrap_or_else(|| {
                 item.info_hash
+                    .as_ref()
                     .map(|h| format!("magnet:?xt=urn:btih:{}", h))
                     .unwrap_or_default()
-            }),
-            size: item.size.as_deref().and_then(parse_size_to_bytes),
+            });
+            if !magnet.is_empty() {
+                magnet.push_str("&tr=http://tr.bangumi.moe:6969/announce&tr=udp://tr.bangumi.moe:6969/announce&tr=https://tr.bangumi.moe:9696/announce");
+            }
+            SearchResultItem {
+                title: item.title,
+                link: format!("https://bangumi.moe/torrent/{}", item.id),
+                pub_date: item.publish_time,
+                magnet,
+                size: item.size.as_deref().and_then(parse_size_to_bytes),
+            }
         })
         .collect();
 
@@ -267,7 +274,7 @@ mod tests {
         assert_eq!(item.pub_date, "2026-06-22T03:00:58.506Z");
         assert_eq!(
             item.magnet,
-            "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff"
+            "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff&tr=http://tr.bangumi.moe:6969/announce&tr=udp://tr.bangumi.moe:6969/announce&tr=https://tr.bangumi.moe:9696/announce"
         );
         assert_eq!(item.size, Some((557.33 * 1024.0 * 1024.0) as u64));
     }
