@@ -270,11 +270,22 @@ fn settings_set_proxy(
 }
 
 #[tauri::command]
-async fn select_directory() -> Result<Option<String>, String> {
-    let path = tauri::async_runtime::spawn_blocking(|| {
-        rfd::FileDialog::new()
-            .pick_folder()
-            .map(|p| p.to_string_lossy().to_string())
+async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = tauri::async_runtime::spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+        app.dialog()
+            .file()
+            .blocking_pick_folder()
+            .and_then(|file_path| match file_path {
+                tauri_plugin_dialog::FilePath::Path(p) => Some(p.to_string_lossy().to_string()),
+                tauri_plugin_dialog::FilePath::Url(u) => {
+                    if let Ok(p) = u.to_file_path() {
+                        Some(p.to_string_lossy().to_string())
+                    } else {
+                        Some(u.to_string())
+                    }
+                }
+            })
     })
     .await
     .map_err(|e| e.to_string())?;
@@ -304,6 +315,7 @@ pub fn run() {
     }));
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_data_dir = app
