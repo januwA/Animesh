@@ -26,6 +26,13 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import type { SearchResultItem, ToastMessage } from "../types";
 import { formatBytes, formatLocalDate } from "../utils";
 
@@ -95,12 +102,16 @@ interface SearchFormProps {
 	setKeyword: (val: string) => void;
 	loading: boolean;
 	onSubmit: (e: FormEvent) => void;
+	searchEngine: string;
+	setSearchEngine: (val: string) => void;
 }
 export function SearchForm({
 	keyword,
 	setKeyword,
 	loading,
 	onSubmit,
+	searchEngine,
+	setSearchEngine,
 }: SearchFormProps) {
 	return (
 		<section className="max-w-2xl mx-auto w-full mb-8">
@@ -108,10 +119,26 @@ export function SearchForm({
 				onSubmit={onSubmit}
 				className="relative flex items-center bg-card/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg p-1 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"
 			>
-				<Search className="absolute left-4 h-5 w-5 text-muted-foreground" />
+				<div className="flex items-center pl-3 gap-1">
+					<Search className="h-5 w-5 text-muted-foreground shrink-0" />
+					<Select
+						value={searchEngine}
+						onValueChange={setSearchEngine}
+						disabled={loading}
+					>
+						<SelectTrigger className="h-8 border-0 bg-transparent py-0 px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-1">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="dmhy">动漫花园</SelectItem>
+							<SelectItem value="bangumi_moe">萌番组</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+				<div className="h-5 w-[1px] bg-white/10 self-center" />
 				<Input
 					id="search-input"
-					className="pl-12 pr-28 py-6 bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
+					className="flex-1 pl-3 pr-28 py-6 bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
 					value={keyword}
 					onChange={(e) => setKeyword(e.target.value)}
 					placeholder="输入动漫名称，例如：凡人修仙传..."
@@ -137,12 +164,13 @@ export function SearchForm({
 }
 
 // 搜索加载指示器
-export function SearchLoading() {
+export function SearchLoading({ engine }: { engine?: string }) {
+	const engineName = engine === "bangumi_moe" ? "萌番组" : "动漫花园";
 	return (
 		<div className="flex flex-col items-center justify-center py-20 space-y-4">
 			<Loader2 className="h-10 w-10 text-primary animate-spin" />
 			<p className="text-sm text-muted-foreground font-medium">
-				正在获取 动漫花园 资源列表...
+				正在获取 {engineName} 资源列表...
 			</p>
 		</div>
 	);

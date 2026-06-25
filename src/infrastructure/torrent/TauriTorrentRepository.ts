@@ -9,8 +9,12 @@ import type {
 } from "../../types";
 
 export class TauriTorrentRepository implements TorrentRepository {
+	async search(keyword: string, engine: string): Promise<SearchResultItem[]> {
+		return invoke<SearchResultItem[]>("search_torrents", { keyword, engine });
+	}
+
 	async searchDmhy(keyword: string): Promise<SearchResultItem[]> {
-		return invoke<SearchResultItem[]>("search_dmhy", { keyword });
+		return this.search(keyword, "dmhy");
 	}
 
 	async listTorrents(): Promise<TorrentStatusInfo[]> {

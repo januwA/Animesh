@@ -7,6 +7,7 @@ import type {
 } from "../../types";
 
 export interface TorrentRepository {
+	search(keyword: string, engine: string): Promise<SearchResultItem[]>;
 	searchDmhy(keyword: string): Promise<SearchResultItem[]>;
 	listTorrents(): Promise<TorrentStatusInfo[]>;
 	pauseTorrent(infoHash: string): Promise<void>;

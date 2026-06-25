@@ -27,6 +27,8 @@ export default function Home() {
 		hasSearched,
 		setHasSearched,
 		showToast,
+		searchEngine,
+		setSearchEngine,
 	} = useAppContext();
 
 	const keywordParam = searchParams.get("keyword");
@@ -42,7 +44,7 @@ export default function Home() {
 				setSearchParams({}, { replace: true });
 
 				torrentRepository
-					.searchDmhy(query)
+					.search(query, searchEngine)
 					.then((data) => {
 						setResults(data || []);
 					})
@@ -67,6 +69,7 @@ export default function Home() {
 		setResults,
 		torrentRepository,
 		setSearchParams,
+		searchEngine,
 	]);
 
 	async function handleSearch(e: FormEvent) {
@@ -78,7 +81,7 @@ export default function Home() {
 		setHasSearched(true);
 
 		try {
-			const data = await torrentRepository.searchDmhy(keyword.trim());
+			const data = await torrentRepository.search(keyword.trim(), searchEngine);
 			setResults(data || []);
 		} catch (err: unknown) {
 			console.error("Search failed:", err);
@@ -113,10 +116,12 @@ export default function Home() {
 				setKeyword={setKeyword}
 				loading={loading}
 				onSubmit={handleSearch}
+				searchEngine={searchEngine}
+				setSearchEngine={setSearchEngine}
 			/>
 
 			{/* 加载提示 */}
-			{loading && <SearchLoading />}
+			{loading && <SearchLoading engine={searchEngine} />}
 
 			{/* 错误显示 */}
 			{error && <ErrorBanner message={error} />}

@@ -125,7 +125,7 @@ describe("App 组件", () => {
 		};
 
 		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
-			if (cmd === "search_dmhy") {
+			if (cmd === "search_dmhy" || cmd === "search_torrents") {
 				return mockResults;
 			}
 			if (cmd === "torrent_add_magnet") {
@@ -159,7 +159,10 @@ describe("App 组件", () => {
 			);
 		});
 
-		expect(invoke).toHaveBeenCalledWith("search_dmhy", { keyword: "凡人" });
+		expect(invoke).toHaveBeenCalledWith("search_torrents", {
+			keyword: "凡人",
+			engine: "dmhy",
+		});
 
 		// 检查资源渲染
 		expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
@@ -357,7 +360,8 @@ describe("App 组件", () => {
 		};
 
 		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
-			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "search_dmhy" || cmd === "search_torrents")
+				return mockResults;
 			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
 			if (cmd === "torrent_get_stream_url") {
 				return "http://127.0.0.1:12345/stream/3a2a3e0f438a2e1d74381395bb0e6840742fef8e/0";
@@ -520,7 +524,8 @@ describe("App 组件", () => {
 		};
 
 		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
-			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "search_dmhy" || cmd === "search_torrents")
+				return mockResults;
 			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
 			if (cmd === "torrent_get_stream_url") {
 				throw "Stream server port not initialized";
@@ -566,7 +571,7 @@ describe("App 组件", () => {
 
 	it("当解析种子失败时，应该显示解析失败的 Toast 提示", async () => {
 		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy") {
+			if (cmd === "search_dmhy" || cmd === "search_torrents") {
 				return [
 					{
 						title: "凡人修仙传 第1集",
@@ -632,7 +637,7 @@ describe("App 组件", () => {
 
 	it("当解析种子抛出非字符串错误时，应该显示默认解析错误提示", async () => {
 		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy") {
+			if (cmd === "search_dmhy" || cmd === "search_torrents") {
 				return [
 					{
 						title: "凡人修仙传 第1集",
@@ -702,7 +707,8 @@ describe("App 组件", () => {
 		};
 
 		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "search_dmhy" || cmd === "search_torrents")
+				return mockResults;
 			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
 			if (cmd === "torrent_get_stream_url") return "stream_url";
 			if (cmd === "torrent_get_status") return mockStatus;
@@ -811,7 +817,8 @@ describe("App 组件", () => {
 		};
 
 		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "search_dmhy" || cmd === "search_torrents")
+				return mockResults;
 			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
 			return null;
 		});
@@ -916,7 +923,8 @@ describe("App 组件", () => {
 		};
 
 		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "search_dmhy" || cmd === "search_torrents")
+				return mockResults;
 			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
 			return null;
 		});
@@ -987,7 +995,8 @@ describe("App 组件", () => {
 			},
 		];
 		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy") return mockResults;
+			if (cmd === "search_dmhy" || cmd === "search_torrents")
+				return mockResults;
 			if (cmd === "torrent_add_magnet") {
 				return new Promise(() => {}); // never resolves
 			}

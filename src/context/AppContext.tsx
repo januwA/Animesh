@@ -15,6 +15,8 @@ interface AppContextType {
 	toasts: ToastMessage[];
 	showToast: (text: string, duration?: number) => void;
 	removeToast: (id: number) => void;
+	searchEngine: string;
+	setSearchEngine: (val: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -30,6 +32,7 @@ export function AppContextProvider({
 	const [error, setError] = useState<string | null>(null);
 	const [hasSearched, setHasSearched] = useState(false);
 	const [toasts, setToasts] = useState<ToastMessage[]>([]);
+	const [searchEngine, setSearchEngine] = useState("dmhy");
 
 	const showToast = useCallback((text: string, duration = 3000) => {
 		const id = Date.now() + Math.random();
@@ -59,6 +62,8 @@ export function AppContextProvider({
 				toasts,
 				showToast,
 				removeToast,
+				searchEngine,
+				setSearchEngine,
 			}}
 		>
 			{children}

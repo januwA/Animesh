@@ -23,6 +23,28 @@ Object.defineProperty(navigator, "clipboard", {
 	writable: true,
 });
 
+window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
+vi.mock("@/components/ui/select", () => {
+	return {
+		Select: ({ children, value, onValueChange, disabled }: any) => (
+			<select
+				value={value}
+				onChange={(e) => onValueChange(e.target.value)}
+				disabled={disabled}
+			>
+				{children}
+			</select>
+		),
+		SelectTrigger: ({ children }: any) => <span>{children}</span>,
+		SelectValue: () => null,
+		SelectContent: ({ children }: any) => <>{children}</>,
+		SelectItem: ({ children, value }: any) => (
+			<option value={value}>{children}</option>
+		),
+	};
+});
+
 const currentLocation = {
 	current: null as { pathname: string; search: string } | null,
 };
@@ -37,6 +59,11 @@ describe("Home 页面组件", () => {
 
 	beforeEach(() => {
 		mockTorrentRepository = {
+			search: vi
+				.fn()
+				.mockImplementation((keyword, _engine) =>
+					mockTorrentRepository.searchDmhy(keyword),
+				),
 			searchDmhy: vi.fn(),
 			addTorrentMagnet: vi.fn(),
 			getTorrentFiles: vi.fn(),
@@ -365,6 +392,39 @@ describe("Home 页面组件", () => {
 			expect(
 				screen.getByText("搜索失败，请检查网络或重试"),
 			).toBeInTheDocument();
+		});
+	});
+
+	it("当选择萌番组搜索引擎并搜索时，应该使用相应的搜索引擎", async () => {
+		const mockResults = [
+			{
+				title: "萌番组资源 1",
+				link: "https://bangumi.moe/torrent/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TESTBM",
+				size: 500000000,
+			},
+		];
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+		renderHome();
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+
+		const select = screen.getByRole("combobox");
+		fireEvent.change(select, { target: { value: "bangumi_moe" } });
+
+		fireEvent.submit(input);
+
+		await waitFor(() => {
+			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+				"凡人",
+				"bangumi_moe",
+			);
+			expect(screen.getByText("萌番组资源 1")).toBeInTheDocument();
 		});
 	});
 });

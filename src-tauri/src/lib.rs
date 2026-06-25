@@ -19,6 +19,20 @@ async fn search_dmhy(
 }
 
 #[tauri::command]
+async fn search_torrents(
+    keyword: &str,
+    engine: &str,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<Vec<animesh_core::crawler::SearchResultItem>, String> {
+    let proxy = manager.get_proxy();
+    match engine {
+        "dmhy" => animesh_core::crawler::search_dmhy(keyword, proxy).await,
+        "bangumi_moe" => animesh_core::crawler::search_bangumi_moe(keyword, proxy).await,
+        _ => Err(format!("Unsupported search engine: {}", engine)),
+    }
+}
+
+#[tauri::command]
 async fn torrent_add_magnet(
     magnet: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
@@ -233,6 +247,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             search_dmhy,
+            search_torrents,
             torrent_add_magnet,
             torrent_get_status,
             torrent_get_stream_url,
