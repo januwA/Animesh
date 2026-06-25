@@ -102,6 +102,7 @@ export default function Player() {
 		}
 
 		let isMounted = true;
+		let loadedTracks = false;
 		const parsedFileId = parseInt(fileId, 10);
 
 		const initializePlayback = async () => {
@@ -128,8 +129,9 @@ export default function Player() {
 						infoHash,
 						parsedFileId,
 					);
-					if (isMounted) {
-						setSubtracks(tracks || []);
+					if (isMounted && tracks && tracks.length > 0) {
+						setSubtracks(tracks);
+						loadedTracks = true;
 					}
 				} catch (err: unknown) {
 					console.error("Failed to load subtitle tracks:", err);
@@ -141,6 +143,25 @@ export default function Player() {
 						const status = await torrentRepository.getTorrentStatus(infoHash);
 						if (isMounted) {
 							setTorrentStatus(status);
+						}
+
+						// If subtitle tracks haven't been loaded yet, try to load them as download progresses
+						if (isMounted && !loadedTracks) {
+							try {
+								const tracks = await torrentRepository.getSubtitleTracks(
+									infoHash,
+									parsedFileId,
+								);
+								if (tracks && tracks.length > 0) {
+									setSubtracks(tracks);
+									loadedTracks = true;
+								}
+							} catch (err) {
+								console.error(
+									"Failed to load subtitle tracks during polling:",
+									err,
+								);
+							}
 						}
 					} catch (err: unknown) {
 						console.error("Failed to fetch torrent status:", err);
