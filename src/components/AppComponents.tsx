@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { SearchResultItem, ToastMessage } from "../types";
-import { formatBytes } from "../utils";
+import { formatBytes, formatLocalDate } from "../utils";
 
 // 页面头部组件
 export function AppHeader() {
@@ -228,7 +228,7 @@ export function SearchResultCard({
 			<CardContent className="px-5 pb-4 pt-0 flex flex-wrap gap-4 text-xs text-muted-foreground items-center">
 				<div className="flex items-center gap-1.5">
 					<Clock className="h-3.5 w-3.5" />
-					<span>{item.pub_date}</span>
+					<span>{formatLocalDate(item.pub_date)}</span>
 				</div>
 				<div className="flex items-center gap-1.5">
 					<HardDrive className="h-3.5 w-3.5" />
