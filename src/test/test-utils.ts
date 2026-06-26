@@ -71,6 +71,7 @@ export function createDIContainerForTest(
 		({
 			getSettings: async () => ({ download_dir: "" }),
 			setDownloadDir: async () => {},
+			setProxy: async () => {},
 			selectDirectory: async () => null,
 		} as SettingsRepository);
 

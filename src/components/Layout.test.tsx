@@ -43,6 +43,7 @@ describe("Layout 布局组件", () => {
 					.fn()
 					.mockResolvedValue({ download_dir: "", proxy: null }),
 				setDownloadDir: vi.fn(),
+				setProxy: vi.fn(),
 				selectDirectory: vi.fn(),
 			},
 			bangumiRepository: {

@@ -5,8 +5,6 @@ export class SaveSettingsUseCase {
 
 	async execute(downloadDir: string, proxy: string | null): Promise<void> {
 		await this.settingsRepository.setDownloadDir(downloadDir);
-		if (this.settingsRepository.setProxy) {
-			await this.settingsRepository.setProxy(proxy);
-		}
+		await this.settingsRepository.setProxy(proxy);
 	}
 }

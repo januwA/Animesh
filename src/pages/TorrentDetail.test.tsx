@@ -49,6 +49,7 @@ describe("TorrentDetail 页面组件", () => {
 			settingsRepository: {
 				getSettings: vi.fn(),
 				setDownloadDir: vi.fn(),
+				setProxy: vi.fn(),
 				selectDirectory: vi.fn(),
 			},
 			bangumiRepository: {
