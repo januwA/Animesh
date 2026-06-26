@@ -319,6 +319,10 @@ pub fn run() {
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
+                .filter(|metadata| {
+                    let target = metadata.target();
+                    !target.starts_with("librqbit") && !target.starts_with("tracing")
+                })
                 .build(),
         )
         .plugin(tauri_plugin_notification::init())
