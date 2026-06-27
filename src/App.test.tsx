@@ -14,8 +14,12 @@ import {
 	Routes,
 } from "react-router-dom";
 import { vi } from "vitest";
-import OriginalApp, { routes } from "./App";
+import OriginalApp from "./App";
 import { AppContextProvider, useAppContext } from "./context/AppContext";
+import { createDefaultDIContainer, DIProvider } from "./di/DIContext";
+import { routes } from "./routes";
+
+const defaultDIContainer = createDefaultDIContainer();
 
 // Wrap App for testing compatibility to automatically inject a memory router
 const App = (props: Partial<Parameters<typeof OriginalApp>[0]>) => {
@@ -24,12 +28,15 @@ const App = (props: Partial<Parameters<typeof OriginalApp>[0]>) => {
 		createMemoryRouter(routes, {
 			initialEntries: [window.location.hash.replace(/^#/, "") || "/"],
 		});
-	return <OriginalApp {...props} router={router} />;
+	return (
+		<OriginalApp
+			diContainer={props.diContainer || defaultDIContainer}
+			router={router}
+			{...props}
+		/>
+	);
 };
 
-import { createDefaultDIContainer, DIProvider } from "./di/DIContext";
-
-const defaultDIContainer = createDefaultDIContainer();
 const renderWithDI = (ui: React.ReactElement) =>
 	render(<DIProvider value={defaultDIContainer}>{ui}</DIProvider>);
 
