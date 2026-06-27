@@ -27,6 +27,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Changelog
+        id: changelog
+        shell: bash
+        run: |
+          # 获取最近的 tag，如果不存在则使用首个 commit
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Generating changelog since $PREV_TAG"
+          
+          # 提取提交记录，避免哈希，只保留信息
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          git log $PREV_TAG..HEAD --pretty=format:"* %s" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -64,7 +80,12 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'Animesh v__VERSION__'
-          releaseBody: 'See the assets below to download and install.'
+          releaseBody: |
+            ### Update Log / 更新日志
+            ${{ env.CHANGELOG }}
+            
+            ---
+            See the assets below to download and install.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
