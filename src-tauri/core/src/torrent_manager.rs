@@ -1,5 +1,6 @@
 use crate::domain::crawler::CrawlerRepository;
-use crate::torrent::{format_hash, parse_range, AddTorrentResult, FileDetails, TorrentStatusInfo};
+use crate::domain::torrent::TorrentRepository;
+use crate::torrent::{parse_range, AddTorrentResult, FileDetails, TorrentStatusInfo};
 use axum::{
     body::Body,
     extract::{Path, State},
@@ -8,7 +9,6 @@ use axum::{
     routing::get,
     Router,
 };
-use librqbit::{AddTorrent, ManagedTorrent, Session};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -17,7 +17,7 @@ use tokio::net::TcpListener;
 use tokio_util::io::ReaderStream;
 
 pub struct TorrentManager {
-    pub session: Arc<Session>,
+    pub torrent_repo: Arc<dyn TorrentRepository>,
     pub port: u16,
     pub download_dir: Arc<std::sync::RwLock<PathBuf>>,
     pub proxy: Arc<std::sync::RwLock<Option<String>>>,
@@ -29,10 +29,6 @@ pub struct TorrentManager {
 pub struct AppSettings {
     pub download_dir: String,
     pub proxy: Option<String>,
-}
-
-fn trace_log(msg: &str) {
-    log::info!("[CORE_TRACE] {}", msg);
 }
 
 impl TorrentManager {
@@ -47,7 +43,22 @@ impl TorrentManager {
         {
             opts.disable_dht = true;
         }
-        let session = Session::new_with_opts(download_dir.clone(), opts).await?;
+        let session = librqbit::Session::new_with_opts(download_dir.clone(), opts).await?;
+
+        let download_dir_lock = Arc::new(std::sync::RwLock::new(download_dir.clone()));
+        let proxy_lock = Arc::new(std::sync::RwLock::new(proxy));
+
+        let download_dir_fn = {
+            let dl = download_dir_lock.clone();
+            Arc::new(move || dl.read().unwrap().to_string_lossy().to_string())
+        };
+
+        let torrent_repo = Arc::new(
+            crate::infrastructure::rqbit_torrent::RqbitTorrentRepository::new(
+                session,
+                download_dir_fn,
+            ),
+        );
 
         // 启动 Axum 服务器并监听随机空闲端口
         let listener = TcpListener::bind("127.0.0.1:0").await?;
@@ -55,7 +66,7 @@ impl TorrentManager {
 
         let app = Router::new()
             .route("/stream/:info_hash/:file_id", get(stream_handler))
-            .with_state(session.clone());
+            .with_state(torrent_repo.clone());
 
         tokio::spawn(async move {
             axum::serve(listener, app).await.unwrap();
@@ -66,10 +77,10 @@ impl TorrentManager {
             Arc::new(crate::infrastructure::http_crawler::HttpCrawlerRepository::new(client));
 
         Ok(Self {
-            session,
+            torrent_repo,
             port,
-            download_dir: Arc::new(std::sync::RwLock::new(download_dir)),
-            proxy: Arc::new(std::sync::RwLock::new(proxy)),
+            download_dir: download_dir_lock,
+            proxy: proxy_lock,
             settings_path,
             crawler_repo,
         })
@@ -142,192 +153,38 @@ impl TorrentManager {
         Ok(())
     }
 
-    pub async fn pause_torrent(
-        &self,
-        info_hash_hex: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let torrent = self
-            .find_torrent_by_hex(info_hash_hex)
-            .ok_or_else(|| "Torrent not found".to_string())?;
-        self.session.pause(&torrent).await?;
-        Ok(())
+    pub async fn pause_torrent(&self, info_hash_hex: &str) -> Result<(), String> {
+        self.torrent_repo.pause_torrent(info_hash_hex).await
     }
 
-    pub async fn resume_torrent(
-        &self,
-        info_hash_hex: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let torrent = self
-            .find_torrent_by_hex(info_hash_hex)
-            .ok_or_else(|| "Torrent not found".to_string())?;
-        self.session.unpause(&torrent).await?;
-        Ok(())
+    pub async fn resume_torrent(&self, info_hash_hex: &str) -> Result<(), String> {
+        self.torrent_repo.resume_torrent(info_hash_hex).await
     }
 
     pub async fn delete_torrent(
         &self,
         info_hash_hex: &str,
         delete_files: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        use librqbit::api::TorrentIdOrHash;
-        let id = TorrentIdOrHash::try_from(info_hash_hex)?;
-        self.session.delete(id, delete_files).await?;
-        Ok(())
+    ) -> Result<(), String> {
+        self.torrent_repo
+            .delete_torrent(info_hash_hex, delete_files)
+            .await
     }
 
     pub fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
-        self.session.with_torrents(|iter| {
-            iter.map(|(_, torrent)| {
-                let stats = torrent.stats();
-                let speed = stats
-                    .live
-                    .as_ref()
-                    .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
-                    .unwrap_or(0);
-                let (peers_connected, peers_total) = stats
-                    .live
-                    .as_ref()
-                    .map(|l| {
-                        (
-                            l.snapshot.peer_stats.live as u32,
-                            l.snapshot.peer_stats.seen as u32,
-                        )
-                    })
-                    .unwrap_or((0, 0));
-                let hex = format_hash(&torrent.info_hash().0);
-                TorrentStatusInfo {
-                    info_hash: hex,
-                    name: torrent.name(),
-                    progress_bytes: stats.progress_bytes,
-                    total_bytes: stats.total_bytes,
-                    finished: stats.finished,
-                    download_speed_bytes_per_sec: speed,
-                    paused: torrent.is_paused(),
-                    peers_connected,
-                    peers_total,
-                }
-            })
-            .collect()
-        })
+        self.torrent_repo.list_torrents()
     }
 
-    pub async fn add_magnet(
-        &self,
-        magnet: &str,
-    ) -> Result<AddTorrentResult, Box<dyn std::error::Error>> {
-        trace_log("add_magnet: Entering function");
-        let output_folder = self.get_download_dir();
-        trace_log(&format!("add_magnet: output_folder is {}", output_folder));
-
-        let options = librqbit::AddTorrentOptions {
-            overwrite: true,
-            output_folder: Some(output_folder),
-            ..Default::default()
-        };
-        trace_log("add_magnet: Option prepared, adding to session...");
-
-        let response = self
-            .session
-            .add_torrent(AddTorrent::from_url(magnet), Some(options))
-            .await?;
-        trace_log("add_magnet: Added to session successfully, resolving handle...");
-
-        let handle = response
-            .into_handle()
-            .ok_or("Failed to get torrent handle")?;
-        trace_log("add_magnet: Got handle, waiting for metadata initialization...");
-
-        // 等待种子解析出元数据，设置 20 秒超时防止无限死等
-        trace_log("add_magnet: Starting wait_until_initialized with 20s timeout...");
-        tokio::time::timeout(
-            std::time::Duration::from_secs(20),
-            handle.wait_until_initialized(),
-        )
-        .await
-        .map_err(|_| "解析种子元数据超时，可能该种子目前没有在线的做种者")?
-        .map_err(|e| format!("解析种子失败: {}", e))?;
-        trace_log("add_magnet: wait_until_initialized completed successfully!");
-
-        let info_hash = format_hash(&handle.info_hash().0);
-        let name = handle.name();
-        trace_log(&format!(
-            "add_magnet: info_hash is {}, name is {:?}",
-            info_hash, name
-        ));
-
-        trace_log("add_magnet: Enumerating files...");
-        let files = handle.with_metadata(|meta| {
-            meta.file_infos
-                .iter()
-                .enumerate()
-                .map(|(id, fi)| FileDetails {
-                    id,
-                    name: fi.relative_filename.to_string_lossy().to_string(),
-                    len: fi.len,
-                })
-                .collect::<Vec<_>>()
-        })?;
-        trace_log(&format!(
-            "add_magnet: Enumerated {} files successfully",
-            files.len()
-        ));
-
-        Ok(AddTorrentResult {
-            info_hash,
-            name,
-            files,
-        })
+    pub async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, String> {
+        self.torrent_repo.add_magnet(magnet).await
     }
 
     pub fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
-        let torrent = self.find_torrent_by_hex(info_hash_hex)?;
-        let stats = torrent.stats();
-
-        let speed = stats
-            .live
-            .as_ref()
-            .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
-            .unwrap_or(0);
-
-        let (peers_connected, peers_total) = stats
-            .live
-            .as_ref()
-            .map(|l| {
-                (
-                    l.snapshot.peer_stats.live as u32,
-                    l.snapshot.peer_stats.seen as u32,
-                )
-            })
-            .unwrap_or((0, 0));
-
-        Some(TorrentStatusInfo {
-            info_hash: info_hash_hex.to_string(),
-            name: torrent.name(),
-            progress_bytes: stats.progress_bytes,
-            total_bytes: stats.total_bytes,
-            finished: stats.finished,
-            download_speed_bytes_per_sec: speed,
-            paused: torrent.is_paused(),
-            peers_connected,
-            peers_total,
-        })
+        self.torrent_repo.get_torrent_status(info_hash_hex)
     }
 
     pub fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
-        let torrent = self.find_torrent_by_hex(info_hash_hex)?;
-        torrent
-            .with_metadata(|meta| {
-                meta.file_infos
-                    .iter()
-                    .enumerate()
-                    .map(|(id, fi)| FileDetails {
-                        id,
-                        name: fi.relative_filename.to_string_lossy().to_string(),
-                        len: fi.len,
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .ok()
+        self.torrent_repo.get_torrent_files(info_hash_hex)
     }
 
     pub fn get_stream_url(&self, info_hash_hex: &str, file_id: usize) -> String {
@@ -336,41 +193,22 @@ impl TorrentManager {
             self.port, info_hash_hex, file_id
         )
     }
-
-    fn find_torrent_by_hex(&self, hex_hash: &str) -> Option<Arc<ManagedTorrent>> {
-        self.session.with_torrents(|iter| {
-            for (_, torrent) in iter {
-                let hex = format_hash(&torrent.info_hash().0);
-                if hex.eq_ignore_ascii_case(hex_hash) {
-                    return Some(torrent.clone());
-                }
-            }
-            None
-        })
-    }
 }
 
 async fn stream_handler(
     Path((info_hash_hex, file_id)): Path<(String, usize)>,
-    State(session): State<Arc<Session>>,
+    State(torrent_repo): State<Arc<dyn TorrentRepository>>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let torrent = session
-        .with_torrents(|iter| {
-            for (_, torrent) in iter {
-                let hex = format_hash(&torrent.info_hash().0);
-                if hex.eq_ignore_ascii_case(&info_hash_hex) {
-                    return Some(torrent.clone());
-                }
-            }
-            None
-        })
+    let files = torrent_repo
+        .get_torrent_files(&info_hash_hex)
         .ok_or(StatusCode::NOT_FOUND)?;
+    let file_details = files.get(file_id).ok_or(StatusCode::NOT_FOUND)?;
+    let file_len = file_details.len;
 
-    let stream = torrent
-        .stream(file_id)
+    let stream = torrent_repo
+        .get_file_reader(&info_hash_hex, file_id)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let file_len = stream.len();
 
     let range_header = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
 
@@ -413,7 +251,6 @@ async fn stream_handler(
         let mut headers = HeaderMap::new();
         headers.insert(header::CONTENT_TYPE, "video/mp4".parse().unwrap());
         headers.insert(header::CONTENT_LENGTH, file_len.into());
-        headers.insert(header::ACCEPT_RANGES, "bytes".parse().unwrap());
 
         (StatusCode::OK, headers, Body::from_stream(body_stream)).into_response()
     };
@@ -462,14 +299,10 @@ mod tests {
         let status = manager.get_torrent_status(test_hash);
         assert!(status.is_none());
 
-        // 测试 find_torrent_by_hex
-        let torrent = manager.find_torrent_by_hex(test_hash);
-        assert!(torrent.is_none());
-
         // 测试 HTTP 流式播放接口_未找到种子
         let app = Router::new()
             .route("/stream/:info_hash/:file_id", get(stream_handler))
-            .with_state(manager.session.clone());
+            .with_state(manager.torrent_repo.clone());
 
         use axum::http::Request;
         use tower::ServiceExt;

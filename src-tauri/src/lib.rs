@@ -126,21 +126,9 @@ async fn torrent_get_subtitle_tracks(
         return Ok(Vec::new());
     }
 
-    let torrent = manager
-        .session
-        .with_torrents(|iter| {
-            for (_, torrent) in iter {
-                let hex = animesh_core::torrent::format_hash(&torrent.info_hash().0);
-                if hex.eq_ignore_ascii_case(info_hash) {
-                    return Some(torrent.clone());
-                }
-            }
-            None
-        })
-        .ok_or_else(|| "Torrent not found".to_string())?;
-
-    let stream = torrent
-        .stream(file_id)
+    let stream = manager
+        .torrent_repo
+        .get_file_reader(info_hash, file_id)
         .map_err(|e| format!("Failed to open torrent stream: {}", e))?;
     let sync_reader = animesh_core::subtitles::SyncReader::new(stream);
 
