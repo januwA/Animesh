@@ -97,43 +97,41 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 	const displayName = item.name_cn || item.name;
 
 	return (
-		// biome-ignore lint/a11y/useSemanticElements: nested link requires outer generic element
-		<div
-			className="group flex flex-col bg-card/40 border border-white/5 rounded-lg overflow-hidden hover:border-primary/30 hover:bg-card/60 transition-all duration-200 text-left cursor-pointer relative"
-			onClick={onClick}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					onClick();
-				}
-			}}
-			tabIndex={0}
-			role="button"
-			title={`搜索: ${displayName}`}
-		>
-			{/* Cover Image */}
-			{item.images?.large ? (
-				<div className="aspect-[3/4] w-full overflow-hidden bg-black/20">
-					<img
-						src={item.images.large}
-						alt={displayName}
-						className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-						loading="lazy"
-					/>
-				</div>
-			) : (
-				<div className="aspect-[3/4] w-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-					<Calendar className="h-8 w-8 text-primary/30" />
-				</div>
-			)}
+		<div className="group flex flex-col bg-card/40 border border-white/5 rounded-lg overflow-hidden hover:border-primary/30 hover:bg-card/60 transition-all duration-200 text-left relative">
+			<button
+				type="button"
+				onClick={onClick}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						onClick();
+					}
+				}}
+				className="flex flex-col flex-1 w-full text-left"
+				title={`搜索: ${displayName}`}
+			>
+				{/* Cover Image */}
+				{item.images?.large ? (
+					<div className="aspect-[3/4] w-full overflow-hidden bg-black/20">
+						<img
+							src={item.images.large}
+							alt={displayName}
+							className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+							loading="lazy"
+						/>
+					</div>
+				) : (
+					<div className="aspect-[3/4] w-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+						<Calendar className="h-8 w-8 text-primary/30" />
+					</div>
+				)}
 
-			{/* Info */}
-			<div className="p-2 space-y-1 flex-1 flex flex-col">
-				<h3 className="text-xs font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-					{displayName}
-				</h3>
+				{/* Info */}
+				<div className="p-2 space-y-1 flex-1 flex flex-col w-full pb-10">
+					<h3 className="text-xs font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+						{displayName}
+					</h3>
 
-				<div className="flex items-center justify-between mt-auto pt-1">
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-2 mt-auto pt-1">
 						{item.rating && (
 							<span className="flex items-center gap-0.5 text-[10px] text-amber-400">
 								<Star className="h-2.5 w-2.5 fill-current" />
@@ -147,31 +145,31 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 							</span>
 						)}
 					</div>
-
-					{item.url && (
-						<a
-							href={item.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5 ml-auto transition-colors px-1 py-0.5 rounded bg-white/5 hover:bg-white/10"
-							onClick={async (e) => {
-								e.stopPropagation();
-								e.preventDefault();
-								try {
-									const { openUrl } = await import("@tauri-apps/plugin-opener");
-									await openUrl(item.url);
-								} catch {
-									window.open(item.url, "_blank");
-								}
-							}}
-							title={`在 Bangumi 打开: ${displayName}`}
-						>
-							<Globe className="h-2.5 w-2.5" />
-							<span>详情</span>
-						</a>
-					)}
 				</div>
-			</div>
+			</button>
+
+			{item.url && (
+				<a
+					href={item.url}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="absolute bottom-2 right-2 z-10 text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5 transition-colors px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10"
+					onClick={async (e) => {
+						e.stopPropagation();
+						e.preventDefault();
+						try {
+							const { openUrl } = await import("@tauri-apps/plugin-opener");
+							await openUrl(item.url);
+						} catch {
+							window.open(item.url, "_blank");
+						}
+					}}
+					title={`在 Bangumi 打开: ${displayName}`}
+				>
+					<Globe className="h-2.5 w-2.5" />
+					<span>详情</span>
+				</a>
+			)}
 		</div>
 	);
 }
