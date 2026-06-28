@@ -102,13 +102,12 @@ export default function Downloads() {
 
 	// Delete a download
 	const handleDelete = async () => {
+		if (!deleteTarget) return;
 		setDeleting(true);
 		try {
-			// biome-ignore lint/style/noNonNullAssertion: deleteTarget is guaranteed to be non-null when dialog is confirmed
-			await deleteTorrentUseCase.execute(deleteTarget!.info_hash, deleteFiles);
+			await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
 			showToast(
-				// biome-ignore lint/style/noNonNullAssertion: deleteTarget is guaranteed to be non-null when dialog is confirmed
-				`已删除任务${deleteFiles ? "及本地文件" : ""}: ${deleteTarget!.name || deleteTarget!.info_hash.slice(0, 8)}`,
+				`已删除任务${deleteFiles ? "及本地文件" : ""}: ${deleteTarget.name || deleteTarget.info_hash.slice(0, 8)}`,
 			);
 			setDeleteTarget(null);
 			fetchTorrents();

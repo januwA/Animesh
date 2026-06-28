@@ -15,6 +15,22 @@ import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "../test/test-utils";
 import Downloads from "./Downloads";
 
+let alwaysRenderDialogContent = false;
+
+vi.mock("@/components/ui/dialog", async (importOriginal) => {
+	const original =
+		await importOriginal<typeof import("@/components/ui/dialog")>();
+	return {
+		...original,
+		DialogContent: (props: any) => {
+			if (alwaysRenderDialogContent) {
+				return <div data-testid="dialog-content">{props.children}</div>;
+			}
+			return <original.DialogContent {...props} />;
+		},
+	};
+});
+
 const currentLocation = {
 	current: null as { pathname: string; search: string } | null,
 };
@@ -513,5 +529,49 @@ describe("Downloads 页面组件", () => {
 			expect(screen.getByText("零大小视频")).toBeInTheDocument();
 			expect(screen.getAllByText("已完成").length).toBe(2);
 		});
+	});
+
+	it("应该能在 deleteTarget 被清空后，调用 handleDelete 时安全地直接返回", async () => {
+		// Enable always rendering DialogContent so button exists even when deleteTarget is null
+		alwaysRenderDialogContent = true;
+
+		const mockTorrents = [
+			{
+				info_hash: "hash111",
+				name: "动漫视频1",
+				progress_bytes: 500,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 0,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+			},
+		];
+
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
+		);
+
+		renderDownloads();
+
+		// Wait for download table to load
+		await waitFor(() => {
+			expect(screen.getByTitle("删除下载")).toBeInTheDocument();
+		});
+
+		// At this point, deleteTarget is null, but because alwaysRenderDialogContent is true,
+		// the confirm button is already rendered in the DOM!
+		const confirmBtn = screen.getByRole("button", { name: "确认删除" });
+		expect(confirmBtn).toBeInTheDocument();
+
+		// Directly trigger click on the confirm button
+		fireEvent.click(confirmBtn);
+
+		// Assert that deleteTorrent is not called
+		expect(mockTorrentRepository.deleteTorrent).not.toHaveBeenCalled();
+
+		// Restore flag
+		alwaysRenderDialogContent = false;
 	});
 });
