@@ -113,6 +113,10 @@ async fn torrent_get_subtitle_tracks(
     file_id: usize,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<Vec<animesh_core::subtitles::SubtitleTrackInfo>, String> {
+    trace_log(&format!(
+        "Entering torrent_get_subtitle_tracks command, info_hash: {}, file_id: {}",
+        info_hash, file_id
+    ));
     let files = manager
         .get_torrent_files(info_hash)
         .ok_or_else(|| "Torrent not found".to_string())?;
@@ -156,6 +160,10 @@ async fn torrent_get_subtitle_vtt(
     track_id: u64,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<String, String> {
+    trace_log(&format!(
+        "Entering torrent_get_subtitle_vtt command, info_hash: {}, file_id: {}, track_id: {}",
+        info_hash, file_id, track_id
+    ));
     let download_dir = manager.get_download_dir();
     let files = manager
         .get_torrent_files(info_hash)

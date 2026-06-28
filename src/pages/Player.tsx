@@ -73,18 +73,52 @@ export default function Player() {
 
 	// Force showing the track when loaded
 	useEffect(() => {
-		if (videoRef.current && subtrackSrc) {
+		if (videoRef.current && subtrackSrc && selectedTrackId !== null) {
 			const video = videoRef.current;
-			const timer = setTimeout(() => {
-				if (video.textTracks && video.textTracks.length > 0) {
+			const expectedId = selectedTrackId.toString();
+
+			const updateTrackModes = () => {
+				if (video.textTracks) {
 					for (let i = 0; i < video.textTracks.length; i++) {
-						video.textTracks[i].mode = "showing";
+						const track = video.textTracks[i];
+						if (track.id === expectedId) {
+							track.mode = "showing";
+						} else {
+							track.mode = "disabled";
+						}
 					}
 				}
-			}, 100);
-			return () => clearTimeout(timer);
+			};
+
+			// Show immediately if already parsed
+			updateTrackModes();
+
+			// Listen for new tracks being added
+			const handleAddTrack = () => {
+				updateTrackModes();
+			};
+
+			if (
+				video.textTracks &&
+				typeof video.textTracks.addEventListener === "function"
+			) {
+				video.textTracks.addEventListener("addtrack", handleAddTrack);
+			}
+
+			// Timeout fallback
+			const timer = setTimeout(updateTrackModes, 150);
+
+			return () => {
+				clearTimeout(timer);
+				if (
+					video.textTracks &&
+					typeof video.textTracks.removeEventListener === "function"
+				) {
+					video.textTracks.removeEventListener("addtrack", handleAddTrack);
+				}
+			};
 		}
-	}, [subtrackSrc]);
+	}, [subtrackSrc, selectedTrackId]);
 
 	const loadSubtitleVtt = useCallback(
 		async (trackId: number) => {
@@ -318,8 +352,9 @@ export default function Player() {
 						autoPlay
 						className="h-full w-full object-contain"
 					>
-						{subtrackSrc && (
+						{subtrackSrc && selectedTrackId !== null && (
 							<track
+								id={selectedTrackId.toString()}
 								key={subtrackSrc}
 								kind="subtitles"
 								src={subtrackSrc}
