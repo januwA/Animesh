@@ -39,10 +39,60 @@ impl<S: tokio::io::AsyncSeek + Unpin> Seek for SyncReader<S> {
     }
 }
 
+pub struct ZeroCheckReader<R> {
+    inner: R,
+    consecutive_zeros: usize,
+}
+
+impl<R> ZeroCheckReader<R> {
+    pub fn new(inner: R) -> Self {
+        Self {
+            inner,
+            consecutive_zeros: 0,
+        }
+    }
+}
+
+impl<R: Read> Read for ZeroCheckReader<R> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = self.inner.read(buf)?;
+        if n == 0 {
+            return Ok(0);
+        }
+
+        for &byte in &buf[..n] {
+            if byte == 0 {
+                self.consecutive_zeros += 1;
+                // If we see more than 8192 consecutive zeros, assume we hit the unwritten/undownloaded sparse area
+                if self.consecutive_zeros > 8192 {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "Incomplete file: detected too many consecutive zero bytes in sparse allocation",
+                    ));
+                }
+            } else {
+                self.consecutive_zeros = 0;
+            }
+        }
+
+        Ok(n)
+    }
+}
+
+impl<R: Seek> Seek for ZeroCheckReader<R> {
+    fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+        // When seeking, reset consecutive zeros because we jumped to a new position
+        self.consecutive_zeros = 0;
+        self.inner.seek(pos)
+    }
+}
+
 pub fn extract_subtitle_tracks_from_reader<R: Read + Seek>(
     reader: R,
 ) -> Result<Vec<SubtitleTrackInfo>, String> {
-    let mkv = MatroskaFile::open(reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+    let checked_reader = ZeroCheckReader::new(reader);
+    let mkv =
+        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
 
     let mut tracks = Vec::new();
     for track in mkv.tracks() {
@@ -67,8 +117,9 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     reader: R,
     track_id: u64,
 ) -> Result<String, String> {
+    let checked_reader = ZeroCheckReader::new(reader);
     let mut mkv =
-        MatroskaFile::open(reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
 
     let track = mkv
         .tracks()
@@ -185,5 +236,17 @@ mod tests {
         assert!(result_vtt.unwrap_err().contains("Failed to parse MKV"));
 
         let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_读取大量连续零字节_应返回错误() {
+        let zeros = vec![0u8; 10000];
+        let cursor = std::io::Cursor::new(zeros);
+        let mut reader = ZeroCheckReader::new(cursor);
+        let mut buf = vec![0u8; 10000];
+        let result = reader.read(&mut buf);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidData);
     }
 }
