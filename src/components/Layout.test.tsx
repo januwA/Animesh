@@ -171,4 +171,68 @@ describe("Layout 布局组件", () => {
 		const badge = await findByText("2");
 		expect(badge).toBeInTheDocument();
 	});
+
+	it("当获取正在下载的任务数量失败时，应该捕获错误且不崩溃", async () => {
+		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const mockListTorrents = vi
+			.fn()
+			.mockRejectedValue(new Error("Failed to fetch"));
+
+		const mockContainer = createDIContainerForTest({
+			torrentRepository: {
+				search: vi.fn(),
+				addTorrentMagnet: vi.fn(),
+				getTorrentFiles: vi.fn(),
+				listTorrents: mockListTorrents,
+				pauseTorrent: vi.fn(),
+				resumeTorrent: vi.fn(),
+				deleteTorrent: vi.fn(),
+				getTorrentStreamUrl: vi.fn(),
+				getTorrentStatus: vi.fn(),
+				getSubtitleTracks: vi.fn(),
+				getSubtitleVtt: vi.fn(),
+			},
+			settingsRepository: {
+				getSettings: vi
+					.fn()
+					.mockResolvedValue({ download_dir: "", proxy: null }),
+				setDownloadDir: vi.fn(),
+				setProxy: vi.fn(),
+				selectDirectory: vi.fn(),
+			},
+			bangumiRepository: {
+				getCalendar: vi.fn(),
+			},
+			notificationRepository: {
+				requestPermission: mockRequestPermission as () => Promise<boolean>,
+				sendNotification: vi.fn(),
+			},
+			notifyDownloadCompletionUseCase: {
+				execute: mockExecute as () => Promise<void>,
+			} as any,
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/"]}>
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="" element={<div>首页内容</div>} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(consoleSpy).toHaveBeenCalledWith(
+				"Failed to fetch active torrents count for header:",
+				expect.any(Error),
+			);
+		});
+
+		consoleSpy.mockRestore();
+	});
 });
