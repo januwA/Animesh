@@ -135,9 +135,10 @@ async fn torrent_get_subtitle_tracks(
         .get_file_reader(info_hash, file_id)
         .map_err(|e| format!("Failed to open torrent stream: {}", e))?;
     let sync_reader = animesh_core::subtitles::SyncReader::new(stream);
+    let buffered_reader = std::io::BufReader::new(sync_reader);
 
     match tokio::task::spawn_blocking(move || {
-        animesh_core::subtitles::extract_subtitle_tracks_from_reader(sync_reader)
+        animesh_core::subtitles::extract_subtitle_tracks_from_reader(buffered_reader)
     })
     .await
     {

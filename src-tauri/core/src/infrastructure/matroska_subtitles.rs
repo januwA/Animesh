@@ -3,7 +3,7 @@ use crate::domain::subtitles::{
 };
 use matroska_demuxer::{MatroskaFile, TrackType};
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 use tokio::runtime::Handle;
 
@@ -176,12 +176,14 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
 
 pub fn extract_subtitle_tracks(path: &Path) -> Result<Vec<SubtitleTrackInfo>, String> {
     let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
-    extract_subtitle_tracks_from_reader(file)
+    let reader = BufReader::new(file);
+    extract_subtitle_tracks_from_reader(reader)
 }
 
 pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> Result<String, String> {
     let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
-    extract_subtitle_vtt_from_reader(file, track_id)
+    let reader = BufReader::new(file);
+    extract_subtitle_vtt_from_reader(reader, track_id)
 }
 
 pub struct MatroskaSubtitleExtractor;
