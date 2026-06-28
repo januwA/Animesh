@@ -1,3 +1,4 @@
+use crate::domain::crawler::CrawlerRepository;
 use crate::torrent::{format_hash, parse_range, AddTorrentResult, FileDetails, TorrentStatusInfo};
 use axum::{
     body::Body,
@@ -21,6 +22,7 @@ pub struct TorrentManager {
     pub download_dir: Arc<std::sync::RwLock<PathBuf>>,
     pub proxy: Arc<std::sync::RwLock<Option<String>>>,
     pub settings_path: PathBuf,
+    pub crawler_repo: Arc<dyn CrawlerRepository + Send + Sync>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -59,12 +61,17 @@ impl TorrentManager {
             axum::serve(listener, app).await.unwrap();
         });
 
+        let client = Arc::new(crate::infrastructure::http_client::ReqwestHttpClient);
+        let crawler_repo =
+            Arc::new(crate::infrastructure::http_crawler::HttpCrawlerRepository::new(client));
+
         Ok(Self {
             session,
             port,
             download_dir: Arc::new(std::sync::RwLock::new(download_dir)),
             proxy: Arc::new(std::sync::RwLock::new(proxy)),
             settings_path,
+            crawler_repo,
         })
     }
 

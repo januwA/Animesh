@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-pub use crate::crawler_client::{search_bangumi_moe, search_dmhy, search_mikan, search_nyaa};
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rss {
     pub channel: Channel,
@@ -32,14 +30,7 @@ pub struct Enclosure {
     pub length: Option<u64>,
 }
 
-#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
-pub struct SearchResultItem {
-    pub title: String,
-    pub link: String,
-    pub pub_date: String,
-    pub magnet: String,
-    pub size: Option<u64>,
-}
+pub use crate::domain::crawler::SearchResultItem;
 
 /// Parse DMHY RSS XML data into SearchResultItems
 pub fn parse_dmhy_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {

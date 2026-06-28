@@ -16,3 +16,4 @@ tokio-util = { version = "0.7", features = ["io"] }
 tower = { version = "0.5", features = ["util"] }
 matroska-demuxer = "0.7.0"
 log = "0.4"
+async-trait = "0.1"

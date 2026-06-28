@@ -14,7 +14,7 @@ async fn search_dmhy(
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<Vec<animesh_core::crawler::SearchResultItem>, String> {
     let proxy = manager.get_proxy();
-    animesh_core::crawler::search_dmhy(keyword, proxy).await
+    manager.crawler_repo.search_dmhy(keyword, proxy).await
 }
 
 #[tauri::command]
@@ -29,10 +29,15 @@ async fn search_torrents(
     ));
     let proxy = manager.get_proxy();
     let res = match engine {
-        "dmhy" => animesh_core::crawler::search_dmhy(keyword, proxy).await,
-        "bangumi_moe" => animesh_core::crawler::search_bangumi_moe(keyword, proxy).await,
-        "mikan" => animesh_core::crawler::search_mikan(keyword, proxy).await,
-        "nyaa" => animesh_core::crawler::search_nyaa(keyword, proxy).await,
+        "dmhy" => manager.crawler_repo.search_dmhy(keyword, proxy).await,
+        "bangumi_moe" => {
+            manager
+                .crawler_repo
+                .search_bangumi_moe(keyword, proxy)
+                .await
+        }
+        "mikan" => manager.crawler_repo.search_mikan(keyword, proxy).await,
+        "nyaa" => manager.crawler_repo.search_nyaa(keyword, proxy).await,
         _ => Err(format!("Unsupported search engine: {}", engine)),
     };
     match &res {
