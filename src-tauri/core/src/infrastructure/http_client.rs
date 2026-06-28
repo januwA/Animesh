@@ -103,6 +103,7 @@ impl HttpClient for ReqwestHttpClient {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub struct MockHttpClient {
     // Allows us to configure custom handler or mock responses
     pub get_handler: Arc<dyn Fn(&str, Option<String>) -> Result<String, String> + Send + Sync>,
