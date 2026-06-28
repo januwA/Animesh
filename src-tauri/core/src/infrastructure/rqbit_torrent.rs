@@ -43,9 +43,11 @@ impl TorrentRepository for RqbitTorrentRepository {
             ..Default::default()
         };
 
+        let magnet_with_trackers = append_default_trackers(magnet);
+
         let response = self
             .session
-            .add_torrent(AddTorrent::from_url(magnet), Some(options))
+            .add_torrent(AddTorrent::from_url(&magnet_with_trackers), Some(options))
             .await
             .map_err(|e| format!("Failed to add torrent: {}", e))?;
 
@@ -218,5 +220,67 @@ impl TorrentRepository for RqbitTorrentRepository {
             .stream(file_id)
             .map_err(|e| format!("Failed to open torrent stream: {}", e))?;
         Ok(Box::new(stream))
+    }
+}
+
+fn append_default_trackers(magnet: &str) -> String {
+    let mut magnet_with_trackers = magnet.to_string();
+
+    // Stable and active public trackers
+    let default_trackers = [
+        "udp://tracker.opentrackr.org:1337/announce",
+        "http://tracker.gbitt.info:80/announce",
+        "udp://open.stealth.si:80/announce",
+        "udp://tracker.coppersurfer.tk:6969/announce",
+        "udp://exodus.desync.com:6969/announce",
+        "udp://tracker.leechers-paradise.org:6969/announce",
+        "udp://tracker.internetwarriors.net:1337/announce",
+        "udp://tracker.cyberia.is:6969/announce",
+        "udp://tracker.torrent.eu.org:451/announce",
+        "udp://tracker.moack.co.kr:80/announce",
+        "udp://explodie.org:6969/announce",
+        "http://tracker.openbittorrent.com:80/announce",
+    ];
+
+    for tracker in default_trackers.iter() {
+        let encoded_tracker = urlencoding::encode(tracker);
+        // Only append if the tracker is not already present (both in raw and encoded form)
+        if !magnet.contains(tracker) && !magnet.contains(&encoded_tracker.to_string()) {
+            if !magnet_with_trackers.contains('?') {
+                magnet_with_trackers.push('?');
+            } else if !magnet_with_trackers.ends_with('&') && !magnet_with_trackers.ends_with('?') {
+                magnet_with_trackers.push('&');
+            }
+            magnet_with_trackers.push_str("tr=");
+            magnet_with_trackers.push_str(&encoded_tracker);
+        }
+    }
+
+    magnet_with_trackers
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_追加默认Tracker_应成功() {
+        let raw_magnet = "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff";
+        let with_trackers = append_default_trackers(raw_magnet);
+
+        assert!(with_trackers.contains("tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce"));
+        assert!(with_trackers.contains("tr=http%3A%2F%2Ftracker.gbitt.info%3A80%2Fannounce"));
+
+        // If it already has trackers, it shouldn't duplicate
+        let raw_magnet_2 = format!(
+            "{}&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce",
+            raw_magnet
+        );
+        let with_trackers_2 = append_default_trackers(&raw_magnet_2);
+
+        // Count occurrences of opentrackr
+        let occurrences = with_trackers_2.matches("tracker.opentrackr.org").count();
+        assert_eq!(occurrences, 1);
     }
 }
