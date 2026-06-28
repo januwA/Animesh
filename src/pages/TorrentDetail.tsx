@@ -112,14 +112,12 @@ export default function TorrentDetail() {
 	}, [handleBack]);
 
 	const handleStartPlayback = (fileId: number, fileName: string) => {
-		// biome-ignore lint/style/noNonNullAssertion: torrent is guaranteed to be non-null when playback button is visible
-		const hash = torrent!.info_hash;
-		// biome-ignore lint/style/noNonNullAssertion: torrent is guaranteed to be non-null when playback button is visible
-		const name = torrent!.name;
+		// v8 ignore next
+		if (!torrent) return;
 		navigate(
-			`/play/${hash}/${fileId}?magnet=${encodeURIComponent(
+			`/play/${torrent.info_hash}/${fileId}?magnet=${encodeURIComponent(
 				magnet,
-			)}&title=${encodeURIComponent(title || name || "")}&fileName=${encodeURIComponent(
+			)}&title=${encodeURIComponent(title || torrent.name || "")}&fileName=${encodeURIComponent(
 				fileName,
 			)}`,
 		);
