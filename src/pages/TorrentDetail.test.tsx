@@ -266,6 +266,9 @@ describe("TorrentDetail 页面组件", () => {
 			expect(screen.getByText("测试种子")).toBeInTheDocument();
 		});
 
+		fireEvent.keyDown(window, { key: "Enter", code: "Enter" });
+		expect(getCurrentLocation()?.pathname).not.toBe("/");
+
 		fireEvent.keyDown(window, { key: "Escape", code: "Escape" });
 		expect(getCurrentLocation()?.pathname).toBe("/");
 	});
@@ -291,5 +294,50 @@ describe("TorrentDetail 页面组件", () => {
 				files: [],
 			});
 		});
+	});
+
+	it("应该能通过 infoHash（不带 magnet）加载已缓存的种子文件列表，并且可以点击播放", async () => {
+		const mockFiles = [{ id: 0, name: "cached_file.mp4", len: 1000 }];
+
+		vi.mocked(mockTorrentRepository.getTorrentFiles).mockResolvedValue(
+			mockFiles,
+		);
+
+		renderTorrentDetail("/torrent?infoHash=hashCached");
+
+		await waitFor(() => {
+			expect(screen.getByText("已缓存种子")).toBeInTheDocument();
+			expect(screen.getByText("cached_file.mp4")).toBeInTheDocument();
+		});
+
+		const playBtn = screen.getByRole("button", { name: "▶ 播放" });
+		fireEvent.click(playBtn);
+
+		expect(getCurrentLocation()?.pathname).toBe("/play/hashCached/0");
+		expect(getCurrentLocation()?.search).toContain(
+			"title=%E5%B7%B2%E7%BC%93%E5%AD%98%E7%A7%8D%E5%AD%90",
+		);
+	});
+
+	it("应该对解析和加载种子的非字符串错误正确进行降级处理并显示提示", async () => {
+		// 1. addTorrentMagnet fails with non-string error
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValueOnce(
+			new Error("Fatal error object"),
+		);
+		const render1 = renderTorrentDetail("/torrent?magnet=maglink");
+		await waitFor(() => {
+			expect(screen.getByText("错误详情请见控制台")).toBeInTheDocument();
+		});
+		render1.unmount();
+
+		// 2. getTorrentFiles fails with non-string error
+		vi.mocked(mockTorrentRepository.getTorrentFiles).mockRejectedValueOnce(
+			new Error("Cache missing object"),
+		);
+		const render2 = renderTorrentDetail("/torrent?infoHash=hash123");
+		await waitFor(() => {
+			expect(screen.getByText("未找到该种子的缓存")).toBeInTheDocument();
+		});
+		render2.unmount();
 	});
 });

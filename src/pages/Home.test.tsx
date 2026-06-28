@@ -133,9 +133,7 @@ describe("Home 页面组件", () => {
 
 	it("应该正确渲染搜索表单和欢迎指南", () => {
 		renderHome();
-		expect(
-			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-		).toBeInTheDocument();
+		expect(screen.getByTestId("search-input")).toBeInTheDocument();
 		expect(screen.getByText("聚合搜索")).toBeInTheDocument();
 	});
 
@@ -499,6 +497,18 @@ describe("Home 页面组件", () => {
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "nyaa");
 			expect(screen.getByText("Nyaa资源 1")).toBeInTheDocument();
+		});
+	});
+
+	it("应该在组件挂载时读取 URL 的 keyword 参数，当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(null as any);
+
+		renderHome("/?keyword=凡人");
+
+		await waitFor(() => {
+			expect(
+				screen.getByText("未找到相关资源，请换个关键词试试"),
+			).toBeInTheDocument();
 		});
 	});
 });

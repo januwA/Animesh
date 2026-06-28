@@ -93,6 +93,11 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
 			"下载完成",
 			"动漫 《动漫1》 已下载完成！",
 		);
+
+		// 运行第三次加载 (已通知过的不再通知)
+		vi.mocked(mockNotificationRepository.sendNotification).mockClear();
+		await useCase.execute();
+		expect(mockNotificationRepository.sendNotification).not.toHaveBeenCalled();
 	});
 
 	it("如果种子从完成变回未完成(重启下载)，应该重置已通知记录", async () => {
@@ -151,5 +156,50 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
 			expect.any(Error),
 		);
 		consoleSpy.mockRestore();
+	});
+
+	it("当获取的种子列表不是数组时，应该不崩溃", async () => {
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			null as any,
+		);
+
+		await useCase.execute();
+		expect(mockNotificationRepository.sendNotification).not.toHaveBeenCalled();
+	});
+
+	it("当已完成的种子没有名称时，通知信息应该降级显示为“未命名种子”", async () => {
+		let callCount = 0;
+		const torrentWithoutName: TorrentStatusInfo = {
+			info_hash: "hashUnnamed",
+			name: "",
+			progress_bytes: 50,
+			total_bytes: 100,
+			finished: false,
+			download_speed_bytes_per_sec: 10,
+			paused: false,
+			peers_connected: 1,
+			peers_total: 1,
+		};
+
+		vi.mocked(mockTorrentRepository.listTorrents).mockImplementation(
+			async () => {
+				callCount++;
+				if (callCount === 1) {
+					return [torrentWithoutName];
+				}
+				return [{ ...torrentWithoutName, finished: true, progress_bytes: 100 }];
+			},
+		);
+
+		// First run
+		await useCase.execute();
+
+		// Second run
+		await useCase.execute();
+
+		expect(mockNotificationRepository.sendNotification).toHaveBeenCalledWith(
+			"下载完成",
+			"动漫 《未命名种子》 已下载完成！",
+		);
 	});
 });

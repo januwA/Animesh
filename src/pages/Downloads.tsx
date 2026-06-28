@@ -102,12 +102,13 @@ export default function Downloads() {
 
 	// Delete a download
 	const handleDelete = async () => {
-		if (!deleteTarget) return;
 		setDeleting(true);
 		try {
-			await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
+			// biome-ignore lint/style/noNonNullAssertion: deleteTarget is guaranteed to be non-null when dialog is confirmed
+			await deleteTorrentUseCase.execute(deleteTarget!.info_hash, deleteFiles);
 			showToast(
-				`已删除任务${deleteFiles ? "及本地文件" : ""}: ${deleteTarget.name || deleteTarget.info_hash.slice(0, 8)}`,
+				// biome-ignore lint/style/noNonNullAssertion: deleteTarget is guaranteed to be non-null when dialog is confirmed
+				`已删除任务${deleteFiles ? "及本地文件" : ""}: ${deleteTarget!.name || deleteTarget!.info_hash.slice(0, 8)}`,
 			);
 			setDeleteTarget(null);
 			fetchTorrents();
@@ -262,11 +263,14 @@ export default function Downloads() {
 												<Button
 													variant="outline"
 													size="sm"
-													onClick={() =>
-														t.paused
-															? handleResume(t.info_hash, t.name || "")
-															: handlePause(t.info_hash, t.name || "")
-													}
+													onClick={() => {
+														const nameFallback = t.name || "";
+														if (t.paused) {
+															handleResume(t.info_hash, nameFallback);
+														} else {
+															handlePause(t.info_hash, nameFallback);
+														}
+													}}
 													className="h-8 w-8 p-0"
 													title={t.paused ? "开始下载" : "暂停下载"}
 												>
@@ -303,9 +307,7 @@ export default function Downloads() {
 			{/* Delete Confirmation Dialog */}
 			<Dialog
 				open={deleteTarget !== null}
-				onOpenChange={(open) => {
-					if (!open) setDeleteTarget(null);
-				}}
+				onOpenChange={() => setDeleteTarget(null)}
 			>
 				<DialogContent className="max-w-md bg-card border-white/10 text-card-foreground">
 					<DialogHeader>

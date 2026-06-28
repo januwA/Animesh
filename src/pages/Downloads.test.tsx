@@ -189,7 +189,7 @@ describe("Downloads 页面组件", () => {
 		const mockTorrents = [
 			{
 				info_hash: "hash111",
-				name: "",
+				name: "动漫视频1",
 				progress_bytes: 100,
 				total_bytes: 1000,
 				finished: false,
@@ -200,7 +200,29 @@ describe("Downloads 页面组件", () => {
 			},
 			{
 				info_hash: "hash222",
-				name: "动漫视频2",
+				name: "",
+				progress_bytes: 200,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 0,
+				paused: true,
+				peers_connected: 0,
+				peers_total: 0,
+			},
+			{
+				info_hash: "hash333",
+				name: "",
+				progress_bytes: 100,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 50,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+			},
+			{
+				info_hash: "hash444",
+				name: "动漫视频4",
 				progress_bytes: 200,
 				total_bytes: 1000,
 				finished: false,
@@ -223,52 +245,63 @@ describe("Downloads 页面组件", () => {
 
 		vi.useFakeTimers();
 
-		// 1. Pause action (success)
-		const pauseBtn = screen.getByTitle("暂停下载");
-		fireEvent.click(pauseBtn);
+		const pauseBtns = screen.getAllByTitle("暂停下载");
+		const resumeBtns = screen.getAllByTitle("开始下载");
 
+		// 1. Pause action (success, named)
+		fireEvent.click(pauseBtns[0]);
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-
 		expect(mockTorrentRepository.pauseTorrent).toHaveBeenCalledWith("hash111");
-		expect(screen.getByText("已暂停任务: hash111")).toBeInTheDocument();
+		expect(screen.getByText("已暂停任务: 动漫视频1")).toBeInTheDocument();
 
-		// 2. Pause action (failure)
+		// 2. Pause action (success, unnamed)
+		fireEvent.click(pauseBtns[1]);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		expect(mockTorrentRepository.pauseTorrent).toHaveBeenCalledWith("hash333");
+		expect(screen.getByText("已暂停任务: hash333")).toBeInTheDocument();
+
+		// 3. Pause action (failure)
 		vi.mocked(mockTorrentRepository.pauseTorrent).mockRejectedValueOnce(
 			"Pause error",
 		);
-		fireEvent.click(pauseBtn);
-
+		fireEvent.click(pauseBtns[0]);
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 		expect(screen.getByText("暂停失败，请重试")).toBeInTheDocument();
 
-		// 3. Resume action (success)
-		const resumeBtn = screen.getByTitle("开始下载");
-		fireEvent.click(resumeBtn);
-
+		// 4. Resume action (success, unnamed)
+		fireEvent.click(resumeBtns[0]);
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-
 		expect(mockTorrentRepository.resumeTorrent).toHaveBeenCalledWith("hash222");
-		expect(screen.getByText("已开始下载任务: 动漫视频2")).toBeInTheDocument();
+		expect(screen.getByText("已开始下载任务: hash222")).toBeInTheDocument();
 
-		// 4. Resume action (failure)
+		// 5. Resume action (success, named)
+		fireEvent.click(resumeBtns[1]);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		expect(mockTorrentRepository.resumeTorrent).toHaveBeenCalledWith("hash444");
+		expect(screen.getByText("已开始下载任务: 动漫视频4")).toBeInTheDocument();
+
+		// 6. Resume action (failure)
 		vi.mocked(mockTorrentRepository.resumeTorrent).mockRejectedValueOnce(
 			"Resume error",
 		);
-		fireEvent.click(resumeBtn);
-
+		fireEvent.click(resumeBtns[0]);
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 		expect(screen.getByText("启动失败，请重试")).toBeInTheDocument();
 	});
 
-	it("应该支持查看文件操作，正确进行路由跳转", async () => {
+	it("应该支持查看文件操作，正确进行路由跳转 (有名字)", async () => {
 		const mockTorrents = [
 			{
 				info_hash: "hash111",
@@ -290,14 +323,52 @@ describe("Downloads 页面组件", () => {
 		renderDownloads();
 
 		await waitFor(() => {
-			expect(screen.getByText("查看文件")).toBeInTheDocument();
+			expect(
+				screen.getByRole("button", { name: "查看文件" }),
+			).toBeInTheDocument();
 		});
 
-		const viewBtn = screen.getByRole("button", { name: "查看文件" });
-		fireEvent.click(viewBtn);
-
+		fireEvent.click(screen.getByRole("button", { name: "查看文件" }));
 		expect(currentLocation.current?.pathname).toBe("/torrent");
 		expect(currentLocation.current?.search).toContain("infoHash=hash111");
+		expect(currentLocation.current?.search).toContain(
+			"title=%E5%8A%A8%E6%BC%AB%E8%A7%86%E9%A2%911",
+		);
+	});
+
+	it("应该支持查看文件操作，正确进行路由跳转 (无名字)", async () => {
+		const mockTorrents = [
+			{
+				info_hash: "hash222",
+				name: "",
+				progress_bytes: 100,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 50,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+			},
+		];
+
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
+		);
+
+		renderDownloads();
+
+		await waitFor(() => {
+			expect(
+				screen.getByRole("button", { name: "查看文件" }),
+			).toBeInTheDocument();
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: "查看文件" }));
+		expect(currentLocation.current?.pathname).toBe("/torrent");
+		expect(currentLocation.current?.search).toContain("infoHash=hash222");
+		expect(currentLocation.current?.search).toContain(
+			"title=%E6%9C%AA%E5%91%BD%E5%90%8D%E7%A7%8D%E5%AD%90",
+		);
 	});
 
 	it("应该支持删除操作，包含删除弹窗、文件删除勾选框、确定删除（成功/失败）及取消", async () => {
@@ -305,6 +376,17 @@ describe("Downloads 页面组件", () => {
 			{
 				info_hash: "hash111",
 				name: null,
+				progress_bytes: 500,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 0,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+			},
+			{
+				info_hash: "hash222",
+				name: "动漫视频2",
 				progress_bytes: 500,
 				total_bytes: 1000,
 				finished: false,
@@ -322,15 +404,15 @@ describe("Downloads 页面组件", () => {
 		renderDownloads();
 
 		await waitFor(() => {
-			expect(screen.getByTitle("删除下载")).toBeInTheDocument();
+			expect(screen.getAllByTitle("删除下载").length).toBe(2);
 		});
+
+		const deleteBtns = screen.getAllByTitle("删除下载");
 
 		vi.useFakeTimers();
 
-		// 1. Open delete modal, close with Escape key (covers onOpenChange)
-		const deleteBtn = screen.getByTitle("删除下载");
-		fireEvent.click(deleteBtn);
-
+		// 1. Open delete modal (for unnamed hash111), close with Escape key
+		fireEvent.click(deleteBtns[0]);
 		expect(screen.getByText("删除下载任务")).toBeInTheDocument();
 		expect(screen.getByText("hash111")).toBeInTheDocument();
 
@@ -343,20 +425,21 @@ describe("Downloads 页面组件", () => {
 		});
 		expect(screen.queryByText("删除下载任务")).not.toBeInTheDocument();
 
-		// 1b. Open delete modal again and click Cancel
-		fireEvent.click(deleteBtn);
+		// 1b. Open delete modal again (unnamed) and click Cancel
+		fireEvent.click(deleteBtns[0]);
 		expect(screen.getByText("删除下载任务")).toBeInTheDocument();
 		const cancelBtn = screen.getByRole("button", { name: "取消" });
 		fireEvent.click(cancelBtn);
-
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-
 		expect(screen.queryByText("删除下载任务")).not.toBeInTheDocument();
 
-		// 2. Open delete modal again, toggle file checkbox, and proceed with success deletion
-		fireEvent.click(deleteBtn);
+		// 2. Open delete modal for Torrent 2 (named "动漫视频2"), toggle file checkbox, and proceed with success deletion
+		fireEvent.click(deleteBtns[1]);
+		expect(screen.getByText("删除下载任务")).toBeInTheDocument();
+		expect(screen.getAllByText("动漫视频2").length).toBe(2);
+
 		const checkbox = screen.getByLabelText(
 			"同时删除已下载的本地缓存文件 (彻底释放磁盘空间)",
 		);
@@ -371,19 +454,19 @@ describe("Downloads 页面组件", () => {
 		});
 
 		expect(mockTorrentRepository.deleteTorrent).toHaveBeenCalledWith(
-			"hash111",
+			"hash222",
 			true,
 		);
 		expect(
-			screen.getByText("已删除任务及本地文件: hash111"),
+			screen.getByText("已删除任务及本地文件: 动漫视频2"),
 		).toBeInTheDocument();
 
-		// 3. Delete modal failure
+		// 3. Delete modal failure (using unnamed)
 		vi.mocked(mockTorrentRepository.deleteTorrent).mockRejectedValueOnce(
 			"Delete failed",
 		);
 
-		fireEvent.click(deleteBtn);
+		fireEvent.click(deleteBtns[0]);
 		fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
 
 		await act(async () => {
@@ -391,5 +474,44 @@ describe("Downloads 页面组件", () => {
 		});
 
 		expect(screen.getByText("删除任务失败，请重试")).toBeInTheDocument();
+	});
+
+	it("应该能渲染已完成的下载任务", async () => {
+		const mockTorrents = [
+			{
+				info_hash: "hashFinished",
+				name: "已完成视频",
+				progress_bytes: 1000,
+				total_bytes: 1000,
+				finished: true,
+				download_speed_bytes_per_sec: 0,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+			},
+			{
+				info_hash: "hashZeroTotal",
+				name: "零大小视频",
+				progress_bytes: 0,
+				total_bytes: 0,
+				finished: true,
+				download_speed_bytes_per_sec: 0,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+			},
+		];
+
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
+		);
+
+		renderDownloads();
+
+		await waitFor(() => {
+			expect(screen.getByText("已完成视频")).toBeInTheDocument();
+			expect(screen.getByText("零大小视频")).toBeInTheDocument();
+			expect(screen.getAllByText("已完成").length).toBe(2);
+		});
 	});
 });

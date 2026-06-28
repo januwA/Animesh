@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
 	act,
 	fireEvent,
@@ -6,49 +5,17 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
-import type React from "react";
-import {
-	createMemoryRouter,
-	MemoryRouter,
-	Route,
-	Routes,
-} from "react-router-dom";
+import { createMemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import OriginalApp from "./App";
-import { AppContextProvider, useAppContext } from "./context/AppContext";
-import { createDefaultDIContainer, DIProvider } from "./di/DIContext";
+import { useAppContext } from "./context/AppContext";
+import type { DIContainer } from "./di/DIContext";
+import type { BangumiRepository } from "./domain/bangumi/BangumiRepository";
+import type { NotificationRepository } from "./domain/notification/NotificationRepository";
+import type { SettingsRepository } from "./domain/settings/SettingsRepository";
+import type { TorrentRepository } from "./domain/torrent/TorrentRepository";
 import { routes } from "./routes";
-
-const defaultDIContainer = createDefaultDIContainer();
-
-// Wrap App for testing compatibility to automatically inject a memory router
-const App = (props: Partial<Parameters<typeof OriginalApp>[0]>) => {
-	const router =
-		props.router ||
-		createMemoryRouter(routes, {
-			initialEntries: [window.location.hash.replace(/^#/, "") || "/"],
-		});
-	return (
-		<OriginalApp
-			diContainer={props.diContainer || defaultDIContainer}
-			router={router}
-			{...props}
-		/>
-	);
-};
-
-const renderWithDI = (ui: React.ReactElement) =>
-	render(<DIProvider value={defaultDIContainer}>{ui}</DIProvider>);
-
-import Downloads from "./pages/Downloads";
-import Player from "./pages/Player";
-import Settings from "./pages/Settings";
-import TorrentDetail from "./pages/TorrentDetail";
-import type { TorrentStatusInfo } from "./types";
-
-vi.mock("@tauri-apps/api/core", () => ({
-	invoke: vi.fn(),
-}));
+import { createDIContainerForTest } from "./test/test-utils";
 
 // Mock clipboard API
 Object.defineProperty(navigator, "clipboard", {
@@ -59,14 +26,61 @@ Object.defineProperty(navigator, "clipboard", {
 });
 
 describe("App 组件", () => {
+	let mockTorrentRepository: TorrentRepository;
+	let mockSettingsRepository: SettingsRepository;
+	let mockBangumiRepository: BangumiRepository;
+	let mockNotificationRepository: NotificationRepository;
+	let testDIContainer: DIContainer;
+
+	// Wrap App for testing compatibility to automatically inject a memory router
+	const App = () => {
+		const router = createMemoryRouter(routes, {
+			initialEntries: [window.location.hash.replace(/^#/, "") || "/"],
+		});
+		return <OriginalApp diContainer={testDIContainer} router={router} />;
+	};
+
 	beforeEach(() => {
 		window.location.hash = "";
 		vi.clearAllMocks();
 		vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
-		// Mock bangumiRepository to return a non-resolving promise to prevent async state updates and act warnings in tests
-		defaultDIContainer.bangumiRepository = {
+
+		mockTorrentRepository = {
+			search: vi.fn(),
+			listTorrents: vi.fn(),
+			pauseTorrent: vi.fn(),
+			resumeTorrent: vi.fn(),
+			deleteTorrent: vi.fn(),
+			addTorrentMagnet: vi.fn(),
+			getTorrentFiles: vi.fn(),
+			getTorrentStreamUrl: vi.fn(),
+			getTorrentStatus: vi.fn(),
+			getSubtitleTracks: vi.fn(),
+			getSubtitleVtt: vi.fn(),
+		};
+
+		mockSettingsRepository = {
+			getSettings: vi.fn().mockResolvedValue({ download_dir: "" }),
+			setDownloadDir: vi.fn(),
+			setProxy: vi.fn(),
+			selectDirectory: vi.fn(),
+		};
+
+		mockBangumiRepository = {
 			getCalendar: vi.fn().mockReturnValue(new Promise(() => {})),
 		};
+
+		mockNotificationRepository = {
+			requestPermission: vi.fn().mockResolvedValue(false),
+			sendNotification: vi.fn(),
+		};
+
+		testDIContainer = createDIContainerForTest({
+			torrentRepository: mockTorrentRepository,
+			settingsRepository: mockSettingsRepository,
+			bangumiRepository: mockBangumiRepository,
+			notificationRepository: mockNotificationRepository,
+		});
 	});
 
 	afterEach(() => {
@@ -120,7 +134,7 @@ describe("App 组件", () => {
 				magnet: "magnet:?xt=urn:btih:TEST5",
 				// size is undefined
 			},
-		];
+		] as any;
 
 		const mockAddTorrentResult = {
 			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
@@ -131,21 +145,14 @@ describe("App 组件", () => {
 			],
 		};
 
-		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents") {
-				return mockResults;
-			}
-			if (cmd === "torrent_add_magnet") {
-				return mockAddTorrentResult;
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
+			mockAddTorrentResult,
+		);
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		const button = screen.getByRole("button", { name: "搜索" });
 
 		// 输入关键词并搜索
@@ -166,10 +173,7 @@ describe("App 组件", () => {
 			);
 		});
 
-		expect(invoke).toHaveBeenCalledWith("search_torrents", {
-			keyword: "凡人",
-			engine: "dmhy",
-		});
+		expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "dmhy");
 
 		// 检查资源渲染
 		expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
@@ -228,13 +232,11 @@ describe("App 组件", () => {
 	});
 
 	it("当搜索失败时，应该显示错误提示", async () => {
-		vi.mocked(invoke).mockRejectedValue("网络请求超时");
+		vi.mocked(mockTorrentRepository.search).mockRejectedValue("网络请求超时");
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.submit(input); // 可以直接回车提交
 
@@ -244,13 +246,13 @@ describe("App 组件", () => {
 	});
 
 	it("当搜索抛出非字符串错误时，应该显示默认错误提示", async () => {
-		vi.mocked(invoke).mockRejectedValueOnce(new Error("Internal Server Error"));
+		vi.mocked(mockTorrentRepository.search).mockRejectedValueOnce(
+			new Error("Internal Server Error"),
+		);
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
@@ -262,13 +264,11 @@ describe("App 组件", () => {
 	});
 
 	it("当搜索结果为空时，应该显示无资源提示", async () => {
-		vi.mocked(invoke).mockResolvedValue([]);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "不存在的动漫" } });
 		fireEvent.submit(input);
 
@@ -280,7 +280,7 @@ describe("App 组件", () => {
 	});
 
 	it("当复制磁力链接失败时，应该显示失败提示", async () => {
-		vi.mocked(invoke).mockResolvedValue([
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
 			{
 				title: "凡人修仙传 第1集",
 				link: "http://example.com/1",
@@ -295,9 +295,7 @@ describe("App 组件", () => {
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
@@ -328,13 +326,11 @@ describe("App 组件", () => {
 	it("当输入空白关键词并提交时，不应该触发搜索", async () => {
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "   " } });
 		fireEvent.submit(input);
 
-		expect(invoke).not.toHaveBeenCalled();
+		expect(mockTorrentRepository.search).not.toHaveBeenCalled();
 	});
 
 	it("当点击边下边播成功解析磁力时，应该打开文件选择弹窗，并且能进入播放和控制界面", async () => {
@@ -369,28 +365,21 @@ describe("App 组件", () => {
 			peers_total: 0,
 		};
 
-		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents")
-				return mockResults;
-			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
-			if (cmd === "torrent_get_stream_url") {
-				return "http://127.0.0.1:12345/stream/3a2a3e0f438a2e1d74381395bb0e6840742fef8e/0";
-			}
-			if (cmd === "torrent_get_status") {
-				// 模拟一个略带延迟的 Promise，用以获取中间状态（torrentStatus 还是 null）
-				return new Promise((resolve) =>
-					setTimeout(() => resolve(mockStatus), 10),
-				);
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
+			mockAddTorrentResult,
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/3a2a3e0f438a2e1d74381395bb0e6840742fef8e/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockImplementation(
+			() => new Promise((resolve) => setTimeout(() => resolve(mockStatus), 10)),
+		);
 
 		render(<App />);
 
 		// 搜索
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
@@ -429,7 +418,7 @@ describe("App 组件", () => {
 		const filePlayBtns = screen.getAllByRole("button", { name: "▶ 播放" });
 		fireEvent.click(filePlayBtns[0]);
 
-		// 推进第一步：加载 streamUrl 和 activeFileId，但此时 torrentStatus 依然为 null
+		// 推进第一步：加载 streamUrl 和 activeFileId，但此时 torrentStatus 还是 null
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
@@ -457,10 +446,9 @@ describe("App 组件", () => {
 		});
 
 		// 覆盖 interval 错误逻辑
-		vi.mocked(invoke).mockImplementationOnce(async (cmd) => {
-			if (cmd === "torrent_get_status") throw "Fetch status failed";
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockRejectedValueOnce(
+			"Fetch status failed",
+		);
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(1500);
 		});
@@ -535,21 +523,17 @@ describe("App 组件", () => {
 			files: [{ id: 0, name: "video1.mp4", len: 1000000 }],
 		};
 
-		vi.mocked(invoke).mockImplementation(async (cmd, _args) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents")
-				return mockResults;
-			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
-			if (cmd === "torrent_get_stream_url") {
-				throw "Stream server port not initialized";
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
+			mockAddTorrentResult,
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockRejectedValue(
+			"Stream server port not initialized",
+		);
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
@@ -582,29 +566,22 @@ describe("App 组件", () => {
 	});
 
 	it("当解析种子失败时，应该显示解析失败的 Toast 提示", async () => {
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents") {
-				return [
-					{
-						title: "凡人修仙传 第1集",
-						link: "http://example.com/1",
-						pub_date: "2026-06-23",
-						magnet: "magnet:?xt=urn:btih:TEST1",
-						size: 350000000,
-					},
-				];
-			}
-			if (cmd === "torrent_add_magnet") {
-				throw "解析引擎启动超时";
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
+			{
+				title: "凡人修仙传 第1集",
+				link: "http://example.com/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 350000000,
+			},
+		]);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValue(
+			"解析引擎启动超时",
+		);
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
@@ -640,37 +617,28 @@ describe("App 组件", () => {
 		});
 
 		// Should be back to search page
-		expect(
-			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-		).toBeInTheDocument();
+		expect(screen.getByTestId("search-input")).toBeInTheDocument();
 
 		vi.useRealTimers();
 	});
 
 	it("当解析种子抛出非字符串错误时，应该显示默认解析错误提示", async () => {
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents") {
-				return [
-					{
-						title: "凡人修仙传 第1集",
-						link: "http://example.com/1",
-						pub_date: "2026-06-23",
-						magnet: "magnet:?xt=urn:btih:TEST1",
-						size: 350000000,
-					},
-				];
-			}
-			if (cmd === "torrent_add_magnet") {
-				throw new Error("Fatal Torrent Error");
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
+			{
+				title: "凡人修仙传 第1集",
+				link: "http://example.com/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 350000000,
+			},
+		]);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValue(
+			new Error("Fatal Torrent Error"),
+		);
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
@@ -721,22 +689,23 @@ describe("App 组件", () => {
 			peers_total: 0,
 		};
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents")
-				return mockResults;
-			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
-			if (cmd === "torrent_get_stream_url") return "stream_url";
-			if (cmd === "torrent_get_status") return mockStatus;
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
+			mockAddTorrentResult,
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"stream_url",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
 
 		const { unmount } = render(<App />);
 
 		// 搜索并播放以启动定时器
-		fireEvent.change(
-			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-			{ target: { value: "凡人" } },
-		);
+		fireEvent.change(screen.getByTestId("search-input"), {
+			target: { value: "凡人" },
+		});
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 		await waitFor(() => expect(screen.getByText("凡人1")).toBeInTheDocument());
 
@@ -767,7 +736,7 @@ describe("App 组件", () => {
 	});
 
 	it("当点击 Toast 提示的关闭按钮时，应该立即关闭 Toast 提示", async () => {
-		vi.mocked(invoke).mockResolvedValue([
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
 			{
 				title: "凡人修仙传 第1集",
 				link: "http://example.com/1",
@@ -779,9 +748,7 @@ describe("App 组件", () => {
 
 		render(<App />);
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
@@ -831,19 +798,16 @@ describe("App 组件", () => {
 			files: [{ id: 0, name: "video1.mp4", len: 1000000 }],
 		};
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents")
-				return mockResults;
-			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
+			mockAddTorrentResult,
+		);
 
 		render(<App />);
 
-		fireEvent.change(
-			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-			{ target: { value: "凡人" } },
-		);
+		fireEvent.change(screen.getByTestId("search-input"), {
+			target: { value: "凡人" },
+		});
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
 		await waitFor(() => {
@@ -889,38 +853,6 @@ describe("App 组件", () => {
 		spy.mockRestore();
 	});
 
-	it("在 Player 页面中如果缺少播放参数，应该展示错误提示", async () => {
-		renderWithDI(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/play/invalid"]}>
-					<Routes>
-						<Route path="/play/:infoHash" element={<Player />} />
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
-
-		await waitFor(() => {
-			expect(screen.getByText("无法加载视频流")).toBeInTheDocument();
-		});
-	});
-
-	it("在 TorrentDetail 页面中如果缺少磁力链接，应该展示错误提示", async () => {
-		renderWithDI(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/torrent"]}>
-					<Routes>
-						<Route path="/torrent" element={<TorrentDetail />} />
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
-
-		await waitFor(() => {
-			expect(screen.getByText(/未提供有效的磁力链接/)).toBeInTheDocument();
-		});
-	});
-
 	it("在 TorrentDetail 页面中点击返回和取消按钮时，应该触发导航", async () => {
 		const mockResults = [
 			{
@@ -937,20 +869,17 @@ describe("App 组件", () => {
 			files: [{ id: 0, name: "v.mp4", len: 100 }],
 		};
 
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents")
-				return mockResults;
-			if (cmd === "torrent_add_magnet") return mockAddTorrentResult;
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
+			mockAddTorrentResult,
+		);
 
 		render(<App />);
 
 		// Search and click play to go to detail
-		fireEvent.change(
-			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-			{ target: { value: "凡人" } },
-		);
+		fireEvent.change(screen.getByTestId("search-input"), {
+			target: { value: "凡人" },
+		});
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 		await waitFor(() => expect(screen.getByText("凡人1")).toBeInTheDocument());
 
@@ -974,9 +903,7 @@ describe("App 组件", () => {
 		});
 
 		// Should be back to search page
-		expect(
-			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-		).toBeInTheDocument();
+		expect(screen.getByTestId("search-input")).toBeInTheDocument();
 
 		// Go back to TorrentDetail
 		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
@@ -992,9 +919,7 @@ describe("App 组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(
-			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-		).toBeInTheDocument();
+		expect(screen.getByTestId("search-input")).toBeInTheDocument();
 
 		vi.useRealTimers();
 	});
@@ -1009,21 +934,16 @@ describe("App 组件", () => {
 				size: 100,
 			},
 		];
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "search_dmhy" || cmd === "search_torrents")
-				return mockResults;
-			if (cmd === "torrent_add_magnet") {
-				return new Promise(() => {}); // never resolves
-			}
-			return null;
-		});
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockReturnValue(
+			new Promise(() => {}),
+		); // never resolves
 
 		render(<App />);
 
-		fireEvent.change(
-			screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-			{ target: { value: "凡人" } },
-		);
+		fireEvent.change(screen.getByTestId("search-input"), {
+			target: { value: "凡人" },
+		});
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 		await waitFor(() => {
 			const count = document.querySelector(".results-count");
@@ -1037,189 +957,7 @@ describe("App 组件", () => {
 		fireEvent.click(cancelBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.getByPlaceholderText("输入动漫名称，例如：凡人修仙传..."),
-			).toBeInTheDocument();
-		});
-	});
-
-	it("在 Player 页面中如果在加载流地址前复制，应该提前返回且不进行复制操作", async () => {
-		vi.mocked(invoke).mockImplementationOnce(async (cmd) => {
-			if (cmd === "torrent_get_stream_url") {
-				return new Promise(() => {}); // never resolves
-			}
-			return null;
-		});
-
-		renderWithDI(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/play/hash/0"]}>
-					<Routes>
-						<Route path="/play/:infoHash/:fileId" element={<Player />} />
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
-
-		const copyBtn = screen.getByRole("button", { name: "📋 复制视频流地址" });
-		fireEvent.click(copyBtn);
-
-		expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
-	});
-
-	it("在 Player 页面加载流地址过程中卸载组件，应该终止初始化", () => {
-		const { unmount } = renderWithDI(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/play/hash/0"]}>
-					<Routes>
-						<Route path="/play/:infoHash/:fileId" element={<Player />} />
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
-		unmount();
-	});
-
-	it("应该可以渲染下载管理页面并展示下载任务列表，并且支持暂停、继续和删除操作", async () => {
-		const mockTorrents: TorrentStatusInfo[] = [
-			{
-				info_hash: "hash111",
-				name: "动漫视频1",
-				progress_bytes: 500,
-				total_bytes: 1000,
-				finished: false,
-				download_speed_bytes_per_sec: 100,
-				paused: false,
-				peers_connected: 0,
-				peers_total: 0,
-			},
-			{
-				info_hash: "hash222",
-				name: "动漫视频2",
-				progress_bytes: 1000,
-				total_bytes: 1000,
-				finished: true,
-				download_speed_bytes_per_sec: 0,
-				paused: false,
-				peers_connected: 0,
-				peers_total: 0,
-			},
-		];
-
-		vi.mocked(invoke).mockImplementation(async (cmd) => {
-			if (cmd === "torrent_list") {
-				return mockTorrents;
-			}
-			if (cmd === "torrent_pause") {
-				mockTorrents[0].paused = true;
-				return null;
-			}
-			if (cmd === "torrent_resume") {
-				mockTorrents[0].paused = false;
-				return null;
-			}
-			if (cmd === "torrent_delete") {
-				return null;
-			}
-			return null;
-		});
-
-		renderWithDI(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/downloads"]}>
-					<Routes>
-						<Route path="/downloads" element={<Downloads />} />
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
-
-		// 检查标题和列表
-		await waitFor(() => {
-			expect(screen.getByText("📥 下载管理")).toBeInTheDocument();
-			expect(screen.getByText("动漫视频1")).toBeInTheDocument();
-			expect(screen.getByText("动漫视频2")).toBeInTheDocument();
-		});
-
-		// 检查进度和速度
-		expect(screen.getByText(/进度: 50/)).toBeInTheDocument();
-		expect(screen.getByText(/网速: 100 B/)).toBeInTheDocument();
-
-		// 测试暂停操作
-		const pauseBtn = screen.getByTitle("暂停下载");
-		fireEvent.click(pauseBtn);
-		await waitFor(() => {
-			expect(invoke).toHaveBeenCalledWith("torrent_pause", {
-				infoHash: "hash111",
-			});
-		});
-
-		// 测试删除按钮触发弹窗
-		const deleteBtn = screen.getAllByTitle("删除下载")[0];
-		fireEvent.click(deleteBtn);
-		expect(screen.getByText("删除下载任务")).toBeInTheDocument();
-
-		// 点击确认删除
-		const confirmDeleteBtn = screen.getByText("确认删除");
-		fireEvent.click(confirmDeleteBtn);
-		await waitFor(() => {
-			expect(invoke).toHaveBeenCalledWith("torrent_delete", {
-				infoHash: "hash111",
-				deleteFiles: false,
-			});
-		});
-	});
-
-	it("应该可以渲染设置页面并可以更改下载路径", async () => {
-		let currentDir = "C:\\Downloads";
-
-		// biome-ignore lint/suspicious/noExplicitAny: mock implementation args
-		vi.mocked(invoke).mockImplementation(async (cmd, args: any) => {
-			if (cmd === "settings_get") {
-				return { download_dir: currentDir };
-			}
-			if (cmd === "select_directory") {
-				return "D:\\CustomDownloads";
-			}
-			if (cmd === "settings_set_download_dir") {
-				currentDir = args.dir;
-				return null;
-			}
-			return null;
-		});
-
-		renderWithDI(
-			<AppContextProvider>
-				<MemoryRouter initialEntries={["/settings"]}>
-					<Routes>
-						<Route path="/settings" element={<Settings />} />
-					</Routes>
-				</MemoryRouter>
-			</AppContextProvider>,
-		);
-
-		// 检查输入框内的值
-		await waitFor(() => {
-			const input = screen.getByPlaceholderText(/选择或输入下载路径/);
-			expect(input).toHaveValue("C:\\Downloads");
-		});
-
-		// 点击选择目录
-		const selectBtn = screen.getByText("选择目录");
-		fireEvent.click(selectBtn);
-		await waitFor(() => {
-			expect(invoke).toHaveBeenCalledWith("select_directory");
-			const input = screen.getByPlaceholderText(/选择或输入下载路径/);
-			expect(input).toHaveValue("D:\\CustomDownloads");
-		});
-
-		// 点击保存
-		const saveBtn = screen.getByText("保存设置");
-		fireEvent.click(saveBtn);
-		await waitFor(() => {
-			expect(invoke).toHaveBeenCalledWith("settings_set_download_dir", {
-				dir: "D:\\CustomDownloads",
-			});
+			expect(screen.getByTestId("search-input")).toBeInTheDocument();
 		});
 	});
 });

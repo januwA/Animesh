@@ -184,6 +184,7 @@ export function SearchForm({
 				<div className="h-5 w-[1px] bg-white/10 self-center" />
 				<Input
 					id="search-input"
+					data-testid="search-input"
 					className="flex-1 pl-3 pr-28 py-6 bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
 					value={keyword}
 					onChange={(e) => setKeyword(e.target.value)}

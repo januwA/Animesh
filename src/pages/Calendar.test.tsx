@@ -415,4 +415,41 @@ describe("Calendar 页面组件", () => {
 			"?keyword=%E9%94%AE%E7%9B%98%E6%B5%8B%E8%AF%95%E5%8A%A8%E6%BC%AB",
 		);
 	});
+
+	it("应该能在周日正确渲染 WeeklyCalendar，且能处理无中文名动漫的展示", async () => {
+		// Mock system time to a Sunday (June 28, 2026 was a Sunday)
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-06-28T12:00:00"));
+
+		const mockCalendar = [
+			{
+				weekday: { id: 7, en: "sunday", cn: "星期日", ja: "日曜日" },
+				items: [
+					{
+						id: 99,
+						name: "English Only Anime Name",
+						name_cn: "",
+						images: { large: "http://example.com/cover.jpg" },
+						rating: { score: 8.5 },
+						collection: { doing: 1200 },
+						rank: 1,
+					},
+				],
+			},
+		];
+
+		renderCalendar(
+			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
+		);
+
+		// Switch back to real timers so waitFor doesn't hang
+		vi.useRealTimers();
+
+		await waitFor(() => {
+			expect(screen.getByText("English Only Anime Name")).toBeInTheDocument();
+		});
+
+		const card = screen.getByText("English Only Anime Name");
+		fireEvent.keyDown(card, { key: "Escape", code: "Escape" });
+	});
 });
