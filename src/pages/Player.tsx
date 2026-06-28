@@ -328,14 +328,6 @@ export default function Player() {
 							内核安全和硬解码限制，内置播放器经常会出现黑屏、转圈或仅有声音。如果您无法播放，建议点击右侧按钮复制地址，使用外部播放器播放：
 						</AlertDescription>
 					</div>
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={handleCopyStreamUrl}
-						className="h-8 text-xs font-semibold px-3 flex-shrink-0 self-center"
-					>
-						📋 复制视频流地址
-					</Button>
 				</Alert>
 			)}
 
