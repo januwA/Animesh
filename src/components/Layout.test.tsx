@@ -111,4 +111,64 @@ describe("Layout 布局组件", () => {
 
 		vi.useRealTimers();
 	});
+
+	it("当存在正在下载的任务时，下载管理标签应该显示正在下载的数量", async () => {
+		const mockListTorrents = vi.fn().mockResolvedValue([
+			{ info_hash: "1", name: "Torrent 1", finished: true, paused: false },
+			{ info_hash: "2", name: "Torrent 2", finished: false, paused: true },
+			{ info_hash: "3", name: "Torrent 3", finished: false, paused: false },
+			{ info_hash: "4", name: "Torrent 4", finished: false, paused: false },
+		]);
+
+		const mockContainer = createDIContainerForTest({
+			torrentRepository: {
+				search: vi.fn(),
+				addTorrentMagnet: vi.fn(),
+				getTorrentFiles: vi.fn(),
+				listTorrents: mockListTorrents,
+				pauseTorrent: vi.fn(),
+				resumeTorrent: vi.fn(),
+				deleteTorrent: vi.fn(),
+				getTorrentStreamUrl: vi.fn(),
+				getTorrentStatus: vi.fn(),
+				getSubtitleTracks: vi.fn(),
+				getSubtitleVtt: vi.fn(),
+			},
+			settingsRepository: {
+				getSettings: vi
+					.fn()
+					.mockResolvedValue({ download_dir: "", proxy: null }),
+				setDownloadDir: vi.fn(),
+				setProxy: vi.fn(),
+				selectDirectory: vi.fn(),
+			},
+			bangumiRepository: {
+				getCalendar: vi.fn(),
+			},
+			notificationRepository: {
+				requestPermission: mockRequestPermission as () => Promise<boolean>,
+				sendNotification: vi.fn(),
+			},
+			notifyDownloadCompletionUseCase: {
+				execute: mockExecute as () => Promise<void>,
+			} as any,
+		});
+
+		const { findByText } = render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/"]}>
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="" element={<div>首页内容</div>} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		const badge = await findByText("2");
+		expect(badge).toBeInTheDocument();
+	});
 });

@@ -9,7 +9,7 @@ import {
 	Settings as SettingsIcon,
 	X,
 } from "lucide-react";
-import type { FormEvent } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
 	Alert,
@@ -17,6 +17,7 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -33,12 +34,41 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useDI } from "../di/DIContext";
 import type { SearchResultItem, ToastMessage } from "../types";
 import { formatBytes, formatLocalDate } from "../utils";
 
 // 页面头部组件
 export function AppHeader() {
 	const location = useLocation();
+	const { listTorrentsUseCase } = useDI();
+	const [activeCount, setActiveCount] = useState<number>(0);
+
+	useEffect(() => {
+		const isTauri =
+			typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+		if (!isTauri) return;
+
+		let isMounted = true;
+		const fetchActiveCount = async () => {
+			try {
+				const list = await listTorrentsUseCase.execute();
+				if (isMounted && Array.isArray(list)) {
+					const count = list.filter((t) => !t.finished && !t.paused).length;
+					setActiveCount(count);
+				}
+			} catch (err) {
+				console.error("Failed to fetch active torrents count for header:", err);
+			}
+		};
+
+		fetchActiveCount();
+		const interval = setInterval(fetchActiveCount, 3000);
+		return () => {
+			isMounted = false;
+			clearInterval(interval);
+		};
+	}, [listTorrentsUseCase]);
 
 	const navItems = [
 		{ path: "/", label: "搜索视频", icon: <Search className="h-3.5 w-3.5" /> },
@@ -50,7 +80,13 @@ export function AppHeader() {
 		{
 			path: "/downloads",
 			label: "下载管理",
-			icon: <Download className="h-3.5 w-3.5" />,
+			icon: (
+				<Download
+					className={`h-3.5 w-3.5 transition-transform ${
+						activeCount > 0 ? "animate-bounce text-cyan-400" : ""
+					}`}
+				/>
+			),
 		},
 		{
 			path: "/settings",
@@ -88,6 +124,14 @@ export function AppHeader() {
 						>
 							{item.icon}
 							<span>{item.label}</span>
+							{item.path === "/downloads" && activeCount > 0 && (
+								<Badge
+									variant="secondary"
+									className="ml-1.5 h-4.5 px-1.5 text-[9px] font-extrabold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full animate-pulse flex items-center justify-center"
+								>
+									{activeCount}
+								</Badge>
+							)}
 						</Link>
 					);
 				})}
