@@ -7,16 +7,19 @@ use std::sync::Arc;
 pub struct RqbitTorrentRepository {
     session: Arc<Session>,
     get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
+    get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
 }
 
 impl RqbitTorrentRepository {
     pub fn new(
         session: Arc<Session>,
         get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
+        get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
     ) -> Self {
         Self {
             session,
             get_download_dir_fn,
+            get_trackers_fn,
         }
     }
 
@@ -43,7 +46,8 @@ impl TorrentRepository for RqbitTorrentRepository {
             ..Default::default()
         };
 
-        let magnet_with_trackers = append_default_trackers(magnet);
+        let trackers = (self.get_trackers_fn)();
+        let magnet_with_trackers = append_default_trackers(magnet, &trackers);
 
         let response = self
             .session
@@ -223,26 +227,10 @@ impl TorrentRepository for RqbitTorrentRepository {
     }
 }
 
-fn append_default_trackers(magnet: &str) -> String {
+fn append_default_trackers(magnet: &str, default_trackers: &[String]) -> String {
     let mut magnet_with_trackers = magnet.to_string();
 
-    // Stable and active public trackers
-    let default_trackers = [
-        "udp://tracker.opentrackr.org:1337/announce",
-        "http://tracker.gbitt.info:80/announce",
-        "udp://open.stealth.si:80/announce",
-        "udp://tracker.coppersurfer.tk:6969/announce",
-        "udp://exodus.desync.com:6969/announce",
-        "udp://tracker.leechers-paradise.org:6969/announce",
-        "udp://tracker.internetwarriors.net:1337/announce",
-        "udp://tracker.cyberia.is:6969/announce",
-        "udp://tracker.torrent.eu.org:451/announce",
-        "udp://tracker.moack.co.kr:80/announce",
-        "udp://explodie.org:6969/announce",
-        "http://tracker.openbittorrent.com:80/announce",
-    ];
-
-    for tracker in default_trackers.iter() {
+    for tracker in default_trackers {
         let encoded_tracker = urlencoding::encode(tracker);
         // Only append if the tracker is not already present (both in raw and encoded form)
         if !magnet.contains(tracker) && !magnet.contains(&encoded_tracker.to_string()) {
@@ -267,7 +255,11 @@ mod tests {
     #[allow(non_snake_case)]
     fn 测试_追加默认Tracker_应成功() {
         let raw_magnet = "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff";
-        let with_trackers = append_default_trackers(raw_magnet);
+        let default_trackers = vec![
+            "udp://tracker.opentrackr.org:1337/announce".to_string(),
+            "http://tracker.gbitt.info:80/announce".to_string(),
+        ];
+        let with_trackers = append_default_trackers(raw_magnet, &default_trackers);
 
         assert!(with_trackers.contains("tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce"));
         assert!(with_trackers.contains("tr=http%3A%2F%2Ftracker.gbitt.info%3A80%2Fannounce"));
@@ -277,7 +269,7 @@ mod tests {
             "{}&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce",
             raw_magnet
         );
-        let with_trackers_2 = append_default_trackers(&raw_magnet_2);
+        let with_trackers_2 = append_default_trackers(&raw_magnet_2, &default_trackers);
 
         // Count occurrences of opentrackr
         let occurrences = with_trackers_2.matches("tracker.opentrackr.org").count();

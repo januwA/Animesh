@@ -44,6 +44,7 @@ describe("Layout 布局组件", () => {
 					.mockResolvedValue({ download_dir: "", proxy: null }),
 				setDownloadDir: vi.fn(),
 				setProxy: vi.fn(),
+				setTrackers: vi.fn(),
 				selectDirectory: vi.fn(),
 			},
 			bangumiRepository: {
@@ -140,6 +141,7 @@ describe("Layout 布局组件", () => {
 					.mockResolvedValue({ download_dir: "", proxy: null }),
 				setDownloadDir: vi.fn(),
 				setProxy: vi.fn(),
+				setTrackers: vi.fn(),
 				selectDirectory: vi.fn(),
 			},
 			bangumiRepository: {
@@ -198,6 +200,7 @@ describe("Layout 布局组件", () => {
 					.mockResolvedValue({ download_dir: "", proxy: null }),
 				setDownloadDir: vi.fn(),
 				setProxy: vi.fn(),
+				setTrackers: vi.fn(),
 				selectDirectory: vi.fn(),
 			},
 			bangumiRepository: {

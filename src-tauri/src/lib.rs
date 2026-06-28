@@ -237,6 +237,7 @@ fn settings_get(
     Ok(animesh_core::torrent_manager::AppSettings {
         download_dir: manager.get_download_dir(),
         proxy: manager.get_proxy(),
+        trackers: Some(manager.get_trackers()),
     })
 }
 
@@ -256,6 +257,14 @@ fn settings_set_proxy(
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), String> {
     manager.set_proxy(proxy).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn settings_set_trackers(
+    trackers: Vec<String>,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<(), String> {
+    manager.set_trackers(trackers).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -346,6 +355,7 @@ pub fn run() {
                 let settings = animesh_core::torrent_manager::AppSettings {
                     download_dir: download_dir.to_string_lossy().to_string(),
                     proxy: None,
+                    trackers: Some(animesh_core::torrent_manager::get_default_trackers()),
                 };
                 if let Ok(file) = std::fs::File::create(&settings_path) {
                     let _ = serde_json::to_writer_pretty(file, &settings);
@@ -376,6 +386,7 @@ pub fn run() {
             settings_get,
             settings_set_download_dir,
             settings_set_proxy,
+            settings_set_trackers,
             select_directory,
             torrent_get_subtitle_tracks,
             torrent_get_subtitle_vtt

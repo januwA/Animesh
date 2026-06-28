@@ -97,6 +97,7 @@ describe("Home 页面组件", () => {
 				getSettings: vi.fn(),
 				setDownloadDir: vi.fn(),
 				setProxy: vi.fn(),
+				setTrackers: vi.fn(),
 				selectDirectory: vi.fn(),
 			},
 			bangumiRepository: {

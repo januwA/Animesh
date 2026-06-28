@@ -1,4 +1,4 @@
-import { Folder, Globe, HardDrive, Loader2, Save } from "lucide-react";
+import { Folder, Globe, HardDrive, Link2, Loader2, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ export default function Settings() {
 	const { showToast } = useAppContext();
 	const [downloadDir, setDownloadDir] = useState("");
 	const [proxy, setProxy] = useState("");
+	const [trackersText, setTrackersText] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 
@@ -24,6 +25,7 @@ export default function Settings() {
 				const settings = await getSettingsUseCase.execute();
 				setDownloadDir(settings.download_dir);
 				setProxy(settings.proxy || "");
+				setTrackersText((settings.trackers || []).join("\n"));
 			} catch (err: unknown) {
 				console.error("Failed to load settings:", err);
 				showToast("加载设置失败");
@@ -56,11 +58,17 @@ export default function Settings() {
 			return;
 		}
 
+		const parsedTrackers = trackersText
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0);
+
 		setSaving(true);
 		try {
 			await saveSettingsUseCase.execute(
 				downloadDir.trim(),
 				proxy.trim() || null,
+				parsedTrackers,
 			);
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
@@ -168,6 +176,65 @@ export default function Settings() {
 							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
 								💡 提示：部分地区可能无法直接访问动漫花园。如果 RSS
 								搜索无结果，可配置代理。支持 HTTP、HTTPS 或 SOCKS5 代理。
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="bg-card/40 border-white/5">
+					<CardHeader className="p-5">
+						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+							<Link2 className="h-4 w-4 text-primary" />
+							BT Trackers 设置 (加速磁力解析与下载)
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<label
+									htmlFor="trackers-input"
+									className="text-muted-foreground font-medium"
+								>
+									Tracker 服务器列表 (每行一个)
+								</label>
+								<button
+									type="button"
+									onClick={() => {
+										setTrackersText(
+											[
+												"udp://tracker.opentrackr.org:1337/announce",
+												"http://tracker.gbitt.info:80/announce",
+												"udp://open.stealth.si:80/announce",
+												"udp://tracker.coppersurfer.tk:6969/announce",
+												"udp://exodus.desync.com:6969/announce",
+												"udp://tracker.leechers-paradise.org:6969/announce",
+												"udp://tracker.internetwarriors.net:1337/announce",
+												"udp://tracker.cyberia.is:6969/announce",
+												"udp://tracker.torrent.eu.org:451/announce",
+												"udp://tracker.moack.co.kr:80/announce",
+												"udp://explodie.org:6969/announce",
+												"http://tracker.openbittorrent.com:80/announce",
+											].join("\n"),
+										);
+										showToast("已重置为默认 Tracker 列表，点击保存生效");
+									}}
+									className="text-[11px] text-primary hover:underline font-medium"
+								>
+									重置为默认值
+								</button>
+							</div>
+							<textarea
+								id="trackers-input"
+								value={trackersText}
+								onChange={(e) => setTrackersText(e.target.value)}
+								placeholder="请输入 Tracker 地址，每行输入一个"
+								rows={8}
+								className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+							/>
+							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
+								💡 提示：添加高质量的公网 Tracker
+								可以极大地加快纯净磁力链接的解析速度，并帮助你更快地连接到
+								Peers。
 							</p>
 						</div>
 

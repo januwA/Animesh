@@ -16,11 +16,29 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt, SeekFrom};
 use tokio::net::TcpListener;
 use tokio_util::io::ReaderStream;
 
+pub fn get_default_trackers() -> Vec<String> {
+    vec![
+        "udp://tracker.opentrackr.org:1337/announce".to_string(),
+        "http://tracker.gbitt.info:80/announce".to_string(),
+        "udp://open.stealth.si:80/announce".to_string(),
+        "udp://tracker.coppersurfer.tk:6969/announce".to_string(),
+        "udp://exodus.desync.com:6969/announce".to_string(),
+        "udp://tracker.leechers-paradise.org:6969/announce".to_string(),
+        "udp://tracker.internetwarriors.net:1337/announce".to_string(),
+        "udp://tracker.cyberia.is:6969/announce".to_string(),
+        "udp://tracker.torrent.eu.org:451/announce".to_string(),
+        "udp://tracker.moack.co.kr:80/announce".to_string(),
+        "udp://explodie.org:6969/announce".to_string(),
+        "http://tracker.openbittorrent.com:80/announce".to_string(),
+    ]
+}
+
 pub struct TorrentManager {
     pub torrent_repo: Arc<dyn TorrentRepository>,
     pub port: u16,
     pub download_dir: Arc<std::sync::RwLock<PathBuf>>,
     pub proxy: Arc<std::sync::RwLock<Option<String>>>,
+    pub trackers: Arc<std::sync::RwLock<Vec<String>>>,
     pub settings_path: PathBuf,
     pub crawler_repo: Arc<dyn CrawlerRepository + Send + Sync>,
 }
@@ -29,6 +47,8 @@ pub struct TorrentManager {
 pub struct AppSettings {
     pub download_dir: String,
     pub proxy: Option<String>,
+    #[serde(default)]
+    pub trackers: Option<Vec<String>>,
 }
 
 impl TorrentManager {
@@ -45,18 +65,39 @@ impl TorrentManager {
         }
         let session = librqbit::Session::new_with_opts(download_dir.clone(), opts).await?;
 
+        let trackers = if settings_path.exists() {
+            if let Ok(file) = std::fs::File::open(&settings_path) {
+                if let Ok(settings) = serde_json::from_reader::<_, AppSettings>(file) {
+                    settings.trackers.unwrap_or_else(get_default_trackers)
+                } else {
+                    get_default_trackers()
+                }
+            } else {
+                get_default_trackers()
+            }
+        } else {
+            get_default_trackers()
+        };
+
         let download_dir_lock = Arc::new(std::sync::RwLock::new(download_dir.clone()));
         let proxy_lock = Arc::new(std::sync::RwLock::new(proxy));
+        let trackers_lock = Arc::new(std::sync::RwLock::new(trackers));
 
         let download_dir_fn = {
             let dl = download_dir_lock.clone();
             Arc::new(move || dl.read().unwrap().to_string_lossy().to_string())
         };
 
+        let trackers_fn = {
+            let tr = trackers_lock.clone();
+            Arc::new(move || tr.read().unwrap().clone())
+        };
+
         let torrent_repo = Arc::new(
             crate::infrastructure::rqbit_torrent::RqbitTorrentRepository::new(
                 session,
                 download_dir_fn,
+                trackers_fn,
             ),
         );
 
@@ -81,6 +122,7 @@ impl TorrentManager {
             port,
             download_dir: download_dir_lock,
             proxy: proxy_lock,
+            trackers: trackers_lock,
             settings_path,
             crawler_repo,
         })
@@ -107,14 +149,19 @@ impl TorrentManager {
             serde_json::from_reader(file).unwrap_or_else(|_| AppSettings {
                 download_dir: dir.clone(),
                 proxy: self.get_proxy(),
+                trackers: Some(self.get_trackers()),
             })
         } else {
             AppSettings {
                 download_dir: dir.clone(),
                 proxy: self.get_proxy(),
+                trackers: Some(self.get_trackers()),
             }
         };
         settings.download_dir = dir;
+        if settings.trackers.is_none() {
+            settings.trackers = Some(self.get_trackers());
+        }
 
         let file = std::fs::File::create(&self.settings_path)?;
         serde_json::to_writer_pretty(file, &settings)?;
@@ -137,19 +184,56 @@ impl TorrentManager {
             serde_json::from_reader(file).unwrap_or_else(|_| AppSettings {
                 download_dir: self.get_download_dir(),
                 proxy: proxy.clone(),
+                trackers: Some(self.get_trackers()),
             })
         } else {
             AppSettings {
                 download_dir: self.get_download_dir(),
                 proxy: proxy.clone(),
+                trackers: Some(self.get_trackers()),
             }
         };
         settings.proxy = proxy.clone();
+        if settings.trackers.is_none() {
+            settings.trackers = Some(self.get_trackers());
+        }
 
         let file = std::fs::File::create(&self.settings_path)?;
         serde_json::to_writer_pretty(file, &settings)?;
 
         *self.proxy.write().unwrap() = proxy;
+        Ok(())
+    }
+
+    pub fn get_trackers(&self) -> Vec<String> {
+        self.trackers.read().unwrap().clone()
+    }
+
+    pub fn set_trackers(&self, trackers: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(parent) = self.settings_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let mut settings = if self.settings_path.exists() {
+            let file = std::fs::File::open(&self.settings_path)?;
+            serde_json::from_reader(file).unwrap_or_else(|_| AppSettings {
+                download_dir: self.get_download_dir(),
+                proxy: self.get_proxy(),
+                trackers: Some(trackers.clone()),
+            })
+        } else {
+            AppSettings {
+                download_dir: self.get_download_dir(),
+                proxy: self.get_proxy(),
+                trackers: Some(trackers.clone()),
+            }
+        };
+        settings.trackers = Some(trackers.clone());
+
+        let file = std::fs::File::create(&self.settings_path)?;
+        serde_json::to_writer_pretty(file, &settings)?;
+
+        *self.trackers.write().unwrap() = trackers;
         Ok(())
     }
 
@@ -418,5 +502,41 @@ mod tests {
         let content = std::fs::read_to_string(&settings_path).unwrap();
         let parsed: AppSettings = serde_json::from_str(&content).unwrap();
         assert_eq!(parsed.proxy, Some(proxy_str));
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_自定义Tracker_逻辑() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("animesh_test_manager_trackers_{}", nanos));
+        std::fs::create_dir_all(&dir).unwrap();
+        let settings_path = dir.join("settings.json");
+        let manager = TorrentManager::new(dir, settings_path.clone(), None)
+            .await
+            .unwrap();
+
+        // 验证初始 Tracker 列表不为空且包含默认 Tracker
+        let initial_trackers = manager.get_trackers();
+        assert!(!initial_trackers.is_empty());
+        assert!(
+            initial_trackers.contains(&"udp://tracker.opentrackr.org:1337/announce".to_string())
+        );
+
+        // 修改 Tracker 列表
+        let new_trackers = vec!["udp://tracker.new-tracker.com:80/announce".to_string()];
+        manager.set_trackers(new_trackers.clone()).unwrap();
+
+        // 验证内存更新
+        assert_eq!(manager.get_trackers(), new_trackers);
+
+        // 验证设置文件被写入
+        assert!(settings_path.exists());
+        let content = std::fs::read_to_string(&settings_path).unwrap();
+        let parsed: AppSettings = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed.trackers, Some(new_trackers));
     }
 }

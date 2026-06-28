@@ -69,9 +69,10 @@ export function createDIContainerForTest(
 	const settingsRepo =
 		params.settingsRepository ||
 		({
-			getSettings: async () => ({ download_dir: "" }),
+			getSettings: async () => ({ download_dir: "", trackers: [] }),
 			setDownloadDir: async () => {},
 			setProxy: async () => {},
+			setTrackers: async () => {},
 			selectDirectory: async () => null,
 		} as SettingsRepository);
 

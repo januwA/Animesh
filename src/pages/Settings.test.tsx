@@ -26,6 +26,7 @@ describe("Settings 页面组件", () => {
 			getSettings: vi.fn(),
 			setDownloadDir: vi.fn(),
 			setProxy: vi.fn(),
+			setTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 		};
 
@@ -101,10 +102,15 @@ describe("Settings 页面组件", () => {
 	it("应该成功加载并显示当前下载目录与代理设置，且支持输入更改与保存（成功分支）", async () => {
 		let currentDir = "C:\\Downloads";
 		let currentProxy = "http://127.0.0.1:7890";
+		let currentTrackers: string[] = ["udp://tracker1"];
 
 		vi.mocked(mockSettingsRepository.getSettings).mockImplementation(
 			async () => {
-				return { download_dir: currentDir, proxy: currentProxy };
+				return {
+					download_dir: currentDir,
+					proxy: currentProxy,
+					trackers: currentTrackers,
+				};
 			},
 		);
 		vi.mocked(mockSettingsRepository.setDownloadDir).mockImplementation(
@@ -119,6 +125,11 @@ describe("Settings 页面组件", () => {
 		).mockImplementation(async (proxy) => {
 			currentProxy = proxy || "";
 		});
+		vi.mocked(mockSettingsRepository.setTrackers).mockImplementation(
+			async (trackers) => {
+				currentTrackers = trackers;
+			},
+		);
 
 		renderSettings();
 
@@ -129,6 +140,9 @@ describe("Settings 页面组件", () => {
 			expect(
 				screen.getByPlaceholderText(/例如 http:\/\/127.0.0.1:7890/),
 			).toHaveValue("http://127.0.0.1:7890");
+			expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
+				"udp://tracker1",
+			);
 		});
 
 		const input = screen.getByPlaceholderText(/选择或输入下载路径/);
@@ -141,6 +155,11 @@ describe("Settings 页面组件", () => {
 			target: { value: "socks5://127.0.0.1:1080" },
 		});
 
+		const trackersInput = screen.getByPlaceholderText(/请输入 Tracker 地址/);
+		fireEvent.change(trackersInput, {
+			target: { value: "udp://tracker2\nhttp://tracker3" },
+		});
+
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);
 
@@ -151,6 +170,10 @@ describe("Settings 页面组件", () => {
 			expect(mockSettingsRepository.setProxy).toHaveBeenCalledWith(
 				"socks5://127.0.0.1:1080",
 			);
+			expect(mockSettingsRepository.setTrackers).toHaveBeenCalledWith([
+				"udp://tracker2",
+				"http://tracker3",
+			]);
 			expect(
 				screen.getByText("设置已保存，后续下载任务将使用新路径"),
 			).toBeInTheDocument();

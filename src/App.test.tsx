@@ -63,6 +63,7 @@ describe("App 组件", () => {
 			getSettings: vi.fn().mockResolvedValue({ download_dir: "" }),
 			setDownloadDir: vi.fn(),
 			setProxy: vi.fn(),
+			setTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 		};
 

@@ -5,10 +5,13 @@ export class TauriSettingsRepository implements SettingsRepository {
 	async getSettings(): Promise<{
 		download_dir: string;
 		proxy?: string | null;
+		trackers?: string[];
 	}> {
-		return invoke<{ download_dir: string; proxy?: string | null }>(
-			"settings_get",
-		);
+		return invoke<{
+			download_dir: string;
+			proxy?: string | null;
+			trackers?: string[];
+		}>("settings_get");
 	}
 
 	async setDownloadDir(dir: string): Promise<void> {
@@ -17,6 +20,10 @@ export class TauriSettingsRepository implements SettingsRepository {
 
 	async setProxy(proxy: string | null): Promise<void> {
 		return invoke<void>("settings_set_proxy", { proxy: proxy || null });
+	}
+
+	async setTrackers(trackers: string[]): Promise<void> {
+		return invoke<void>("settings_set_trackers", { trackers });
 	}
 
 	async selectDirectory(): Promise<string | null> {

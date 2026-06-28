@@ -9,6 +9,7 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		getSettings: vi.fn(),
 		setDownloadDir: vi.fn(),
 		setProxy: vi.fn(),
+		setTrackers: vi.fn(),
 		selectDirectory: vi.fn(),
 	};
 	const mockRepo = rawMockRepo as unknown as SettingsRepository;
@@ -18,19 +19,28 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		vi.mocked(rawMockRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock/dir",
 			proxy: null,
+			trackers: ["udp://tracker1"],
 		});
 		const result = await useCase.execute();
 		expect(rawMockRepo.getSettings).toHaveBeenCalled();
-		expect(result).toEqual({ download_dir: "/mock/dir", proxy: null });
+		expect(result).toEqual({
+			download_dir: "/mock/dir",
+			proxy: null,
+			trackers: ["udp://tracker1"],
+		});
 	});
 
-	it("SaveSettingsUseCase 应该调用 repository 里的 setDownloadDir 和 setProxy 方法", async () => {
+	it("SaveSettingsUseCase 应该调用 repository 里的 setDownloadDir、setProxy 和 setTrackers 方法", async () => {
 		const useCase = new SaveSettingsUseCase(mockRepo);
 		vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
 		vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
-		await useCase.execute("/mock/dir2", "http://127.0.0.1:1080");
+		vi.mocked(rawMockRepo.setTrackers).mockResolvedValueOnce(undefined);
+		await useCase.execute("/mock/dir2", "http://127.0.0.1:1080", [
+			"udp://tracker1",
+		]);
 		expect(rawMockRepo.setDownloadDir).toHaveBeenCalledWith("/mock/dir2");
 		expect(rawMockRepo.setProxy).toHaveBeenCalledWith("http://127.0.0.1:1080");
+		expect(rawMockRepo.setTrackers).toHaveBeenCalledWith(["udp://tracker1"]);
 	});
 
 	it("SelectDirectoryUseCase 应该正确拉起目录选择框", async () => {
