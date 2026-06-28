@@ -453,4 +453,73 @@ describe("Calendar 页面组件", () => {
 		const card = screen.getByText("English Only Anime Name");
 		fireEvent.keyDown(card, { key: "Escape", code: "Escape" });
 	});
+
+	it("当今天是非星期日时，WeeklyCalendar 应该正确识别 weekday id，且点击无中文名的番剧应该回退到原名搜索", async () => {
+		const getDaySpy = vi.spyOn(Date.prototype, "getDay").mockReturnValue(1); // 1 = Monday
+
+		const mockCalendar = [
+			{
+				weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
+				items: [
+					{
+						id: 1,
+						name: "Monday Anime Original",
+						name_cn: "",
+						images: { large: "http://example.com/cover.jpg" },
+						rating: { score: 9.0 },
+						collection: { doing: 500 },
+						rank: 1,
+					},
+				],
+			},
+		];
+
+		renderCalendar(
+			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("Monday Anime Original")).toBeInTheDocument();
+		});
+
+		// Click the card with empty name_cn to cover the || item.name fallback
+		const animeCard = screen.getByTitle("搜索: Monday Anime Original");
+		fireEvent.click(animeCard);
+
+		expect(currentLocation.current?.pathname).toBe("/");
+		expect(currentLocation.current?.search).toContain("Monday");
+
+		getDaySpy.mockRestore();
+	});
+
+	it("当今天是星期日时，WeeklyCalendar 应该正确识别 weekday id 为 7", async () => {
+		const getDaySpy = vi.spyOn(Date.prototype, "getDay").mockReturnValue(0); // 0 = Sunday
+
+		const mockCalendar = [
+			{
+				weekday: { id: 7, en: "Sunday", cn: "星期日", ja: "日曜日" },
+				items: [
+					{
+						id: 2,
+						name: "Sunday Anime",
+						name_cn: "周日动漫",
+						images: { large: "http://example.com/cover.jpg" },
+						rating: { score: 9.0 },
+						collection: { doing: 500 },
+						rank: 1,
+					},
+				],
+			},
+		];
+
+		renderCalendar(
+			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("周日动漫")).toBeInTheDocument();
+		});
+
+		getDaySpy.mockRestore();
+	});
 });

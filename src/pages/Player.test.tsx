@@ -75,14 +75,45 @@ describe("Player 页面组件", () => {
 		currentLocation.current = null;
 		vi.clearAllMocks();
 		vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
+
+		const mockTracksList: any = [
+			{
+				id: "1",
+				mode: "disabled",
+			},
+			{
+				id: "2",
+				mode: "disabled",
+			},
+			{
+				id: "3",
+				mode: "disabled",
+			},
+		];
+		const addTrackListeners: any[] = [];
+		mockTracksList.addEventListener = vi.fn((event, listener) => {
+			if (event === "addtrack") {
+				addTrackListeners.push(listener);
+			}
+		});
+		mockTracksList.removeEventListener = vi.fn((event, listener) => {
+			if (event === "addtrack") {
+				const index = addTrackListeners.indexOf(listener);
+				if (index > -1) {
+					addTrackListeners.splice(index, 1);
+				}
+			}
+		});
+		mockTracksList.triggerAddTrack = () => {
+			for (const listener of addTrackListeners) {
+				listener();
+			}
+		};
+
 		Object.defineProperty(HTMLMediaElement.prototype, "textTracks", {
 			configurable: true,
 			writable: true,
-			value: [
-				{
-					mode: "disabled",
-				},
-			],
+			value: mockTracksList,
 		});
 	});
 
@@ -385,6 +416,15 @@ describe("Player 页面组件", () => {
 		await act(async () => {
 			await vi.runOnlyPendingTimersAsync();
 		});
+
+		// Trigger the addtrack event listener to cover handleAddTrack
+		const textTracks = HTMLMediaElement.prototype.textTracks;
+		if (
+			textTracks &&
+			typeof (textTracks as any).triggerAddTrack === "function"
+		) {
+			(textTracks as any).triggerAddTrack();
+		}
 
 		// Verify the unsupported format warning is shown
 		expect(

@@ -287,6 +287,45 @@ describe("Settings 页面组件", () => {
 		});
 	});
 
+	it("应该支持点击“重置为默认值”按钮以一键还原默认 Tracker 列表，并能成功保存", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			trackers: ["udp://oldtracker"],
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
+				"udp://oldtracker",
+			);
+		});
+
+		const resetBtn = screen.getByRole("button", { name: "重置为默认值" });
+		fireEvent.click(resetBtn);
+
+		// Expect default trackers list value
+		const trackersInput = screen.getByPlaceholderText(
+			/请输入 Tracker 地址/,
+		) as HTMLTextAreaElement;
+		expect(trackersInput.value).toContain(
+			"udp://tracker.opentrackr.org:1337/announce",
+		);
+		expect(trackersInput.value).toContain(
+			"http://tracker.openbittorrent.com:80/announce",
+		);
+
+		const saveBtn = screen.getByRole("button", { name: "保存设置" });
+		fireEvent.click(saveBtn);
+
+		await waitFor(() => {
+			expect(mockSettingsRepository.setTrackers).toHaveBeenCalled();
+			expect(
+				screen.getByText("设置已保存，后续下载任务将使用新路径"),
+			).toBeInTheDocument();
+		});
+	});
+
 	it("当点击返回首页按钮时，应该正常触发路由跳转", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",

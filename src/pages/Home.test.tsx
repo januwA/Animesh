@@ -512,4 +512,10 @@ describe("Home 页面组件", () => {
 			).toBeInTheDocument();
 		});
 	});
+
+	it("当 URL keyword 参数为纯空白时，不应该触发搜索", () => {
+		renderHome("/?keyword=%20%20");
+
+		expect(mockTorrentRepository.search).not.toHaveBeenCalled();
+	});
 });
