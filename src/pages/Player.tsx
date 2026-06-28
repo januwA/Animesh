@@ -1,5 +1,5 @@
 import { Activity, ArrowLeft, Download, Info, Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,14 @@ export default function Player() {
 
 	const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+	const isMountedRef = useRef(true);
+	useEffect(() => {
+		isMountedRef.current = true;
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, []);
+
 	// Clean up subtitle object URL on unmount
 	useEffect(() => {
 		return () => {
@@ -78,32 +86,40 @@ export default function Player() {
 		}
 	}, [subtrackSrc]);
 
-	const loadSubtitleVtt = async (trackId: number) => {
-		if (!infoHash || fileId === undefined) return;
-		setSubloading(true);
-		try {
-			const parsedFileId = parseInt(fileId, 10);
-			const vttContent = await getSubtitleVttUseCase.execute(
-				infoHash,
-				parsedFileId,
-				trackId,
-			);
-			const blob = new Blob([vttContent], { type: "text/vtt" });
-			const url = URL.createObjectURL(blob);
-			setSubtrackSrc((prev) => {
-				if (prev) {
-					URL.revokeObjectURL(prev);
+	const loadSubtitleVtt = useCallback(
+		async (trackId: number) => {
+			if (!infoHash || fileId === undefined) return;
+			setSubloading(true);
+			try {
+				const parsedFileId = parseInt(fileId, 10);
+				const vttContent = await getSubtitleVttUseCase.execute(
+					infoHash,
+					parsedFileId,
+					trackId,
+				);
+				if (!isMountedRef.current) return;
+				const blob = new Blob([vttContent], { type: "text/vtt" });
+				const url = URL.createObjectURL(blob);
+				setSubtrackSrc((prev) => {
+					if (prev) {
+						URL.revokeObjectURL(prev);
+					}
+					return url;
+				});
+				setSelectedTrackId(trackId);
+			} catch (err: unknown) {
+				if (isMountedRef.current) {
+					console.error("Failed to load subtitle VTT:", err);
+					showToast("加载字幕失败，请重试");
 				}
-				return url;
-			});
-			setSelectedTrackId(trackId);
-		} catch (err: unknown) {
-			console.error("Failed to load subtitle VTT:", err);
-			showToast("加载字幕失败，请重试");
-		} finally {
-			setSubloading(false);
-		}
-	};
+			} finally {
+				if (isMountedRef.current) {
+					setSubloading(false);
+				}
+			}
+		},
+		[infoHash, fileId, getSubtitleVttUseCase, showToast],
+	);
 
 	// Load stream URL and setup status polling
 	useEffect(() => {
@@ -143,6 +159,7 @@ export default function Player() {
 					if (isMounted && tracks && tracks.length > 0) {
 						setSubtracks(tracks);
 						loadedTracks = true;
+						loadSubtitleVtt(tracks[0].id);
 					}
 				} catch (err: unknown) {
 					console.error("Failed to load subtitle tracks:", err);
@@ -166,6 +183,7 @@ export default function Player() {
 								if (tracks && tracks.length > 0) {
 									setSubtracks(tracks);
 									loadedTracks = true;
+									loadSubtitleVtt(tracks[0].id);
 								}
 							} catch (err) {
 								console.error(
@@ -202,6 +220,7 @@ export default function Player() {
 		getTorrentStreamUrlUseCase,
 		getTorrentStatusUseCase,
 		getSubtitleTracksUseCase,
+		loadSubtitleVtt,
 	]);
 
 	const handleCopyStreamUrl = async () => {

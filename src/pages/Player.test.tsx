@@ -394,18 +394,8 @@ describe("Player 页面组件", () => {
 		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
 		const selectTrigger = screen.getByRole("combobox");
 		expect(selectTrigger).toBeInTheDocument();
-		expect(selectTrigger).toHaveTextContent("无");
-
-		// Open dropdown
-		fireEvent.click(selectTrigger);
-
-		// Click to select the English subtitle
-		const engItem = screen.getByText("English [ENG]");
-		fireEvent.click(engItem);
-
-		await act(async () => {
-			await vi.runOnlyPendingTimersAsync();
-		});
+		// Defaults to the first subtitle
+		expect(selectTrigger).toHaveTextContent("English [ENG]");
 
 		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
 			"hash123",
@@ -413,7 +403,7 @@ describe("Player 页面组件", () => {
 			1,
 		);
 
-		// Open dropdown again
+		// Open dropdown
 		fireEvent.click(selectTrigger);
 
 		// Click to select the Chinese subtitle (to trigger revoking of English subtitle prev URL)
@@ -534,15 +524,6 @@ describe("Player 页面组件", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByRole("combobox")).toBeInTheDocument();
-		});
-
-		// Open dropdown and select English
-		fireEvent.click(screen.getByRole("combobox"));
-		const engItem = screen.getByText("English [ENG]");
-		fireEvent.click(engItem);
-
-		await waitFor(() => {
 			expect(screen.getByText("加载字幕失败，请重试")).toBeInTheDocument();
 		});
 	});
@@ -566,6 +547,9 @@ describe("Player 页面组件", () => {
 		);
 		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
 			mockStatus,
+		);
+		vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+			"WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
 		);
 
 		// First call fails, second call (polling) succeeds
@@ -593,14 +577,21 @@ describe("Player 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(1500);
 		});
 
+		// Flush microtasks
+		for (let i = 0; i < 3; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
+
 		// Verify the subtitle tracks are now loaded and displayed
 		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
 		expect(screen.getByRole("combobox")).toBeInTheDocument();
-		expect(screen.getByRole("combobox")).toHaveTextContent("无");
+		expect(screen.getByRole("combobox")).toHaveTextContent("English [ENG]");
 
 		// Open dropdown and verify the track exists
 		fireEvent.click(screen.getByRole("combobox"));
-		expect(screen.getByText("English [ENG]")).toBeInTheDocument();
+		expect(screen.getAllByText("English [ENG]").length).toBe(2);
 
 		vi.useRealTimers();
 	});
