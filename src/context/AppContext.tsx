@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, use, useCallback, useState } from "react";
 import type { SearchResultItem, ToastMessage } from "../types";
 
 interface AppContextType {
@@ -47,7 +47,7 @@ export function AppContextProvider({
 	}, []);
 
 	return (
-		<AppContext.Provider
+		<AppContext
 			value={{
 				keyword,
 				setKeyword,
@@ -67,12 +67,12 @@ export function AppContextProvider({
 			}}
 		>
 			{children}
-		</AppContext.Provider>
+		</AppContext>
 	);
 }
 
 export function useAppContext() {
-	const context = useContext(AppContext);
+	const context = use(AppContext);
 	if (context === undefined) {
 		throw new Error("useAppContext must be used within an AppContextProvider");
 	}

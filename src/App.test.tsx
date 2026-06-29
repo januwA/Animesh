@@ -239,7 +239,7 @@ describe("App 组件", () => {
 
 		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.submit(input); // 可以直接回车提交
+		fireEvent.submit(input.closest("form")!); // 可以直接回车提交
 
 		await waitFor(() => {
 			expect(screen.getByText("网络请求超时")).toBeInTheDocument();
@@ -271,7 +271,7 @@ describe("App 组件", () => {
 
 		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "不存在的动漫" } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(
@@ -329,7 +329,7 @@ describe("App 组件", () => {
 
 		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "   " } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		expect(mockTorrentRepository.search).not.toHaveBeenCalled();
 	});

@@ -178,7 +178,7 @@ describe("Home 页面组件", () => {
 		);
 
 		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		expect(screen.getByText(/正在获取 动漫花园 资源列表/)).toBeInTheDocument();
 
@@ -203,7 +203,7 @@ describe("Home 页面组件", () => {
 			"输入动漫名称，例如：凡人修仙传...",
 		);
 		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(
@@ -235,7 +235,7 @@ describe("Home 页面组件", () => {
 			"输入动漫名称，例如：凡人修仙传...",
 		);
 		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(screen.getByText("网络请求超时")).toBeInTheDocument();
@@ -253,7 +253,7 @@ describe("Home 页面组件", () => {
 			"输入动漫名称，例如：凡人修仙传...",
 		);
 		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(
@@ -280,7 +280,7 @@ describe("Home 页面组件", () => {
 			"输入动漫名称，例如：凡人修仙传...",
 		);
 		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
@@ -322,7 +322,7 @@ describe("Home 页面组件", () => {
 			"输入动漫名称，例如：凡人修仙传...",
 		);
 		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
@@ -357,7 +357,7 @@ describe("Home 页面组件", () => {
 			"输入动漫名称，例如：凡人修仙传...",
 		);
 		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
@@ -427,7 +427,7 @@ describe("Home 页面组件", () => {
 		const select = screen.getByRole("combobox");
 		fireEvent.change(select, { target: { value: "bangumi_moe" } });
 
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
@@ -460,7 +460,7 @@ describe("Home 页面组件", () => {
 		const select = screen.getByRole("combobox");
 		fireEvent.change(select, { target: { value: "mikan" } });
 
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
@@ -493,7 +493,7 @@ describe("Home 页面组件", () => {
 		const select = screen.getByRole("combobox");
 		fireEvent.change(select, { target: { value: "nyaa" } });
 
-		fireEvent.submit(input);
+		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "nyaa");

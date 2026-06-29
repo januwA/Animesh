@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, use } from "react";
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
@@ -157,10 +157,10 @@ export function createDefaultDIContainer(): DIContainer {
 
 const DIContext = createContext<DIContainer | null>(null);
 
-export const DIProvider = DIContext.Provider;
+export const DIProvider = DIContext;
 
 export function useDI(): DIContainer {
-	const container = useContext(DIContext);
+	const container = use(DIContext);
 	if (!container) {
 		throw new Error(
 			"DIContainer was not provided. Make sure to wrap components with <DIProvider>",

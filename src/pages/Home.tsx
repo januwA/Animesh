@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useEffect } from "react";
+import { useEffect, useTransition } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
 	ErrorBanner,
@@ -20,8 +20,6 @@ export default function Home() {
 		setKeyword,
 		results,
 		setResults,
-		loading,
-		setLoading,
 		error,
 		setError,
 		hasSearched,
@@ -31,6 +29,8 @@ export default function Home() {
 		setSearchEngine,
 	} = useAppContext();
 
+	const [isPending, startTransition] = useTransition();
+
 	const keywordParam = searchParams.get("keyword");
 
 	useEffect(() => {
@@ -39,32 +39,30 @@ export default function Home() {
 			if (query) {
 				setKeyword(query);
 				setHasSearched(true);
-				setLoading(true);
 				setError(null);
 				setSearchParams({}, { replace: true });
 
-				searchTorrentsUseCase
-					.execute(query, searchEngine)
-					.then((data) => {
+				startTransition(async () => {
+					try {
+						const data = await searchTorrentsUseCase.execute(
+							query,
+							searchEngine,
+						);
 						setResults(data || []);
-					})
-					.catch((err: unknown) => {
+					} catch (err: unknown) {
 						console.error("Search failed:", err);
 						setError(
 							typeof err === "string" ? err : "搜索失败，请检查网络或重试",
 						);
 						setResults([]);
-					})
-					.finally(() => {
-						setLoading(false);
-					});
+					}
+				});
 			}
 		}
 	}, [
 		keywordParam,
 		setKeyword,
 		setHasSearched,
-		setLoading,
 		setError,
 		setResults,
 		searchTorrentsUseCase,
@@ -72,27 +70,26 @@ export default function Home() {
 		searchEngine,
 	]);
 
-	async function handleSearch(e: FormEvent) {
+	function handleSearch(e: FormEvent) {
 		e.preventDefault();
 		if (!keyword.trim()) return;
 
-		setLoading(true);
 		setError(null);
 		setHasSearched(true);
 
-		try {
-			const data = await searchTorrentsUseCase.execute(
-				keyword.trim(),
-				searchEngine,
-			);
-			setResults(data || []);
-		} catch (err: unknown) {
-			console.error("Search failed:", err);
-			setError(typeof err === "string" ? err : "搜索失败，请检查网络或重试");
-			setResults([]);
-		} finally {
-			setLoading(false);
-		}
+		startTransition(async () => {
+			try {
+				const data = await searchTorrentsUseCase.execute(
+					keyword.trim(),
+					searchEngine,
+				);
+				setResults(data || []);
+			} catch (err: unknown) {
+				console.error("Search failed:", err);
+				setError(typeof err === "string" ? err : "搜索失败，请检查网络或重试");
+				setResults([]);
+			}
+		});
 	}
 
 	const handleCopyMagnet = async (magnet: string) => {
@@ -117,20 +114,20 @@ export default function Home() {
 			<SearchForm
 				keyword={keyword}
 				setKeyword={setKeyword}
-				loading={loading}
+				loading={isPending}
 				onSubmit={handleSearch}
 				searchEngine={searchEngine}
 				setSearchEngine={setSearchEngine}
 			/>
 
 			{/* 加载提示 */}
-			{loading && <SearchLoading engine={searchEngine} />}
+			{isPending && <SearchLoading engine={searchEngine} />}
 
 			{/* 错误显示 */}
 			{error && <ErrorBanner message={error} />}
 
 			{/* 未搜索空状态或结果为空提示 */}
-			{!loading &&
+			{!isPending &&
 				!error &&
 				(hasSearched && results.length === 0 ? (
 					<div className="text-center py-20 space-y-2">
@@ -143,7 +140,7 @@ export default function Home() {
 				) : null)}
 
 			{/* 搜索结果列表 */}
-			{!loading && !error && results.length > 0 && (
+			{!isPending && !error && results.length > 0 && (
 				<section className="w-full space-y-4">
 					<div className="flex items-center justify-between border-b border-white/5 pb-2">
 						<div className="results-count text-sm text-muted-foreground">
