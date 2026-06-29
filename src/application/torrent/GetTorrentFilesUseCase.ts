@@ -1,5 +1,5 @@
+import type { FileDetails } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import type { FileDetails } from "../../types";
 
 export class GetTorrentFilesUseCase {
 	constructor(private torrentRepository: TorrentRepository) {}

@@ -1,7 +1,6 @@
 /// <reference types="vitest" />
 
 import path from "node:path";
-// @ts-expect-error type error without @types/node package
 import process from "node:process";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -53,7 +52,6 @@ export default defineConfig(() => ({
 				"**/*.test.{ts,tsx}",
 				"**/*.d.ts",
 				"src/components/ui/**",
-				"src/types.ts",
 				"src/di/**",
 				"src/domain/**",
 				"src/infrastructure/**",

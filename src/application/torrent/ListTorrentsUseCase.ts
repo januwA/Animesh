@@ -1,5 +1,5 @@
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import type { TorrentStatusInfo } from "../../types";
 
 export class ListTorrentsUseCase {
 	constructor(private torrentRepository: TorrentRepository) {}

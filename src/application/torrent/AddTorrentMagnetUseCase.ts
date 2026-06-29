@@ -1,5 +1,5 @@
+import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import type { AddTorrentResult } from "../../types";
 
 export class AddTorrentMagnetUseCase {
 	constructor(private torrentRepository: TorrentRepository) {}

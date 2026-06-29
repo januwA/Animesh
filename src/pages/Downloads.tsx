@@ -22,9 +22,9 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
-import type { TorrentStatusInfo } from "../types";
 import { formatBytes } from "../utils";
 
 export default function Downloads() {

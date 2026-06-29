@@ -7,12 +7,12 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
+import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import type { DIContainer } from "../di/DIContext";
 import { DIProvider } from "../di/DIContext";
 import { createDIContainerForTest } from "../test/test-utils";
-import type { BangumiCalendarDay } from "../types";
 import CalendarPage from "./Calendar";
 
 vi.mock("@tauri-apps/plugin-opener", () => ({

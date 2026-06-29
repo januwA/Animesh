@@ -1,7 +1,10 @@
 import { Calendar, Globe, Star, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { BangumiCalendarDay, BangumiCalendarItem } from "../types";
+import type {
+	BangumiCalendarDay,
+	BangumiCalendarItem,
+} from "@/domain/bangumi/BangumiSchemas";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 

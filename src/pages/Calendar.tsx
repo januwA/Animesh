@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import { ErrorBanner, SearchLoading } from "../components/AppComponents";
 import { WeeklyCalendar } from "../components/WeeklyCalendar";
 import { useDI } from "../di/DIContext";
-import type { BangumiCalendarDay } from "../types";
 
 export default function Calendar() {
 	const navigate = useNavigate();

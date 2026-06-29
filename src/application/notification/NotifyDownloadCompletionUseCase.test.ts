@@ -1,7 +1,7 @@
 import { vi } from "vitest";
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import type { NotificationRepository } from "../../domain/notification/NotificationRepository";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import type { TorrentStatusInfo } from "../../types";
 import { NotifyDownloadCompletionUseCase } from "./NotifyDownloadCompletionUseCase";
 
 describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () => {

@@ -4,9 +4,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
-import type { AddTorrentResult } from "../types";
 import { formatBytes } from "../utils";
 
 export default function TorrentDetail() {

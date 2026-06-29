@@ -7,13 +7,13 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
+import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import type { DIContainer } from "../di/DIContext";
 import { DIProvider } from "../di/DIContext";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "../test/test-utils";
-import type { AddTorrentResult } from "../types";
 import TorrentDetail from "./TorrentDetail";
 
 const currentLocation = {

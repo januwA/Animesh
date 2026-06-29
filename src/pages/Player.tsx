@@ -11,9 +11,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import type {
+	SubtitleTrackInfo,
+	TorrentStatusInfo,
+} from "@/domain/torrent/TorrentSchemas";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
-import type { SubtitleTrackInfo, TorrentStatusInfo } from "../types";
 import { formatBytes } from "../utils";
 
 export default function Player() {

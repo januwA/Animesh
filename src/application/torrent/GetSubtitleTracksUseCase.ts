@@ -1,5 +1,5 @@
+import type { SubtitleTrackInfo } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import type { SubtitleTrackInfo } from "../../types";
 
 export class GetSubtitleTracksUseCase {
 	constructor(private torrentRepository: TorrentRepository) {}

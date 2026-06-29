@@ -34,8 +34,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import type { ToastMessage } from "@/context/AppContext";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { useDI } from "../di/DIContext";
-import type { SearchResultItem, ToastMessage } from "../types";
 import { formatBytes, formatLocalDate } from "../utils";
 
 // 页面头部组件

@@ -1,5 +1,5 @@
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import type { SearchResultItem } from "../../types";
 
 export class SearchTorrentsUseCase {
 	constructor(private torrentRepository: TorrentRepository) {}

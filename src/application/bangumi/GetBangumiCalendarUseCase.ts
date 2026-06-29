@@ -1,5 +1,5 @@
+import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
-import type { BangumiCalendarDay } from "../../types";
 
 export class GetBangumiCalendarUseCase {
 	constructor(private bangumiRepository: BangumiRepository) {}
