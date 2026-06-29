@@ -55,8 +55,7 @@ export default function Downloads() {
 				if (isInitial) {
 					setLoading(false);
 				}
-			} catch (err: unknown) {
-				console.error("Failed to fetch torrent list:", err);
+			} catch (_err: unknown) {
 				if (isInitial) {
 					showToast("获取下载列表失败");
 					setLoading(false);
@@ -82,8 +81,7 @@ export default function Downloads() {
 			await pauseTorrentUseCase.execute(infoHash);
 			showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
 			fetchTorrents();
-		} catch (err: unknown) {
-			console.error("Failed to pause torrent:", err);
+		} catch (_err: unknown) {
 			showToast("暂停失败，请重试");
 		}
 	};
@@ -94,8 +92,7 @@ export default function Downloads() {
 			await resumeTorrentUseCase.execute(infoHash);
 			showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
 			fetchTorrents();
-		} catch (err: unknown) {
-			console.error("Failed to resume torrent:", err);
+		} catch (_err: unknown) {
 			showToast("启动失败，请重试");
 		}
 	};
@@ -110,8 +107,7 @@ export default function Downloads() {
 			showToast(`已删除任务`);
 			setDeleteTarget(null);
 			fetchTorrents();
-		} catch (err: unknown) {
-			console.error("Failed to delete torrent:", err);
+		} catch (_err: unknown) {
 			showToast("删除任务失败，请重试");
 		} finally {
 			setDeleting(false);

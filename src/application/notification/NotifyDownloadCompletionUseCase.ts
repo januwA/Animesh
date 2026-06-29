@@ -11,33 +11,29 @@ export class NotifyDownloadCompletionUseCase {
 	) {}
 
 	async execute(): Promise<void> {
-		try {
-			const list = await this.torrentRepository.listTorrents();
-			if (Array.isArray(list)) {
-				for (const torrent of list) {
-					if (torrent.finished) {
-						if (this.isFirstRun) {
-							// 首次加载时将已完成的种子记录下来，避免重复通知旧数据
-							this.notifiedHashes.add(torrent.info_hash);
-						} else if (!this.notifiedHashes.has(torrent.info_hash)) {
-							this.notifiedHashes.add(torrent.info_hash);
-							// 触发系统通知
-							await this.notificationRepository.sendNotification(
-								"下载完成",
-								`动漫 《${torrent.name || "未命名种子"}》 已下载完成！`,
-							);
-						}
-					} else {
-						// 如果种子被重启下载或删除，清除已通知记录
-						if (this.notifiedHashes.has(torrent.info_hash)) {
-							this.notifiedHashes.delete(torrent.info_hash);
-						}
+		const list = await this.torrentRepository.listTorrents();
+		if (Array.isArray(list)) {
+			for (const torrent of list) {
+				if (torrent.finished) {
+					if (this.isFirstRun) {
+						// 首次加载时将已完成的种子记录下来，避免重复通知旧数据
+						this.notifiedHashes.add(torrent.info_hash);
+					} else if (!this.notifiedHashes.has(torrent.info_hash)) {
+						this.notifiedHashes.add(torrent.info_hash);
+						// 触发系统通知
+						await this.notificationRepository.sendNotification(
+							"下载完成",
+							`动漫 《${torrent.name || "未命名种子"}》 已下载完成！`,
+						);
+					}
+				} else {
+					// 如果种子被重启下载或删除，清除已通知记录
+					if (this.notifiedHashes.has(torrent.info_hash)) {
+						this.notifiedHashes.delete(torrent.info_hash);
 					}
 				}
 			}
-			this.isFirstRun = false;
-		} catch (err) {
-			console.error("Error in background torrent check UseCase:", err);
 		}
+		this.isFirstRun = false;
 	}
 }

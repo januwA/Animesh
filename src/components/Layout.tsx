@@ -24,7 +24,9 @@ export default function Layout() {
 		if (!isTauri) return;
 
 		const checkDownloads = async () => {
-			await notifyDownloadCompletionUseCase.execute();
+			try {
+				await notifyDownloadCompletionUseCase.execute();
+			} catch {}
 		};
 
 		checkDownloads();

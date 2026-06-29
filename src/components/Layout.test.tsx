@@ -175,7 +175,6 @@ describe("Layout 布局组件", () => {
 	});
 
 	it("当获取正在下载的任务数量失败时，应该捕获错误且不崩溃", async () => {
-		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 		const mockListTorrents = vi
 			.fn()
 			.mockRejectedValue(new Error("Failed to fetch"));
@@ -230,12 +229,7 @@ describe("Layout 布局组件", () => {
 		);
 
 		await waitFor(() => {
-			expect(consoleSpy).toHaveBeenCalledWith(
-				"Failed to fetch active torrents count for header:",
-				expect.any(Error),
-			);
+			expect(mockListTorrents).toHaveBeenCalled();
 		});
-
-		consoleSpy.mockRestore();
 	});
 });

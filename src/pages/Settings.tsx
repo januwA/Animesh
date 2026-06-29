@@ -26,8 +26,7 @@ export default function Settings() {
 				setDownloadDir(settings.download_dir);
 				setProxy(settings.proxy || "");
 				setTrackersText((settings.trackers || []).join("\n"));
-			} catch (err: unknown) {
-				console.error("Failed to load settings:", err);
+			} catch (_err: unknown) {
 				showToast("加载设置失败");
 			} finally {
 				setLoading(false);
@@ -44,8 +43,7 @@ export default function Settings() {
 				setDownloadDir(selected);
 				showToast("已选择目录，点击保存以生效");
 			}
-		} catch (err: unknown) {
-			console.error("Failed to select directory:", err);
+		} catch (_err: unknown) {
 			showToast("选择文件夹失败");
 		}
 	};
@@ -72,7 +70,6 @@ export default function Settings() {
 			);
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
-			console.error("Failed to save settings:", err);
 			const errMsg =
 				typeof err === "string"
 					? err

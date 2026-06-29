@@ -50,7 +50,6 @@ export default function TorrentDetail() {
 					showToast(`种子元数据解析成功，获取到 ${result.files.length} 个文件`);
 				})
 				.catch((err: unknown) => {
-					console.error("Failed to add torrent:", err);
 					const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
 					setError(errMsg);
 					setLoading(false);
@@ -69,7 +68,6 @@ export default function TorrentDetail() {
 					setLoading(false);
 				})
 				.catch((err: unknown) => {
-					console.error("Failed to fetch torrent files:", err);
 					const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
 					setError(errMsg);
 					setLoading(false);

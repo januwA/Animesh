@@ -143,19 +143,12 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
 		);
 	});
 
-	it("如果获取种子列表失败，应该捕获错误不崩溃并打印错误", async () => {
-		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+	it("如果获取种子列表失败，应该抛出错误", async () => {
 		vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValue(
 			new Error("Fetch error"),
 		);
 
-		await useCase.execute();
-
-		expect(consoleSpy).toHaveBeenCalledWith(
-			"Error in background torrent check UseCase:",
-			expect.any(Error),
-		);
-		consoleSpy.mockRestore();
+		await expect(useCase.execute()).rejects.toThrow("Fetch error");
 	});
 
 	it("当获取的种子列表不是数组时，应该不崩溃", async () => {

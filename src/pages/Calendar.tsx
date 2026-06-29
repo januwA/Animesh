@@ -21,8 +21,7 @@ export default function Calendar() {
 			.then((data) => {
 				setCalendar(data);
 			})
-			.catch((err: unknown) => {
-				console.error("Failed to fetch calendar:", err);
+			.catch((_err: unknown) => {
 				setError("获取新番日历失败，请检查网络或重试");
 			})
 			.finally(() => {

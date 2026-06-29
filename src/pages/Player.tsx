@@ -121,8 +121,7 @@ export default function Player() {
 					return url;
 				});
 				setSelectedTrackId(trackId);
-			} catch (err: unknown) {
-				console.error("Failed to load subtitle VTT:", err);
+			} catch (_err: unknown) {
 				showToast("加载字幕失败，请重试");
 			} finally {
 				setSubloading(false);
@@ -167,9 +166,7 @@ export default function Player() {
 						loadedTracks = true;
 						loadSubtitleVtt(tracks[0].id);
 					}
-				} catch (err: unknown) {
-					console.error("Failed to load subtitle tracks:", err);
-				}
+				} catch (_err: unknown) {}
 
 				// Start polling status
 				statusIntervalRef.current = setInterval(async () => {
@@ -189,19 +186,11 @@ export default function Player() {
 									loadedTracks = true;
 									loadSubtitleVtt(tracks[0].id);
 								}
-							} catch (err) {
-								console.error(
-									"Failed to load subtitle tracks during polling:",
-									err,
-								);
-							}
+							} catch (_err) {}
 						}
-					} catch (err: unknown) {
-						console.error("Failed to fetch torrent status:", err);
-					}
+					} catch (_err: unknown) {}
 				}, 1500);
-			} catch (err: unknown) {
-				console.error("Failed to start playback:", err);
+			} catch (_err: unknown) {
 				showToast("无法获取视频流，启动播放失败", 10000);
 				setLoading(false);
 			}

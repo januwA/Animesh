@@ -56,9 +56,7 @@ export function AppHeader() {
 					const count = list.filter((t) => !t.finished && !t.paused).length;
 					setActiveCount(count);
 				}
-			} catch (err) {
-				console.error("Failed to fetch active torrents count for header:", err);
-			}
+			} catch {}
 		};
 
 		fetchActiveCount();

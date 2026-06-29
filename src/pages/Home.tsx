@@ -50,7 +50,6 @@ export default function Home() {
 						);
 						setResults(data || []);
 					} catch (err: unknown) {
-						console.error("Search failed:", err);
 						setError(
 							typeof err === "string" ? err : "搜索失败，请检查网络或重试",
 						);
@@ -85,7 +84,6 @@ export default function Home() {
 				);
 				setResults(data || []);
 			} catch (err: unknown) {
-				console.error("Search failed:", err);
 				setError(typeof err === "string" ? err : "搜索失败，请检查网络或重试");
 				setResults([]);
 			}
