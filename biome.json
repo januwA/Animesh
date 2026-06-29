@@ -1,5 +1,25 @@
 {
 	"$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+	"overrides": [
+		{
+			"includes": [
+				"**/*.test.ts",
+				"**/*.test.tsx",
+				"**/test-utils.ts",
+				"**/test/**"
+			],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off"
+					},
+					"style": {
+						"noNonNullAssertion": "off"
+					}
+				}
+			}
+		}
+	],
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
