@@ -15,6 +15,7 @@ import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase"
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
+import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
@@ -34,6 +35,7 @@ export interface DIContainer {
 	notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
 	searchTorrentsUseCase: SearchTorrentsUseCase;
 	listTorrentsUseCase: ListTorrentsUseCase;
+	subscribeTorrentsUseCase: SubscribeTorrentsUseCase;
 	pauseTorrentUseCase: PauseTorrentUseCase;
 	resumeTorrentUseCase: ResumeTorrentUseCase;
 	deleteTorrentUseCase: DeleteTorrentUseCase;
@@ -60,6 +62,7 @@ export interface CreateContainerParams {
 	notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
 	searchTorrentsUseCase: SearchTorrentsUseCase;
 	listTorrentsUseCase: ListTorrentsUseCase;
+	subscribeTorrentsUseCase: SubscribeTorrentsUseCase;
 	pauseTorrentUseCase: PauseTorrentUseCase;
 	resumeTorrentUseCase: ResumeTorrentUseCase;
 	deleteTorrentUseCase: DeleteTorrentUseCase;
@@ -96,6 +99,9 @@ export function createDefaultDIContainer(): DIContainer {
 		);
 		const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
 		const listTorrentsUseCase = new ListTorrentsUseCase(torrentRepository);
+		const subscribeTorrentsUseCase = new SubscribeTorrentsUseCase(
+			torrentRepository,
+		);
 		const pauseTorrentUseCase = new PauseTorrentUseCase(torrentRepository);
 		const resumeTorrentUseCase = new ResumeTorrentUseCase(torrentRepository);
 		const deleteTorrentUseCase = new DeleteTorrentUseCase(torrentRepository);
@@ -135,6 +141,7 @@ export function createDefaultDIContainer(): DIContainer {
 			notifyDownloadCompletionUseCase,
 			searchTorrentsUseCase,
 			listTorrentsUseCase,
+			subscribeTorrentsUseCase,
 			pauseTorrentUseCase,
 			resumeTorrentUseCase,
 			deleteTorrentUseCase,

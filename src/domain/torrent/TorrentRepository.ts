@@ -25,4 +25,7 @@ export interface TorrentRepository {
 		fileId: number,
 		trackId: number,
 	): Promise<string>;
+	subscribeTorrents(
+		onUpdate: (torrents: TorrentStatusInfo[]) => void,
+	): Promise<() => void>;
 }

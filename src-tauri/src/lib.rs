@@ -9,15 +9,6 @@ pub fn trace_log(msg: &str) {
 }
 
 #[tauri::command]
-async fn search_dmhy(
-    keyword: &str,
-    manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<Vec<animesh_core::crawler::SearchResultItem>, String> {
-    let proxy = manager.get_proxy();
-    manager.crawler_repo.search_dmhy(keyword, proxy).await
-}
-
-#[tauri::command]
 async fn search_torrents(
     keyword: &str,
     engine: &str,
@@ -231,6 +222,24 @@ fn torrent_list(
 }
 
 #[tauri::command]
+async fn torrent_subscribe(
+    on_event: tauri::ipc::Channel<Vec<TorrentStatusInfo>>,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<(), String> {
+    let manager = manager.inner().clone();
+    tauri::async_runtime::spawn(async move {
+        loop {
+            let torrents = manager.list_torrents();
+            if on_event.send(torrents).is_err() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
 fn settings_get(
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<animesh_core::torrent_manager::AppSettings, String> {
@@ -373,7 +382,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            search_dmhy,
             search_torrents,
             torrent_add_magnet,
             torrent_get_status,
@@ -383,6 +391,7 @@ pub fn run() {
             torrent_resume,
             torrent_delete,
             torrent_list,
+            torrent_subscribe,
             settings_get,
             settings_set_download_dir,
             settings_set_proxy,

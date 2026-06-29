@@ -6,25 +6,38 @@ import { AppHeader, ToastContainer } from "./AppComponents";
 
 export default function Layout() {
 	const { toasts, removeToast } = useAppContext();
-	const { notificationRepository, notifyDownloadCompletionUseCase } = useDI();
+	const {
+		notificationRepository,
+		notifyDownloadCompletionUseCase,
+		subscribeTorrentsUseCase,
+	} = useDI();
 
 	// 请求系统通知权限
 	useEffect(() => {
 		notificationRepository.requestPermission();
 	}, [notificationRepository]);
 
-	// 下载完成监听轮询
+	// 下载完成监听
 	useEffect(() => {
-		const checkDownloads = async () => {
-			try {
-				await notifyDownloadCompletionUseCase.execute();
-			} catch {}
-		};
+		let unsubscribe: (() => void) | null = null;
 
-		checkDownloads();
-		const interval = setInterval(checkDownloads, 3000);
-		return () => clearInterval(interval);
-	}, [notifyDownloadCompletionUseCase]);
+		subscribeTorrentsUseCase
+			.execute(async (list) => {
+				try {
+					await notifyDownloadCompletionUseCase.execute(list);
+				} catch {}
+			})
+			.then((unsub) => {
+				unsubscribe = unsub;
+			})
+			.catch(() => {});
+
+		return () => {
+			if (unsubscribe) {
+				unsubscribe();
+			}
+		};
+	}, [subscribeTorrentsUseCase, notifyDownloadCompletionUseCase]);
 
 	return (
 		<main className="container max-w-4xl mx-auto px-4 py-10 flex flex-col min-h-screen">

@@ -42,24 +42,28 @@ import { formatBytes, formatLocalDate } from "../utils";
 // 页面头部组件
 export function AppHeader() {
 	const location = useLocation();
-	const { listTorrentsUseCase } = useDI();
+	const { subscribeTorrentsUseCase } = useDI();
 	const [activeCount, setActiveCount] = useState<number>(0);
 
 	useEffect(() => {
-		const fetchActiveCount = async () => {
-			try {
-				const list = await listTorrentsUseCase.execute();
+		let unsubscribe: (() => void) | null = null;
+
+		subscribeTorrentsUseCase
+			.execute((list) => {
 				const count = list.filter((t) => !t.finished && !t.paused).length;
 				setActiveCount(count);
-			} catch {}
-		};
+			})
+			.then((unsub) => {
+				unsubscribe = unsub;
+			})
+			.catch(() => {});
 
-		fetchActiveCount();
-		const interval = setInterval(fetchActiveCount, 3000);
 		return () => {
-			clearInterval(interval);
+			if (unsubscribe) {
+				unsubscribe();
+			}
 		};
-	}, [listTorrentsUseCase]);
+	}, [subscribeTorrentsUseCase]);
 
 	const navItems = [
 		{ path: "/", label: "搜索视频", icon: <Search className="h-3.5 w-3.5" /> },

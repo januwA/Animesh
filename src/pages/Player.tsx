@@ -41,6 +41,7 @@ export default function Player() {
 		getTorrentStatusUseCase,
 		getSubtitleTracksUseCase,
 		getSubtitleVttUseCase,
+		subscribeTorrentsUseCase,
 	} = useDI();
 	const { showToast } = useAppContext();
 	const [streamUrl, setStreamUrl] = useState<string | null>(null);
@@ -54,8 +55,6 @@ export default function Player() {
 	const [subtrackSrc, setSubtrackSrc] = useState<string | null>(null);
 	const [subloading, setSubloading] = useState<boolean>(false);
 	const videoRef = useRef<HTMLVideoElement | null>(null);
-
-	const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	// Clean up subtitle object URL on unmount
 	useEffect(() => {
@@ -133,7 +132,7 @@ export default function Player() {
 		[infoHash, fileId, getSubtitleVttUseCase, showToast],
 	);
 
-	// Load stream URL and setup status polling
+	// Load stream URL and setup status subscription
 	useEffect(() => {
 		if (!infoHash || fileId === undefined) {
 			showToast("无效的视频播放参数");
@@ -143,6 +142,7 @@ export default function Player() {
 
 		let loadedTracks = false;
 		const parsedFileId = parseInt(fileId, 10);
+		let unsubscribe: (() => void) | null = null;
 
 		const initializePlayback = async () => {
 			try {
@@ -171,11 +171,17 @@ export default function Player() {
 					}
 				} catch (_err: unknown) {}
 
-				// Start polling status
-				statusIntervalRef.current = setInterval(async () => {
-					try {
-						const status = await getTorrentStatusUseCase.execute(infoHash);
+				// Start subscription to status stream
+				let isFirstEvent = true;
+				unsubscribe = await subscribeTorrentsUseCase.execute(async (list) => {
+					const status = list.find((t) => t && t.info_hash === infoHash);
+					if (status) {
 						setTorrentStatus(status);
+
+						if (isFirstEvent) {
+							isFirstEvent = false;
+							return;
+						}
 
 						// If subtitle tracks haven't been loaded yet, try to load them as download progresses
 						if (!loadedTracks) {
@@ -191,8 +197,8 @@ export default function Player() {
 								}
 							} catch (_err) {}
 						}
-					} catch (_err: unknown) {}
-				}, 1500);
+					}
+				});
 			} catch (_err: unknown) {
 				showToast("无法获取视频流，启动播放失败", 10000);
 				setLoading(false);
@@ -202,9 +208,7 @@ export default function Player() {
 		initializePlayback();
 
 		return () => {
-			if (statusIntervalRef.current) {
-				clearInterval(statusIntervalRef.current);
-			}
+			unsubscribe?.();
 		};
 	}, [
 		infoHash,
@@ -213,6 +217,7 @@ export default function Player() {
 		getTorrentStreamUrlUseCase,
 		getTorrentStatusUseCase,
 		getSubtitleTracksUseCase,
+		subscribeTorrentsUseCase,
 		loadSubtitleVtt,
 	]);
 

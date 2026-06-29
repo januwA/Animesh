@@ -8,7 +8,7 @@ import {
 	Play,
 	Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export default function Downloads() {
 	const navigate = useNavigate();
 	const {
 		listTorrentsUseCase,
+		subscribeTorrentsUseCase,
 		pauseTorrentUseCase,
 		resumeTorrentUseCase,
 		deleteTorrentUseCase,
@@ -38,80 +39,87 @@ export default function Downloads() {
 	const { showToast } = useAppContext();
 	const [torrents, setTorrents] = useState<TorrentStatusInfo[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [isActionPending, startActionTransition] = useTransition();
 
-	// Deletion state
+	// Deletion target state
 	const [deleteTarget, setDeleteTarget] = useState<TorrentStatusInfo | null>(
 		null,
 	);
 	const [deleteFiles, setDeleteFiles] = useState(false);
-	const [deleting, setDeleting] = useState(false);
 
-	// Fetch torrents function
-	const fetchTorrents = useCallback(
-		async (isInitial = false) => {
-			try {
-				const list = await listTorrentsUseCase.execute();
-				setTorrents(list);
-				if (isInitial) {
-					setLoading(false);
-				}
-			} catch (_err: unknown) {
-				if (isInitial) {
-					showToast("获取下载列表失败");
-					setLoading(false);
-				}
-			}
-		},
-		[showToast, listTorrentsUseCase],
-	);
+	// Refresh torrents function (called after mutations for immediate UI update)
+	const refreshTorrents = useCallback(async () => {
+		try {
+			const list = await listTorrentsUseCase.execute();
+			setTorrents(list);
+		} catch (_err: unknown) {
+			// Don't show toast for background refreshes
+		}
+	}, [listTorrentsUseCase]);
 
-	// Polling downloads list
+	// Subscribe to downloads list status stream
 	useEffect(() => {
-		fetchTorrents(true);
-		const interval = setInterval(() => {
-			fetchTorrents();
-		}, 1500);
+		let unsubscribe: (() => void) | null = null;
 
-		return () => clearInterval(interval);
-	}, [fetchTorrents]);
+		subscribeTorrentsUseCase
+			.execute((list) => {
+				setTorrents(list);
+				setLoading(false);
+			})
+			.then((unsub) => {
+				unsubscribe = unsub;
+			})
+			.catch((_err: unknown) => {
+				showToast("获取下载列表失败");
+				setLoading(false);
+			});
+
+		return () => {
+			if (unsubscribe) {
+				unsubscribe();
+			}
+		};
+	}, [subscribeTorrentsUseCase, showToast]);
 
 	// Pause a download
-	const handlePause = async (infoHash: string, name: string) => {
-		try {
-			await pauseTorrentUseCase.execute(infoHash);
-			showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
-			fetchTorrents();
-		} catch (_err: unknown) {
-			showToast("暂停失败，请重试");
-		}
+	const handlePause = (infoHash: string, name: string) => {
+		startActionTransition(async () => {
+			try {
+				await pauseTorrentUseCase.execute(infoHash);
+				showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
+				await refreshTorrents();
+			} catch (_err: unknown) {
+				showToast("暂停失败，请重试");
+			}
+		});
 	};
 
 	// Resume a download
-	const handleResume = async (infoHash: string, name: string) => {
-		try {
-			await resumeTorrentUseCase.execute(infoHash);
-			showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
-			fetchTorrents();
-		} catch (_err: unknown) {
-			showToast("启动失败，请重试");
-		}
+	const handleResume = (infoHash: string, name: string) => {
+		startActionTransition(async () => {
+			try {
+				await resumeTorrentUseCase.execute(infoHash);
+				showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
+				await refreshTorrents();
+			} catch (_err: unknown) {
+				showToast("启动失败，请重试");
+			}
+		});
 	};
 
 	// Delete a download
-	const handleDelete = async () => {
-		/* v8 ignore next */
+	const handleDelete = () => {
 		if (!deleteTarget) return;
-		setDeleting(true);
-		try {
-			await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
-			showToast(`已删除任务`);
-			setDeleteTarget(null);
-			fetchTorrents();
-		} catch (_err: unknown) {
-			showToast("删除任务失败，请重试");
-		} finally {
-			setDeleting(false);
-		}
+		startActionTransition(async () => {
+			try {
+				await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
+				showToast(`已删除任务`);
+				setDeleteTarget(null);
+				await refreshTorrents();
+			} catch (_err: unknown) {
+				showToast("删除任务失败，请重试");
+			}
+		});
 	};
 
 	const handleViewFiles = (torrent: TorrentStatusInfo) => {
@@ -339,7 +347,7 @@ export default function Downloads() {
 							variant="ghost"
 							size="sm"
 							onClick={() => setDeleteTarget(null)}
-							disabled={deleting}
+							disabled={isActionPending}
 							className="text-xs font-medium"
 						>
 							取消
@@ -348,10 +356,10 @@ export default function Downloads() {
 							variant="destructive"
 							size="sm"
 							onClick={handleDelete}
-							disabled={deleting}
+							disabled={isActionPending}
 							className="text-xs font-medium gap-1"
 						>
-							{deleting && <Loader2 className="h-3 w-3 animate-spin" />}
+							{isActionPending && <Loader2 className="h-3 w-3 animate-spin" />}
 							确认删除
 						</Button>
 					</DialogFooter>

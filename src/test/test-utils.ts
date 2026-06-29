@@ -14,6 +14,7 @@ import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase"
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
+import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import type { DIContainer } from "../di/DIContext";
 import { createDIContainer } from "../di/DIContext";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
@@ -30,6 +31,7 @@ export interface CreateContainerParamsForTest {
 	notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
 	searchTorrentsUseCase?: SearchTorrentsUseCase;
 	listTorrentsUseCase?: ListTorrentsUseCase;
+	subscribeTorrentsUseCase?: SubscribeTorrentsUseCase;
 	pauseTorrentUseCase?: PauseTorrentUseCase;
 	resumeTorrentUseCase?: ResumeTorrentUseCase;
 	deleteTorrentUseCase?: DeleteTorrentUseCase;
@@ -50,21 +52,33 @@ export interface CreateContainerParamsForTest {
 export function createDIContainerForTest(
 	params: CreateContainerParamsForTest,
 ): DIContainer {
-	const torrentRepo =
-		params.torrentRepository ||
-		({
-			search: async () => [],
-			listTorrents: async () => [],
-			pauseTorrent: async () => {},
-			resumeTorrent: async () => {},
-			deleteTorrent: async () => {},
-			addTorrentMagnet: async () => ({ info_hash: "", name: "", files: [] }),
-			getTorrentFiles: async () => [],
-			getTorrentStreamUrl: async () => "",
-			getTorrentStatus: async () => ({}) as any,
-			getSubtitleTracks: async () => [],
-			getSubtitleVtt: async () => "",
-		} as TorrentRepository);
+	const torrentRepo = params.torrentRepository
+		? ({
+				...params.torrentRepository,
+				subscribeTorrents:
+					params.torrentRepository.subscribeTorrents ||
+					(async (onUpdate: (list: any[]) => void) => {
+						onUpdate([]);
+						return () => {};
+					}),
+			} as unknown as TorrentRepository)
+		: ({
+				search: async () => [],
+				listTorrents: async () => [],
+				pauseTorrent: async () => {},
+				resumeTorrent: async () => {},
+				deleteTorrent: async () => {},
+				addTorrentMagnet: async () => ({ info_hash: "", name: "", files: [] }),
+				getTorrentFiles: async () => [],
+				getTorrentStreamUrl: async () => "",
+				getTorrentStatus: async () => ({}) as any,
+				getSubtitleTracks: async () => [],
+				getSubtitleVtt: async () => "",
+				subscribeTorrents: async (onUpdate: (list: any[]) => void) => {
+					onUpdate([]);
+					return () => {};
+				},
+			} as unknown as TorrentRepository);
 
 	const settingsRepo =
 		params.settingsRepository ||
@@ -97,6 +111,9 @@ export function createDIContainerForTest(
 		params.searchTorrentsUseCase || new SearchTorrentsUseCase(torrentRepo);
 	const listTorrentsUseCase =
 		params.listTorrentsUseCase || new ListTorrentsUseCase(torrentRepo);
+	const subscribeTorrentsUseCase =
+		params.subscribeTorrentsUseCase ||
+		new SubscribeTorrentsUseCase(torrentRepo);
 	const pauseTorrentUseCase =
 		params.pauseTorrentUseCase || new PauseTorrentUseCase(torrentRepo);
 	const resumeTorrentUseCase =
@@ -138,6 +155,7 @@ export function createDIContainerForTest(
 		notifyDownloadCompletionUseCase: notifyUseCase,
 		searchTorrentsUseCase,
 		listTorrentsUseCase,
+		subscribeTorrentsUseCase,
 		pauseTorrentUseCase,
 		resumeTorrentUseCase,
 		deleteTorrentUseCase,

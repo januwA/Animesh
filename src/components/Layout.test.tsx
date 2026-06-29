@@ -57,6 +57,15 @@ describe("Layout 布局组件", () => {
 			notifyDownloadCompletionUseCase: {
 				execute: mockExecute as () => Promise<void>,
 			} as any,
+			subscribeTorrentsUseCase: {
+				execute: vi.fn().mockImplementation((onUpdate) => {
+					onUpdate([]);
+					const interval = setInterval(() => {
+						onUpdate([]);
+					}, 3000);
+					return Promise.resolve(() => clearInterval(interval));
+				}),
+			} as any,
 		});
 
 		return render(
@@ -134,6 +143,17 @@ describe("Layout 布局组件", () => {
 				getTorrentStatus: vi.fn(),
 				getSubtitleTracks: vi.fn(),
 				getSubtitleVtt: vi.fn(),
+				subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
+					mockListTorrents()
+						.then(onUpdate)
+						.catch(() => {});
+					const interval = setInterval(() => {
+						mockListTorrents()
+							.then(onUpdate)
+							.catch(() => {});
+					}, 3000);
+					return Promise.resolve(() => clearInterval(interval));
+				}),
 			},
 			settingsRepository: {
 				getSettings: vi
@@ -192,6 +212,17 @@ describe("Layout 布局组件", () => {
 				getTorrentStatus: vi.fn(),
 				getSubtitleTracks: vi.fn(),
 				getSubtitleVtt: vi.fn(),
+				subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
+					mockListTorrents()
+						.then(onUpdate)
+						.catch(() => {});
+					const interval = setInterval(() => {
+						mockListTorrents()
+							.then(onUpdate)
+							.catch(() => {});
+					}, 3000);
+					return Promise.resolve(() => clearInterval(interval));
+				}),
 			},
 			settingsRepository: {
 				getSettings: vi

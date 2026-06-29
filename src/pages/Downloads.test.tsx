@@ -40,6 +40,29 @@ describe("Downloads 页面组件", () => {
 			getTorrentStatus: vi.fn(),
 			getSubtitleTracks: vi.fn(),
 			getSubtitleVtt: vi.fn(),
+			subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
+				const runUpdate = async () => {
+					try {
+						const list = await mockTorrentRepository.listTorrents();
+						onUpdate(list);
+					} catch (err) {
+						throw err;
+					}
+				};
+
+				const promise = runUpdate();
+
+				const interval = setInterval(async () => {
+					try {
+						const list = await mockTorrentRepository.listTorrents();
+						onUpdate(list);
+					} catch {}
+				}, 1500);
+
+				return promise.then(() => {
+					return () => clearInterval(interval);
+				});
+			}),
 		};
 
 		mockContainer = createDIContainerForTest({

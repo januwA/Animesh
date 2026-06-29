@@ -248,7 +248,9 @@ describe("Calendar 页面组件", () => {
 		const { unmount } = renderCalendar(promise);
 
 		unmount();
-		resolvePromise([]);
+		await act(async () => {
+			resolvePromise([]);
+		});
 	});
 
 	it("应该在星期天时将 weekday id 识别为 7", async () => {
@@ -274,7 +276,9 @@ describe("Calendar 页面组件", () => {
 		const { unmount } = renderCalendar(promise);
 
 		unmount();
-		rejectPromise(new Error("API error"));
+		await act(async () => {
+			rejectPromise(new Error("API error"));
+		});
 	});
 
 	it("在 WeeklyCalendar 中，点击详情链接应该在浏览器中打开（通过 Tauri Opener 插件）且不触发搜索", async () => {

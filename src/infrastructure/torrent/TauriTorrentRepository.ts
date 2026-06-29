@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { z } from "zod";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
@@ -113,5 +113,23 @@ export class TauriTorrentRepository implements TorrentRepository {
 			fileId,
 			trackId,
 		});
+	}
+
+	async subscribeTorrents(
+		onUpdate: (torrents: TorrentStatusInfo[]) => void,
+	): Promise<() => void> {
+		const channel = new Channel<unknown>((data) => {
+			const result = z.array(TorrentStatusInfoSchema).safeParse(data);
+			if (!result.success) {
+				throw new Error("torrent_subscribe API structure mismatch", {
+					cause: result.error,
+				});
+			}
+			onUpdate(result.data);
+		});
+
+		await invoke<void>("torrent_subscribe", { onEvent: channel });
+
+		return () => {};
 	}
 }

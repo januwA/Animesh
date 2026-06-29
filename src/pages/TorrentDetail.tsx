@@ -18,9 +18,9 @@ export default function TorrentDetail() {
 
 	const { addTorrentMagnetUseCase, getTorrentFilesUseCase } = useDI();
 	const { showToast } = useAppContext();
-	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [torrent, setTorrent] = useState<AddTorrentResult | null>(null);
+	const [loading, setLoading] = useState(true);
 
 	const handleBack = useCallback(() => {
 		if (infoHash && !magnet) {
@@ -37,45 +37,41 @@ export default function TorrentDetail() {
 			return;
 		}
 
-		setLoading(true);
-		setError(null);
+		const resolveTorrent = async () => {
+			setLoading(true);
+			setError(null);
 
-		if (magnet) {
-			// Resolve magnet
-			addTorrentMagnetUseCase
-				.execute(magnet)
-				.then((result) => {
+			try {
+				if (magnet) {
+					// Resolve magnet
+					const result = await addTorrentMagnetUseCase.execute(magnet);
 					setTorrent(result);
-					setLoading(false);
 					showToast(`种子元数据解析成功，获取到 ${result.files.length} 个文件`);
-				})
-				.catch((err: unknown) => {
-					const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
-					setError(errMsg);
-					setLoading(false);
-					showToast(`种子解析失败: ${errMsg}`, 10000);
-				});
-		} else if (infoHash) {
-			// Resolve by existing info hash
-			getTorrentFilesUseCase
-				.execute(infoHash)
-				.then((files) => {
+				} else if (infoHash) {
+					// Resolve by existing info hash
+					const files = await getTorrentFilesUseCase.execute(infoHash);
 					setTorrent({
 						info_hash: infoHash,
 						name: title || "已缓存种子",
 						files,
 					});
-					setLoading(false);
-				})
-				.catch((err: unknown) => {
+				}
+			} catch (err: unknown) {
+				if (magnet) {
+					const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
+					setError(errMsg);
+					showToast(`种子解析失败: ${errMsg}`, 10000);
+				} else {
 					const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
 					setError(errMsg);
-					setLoading(false);
 					showToast(`获取文件列表失败: ${errMsg}`, 10000);
-				});
-		}
+				}
+			} finally {
+				setLoading(false);
+			}
+		};
 
-		return () => {};
+		resolveTorrent();
 	}, [
 		magnet,
 		infoHash,

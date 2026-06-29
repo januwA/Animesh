@@ -56,6 +56,24 @@ describe("Player 页面组件", () => {
 			getTorrentStatus: vi.fn(),
 			getSubtitleTracks: vi.fn(),
 			getSubtitleVtt: vi.fn(),
+			subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
+				const runInitial = async () => {
+					try {
+						const status = await mockTorrentRepository.getTorrentStatus("");
+						onUpdate([status]);
+					} catch {}
+				};
+				runInitial();
+
+				const interval = setInterval(async () => {
+					try {
+						const status = await mockTorrentRepository.getTorrentStatus("");
+						onUpdate([status]);
+					} catch {}
+				}, 1500);
+
+				return Promise.resolve(() => clearInterval(interval));
+			}),
 		};
 
 		mockContainer = createDIContainerForTest({
