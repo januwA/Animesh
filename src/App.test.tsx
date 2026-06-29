@@ -219,9 +219,6 @@ describe("App 组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(
-			screen.getByText("正在启动下载流媒体引擎: 凡人修仙传 第1集..."),
-		).toBeInTheDocument();
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(3000);

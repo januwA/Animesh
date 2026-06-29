@@ -340,7 +340,7 @@ describe("Home 页面组件", () => {
 		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
 	});
 
-	it("当点击边下边播时，应该显示启动流媒体引擎提示并跳转", async () => {
+	it("当点击边下边播时，应该跳转", async () => {
 		const mockResults = [
 			{
 				title: "凡人修仙传 第1集",
@@ -372,10 +372,6 @@ describe("Home 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-
-		expect(
-			screen.getByText("正在启动下载流媒体引擎: 凡人修仙传 第1集..."),
-		).toBeInTheDocument();
 
 		expect(currentLocation.current?.pathname).toBe("/torrent");
 		expect(currentLocation.current?.search).toContain("magnet=");

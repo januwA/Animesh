@@ -100,7 +100,6 @@ export default function Home() {
 	};
 
 	const handlePlay = (magnet: string, title: string) => {
-		showToast(`正在启动下载流媒体引擎: ${title.slice(0, 20)}...`);
 		navigate(
 			`/torrent?magnet=${encodeURIComponent(magnet)}&title=${encodeURIComponent(title)}`,
 		);

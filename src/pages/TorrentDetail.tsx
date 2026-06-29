@@ -46,7 +46,6 @@ export default function TorrentDetail() {
 					// Resolve magnet
 					const result = await addTorrentMagnetUseCase.execute(magnet);
 					setTorrent(result);
-					showToast(`种子元数据解析成功，获取到 ${result.files.length} 个文件`);
 				} else if (infoHash) {
 					// Resolve by existing info hash
 					const files = await getTorrentFilesUseCase.execute(infoHash);
