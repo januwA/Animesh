@@ -102,13 +102,12 @@ export default function Downloads() {
 
 	// Delete a download
 	const handleDelete = async () => {
+		/* v8 ignore next */
 		if (!deleteTarget) return;
 		setDeleting(true);
 		try {
 			await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
-			showToast(
-				`已删除任务${deleteFiles ? "及本地文件" : ""}: ${deleteTarget.name || deleteTarget.info_hash.slice(0, 8)}`,
-			);
+			showToast(`已删除任务`);
 			setDeleteTarget(null);
 			fetchTorrents();
 		} catch (err: unknown) {

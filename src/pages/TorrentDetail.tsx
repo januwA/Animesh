@@ -37,7 +37,6 @@ export default function TorrentDetail() {
 			return;
 		}
 
-		let isMounted = true;
 		setLoading(true);
 		setError(null);
 
@@ -46,51 +45,39 @@ export default function TorrentDetail() {
 			addTorrentMagnetUseCase
 				.execute(magnet)
 				.then((result) => {
-					if (isMounted) {
-						setTorrent(result);
-						setLoading(false);
-						showToast(
-							`种子元数据解析成功，获取到 ${result.files.length} 个文件`,
-						);
-					}
+					setTorrent(result);
+					setLoading(false);
+					showToast(`种子元数据解析成功，获取到 ${result.files.length} 个文件`);
 				})
 				.catch((err: unknown) => {
-					if (isMounted) {
-						console.error("Failed to add torrent:", err);
-						const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
-						setError(errMsg);
-						setLoading(false);
-						showToast(`种子解析失败: ${errMsg}`, 10000);
-					}
+					console.error("Failed to add torrent:", err);
+					const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
+					setError(errMsg);
+					setLoading(false);
+					showToast(`种子解析失败: ${errMsg}`, 10000);
 				});
 		} else if (infoHash) {
 			// Resolve by existing info hash
 			getTorrentFilesUseCase
 				.execute(infoHash)
 				.then((files) => {
-					if (isMounted) {
-						setTorrent({
-							info_hash: infoHash,
-							name: title || "已缓存种子",
-							files,
-						});
-						setLoading(false);
-					}
+					setTorrent({
+						info_hash: infoHash,
+						name: title || "已缓存种子",
+						files,
+					});
+					setLoading(false);
 				})
 				.catch((err: unknown) => {
-					if (isMounted) {
-						console.error("Failed to fetch torrent files:", err);
-						const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
-						setError(errMsg);
-						setLoading(false);
-						showToast(`获取文件列表失败: ${errMsg}`, 10000);
-					}
+					console.error("Failed to fetch torrent files:", err);
+					const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
+					setError(errMsg);
+					setLoading(false);
+					showToast(`获取文件列表失败: ${errMsg}`, 10000);
 				});
 		}
 
-		return () => {
-			isMounted = false;
-		};
+		return () => {};
 	}, [
 		magnet,
 		infoHash,

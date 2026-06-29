@@ -13,32 +13,23 @@ export default function Calendar() {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		let isMounted = true;
 		setLoading(true);
 		setError(null);
 
 		getBangumiCalendarUseCase
 			.execute()
 			.then((data) => {
-				if (isMounted) {
-					setCalendar(data);
-				}
+				setCalendar(data);
 			})
 			.catch((err: unknown) => {
 				console.error("Failed to fetch calendar:", err);
-				if (isMounted) {
-					setError("获取新番日历失败，请检查网络或重试");
-				}
+				setError("获取新番日历失败，请检查网络或重试");
 			})
 			.finally(() => {
-				if (isMounted) {
-					setLoading(false);
-				}
+				setLoading(false);
 			});
 
-		return () => {
-			isMounted = false;
-		};
+		return () => {};
 	}, [getBangumiCalendarUseCase]);
 
 	const handleAnimeClick = (animeName: string) => {

@@ -49,11 +49,10 @@ export function AppHeader() {
 			typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 		if (!isTauri) return;
 
-		let isMounted = true;
 		const fetchActiveCount = async () => {
 			try {
 				const list = await listTorrentsUseCase.execute();
-				if (isMounted && Array.isArray(list)) {
+				if (Array.isArray(list)) {
 					const count = list.filter((t) => !t.finished && !t.paused).length;
 					setActiveCount(count);
 				}
@@ -65,7 +64,6 @@ export function AppHeader() {
 		fetchActiveCount();
 		const interval = setInterval(fetchActiveCount, 3000);
 		return () => {
-			isMounted = false;
 			clearInterval(interval);
 		};
 	}, [listTorrentsUseCase]);

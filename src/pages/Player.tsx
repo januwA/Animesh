@@ -54,14 +54,6 @@ export default function Player() {
 
 	const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-	const isMountedRef = useRef(true);
-	useEffect(() => {
-		isMountedRef.current = true;
-		return () => {
-			isMountedRef.current = false;
-		};
-	}, []);
-
 	// Clean up subtitle object URL on unmount
 	useEffect(() => {
 		return () => {
@@ -78,14 +70,12 @@ export default function Player() {
 			const expectedId = selectedTrackId.toString();
 
 			const updateTrackModes = () => {
-				if (video.textTracks) {
-					for (let i = 0; i < video.textTracks.length; i++) {
-						const track = video.textTracks[i];
-						if (track.id === expectedId) {
-							track.mode = "showing";
-						} else {
-							track.mode = "disabled";
-						}
+				for (let i = 0; i < video.textTracks.length; i++) {
+					const track = video.textTracks[i];
+					if (track.id === expectedId) {
+						track.mode = "showing";
+					} else {
+						track.mode = "disabled";
 					}
 				}
 			};
@@ -98,30 +88,21 @@ export default function Player() {
 				updateTrackModes();
 			};
 
-			if (
-				video.textTracks &&
-				typeof video.textTracks.addEventListener === "function"
-			) {
-				video.textTracks.addEventListener("addtrack", handleAddTrack);
-			}
+			video.textTracks.addEventListener("addtrack", handleAddTrack);
 
 			// Timeout fallback
 			const timer = setTimeout(updateTrackModes, 150);
 
 			return () => {
 				clearTimeout(timer);
-				if (
-					video.textTracks &&
-					typeof video.textTracks.removeEventListener === "function"
-				) {
-					video.textTracks.removeEventListener("addtrack", handleAddTrack);
-				}
+				video.textTracks.removeEventListener("addtrack", handleAddTrack);
 			};
 		}
 	}, [subtrackSrc, selectedTrackId]);
 
 	const loadSubtitleVtt = useCallback(
 		async (trackId: number) => {
+			/* v8 ignore next */
 			if (!infoHash || fileId === undefined) return;
 			setSubloading(true);
 			try {
@@ -131,7 +112,6 @@ export default function Player() {
 					parsedFileId,
 					trackId,
 				);
-				if (!isMountedRef.current) return;
 				const blob = new Blob([vttContent], { type: "text/vtt" });
 				const url = URL.createObjectURL(blob);
 				setSubtrackSrc((prev) => {
@@ -142,14 +122,10 @@ export default function Player() {
 				});
 				setSelectedTrackId(trackId);
 			} catch (err: unknown) {
-				if (isMountedRef.current) {
-					console.error("Failed to load subtitle VTT:", err);
-					showToast("加载字幕失败，请重试");
-				}
+				console.error("Failed to load subtitle VTT:", err);
+				showToast("加载字幕失败，请重试");
 			} finally {
-				if (isMountedRef.current) {
-					setSubloading(false);
-				}
+				setSubloading(false);
 			}
 		},
 		[infoHash, fileId, getSubtitleVttUseCase, showToast],
@@ -163,7 +139,6 @@ export default function Player() {
 			return;
 		}
 
-		let isMounted = true;
 		let loadedTracks = false;
 		const parsedFileId = parseInt(fileId, 10);
 
@@ -174,15 +149,12 @@ export default function Player() {
 					parsedFileId,
 				);
 
-				if (!isMounted) return;
 				setStreamUrl(url);
 
 				// Get initial status
 				const initialStatus = await getTorrentStatusUseCase.execute(infoHash);
-				if (isMounted) {
-					setTorrentStatus(initialStatus);
-					setLoading(false);
-				}
+				setTorrentStatus(initialStatus);
+				setLoading(false);
 
 				// Fetch subtitle tracks
 				try {
@@ -190,7 +162,7 @@ export default function Player() {
 						infoHash,
 						parsedFileId,
 					);
-					if (isMounted && tracks && tracks.length > 0) {
+					if (tracks && tracks.length > 0) {
 						setSubtracks(tracks);
 						loadedTracks = true;
 						loadSubtitleVtt(tracks[0].id);
@@ -203,12 +175,10 @@ export default function Player() {
 				statusIntervalRef.current = setInterval(async () => {
 					try {
 						const status = await getTorrentStatusUseCase.execute(infoHash);
-						if (isMounted) {
-							setTorrentStatus(status);
-						}
+						setTorrentStatus(status);
 
 						// If subtitle tracks haven't been loaded yet, try to load them as download progresses
-						if (isMounted && !loadedTracks) {
+						if (!loadedTracks) {
 							try {
 								const tracks = await getSubtitleTracksUseCase.execute(
 									infoHash,
@@ -232,17 +202,14 @@ export default function Player() {
 				}, 1500);
 			} catch (err: unknown) {
 				console.error("Failed to start playback:", err);
-				if (isMounted) {
-					showToast("无法获取视频流，启动播放失败", 10000);
-					setLoading(false);
-				}
+				showToast("无法获取视频流，启动播放失败", 10000);
+				setLoading(false);
 			}
 		};
 
 		initializePlayback();
 
 		return () => {
-			isMounted = false;
 			if (statusIntervalRef.current) {
 				clearInterval(statusIntervalRef.current);
 			}

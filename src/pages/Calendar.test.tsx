@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import Layout from "../components/Layout";
@@ -443,12 +449,15 @@ describe("Calendar 页面组件", () => {
 			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
 		);
 
-		// Switch back to real timers so waitFor doesn't hang
+		// Flush pending timers and microtasks under fake timers,
+		// allowing React's useEffect + Promise chain to complete
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
 		vi.useRealTimers();
 
-		await waitFor(() => {
-			expect(screen.getByText("English Only Anime Name")).toBeInTheDocument();
-		});
+		expect(screen.getByText("English Only Anime Name")).toBeInTheDocument();
 
 		const card = screen.getByText("English Only Anime Name");
 		fireEvent.keyDown(card, { key: "Escape", code: "Escape" });
