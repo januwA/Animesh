@@ -1,5 +1,6 @@
 import type { createHashRouter } from "react-router-dom";
 import { RouterProvider } from "react-router-dom";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AppContextProvider } from "./context/AppContext";
 import { type DIContainer, DIProvider } from "./di/DIContext";
 import "./App.css";
@@ -11,10 +12,12 @@ interface AppProps {
 
 export default function App({ router, diContainer }: AppProps) {
 	return (
-		<DIProvider value={diContainer}>
-			<AppContextProvider>
-				<RouterProvider router={router} />
-			</AppContextProvider>
-		</DIProvider>
+		<ErrorBoundary>
+			<DIProvider value={diContainer}>
+				<AppContextProvider>
+					<RouterProvider router={router} />
+				</AppContextProvider>
+			</DIProvider>
+		</ErrorBoundary>
 	);
 }
