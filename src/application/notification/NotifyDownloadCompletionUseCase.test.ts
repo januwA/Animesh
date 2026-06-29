@@ -24,6 +24,7 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
 			getTorrentStatus: vi.fn(),
 			getSubtitleTracks: vi.fn(),
 			getSubtitleVtt: vi.fn(),
+			subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
 		};
 
 		mockNotificationRepository = {

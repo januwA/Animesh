@@ -37,6 +37,7 @@ describe("Layout 布局组件", () => {
 				getTorrentStatus: vi.fn(),
 				getSubtitleTracks: vi.fn(),
 				getSubtitleVtt: vi.fn(),
+				subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
 			},
 			settingsRepository: {
 				getSettings: vi

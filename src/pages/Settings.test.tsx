@@ -47,6 +47,7 @@ describe("Settings 页面组件", () => {
 				getTorrentStatus: vi.fn(),
 				getSubtitleTracks: vi.fn(),
 				getSubtitleVtt: vi.fn(),
+				subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
 			},
 			settingsRepository: mockSettingsRepository,
 			bangumiRepository: {

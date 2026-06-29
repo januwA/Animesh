@@ -57,6 +57,7 @@ describe("App 组件", () => {
 			getTorrentStatus: vi.fn(),
 			getSubtitleTracks: vi.fn(),
 			getSubtitleVtt: vi.fn(),
+			subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
 		};
 
 		mockSettingsRepository = {

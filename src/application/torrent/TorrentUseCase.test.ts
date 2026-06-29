@@ -25,6 +25,7 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 		getTorrentStatus: vi.fn(),
 		getSubtitleTracks: vi.fn(),
 		getSubtitleVtt: vi.fn(),
+		subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
 	} as unknown as TorrentRepository;
 
 	it("SearchTorrentsUseCase 应该正确调用 repository 的 search 方法", async () => {
