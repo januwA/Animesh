@@ -14,13 +14,6 @@ describe("Layout 布局组件", () => {
 		vi.clearAllMocks();
 		mockRequestPermission = vi.fn().mockResolvedValue(true);
 		mockExecute = vi.fn().mockResolvedValue(undefined);
-		// biome-ignore lint/suspicious/noExplicitAny: mock tauri internals
-		(window as any).__TAURI_INTERNALS__ = {};
-	});
-
-	afterEach(() => {
-		// biome-ignore lint/suspicious/noExplicitAny: mock tauri internals
-		delete (window as any).__TAURI_INTERNALS__;
 	});
 
 	const renderLayout = () => {
