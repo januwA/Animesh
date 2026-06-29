@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
+import { SettingsFormSchema } from "../domain/settings/SettingsSchemas";
 
 export default function Settings() {
 	const navigate = useNavigate();
@@ -51,22 +52,32 @@ export default function Settings() {
 	// Save settings
 	const handleSave = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!downloadDir.trim()) {
-			showToast("下载目录不能为空");
-			return;
-		}
 
 		const parsedTrackers = trackersText
 			.split("\n")
 			.map((line) => line.trim())
 			.filter((line) => line.length > 0);
 
+		const validation = SettingsFormSchema.safeParse({
+			downloadDir,
+			proxy,
+			trackers: parsedTrackers,
+		});
+
+		if (!validation.success) {
+			const firstError = validation.error.issues[0]?.message || "格式不正确";
+			showToast(firstError);
+			return;
+		}
+
+		const validatedData = validation.data;
+
 		setSaving(true);
 		try {
 			await saveSettingsUseCase.execute(
-				downloadDir.trim(),
-				proxy.trim() || null,
-				parsedTrackers,
+				validatedData.downloadDir,
+				validatedData.proxy,
+				validatedData.trackers,
 			);
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {

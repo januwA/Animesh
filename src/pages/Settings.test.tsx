@@ -23,7 +23,11 @@ describe("Settings 页面组件", () => {
 
 	beforeEach(() => {
 		mockSettingsRepository = {
-			getSettings: vi.fn(),
+			getSettings: vi.fn().mockResolvedValue({
+				download_dir: "/default/download",
+				proxy: "",
+				trackers: [],
+			}),
 			setDownloadDir: vi.fn(),
 			setProxy: vi.fn(),
 			setTrackers: vi.fn(),

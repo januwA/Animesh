@@ -1,17 +1,20 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
+import {
+	type Settings,
+	SettingsSchema,
+} from "../../domain/settings/SettingsSchemas";
 
 export class TauriSettingsRepository implements SettingsRepository {
-	async getSettings(): Promise<{
-		download_dir: string;
-		proxy?: string | null;
-		trackers?: string[];
-	}> {
-		return invoke<{
-			download_dir: string;
-			proxy?: string | null;
-			trackers?: string[];
-		}>("settings_get");
+	async getSettings(): Promise<Settings> {
+		const rawSettings = await invoke<unknown>("settings_get");
+		const result = SettingsSchema.safeParse(rawSettings);
+		if (!result.success) {
+			throw new Error("Settings backend structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async setDownloadDir(dir: string): Promise<void> {
