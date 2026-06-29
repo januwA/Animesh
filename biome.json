@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["**", "!!src-tauri", "!!public"]
+		"includes": ["**", "!!src-tauri", "!!public", "!!scripts"]
 	},
 	"formatter": {
 		"enabled": true,
