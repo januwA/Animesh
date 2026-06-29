@@ -17,6 +17,8 @@ pre-push:
       run: pnpm check
     "前端_TypeScript类型检查":
       run: pnpm typecheck
+    "前端_错误处理规范检查":
+      run: pnpm check:error-handling
     "前端_单元测试与覆盖率":
       run: pnpm test:coverage
     "后端_Rust静态代码检查(Clippy)":

@@ -13,6 +13,7 @@
 		"test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml -p animesh_core --fail-under-lines 90 --fail-under-functions 90 --ignore-filename-regex \"torrent_manager|src/subtitles\\.rs|infrastructure\" --no-clean -- --test-threads=1",
 		"check:apply": "biome check --write --no-errors-on-unmatched",
 		"check": "biome check --no-errors-on-unmatched",
+		"check:error-handling": "tsx scripts/check-error-handling.ts",
 		"typecheck": "tsc --noEmit",
 		"test:coverage": "vitest run --coverage"
 	},
@@ -52,8 +53,10 @@
 		"autoprefixer": "^10.5.0",
 		"jsdom": "^29.1.1",
 		"lefthook": "^2.1.9",
+		"oxc-parser": "^0.137.0",
 		"postcss": "^8.5.15",
 		"tailwindcss": "^4.3.1",
+		"tsx": "^4.22.4",
 		"typescript": "~6.0.3",
 		"vite": "^8.0.16",
 		"vitest": "^4.1.9"
