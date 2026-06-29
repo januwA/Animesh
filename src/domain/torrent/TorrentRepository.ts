@@ -4,7 +4,7 @@ import type {
 	SearchResultItem,
 	SubtitleTrackInfo,
 	TorrentStatusInfo,
-} from "../../types";
+} from "./TorrentSchemas";
 
 export interface TorrentRepository {
 	search(keyword: string, engine: string): Promise<SearchResultItem[]>;

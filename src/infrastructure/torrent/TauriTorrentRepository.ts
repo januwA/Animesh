@@ -1,20 +1,40 @@
 import { invoke } from "@tauri-apps/api/core";
+import { z } from "zod";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import type {
-	AddTorrentResult,
-	FileDetails,
-	SearchResultItem,
-	SubtitleTrackInfo,
-	TorrentStatusInfo,
-} from "../../types";
+import {
+	type AddTorrentResult,
+	AddTorrentResultSchema,
+	type FileDetails,
+	FileDetailsSchema,
+	type SearchResultItem,
+	SearchResultItemSchema,
+	type SubtitleTrackInfo,
+	SubtitleTrackInfoSchema,
+	type TorrentStatusInfo,
+	TorrentStatusInfoSchema,
+} from "../../domain/torrent/TorrentSchemas";
 
 export class TauriTorrentRepository implements TorrentRepository {
 	async search(keyword: string, engine: string): Promise<SearchResultItem[]> {
-		return invoke<SearchResultItem[]>("search_torrents", { keyword, engine });
+		const raw = await invoke<unknown>("search_torrents", { keyword, engine });
+		const result = z.array(SearchResultItemSchema).safeParse(raw);
+		if (!result.success) {
+			throw new Error("search_torrents API structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async listTorrents(): Promise<TorrentStatusInfo[]> {
-		return invoke<TorrentStatusInfo[]>("torrent_list");
+		const raw = await invoke<unknown>("torrent_list");
+		const result = z.array(TorrentStatusInfoSchema).safeParse(raw);
+		if (!result.success) {
+			throw new Error("torrent_list API structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async pauseTorrent(infoHash: string): Promise<void> {
@@ -30,11 +50,25 @@ export class TauriTorrentRepository implements TorrentRepository {
 	}
 
 	async addTorrentMagnet(magnet: string): Promise<AddTorrentResult> {
-		return invoke<AddTorrentResult>("torrent_add_magnet", { magnet });
+		const raw = await invoke<unknown>("torrent_add_magnet", { magnet });
+		const result = AddTorrentResultSchema.safeParse(raw);
+		if (!result.success) {
+			throw new Error("torrent_add_magnet API structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async getTorrentFiles(infoHash: string): Promise<FileDetails[]> {
-		return invoke<FileDetails[]>("torrent_get_files", { infoHash });
+		const raw = await invoke<unknown>("torrent_get_files", { infoHash });
+		const result = z.array(FileDetailsSchema).safeParse(raw);
+		if (!result.success) {
+			throw new Error("torrent_get_files API structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async getTorrentStreamUrl(infoHash: string, fileId: number): Promise<string> {
@@ -42,17 +76,31 @@ export class TauriTorrentRepository implements TorrentRepository {
 	}
 
 	async getTorrentStatus(infoHash: string): Promise<TorrentStatusInfo> {
-		return invoke<TorrentStatusInfo>("torrent_get_status", { infoHash });
+		const raw = await invoke<unknown>("torrent_get_status", { infoHash });
+		const result = TorrentStatusInfoSchema.safeParse(raw);
+		if (!result.success) {
+			throw new Error("torrent_get_status API structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async getSubtitleTracks(
 		infoHash: string,
 		fileId: number,
 	): Promise<SubtitleTrackInfo[]> {
-		return invoke<SubtitleTrackInfo[]>("torrent_get_subtitle_tracks", {
+		const raw = await invoke<unknown>("torrent_get_subtitle_tracks", {
 			infoHash,
 			fileId,
 		});
+		const result = z.array(SubtitleTrackInfoSchema).safeParse(raw);
+		if (!result.success) {
+			throw new Error("torrent_get_subtitle_tracks API structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async getSubtitleVtt(

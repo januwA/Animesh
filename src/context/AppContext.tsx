@@ -1,5 +1,10 @@
 import { createContext, use, useCallback, useState } from "react";
-import type { SearchResultItem, ToastMessage } from "../types";
+import type { SearchResultItem } from "../domain/torrent/TorrentSchemas";
+
+export interface ToastMessage {
+	id: number;
+	text: string;
+}
 
 interface AppContextType {
 	keyword: string;
