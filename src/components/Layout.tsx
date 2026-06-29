@@ -10,19 +10,11 @@ export default function Layout() {
 
 	// 请求系统通知权限
 	useEffect(() => {
-		const isTauri =
-			typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-		if (!isTauri) return;
-
 		notificationRepository.requestPermission();
 	}, [notificationRepository]);
 
 	// 下载完成监听轮询
 	useEffect(() => {
-		const isTauri =
-			typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-		if (!isTauri) return;
-
 		const checkDownloads = async () => {
 			try {
 				await notifyDownloadCompletionUseCase.execute();

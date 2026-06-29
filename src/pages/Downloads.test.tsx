@@ -32,7 +32,7 @@ describe("Downloads 页面组件", () => {
 			search: vi.fn(),
 			addTorrentMagnet: vi.fn(),
 			getTorrentFiles: vi.fn(),
-			listTorrents: vi.fn(),
+			listTorrents: vi.fn().mockResolvedValue([]),
 			pauseTorrent: vi.fn(),
 			resumeTorrent: vi.fn(),
 			deleteTorrent: vi.fn(),
@@ -94,7 +94,7 @@ describe("Downloads 页面组件", () => {
 	});
 
 	it("当获取下载列表失败时，应该显示加载完成和Toast提示", async () => {
-		vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValueOnce(
+		vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValue(
 			"Fetch list failed",
 		);
 

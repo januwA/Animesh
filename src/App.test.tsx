@@ -47,7 +47,7 @@ describe("App 组件", () => {
 
 		mockTorrentRepository = {
 			search: vi.fn(),
-			listTorrents: vi.fn(),
+			listTorrents: vi.fn().mockResolvedValue([]),
 			pauseTorrent: vi.fn(),
 			resumeTorrent: vi.fn(),
 			deleteTorrent: vi.fn(),

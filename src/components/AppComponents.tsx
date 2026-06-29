@@ -45,10 +45,6 @@ export function AppHeader() {
 	const [activeCount, setActiveCount] = useState<number>(0);
 
 	useEffect(() => {
-		const isTauri =
-			typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-		if (!isTauri) return;
-
 		const fetchActiveCount = async () => {
 			try {
 				const list = await listTorrentsUseCase.execute();
