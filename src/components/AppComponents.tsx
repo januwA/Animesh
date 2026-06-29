@@ -52,10 +52,8 @@ export function AppHeader() {
 		const fetchActiveCount = async () => {
 			try {
 				const list = await listTorrentsUseCase.execute();
-				if (Array.isArray(list)) {
-					const count = list.filter((t) => !t.finished && !t.paused).length;
-					setActiveCount(count);
-				}
+				const count = list.filter((t) => !t.finished && !t.paused).length;
+				setActiveCount(count);
 			} catch {}
 		};
 

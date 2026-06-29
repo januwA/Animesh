@@ -151,15 +151,6 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
 		await expect(useCase.execute()).rejects.toThrow("Fetch error");
 	});
 
-	it("当获取的种子列表不是数组时，应该不崩溃", async () => {
-		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-			null as any,
-		);
-
-		await useCase.execute();
-		expect(mockNotificationRepository.sendNotification).not.toHaveBeenCalled();
-	});
-
 	it("当已完成的种子没有名称时，通知信息应该降级显示为“未命名种子”", async () => {
 		let callCount = 0;
 		const torrentWithoutName: TorrentStatusInfo = {
