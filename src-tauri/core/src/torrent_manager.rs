@@ -64,11 +64,13 @@ impl TorrentManager {
         std::fs::create_dir_all(&persistence_dir).ok();
 
         #[allow(unused_mut)]
-        let mut opts = librqbit::SessionOptions::default();
-        opts.persistence = Some(librqbit::SessionPersistenceConfig::Json {
-            folder: Some(persistence_dir),
-        });
-        opts.disable_dht_persistence = true;
+        let mut opts = librqbit::SessionOptions {
+            persistence: Some(librqbit::SessionPersistenceConfig::Json {
+                folder: Some(persistence_dir),
+            }),
+            disable_dht_persistence: true,
+            ..Default::default()
+        };
         #[cfg(test)]
         {
             opts.disable_dht = true;
