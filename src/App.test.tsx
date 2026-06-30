@@ -162,9 +162,7 @@ describe("App 组件", () => {
 		fireEvent.click(button);
 
 		// 应该进入 loading 状态
-		expect(
-			screen.getByText("正在获取 动漫花园 资源列表..."),
-		).toBeInTheDocument();
+		expect(screen.getByText("正在获取资源列表...")).toBeInTheDocument();
 
 		// 等待加载完成并显示结果
 		await waitFor(() => {

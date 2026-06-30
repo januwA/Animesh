@@ -192,12 +192,12 @@ export default function Downloads() {
 									<div className="flex items-start justify-between gap-4">
 										<div className="space-y-1.5 min-w-0 flex-1">
 											<CardTitle
-												className="text-base font-bold truncate text-foreground leading-normal"
+												className="text-base font-bold text-foreground leading-normal"
 												title={t.name || "正在解析元数据..."}
 											>
 												{t.name || "正在解析元数据..."}
 											</CardTitle>
-											<p className="text-[10px] font-mono text-muted-foreground truncate">
+											<p className="text-[10px] font-mono text-muted-foreground">
 												Hash: {t.info_hash}
 											</p>
 										</div>

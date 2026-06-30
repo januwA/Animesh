@@ -181,7 +181,7 @@ describe("Home 页面组件", () => {
 		fireEvent.change(input, { target: { value: "凡人" } });
 		fireEvent.submit(input.closest("form")!);
 
-		expect(screen.getByText(/正在获取 动漫花园 资源列表/)).toBeInTheDocument();
+		expect(screen.getByText(/正在获取资源列表/)).toBeInTheDocument();
 
 		await waitFor(() => {
 			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();

@@ -206,20 +206,12 @@ export function SearchForm({
 }
 
 // 搜索加载指示器
-export function SearchLoading({ engine }: { engine?: string }) {
-	const engineName =
-		engine === "bangumi_moe"
-			? "萌番组"
-			: engine === "mikan"
-				? "蜜柑计划"
-				: engine === "nyaa"
-					? "Nyaa"
-					: "动漫花园";
+export function SearchLoading() {
 	return (
 		<div className="flex flex-col items-center justify-center py-20 space-y-4">
 			<Loader2 className="h-10 w-10 text-primary animate-spin" />
 			<p className="text-sm text-muted-foreground font-medium">
-				正在获取 {engineName} 资源列表...
+				正在获取资源列表...
 			</p>
 		</div>
 	);

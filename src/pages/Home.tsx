@@ -118,7 +118,7 @@ export default function Home() {
 			/>
 
 			{/* 加载提示 */}
-			{isPending && <SearchLoading engine={searchEngine} />}
+			{isPending && <SearchLoading />}
 
 			{/* 错误显示 */}
 			{error && <ErrorBanner message={error} />}

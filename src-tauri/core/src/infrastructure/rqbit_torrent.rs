@@ -220,10 +220,27 @@ impl TorrentRepository for RqbitTorrentRepository {
         let torrent = self
             .find_torrent_by_hex(info_hash)
             .ok_or_else(|| "Torrent not found".to_string())?;
-        let stream = torrent
-            .stream(file_id)
-            .map_err(|e| format!("Failed to open torrent stream: {}", e))?;
-        Ok(Box::new(stream))
+
+        let relative_path = torrent
+            .with_metadata(|meta| {
+                meta.file_infos
+                    .get(file_id)
+                    .map(|fi| fi.relative_filename.clone())
+            })
+            .map_err(|e| format!("Failed to get metadata: {}", e))?
+            .ok_or_else(|| "File id not found in metadata".to_string())?;
+
+        let download_dir = (self.get_download_dir_fn)();
+        let absolute_path = std::path::PathBuf::from(download_dir).join(relative_path);
+
+        let std_file = std::fs::File::open(&absolute_path).map_err(|e| {
+            format!(
+                "Failed to open local file: {}, path: {:?}",
+                e, absolute_path
+            )
+        })?;
+        let tokio_file = tokio::fs::File::from_std(std_file);
+        Ok(Box::new(tokio_file))
     }
 }
 

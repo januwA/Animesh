@@ -57,8 +57,18 @@ impl TorrentManager {
         settings_path: PathBuf,
         proxy: Option<String>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        let persistence_dir = settings_path
+            .parent()
+            .map(|p| p.join("torrents"))
+            .unwrap_or_else(|| download_dir.join(".torrents"));
+        std::fs::create_dir_all(&persistence_dir).ok();
+
         #[allow(unused_mut)]
         let mut opts = librqbit::SessionOptions::default();
+        opts.persistence = Some(librqbit::SessionPersistenceConfig::Json {
+            folder: Some(persistence_dir),
+        });
+        opts.disable_dht_persistence = true;
         #[cfg(test)]
         {
             opts.disable_dht = true;
