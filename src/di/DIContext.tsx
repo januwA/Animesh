@@ -13,6 +13,7 @@ import { GetTorrentStatusUseCase } from "../application/torrent/GetTorrentStatus
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
 import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
+import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
@@ -35,6 +36,7 @@ export interface DIContainer {
 	deleteTorrentUseCase: DeleteTorrentUseCase;
 	addTorrentMagnetUseCase: AddTorrentMagnetUseCase;
 	getTorrentFilesUseCase: GetTorrentFilesUseCase;
+	resolveTorrentUseCase: ResolveTorrentUseCase;
 	getTorrentStatusUseCase: GetTorrentStatusUseCase;
 	getTorrentStreamUrlUseCase: GetTorrentStreamUrlUseCase;
 	getSubtitleTracksUseCase: GetSubtitleTracksUseCase;
@@ -69,6 +71,7 @@ export function createDefaultDIContainer(): DIContainer {
 		torrentRepository,
 	);
 	const getTorrentFilesUseCase = new GetTorrentFilesUseCase(torrentRepository);
+	const resolveTorrentUseCase = new ResolveTorrentUseCase(torrentRepository);
 	const getTorrentStatusUseCase = new GetTorrentStatusUseCase(
 		torrentRepository,
 	);
@@ -100,6 +103,7 @@ export function createDefaultDIContainer(): DIContainer {
 		deleteTorrentUseCase,
 		addTorrentMagnetUseCase,
 		getTorrentFilesUseCase,
+		resolveTorrentUseCase,
 		getTorrentStatusUseCase,
 		getTorrentStreamUrlUseCase,
 		getSubtitleTracksUseCase,

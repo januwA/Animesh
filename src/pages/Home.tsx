@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useEffect, useTransition } from "react";
+import { useCallback, useEffect, useTransition } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
 	ErrorBanner,
@@ -33,61 +33,46 @@ export default function Home() {
 
 	const keywordParam = searchParams.get("keyword");
 
+	const performSearch = useCallback(
+		(queryText: string) => {
+			setError(null);
+			setHasSearched(true);
+
+			startTransition(async () => {
+				try {
+					const data = await searchTorrentsUseCase.execute(
+						queryText,
+						searchEngine,
+					);
+					setResults(data);
+				} catch (err: unknown) {
+					setError(
+						typeof err === "string" ? err : "搜索失败，请检查网络或重试",
+					);
+					setResults([]);
+				}
+			});
+		},
+		[searchTorrentsUseCase, searchEngine, setError, setHasSearched, setResults],
+	);
+
 	useEffect(() => {
 		if (keywordParam) {
 			const query = keywordParam.trim();
 			if (query) {
 				setKeyword(query);
-				setHasSearched(true);
-				setError(null);
 				setSearchParams({}, { replace: true });
-
-				startTransition(async () => {
-					try {
-						const data = await searchTorrentsUseCase.execute(
-							query,
-							searchEngine,
-						);
-						setResults(data || []);
-					} catch (err: unknown) {
-						setError(
-							typeof err === "string" ? err : "搜索失败，请检查网络或重试",
-						);
-						setResults([]);
-					}
-				});
+				performSearch(query);
 			}
 		}
-	}, [
-		keywordParam,
-		setKeyword,
-		setHasSearched,
-		setError,
-		setResults,
-		searchTorrentsUseCase,
-		setSearchParams,
-		searchEngine,
-	]);
+	}, [keywordParam, setKeyword, setSearchParams, performSearch]);
 
 	function handleSearch(e: FormEvent) {
 		e.preventDefault();
-		if (!keyword.trim()) return;
+		const query = keyword.trim();
+		if (!query) return;
 
-		setError(null);
-		setHasSearched(true);
-
-		startTransition(async () => {
-			try {
-				const data = await searchTorrentsUseCase.execute(
-					keyword.trim(),
-					searchEngine,
-				);
-				setResults(data || []);
-			} catch (err: unknown) {
-				setError(typeof err === "string" ? err : "搜索失败，请检查网络或重试");
-				setResults([]);
-			}
-		});
+		performSearch(query);
 	}
 
 	const handleCopyMagnet = async (magnet: string) => {

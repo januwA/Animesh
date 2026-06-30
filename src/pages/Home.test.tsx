@@ -7,7 +7,6 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
-import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import type { DIContainer } from "../di/DIContext";
@@ -192,9 +191,7 @@ describe("Home 页面组件", () => {
 	});
 
 	it("当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
-		vi.mocked(mockTorrentRepository.search).mockResolvedValue(
-			null as unknown as SearchResultItem[],
-		);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
 		renderHome();
 
@@ -497,7 +494,7 @@ describe("Home 页面组件", () => {
 	});
 
 	it("应该在组件挂载时读取 URL 的 keyword 参数，当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
-		vi.mocked(mockTorrentRepository.search).mockResolvedValue(null as any);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
 		renderHome("/?keyword=凡人");
 

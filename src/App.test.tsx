@@ -595,10 +595,6 @@ describe("App 组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 
-		expect(
-			screen.getByText("获取文件列表失败: 解析引擎启动超时"),
-		).toBeInTheDocument();
-
 		// Wait for error screen to render
 		expect(screen.getByText("种子解析失败")).toBeInTheDocument();
 		expect(screen.getByText("解析引擎启动超时")).toBeInTheDocument();
@@ -615,46 +611,6 @@ describe("App 组件", () => {
 
 		// Should be back to search page
 		expect(screen.getByTestId("search-input")).toBeInTheDocument();
-
-		vi.useRealTimers();
-	});
-
-	it("当解析种子抛出非字符串错误时，应该显示默认解析错误提示", async () => {
-		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
-			{
-				title: "凡人修仙传 第1集",
-				link: "http://example.com/1",
-				pub_date: "2026-06-23",
-				magnet: "magnet:?xt=urn:btih:TEST1",
-				size: 350000000,
-			},
-		]);
-		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValue(
-			new Error("Fatal Torrent Error"),
-		);
-
-		render(<App />);
-
-		const input = screen.getByTestId("search-input");
-		fireEvent.change(input, { target: { value: "凡人" } });
-		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
-
-		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
-		});
-
-		vi.useFakeTimers();
-
-		const playBtn = screen.getByRole("button", { name: "▶ 边下边播" });
-		fireEvent.click(playBtn);
-
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
-
-		expect(
-			screen.getByText("获取文件列表失败: 未找到该种子的缓存"),
-		).toBeInTheDocument();
 
 		vi.useRealTimers();
 	});

@@ -12,6 +12,7 @@ import { GetTorrentStatusUseCase } from "../application/torrent/GetTorrentStatus
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
 import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
+import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
@@ -36,6 +37,7 @@ export interface CreateContainerParamsForTest {
 	deleteTorrentUseCase?: DeleteTorrentUseCase;
 	addTorrentMagnetUseCase?: AddTorrentMagnetUseCase;
 	getTorrentFilesUseCase?: GetTorrentFilesUseCase;
+	resolveTorrentUseCase?: ResolveTorrentUseCase;
 	getTorrentStatusUseCase?: GetTorrentStatusUseCase;
 	getTorrentStreamUrlUseCase?: GetTorrentStreamUrlUseCase;
 	getSubtitleTracksUseCase?: GetSubtitleTracksUseCase;
@@ -123,6 +125,8 @@ export function createDIContainerForTest(
 		params.addTorrentMagnetUseCase || new AddTorrentMagnetUseCase(torrentRepo);
 	const getTorrentFilesUseCase =
 		params.getTorrentFilesUseCase || new GetTorrentFilesUseCase(torrentRepo);
+	const resolveTorrentUseCase =
+		params.resolveTorrentUseCase || new ResolveTorrentUseCase(torrentRepo);
 	const getTorrentStatusUseCase =
 		params.getTorrentStatusUseCase || new GetTorrentStatusUseCase(torrentRepo);
 	const getTorrentStreamUrlUseCase =
@@ -157,6 +161,7 @@ export function createDIContainerForTest(
 		deleteTorrentUseCase,
 		addTorrentMagnetUseCase,
 		getTorrentFilesUseCase,
+		resolveTorrentUseCase,
 		getTorrentStatusUseCase,
 		getTorrentStreamUrlUseCase,
 		getSubtitleTracksUseCase,

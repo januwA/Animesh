@@ -1,11 +1,10 @@
 import { ArrowLeft, FileVideo, Film, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
-import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
 import { formatBytes } from "../utils";
 
@@ -16,15 +15,14 @@ export default function TorrentDetail() {
 	const title = searchParams.get("title") || "";
 	const infoHash = searchParams.get("infoHash") || "";
 
-	const { addTorrentMagnetUseCase, getTorrentFilesUseCase } = useDI();
-	const { showToast } = useAppContext();
+	const { resolveTorrentUseCase } = useDI();
 	const [error, setError] = useState<string | null>(null);
 	const [torrent, setTorrent] = useState<AddTorrentResult | null>(null);
 	const [loading, setLoading] = useState(true);
 
-	const handleBack = useCallback(() => {
+	const handleBack = () => {
 		navigate(-1);
-	}, [navigate]);
+	};
 
 	useEffect(() => {
 		if (!magnet && !infoHash) {
@@ -38,37 +36,22 @@ export default function TorrentDetail() {
 			setError(null);
 
 			try {
-				if (magnet) {
-					// Resolve magnet
-					const result = await addTorrentMagnetUseCase.execute(magnet);
-					setTorrent(result);
-				} else if (infoHash) {
-					// Resolve by existing info hash
-					const files = await getTorrentFilesUseCase.execute(infoHash);
-					setTorrent({
-						info_hash: infoHash,
-						name: title || "已缓存种子",
-						files,
-					});
-				}
+				const result = await resolveTorrentUseCase.execute({
+					magnet,
+					infoHash,
+					title,
+				});
+				setTorrent(result);
 			} catch (err: unknown) {
 				const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
 				setError(errMsg);
-				showToast(`获取文件列表失败: ${errMsg}`, 10000);
 			} finally {
 				setLoading(false);
 			}
 		};
 
 		resolveTorrent();
-	}, [
-		infoHash,
-		title,
-		magnet,
-		showToast,
-		addTorrentMagnetUseCase,
-		getTorrentFilesUseCase,
-	]);
+	}, [infoHash, title, magnet, resolveTorrentUseCase]);
 
 	const handleStartPlayback = (fileId: number, fileName: string) => {
 		// v8 ignore next
