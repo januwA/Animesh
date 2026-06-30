@@ -26,7 +26,6 @@ export default function Player() {
 		fileId: string;
 	}>();
 	const [searchParams] = useSearchParams();
-	const magnet = searchParams.get("magnet") || "";
 	const title = searchParams.get("title") || "";
 	const fileName = searchParams.get("fileName") || "正在播放";
 	const isUnsupportedFormat =
@@ -231,16 +230,8 @@ export default function Player() {
 		}
 	};
 
-	const handleBackToFileList = () => {
-		if (magnet) {
-			navigate(
-				`/torrent?magnet=${encodeURIComponent(magnet)}&title=${encodeURIComponent(title)}`,
-			);
-		} else {
-			navigate(
-				`/torrent?infoHash=${infoHash}&title=${encodeURIComponent(title)}`,
-			);
-		}
+	const handleBack = () => {
+		navigate(-1);
 	};
 
 	return (
@@ -270,11 +261,11 @@ export default function Player() {
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={handleBackToFileList}
+						onClick={handleBack}
 						className="h-8 gap-1 text-muted-foreground hover:text-foreground"
 					>
 						<ArrowLeft className="h-4 w-4" />
-						返回文件列表
+						返回
 					</Button>
 				</div>
 			</div>

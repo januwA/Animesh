@@ -16,7 +16,6 @@ import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCas
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import type { DIContainer } from "../di/DIContext";
-import { createDIContainer } from "../di/DIContext";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
@@ -146,7 +145,7 @@ export function createDIContainerForTest(
 		params.getBangumiCalendarUseCase ||
 		new GetBangumiCalendarUseCase(bangumiRepo);
 
-	return createDIContainer({
+	return {
 		torrentRepository: torrentRepo,
 		settingsRepository: settingsRepo,
 		bangumiRepository: bangumiRepo,
@@ -171,5 +170,5 @@ export function createDIContainerForTest(
 		selectDirectoryUseCase,
 
 		getBangumiCalendarUseCase,
-	});
+	};
 }

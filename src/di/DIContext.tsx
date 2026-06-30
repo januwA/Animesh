@@ -53,113 +53,73 @@ export interface DIContainer {
 	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
 }
 
-export interface CreateContainerParams {
-	torrentRepository: TorrentRepository;
-	settingsRepository: SettingsRepository;
-	bangumiRepository: BangumiRepository;
-	notificationRepository: NotificationRepository;
-
-	notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
-	searchTorrentsUseCase: SearchTorrentsUseCase;
-	listTorrentsUseCase: ListTorrentsUseCase;
-	subscribeTorrentsUseCase: SubscribeTorrentsUseCase;
-	pauseTorrentUseCase: PauseTorrentUseCase;
-	resumeTorrentUseCase: ResumeTorrentUseCase;
-	deleteTorrentUseCase: DeleteTorrentUseCase;
-	addTorrentMagnetUseCase: AddTorrentMagnetUseCase;
-	getTorrentFilesUseCase: GetTorrentFilesUseCase;
-	getTorrentStatusUseCase: GetTorrentStatusUseCase;
-	getTorrentStreamUrlUseCase: GetTorrentStreamUrlUseCase;
-	getSubtitleTracksUseCase: GetSubtitleTracksUseCase;
-	getSubtitleVttUseCase: GetSubtitleVttUseCase;
-
-	getSettingsUseCase: GetSettingsUseCase;
-	saveSettingsUseCase: SaveSettingsUseCase;
-	selectDirectoryUseCase: SelectDirectoryUseCase;
-
-	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
-}
-
-export function createDIContainer(params: CreateContainerParams): DIContainer {
-	return { ...params };
-}
-
-let defaultContainerInstance: DIContainer | null = null;
-
 export function createDefaultDIContainer(): DIContainer {
-	if (!defaultContainerInstance) {
-		const torrentRepository = new TauriTorrentRepository();
-		const settingsRepository = new TauriSettingsRepository();
-		const bangumiRepository = new HttpBangumiRepository();
-		const notificationRepository = new TauriNotificationRepository();
+	const torrentRepository = new TauriTorrentRepository();
+	const settingsRepository = new TauriSettingsRepository();
+	const bangumiRepository = new HttpBangumiRepository();
+	const notificationRepository = new TauriNotificationRepository();
 
-		const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
-			torrentRepository,
-			notificationRepository,
-		);
-		const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
-		const listTorrentsUseCase = new ListTorrentsUseCase(torrentRepository);
-		const subscribeTorrentsUseCase = new SubscribeTorrentsUseCase(
-			torrentRepository,
-		);
-		const pauseTorrentUseCase = new PauseTorrentUseCase(torrentRepository);
-		const resumeTorrentUseCase = new ResumeTorrentUseCase(torrentRepository);
-		const deleteTorrentUseCase = new DeleteTorrentUseCase(torrentRepository);
-		const addTorrentMagnetUseCase = new AddTorrentMagnetUseCase(
-			torrentRepository,
-		);
-		const getTorrentFilesUseCase = new GetTorrentFilesUseCase(
-			torrentRepository,
-		);
-		const getTorrentStatusUseCase = new GetTorrentStatusUseCase(
-			torrentRepository,
-		);
-		const getTorrentStreamUrlUseCase = new GetTorrentStreamUrlUseCase(
-			torrentRepository,
-		);
-		const getSubtitleTracksUseCase = new GetSubtitleTracksUseCase(
-			torrentRepository,
-		);
-		const getSubtitleVttUseCase = new GetSubtitleVttUseCase(torrentRepository);
+	const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
+		torrentRepository,
+		notificationRepository,
+	);
+	const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
+	const listTorrentsUseCase = new ListTorrentsUseCase(torrentRepository);
+	const subscribeTorrentsUseCase = new SubscribeTorrentsUseCase(
+		torrentRepository,
+	);
+	const pauseTorrentUseCase = new PauseTorrentUseCase(torrentRepository);
+	const resumeTorrentUseCase = new ResumeTorrentUseCase(torrentRepository);
+	const deleteTorrentUseCase = new DeleteTorrentUseCase(torrentRepository);
+	const addTorrentMagnetUseCase = new AddTorrentMagnetUseCase(
+		torrentRepository,
+	);
+	const getTorrentFilesUseCase = new GetTorrentFilesUseCase(torrentRepository);
+	const getTorrentStatusUseCase = new GetTorrentStatusUseCase(
+		torrentRepository,
+	);
+	const getTorrentStreamUrlUseCase = new GetTorrentStreamUrlUseCase(
+		torrentRepository,
+	);
+	const getSubtitleTracksUseCase = new GetSubtitleTracksUseCase(
+		torrentRepository,
+	);
+	const getSubtitleVttUseCase = new GetSubtitleVttUseCase(torrentRepository);
 
-		const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
-		const saveSettingsUseCase = new SaveSettingsUseCase(settingsRepository);
-		const selectDirectoryUseCase = new SelectDirectoryUseCase(
-			settingsRepository,
-		);
+	const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
+	const saveSettingsUseCase = new SaveSettingsUseCase(settingsRepository);
+	const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
 
-		const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
-			bangumiRepository,
-		);
+	const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
+		bangumiRepository,
+	);
 
-		defaultContainerInstance = createDIContainer({
-			torrentRepository,
-			settingsRepository,
-			bangumiRepository,
-			notificationRepository,
+	return {
+		torrentRepository,
+		settingsRepository,
+		bangumiRepository,
+		notificationRepository,
 
-			notifyDownloadCompletionUseCase,
-			searchTorrentsUseCase,
-			listTorrentsUseCase,
-			subscribeTorrentsUseCase,
-			pauseTorrentUseCase,
-			resumeTorrentUseCase,
-			deleteTorrentUseCase,
-			addTorrentMagnetUseCase,
-			getTorrentFilesUseCase,
-			getTorrentStatusUseCase,
-			getTorrentStreamUrlUseCase,
-			getSubtitleTracksUseCase,
-			getSubtitleVttUseCase,
+		notifyDownloadCompletionUseCase,
+		searchTorrentsUseCase,
+		listTorrentsUseCase,
+		subscribeTorrentsUseCase,
+		pauseTorrentUseCase,
+		resumeTorrentUseCase,
+		deleteTorrentUseCase,
+		addTorrentMagnetUseCase,
+		getTorrentFilesUseCase,
+		getTorrentStatusUseCase,
+		getTorrentStreamUrlUseCase,
+		getSubtitleTracksUseCase,
+		getSubtitleVttUseCase,
 
-			getSettingsUseCase,
-			saveSettingsUseCase,
-			selectDirectoryUseCase,
+		getSettingsUseCase,
+		saveSettingsUseCase,
+		selectDirectoryUseCase,
 
-			getBangumiCalendarUseCase,
-		});
-	}
-	return defaultContainerInstance;
+		getBangumiCalendarUseCase,
+	};
 }
 
 const DIContext = createContext<DIContainer | null>(null);

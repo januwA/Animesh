@@ -481,7 +481,7 @@ describe("App 组件", () => {
 		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
 
 		// 测试返回文件列表
-		const backBtn = screen.getByRole("button", { name: "返回文件列表" });
+		const backBtn = screen.getByRole("button", { name: "返回" });
 		fireEvent.click(backBtn);
 		for (let i = 0; i < 2; i++) {
 			await act(async () => {
@@ -490,9 +490,9 @@ describe("App 组件", () => {
 		}
 		expect(screen.getByText("选择要播放的文件：")).toBeInTheDocument();
 
-		// 测试关闭弹窗
-		const closeBtn = screen.getByRole("button", { name: "✕" });
-		fireEvent.click(closeBtn);
+		// 测试返回
+		const backToHomeBtn = screen.getByRole("button", { name: "返回" });
+		fireEvent.click(backToHomeBtn);
 		for (let i = 0; i < 2; i++) {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
@@ -596,16 +596,16 @@ describe("App 组件", () => {
 		});
 
 		expect(
-			screen.getByText("种子解析失败: 解析引擎启动超时"),
+			screen.getByText("获取文件列表失败: 解析引擎启动超时"),
 		).toBeInTheDocument();
 
 		// Wait for error screen to render
 		expect(screen.getByText("种子解析失败")).toBeInTheDocument();
 		expect(screen.getByText("解析引擎启动超时")).toBeInTheDocument();
 
-		// Click "返回搜索页面"
+		// Click "返回"
 		const backToSearchBtn = screen.getByRole("button", {
-			name: "返回搜索页面",
+			name: "返回",
 		});
 		fireEvent.click(backToSearchBtn);
 
@@ -653,7 +653,7 @@ describe("App 组件", () => {
 		});
 
 		expect(
-			screen.getByText("种子解析失败: 错误详情请见控制台"),
+			screen.getByText("获取文件列表失败: 未找到该种子的缓存"),
 		).toBeInTheDocument();
 
 		vi.useRealTimers();
@@ -778,66 +778,6 @@ describe("App 组件", () => {
 		vi.useRealTimers();
 	});
 
-	it("当按下 Escape 键时，应该关闭种子解析弹窗", async () => {
-		const mockResults = [
-			{
-				title: "凡人修仙传 第1集",
-				link: "http://example.com/1",
-				pub_date: "2026-06-23",
-				magnet: "magnet:?xt=urn:btih:TEST1",
-				size: 350000000,
-			},
-		];
-
-		const mockAddTorrentResult = {
-			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
-			name: "凡人修仙传 第1集",
-			files: [{ id: 0, name: "video1.mp4", len: 1000000 }],
-		};
-
-		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
-		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
-			mockAddTorrentResult,
-		);
-
-		render(<App />);
-
-		fireEvent.change(screen.getByTestId("search-input"), {
-			target: { value: "凡人" },
-		});
-		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
-
-		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
-		});
-
-		vi.useFakeTimers();
-
-		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
-
-		for (let i = 0; i < 3; i++) {
-			await act(async () => {
-				await vi.advanceTimersByTimeAsync(0);
-			});
-		}
-
-		// 检查弹窗渲染
-		expect(screen.getByText("选择要播放的文件：")).toBeInTheDocument();
-
-		// 按下 Escape 键
-		const dialogElement = screen.getByRole("dialog");
-		fireEvent.keyDown(dialogElement, { key: "Escape", code: "Escape" });
-
-		for (let i = 0; i < 2; i++) {
-			await act(async () => {
-				await vi.advanceTimersByTimeAsync(0);
-			});
-		}
-		expect(screen.queryByText("选择要播放的文件：")).not.toBeInTheDocument();
-
-		vi.useRealTimers();
-	});
-
 	it("当在 AppContextProvider 外部使用 useAppContext 时，应该抛出错误", () => {
 		const TestComponent = () => {
 			useAppContext();
@@ -891,8 +831,8 @@ describe("App 组件", () => {
 			});
 		}
 
-		// Click "返回搜索" button
-		const backBtn = screen.getByRole("button", { name: "返回搜索" });
+		// Click "返回" button
+		const backBtn = screen.getByRole("button", { name: "返回" });
 		fireEvent.click(backBtn);
 
 		await act(async () => {
@@ -900,22 +840,6 @@ describe("App 组件", () => {
 		});
 
 		// Should be back to search page
-		expect(screen.getByTestId("search-input")).toBeInTheDocument();
-
-		// Go back to TorrentDetail
-		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
-		for (let i = 0; i < 3; i++) {
-			await act(async () => {
-				await vi.advanceTimersByTimeAsync(0);
-			});
-		}
-
-		// Click "✕" button
-		const closeBtn = screen.getByRole("button", { name: "✕" });
-		fireEvent.click(closeBtn);
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
 		expect(screen.getByTestId("search-input")).toBeInTheDocument();
 
 		vi.useRealTimers();

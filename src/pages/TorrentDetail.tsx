@@ -23,12 +23,8 @@ export default function TorrentDetail() {
 	const [loading, setLoading] = useState(true);
 
 	const handleBack = useCallback(() => {
-		if (infoHash && !magnet) {
-			navigate("/downloads");
-		} else {
-			navigate("/");
-		}
-	}, [infoHash, magnet, navigate]);
+		navigate(-1);
+	}, [navigate]);
 
 	useEffect(() => {
 		if (!magnet && !infoHash) {
@@ -56,15 +52,9 @@ export default function TorrentDetail() {
 					});
 				}
 			} catch (err: unknown) {
-				if (magnet) {
-					const errMsg = typeof err === "string" ? err : "错误详情请见控制台";
-					setError(errMsg);
-					showToast(`种子解析失败: ${errMsg}`, 10000);
-				} else {
-					const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
-					setError(errMsg);
-					showToast(`获取文件列表失败: ${errMsg}`, 10000);
-				}
+				const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
+				setError(errMsg);
+				showToast(`获取文件列表失败: ${errMsg}`, 10000);
 			} finally {
 				setLoading(false);
 			}
@@ -72,32 +62,19 @@ export default function TorrentDetail() {
 
 		resolveTorrent();
 	}, [
-		magnet,
 		infoHash,
 		title,
+		magnet,
 		showToast,
 		addTorrentMagnetUseCase,
 		getTorrentFilesUseCase,
 	]);
 
-	// Listen to Escape key to go back, keeping test compatibility
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				handleBack();
-			}
-		};
-		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [handleBack]);
-
 	const handleStartPlayback = (fileId: number, fileName: string) => {
 		// v8 ignore next
 		if (!torrent) return;
 		navigate(
-			`/play/${torrent.info_hash}/${fileId}?magnet=${encodeURIComponent(
-				magnet,
-			)}&title=${encodeURIComponent(title || torrent.name || "")}&fileName=${encodeURIComponent(
+			`/play/${torrent.info_hash}/${fileId}?title=${encodeURIComponent(title || torrent.name || "")}&fileName=${encodeURIComponent(
 				fileName,
 			)}`,
 		);
@@ -115,7 +92,7 @@ export default function TorrentDetail() {
 					首次连接 Peer 并下载 Metadata 可能需要较长时间，请稍等
 				</p>
 				<Button variant="outline" onClick={handleBack} className="mt-4">
-					{infoHash && !magnet ? "取消并返回下载管理" : "取消解析并返回"}
+					取消解析并返回
 				</Button>
 			</div>
 		);
@@ -132,7 +109,7 @@ export default function TorrentDetail() {
 					{error || "未知错误"}
 				</p>
 				<Button variant="outline" onClick={handleBack} className="mt-4">
-					{infoHash && !magnet ? "返回下载管理" : "返回搜索页面"}
+					返回
 				</Button>
 			</div>
 		);
@@ -164,15 +141,7 @@ export default function TorrentDetail() {
 						className="h-8 gap-1 text-muted-foreground hover:text-foreground self-start md:self-auto"
 					>
 						<ArrowLeft className="h-4 w-4" />
-						{infoHash && !magnet ? "返回下载管理" : "返回搜索"}
-					</Button>
-					<Button
-						variant="ghost"
-						size="sm"
-						className="h-8 w-8 hover:bg-white/5 text-muted-foreground hover:text-foreground rounded-full flex items-center justify-center"
-						onClick={handleBack}
-					>
-						✕
+						返回
 					</Button>
 				</div>
 			</div>
@@ -188,7 +157,7 @@ export default function TorrentDetail() {
 						共 {torrent.files.length} 个文件
 					</Badge>
 				</div>
-				<ScrollArea className="h-[400px] border border-white/5 rounded-lg bg-black/25 p-3">
+				<ScrollArea className="border border-white/5 rounded-lg bg-black/25 p-3">
 					<div className="space-y-2">
 						{torrent.files.map((file) => (
 							<div
@@ -196,7 +165,7 @@ export default function TorrentDetail() {
 								className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group"
 							>
 								<div className="flex items-start gap-3 flex-1 min-w-0 pr-4">
-									<FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 flex-shrink-0" />
+									<FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
 									<div className="min-w-0">
 										<p
 											className="text-sm font-medium text-foreground break-all"
@@ -212,7 +181,7 @@ export default function TorrentDetail() {
 								<Button
 									size="sm"
 									onClick={() => handleStartPlayback(file.id, file.name)}
-									className="gap-1.5 h-8 flex-shrink-0"
+									className="gap-1.5 h-8 shrink-0"
 								>
 									▶ 播放
 								</Button>

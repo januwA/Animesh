@@ -139,11 +139,17 @@ describe("Player 页面组件", () => {
 		vi.useRealTimers();
 	});
 
-	const renderPlayer = (initialEntry: string) => {
+	const renderPlayer = (
+		initialEntry: string,
+		initialEntries = [initialEntry],
+	) => {
 		return render(
 			<DIProvider value={mockContainer}>
 				<AppContextProvider>
-					<MemoryRouter initialEntries={[initialEntry]}>
+					<MemoryRouter
+						initialEntries={initialEntries}
+						initialIndex={initialEntries.indexOf(initialEntry)}
+					>
 						<LocationTracker />
 						<Routes>
 							<Route path="/" element={<Layout />}>
@@ -324,7 +330,7 @@ describe("Player 页面组件", () => {
 		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
 	});
 
-	it("当点击返回按钮时，应该能够根据是否有 magnet 参数分别进行路由跳转", async () => {
+	it("当点击返回按钮时，应该能够返回上一页", async () => {
 		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
 			"stream_url",
 		);
@@ -340,38 +346,37 @@ describe("Player 页面组件", () => {
 			peers_total: 0,
 		});
 
-		// 1. Has magnet parameter
+		// 1. Has magnet parameter in history
 		const render1 = renderPlayer(
 			"/play/hash123/0?magnet=magnet_url&title=title_val&fileName=file_val",
+			[
+				"/torrent?magnet=magnet_url",
+				"/play/hash123/0?magnet=magnet_url&title=title_val&fileName=file_val",
+			],
 		);
 
 		await waitFor(() => {
-			expect(
-				screen.getByRole("button", { name: "返回文件列表" }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "返回" })).toBeInTheDocument();
 		});
 
-		fireEvent.click(screen.getByRole("button", { name: "返回文件列表" }));
+		fireEvent.click(screen.getByRole("button", { name: "返回" }));
 		expect(getCurrentLocation()?.pathname).toBe("/torrent");
-		expect(getCurrentLocation()?.search).toContain("magnet=magnet_url");
-		expect(getCurrentLocation()?.search).toContain("title=title_val");
 
 		render1.unmount();
 		currentLocation.current = null;
 
-		// 2. Does NOT have magnet parameter
-		renderPlayer("/play/hash123/0?title=title_val");
+		// 2. Does NOT have magnet parameter in history
+		renderPlayer("/play/hash123/0?title=title_val", [
+			"/torrent?infoHash=hash123",
+			"/play/hash123/0?title=title_val",
+		]);
 
 		await waitFor(() => {
-			expect(
-				screen.getByRole("button", { name: "返回文件列表" }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "返回" })).toBeInTheDocument();
 		});
 
-		fireEvent.click(screen.getByRole("button", { name: "返回文件列表" }));
+		fireEvent.click(screen.getByRole("button", { name: "返回" }));
 		expect(getCurrentLocation()?.pathname).toBe("/torrent");
-		expect(getCurrentLocation()?.search).not.toContain("magnet=");
-		expect(getCurrentLocation()?.search).toContain("infoHash=hash123");
 	});
 
 	it("在加载流地址和状态的过程中如果组件卸载，应该正常清理而不设置状态或启动定时器", async () => {

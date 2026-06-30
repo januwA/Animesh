@@ -67,11 +67,17 @@ describe("TorrentDetail 页面组件", () => {
 		vi.useRealTimers();
 	});
 
-	const renderTorrentDetail = (initialEntry: string) => {
+	const renderTorrentDetail = (
+		initialEntry: string,
+		initialEntries = [initialEntry],
+	) => {
 		return render(
 			<DIProvider value={mockContainer}>
 				<AppContextProvider>
-					<MemoryRouter initialEntries={[initialEntry]}>
+					<MemoryRouter
+						initialEntries={initialEntries}
+						initialIndex={initialEntries.indexOf(initialEntry)}
+					>
 						<LocationTracker />
 						<Routes>
 							<Route path="/" element={<Layout />}>
@@ -131,7 +137,6 @@ describe("TorrentDetail 页面组件", () => {
 		fireEvent.click(playButtons[0]);
 
 		expect(getCurrentLocation()?.pathname).toBe("/play/hash123/0");
-		expect(getCurrentLocation()?.search).toContain("magnet=magnet_link");
 		expect(getCurrentLocation()?.search).toContain("title=mock_title");
 		expect(getCurrentLocation()?.search).toContain("fileName=file1.mp4");
 	});
@@ -158,7 +163,7 @@ describe("TorrentDetail 页面组件", () => {
 		renderTorrentDetail("/torrent?magnet=maglink");
 
 		await waitFor(() => {
-			expect(screen.getByText("错误详情请见控制台")).toBeInTheDocument();
+			expect(screen.getByText("未找到该种子的缓存")).toBeInTheDocument();
 		});
 	});
 
@@ -194,10 +199,13 @@ describe("TorrentDetail 页面组件", () => {
 		vi.mocked(mockTorrentRepository.getTorrentFiles).mockImplementation(
 			() => new Promise(() => {}),
 		);
-		const render1 = renderTorrentDetail("/torrent?infoHash=hash123");
+		const render1 = renderTorrentDetail("/torrent?infoHash=hash123", [
+			"/downloads",
+			"/torrent?infoHash=hash123",
+		]);
 
 		const cancelBtn1 = screen.getByRole("button", {
-			name: "取消并返回下载管理",
+			name: "取消解析并返回",
 		});
 		fireEvent.click(cancelBtn1);
 		expect(getCurrentLocation()?.pathname).toBe("/downloads");
@@ -209,7 +217,10 @@ describe("TorrentDetail 页面组件", () => {
 		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockImplementation(
 			() => new Promise(() => {}),
 		);
-		const render2 = renderTorrentDetail("/torrent?magnet=maglink");
+		const render2 = renderTorrentDetail("/torrent?magnet=maglink", [
+			"/",
+			"/torrent?magnet=maglink",
+		]);
 
 		const cancelBtn2 = screen.getByRole("button", { name: "取消解析并返回" });
 		fireEvent.click(cancelBtn2);
@@ -222,14 +233,15 @@ describe("TorrentDetail 页面组件", () => {
 		vi.mocked(mockTorrentRepository.getTorrentFiles).mockRejectedValueOnce(
 			"Fetch error",
 		);
-		const render3 = renderTorrentDetail("/torrent?infoHash=hash123");
+		const render3 = renderTorrentDetail("/torrent?infoHash=hash123", [
+			"/downloads",
+			"/torrent?infoHash=hash123",
+		]);
 
 		await waitFor(() => {
-			expect(
-				screen.getByRole("button", { name: "返回下载管理" }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "返回" })).toBeInTheDocument();
 		});
-		fireEvent.click(screen.getByRole("button", { name: "返回下载管理" }));
+		fireEvent.click(screen.getByRole("button", { name: "返回" }));
 		expect(getCurrentLocation()?.pathname).toBe("/downloads");
 
 		render3.unmount();
@@ -242,36 +254,15 @@ describe("TorrentDetail 页面组件", () => {
 			files: [{ id: 0, name: "file1.mp4", len: 1000 }],
 		});
 
-		renderTorrentDetail("/torrent?magnet=maglink");
+		renderTorrentDetail("/torrent?magnet=maglink", [
+			"/",
+			"/torrent?magnet=maglink",
+		]);
 
 		await waitFor(() => {
-			expect(
-				screen.getByRole("button", { name: "返回搜索" }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "返回" })).toBeInTheDocument();
 		});
-
-		const closeBtn = screen.getByText("✕");
-		fireEvent.click(closeBtn);
-		expect(getCurrentLocation()?.pathname).toBe("/");
-	});
-
-	it("应该支持按下 Escape 键退出并导航返回", async () => {
-		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue({
-			info_hash: "hash123",
-			name: "测试种子",
-			files: [{ id: 0, name: "file.mp4", len: 100 }],
-		});
-
-		renderTorrentDetail("/torrent?magnet=maglink");
-
-		await waitFor(() => {
-			expect(screen.getByText("测试种子")).toBeInTheDocument();
-		});
-
-		fireEvent.keyDown(window, { key: "Enter", code: "Enter" });
-		expect(getCurrentLocation()?.pathname).not.toBe("/");
-
-		fireEvent.keyDown(window, { key: "Escape", code: "Escape" });
+		fireEvent.click(screen.getByRole("button", { name: "返回" }));
 		expect(getCurrentLocation()?.pathname).toBe("/");
 	});
 
@@ -328,7 +319,7 @@ describe("TorrentDetail 页面组件", () => {
 		);
 		const render1 = renderTorrentDetail("/torrent?magnet=maglink");
 		await waitFor(() => {
-			expect(screen.getByText("错误详情请见控制台")).toBeInTheDocument();
+			expect(screen.getByText("未找到该种子的缓存")).toBeInTheDocument();
 		});
 		render1.unmount();
 
