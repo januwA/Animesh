@@ -152,7 +152,7 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 
 	it("ResolveTorrentUseCase 应该在只提供 infoHash 时正确调用 repository 的 getTorrentFiles 方法并组合返回结果", async () => {
 		const useCase = new ResolveTorrentUseCase(mockRepo);
-		const mockFiles = [{ id: 1, name: "file1.mp4", size: 100 }];
+		const mockFiles = [{ id: 1, name: "file1.mp4", len: 100 }];
 		vi.mocked(mockRepo.getTorrentFiles).mockResolvedValueOnce(mockFiles);
 
 		const result = await useCase.execute({
@@ -169,7 +169,7 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 
 	it("ResolveTorrentUseCase 在提供 infoHash 且未提供 title 时应该使用默认的已缓存种子名称", async () => {
 		const useCase = new ResolveTorrentUseCase(mockRepo);
-		const mockFiles = [{ id: 1, name: "file1.mp4", size: 100 }];
+		const mockFiles = [{ id: 1, name: "file1.mp4", len: 100 }];
 		vi.mocked(mockRepo.getTorrentFiles).mockResolvedValueOnce(mockFiles);
 
 		const result = await useCase.execute({ infoHash: "123" });
