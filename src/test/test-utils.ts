@@ -146,9 +146,6 @@ export function createDIContainerForTest(
 		new GetBangumiCalendarUseCase(bangumiRepo);
 
 	return {
-		torrentRepository: torrentRepo,
-		settingsRepository: settingsRepo,
-		bangumiRepository: bangumiRepo,
 		notificationRepository: notificationRepo,
 
 		notifyDownloadCompletionUseCase: notifyUseCase,

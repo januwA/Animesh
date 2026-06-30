@@ -16,19 +16,13 @@ import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase"
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
-import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
-import type { SettingsRepository } from "../domain/settings/SettingsRepository";
-import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
 import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
 
 export interface DIContainer {
-	torrentRepository: TorrentRepository;
-	settingsRepository: SettingsRepository;
-	bangumiRepository: BangumiRepository;
 	notificationRepository: NotificationRepository;
 
 	// UseCases
@@ -95,9 +89,6 @@ export function createDefaultDIContainer(): DIContainer {
 	);
 
 	return {
-		torrentRepository,
-		settingsRepository,
-		bangumiRepository,
 		notificationRepository,
 
 		notifyDownloadCompletionUseCase,
