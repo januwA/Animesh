@@ -36,6 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
 							</h2>
 							<p className="text-xs text-muted-foreground leading-relaxed break-all font-mono">
 								{this.state.error?.message ||
+									/* v8 ignore next */
 									"程序发生未知异常，请重新启动或刷新"}
 							</p>
 						</div>

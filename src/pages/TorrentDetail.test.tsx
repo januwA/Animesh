@@ -343,4 +343,38 @@ describe("TorrentDetail 页面组件", () => {
 		});
 		render2.unmount();
 	});
+
+	it("当种子名称为 null 且 URL 无 title 时，应该成功点击播放并使用空字符作为 title 降级", async () => {
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValueOnce({
+			info_hash: "hash123",
+			name: null,
+			files: [{ id: 0, name: "file1.mp4", len: 1000 }],
+		});
+
+		renderTorrentDetail("/torrent?magnet=maglink");
+
+		await waitFor(() => {
+			expect(screen.getByText("file1.mp4")).toBeInTheDocument();
+		});
+
+		const playBtn = screen.getByRole("button", { name: "▶ 播放" });
+		fireEvent.click(playBtn);
+
+		expect(getCurrentLocation()?.pathname).toBe("/play/hash123/0");
+		expect(getCurrentLocation()?.search).toContain("title=");
+	});
+
+	it("当解析任务不报错但返回空数据时，应该降级显示未知错误", async () => {
+		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValueOnce(
+			null as any,
+		);
+
+		renderTorrentDetail("/torrent?magnet=maglink");
+
+		await waitFor(() => {
+			expect(
+				screen.getByText("未知错误", { exact: false }),
+			).toBeInTheDocument();
+		});
+	});
 });

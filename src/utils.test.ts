@@ -70,4 +70,11 @@ describe("格式化错误对象函数 formatError", () => {
 		const err = new Error("读取文件失败", { cause: "文件不存在" });
 		expect(formatError(err)).toBe("读取文件失败 -> 文件不存在");
 	});
+
+	it("应该正确处理循环引用的 cause 对象以防止死循环", () => {
+		const err1 = new Error("错误1");
+		const err2 = new Error("错误2", { cause: err1 });
+		err1.cause = err2; // 制造循环引用
+		expect(formatError(err1)).toBe("错误1 -> 错误2 -> 错误1");
+	});
 });

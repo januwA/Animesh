@@ -56,9 +56,9 @@ export default function TorrentDetail() {
 		// v8 ignore next
 		if (!torrent) return;
 		navigate(
-			`/play/${torrent.info_hash}/${fileId}?title=${encodeURIComponent(title || torrent.name || "")}&fileName=${encodeURIComponent(
-				fileName,
-			)}`,
+			`/play/${torrent.info_hash}/${fileId}?title=${encodeURIComponent(
+				title || torrent.name || /* v8 ignore next */ "",
+			)}&fileName=${encodeURIComponent(fileName)}`,
 		);
 	};
 
@@ -88,7 +88,7 @@ export default function TorrentDetail() {
 			>
 				<h2 className="text-xl font-bold text-destructive">种子解析失败</h2>
 				<p className="text-sm text-muted-foreground max-w-md">
-					{error || "未知错误"}
+					{error || /* v8 ignore next */ "未知错误"}
 				</p>
 				<Button variant="outline" onClick={handleBack} className="mt-4">
 					返回

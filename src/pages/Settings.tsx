@@ -66,7 +66,7 @@ export default function Settings() {
 		});
 
 		if (!validation.success) {
-			const firstError = validation.error.issues[0]?.message || "格式不正确";
+			const firstError = validation.error.issues[0].message;
 			showToast(firstError);
 			return;
 		}

@@ -60,4 +60,19 @@ describe("ErrorBoundary 错误边界组件", () => {
 
 		expect(reloadMock).toHaveBeenCalled();
 	});
+
+	it("当子组件抛出无消息的错误时，应该使用默认未知异常提示", () => {
+		const SilentCrashingComponent = () => {
+			throw new Error("");
+		};
+		render(
+			<ErrorBoundary>
+				<SilentCrashingComponent />
+			</ErrorBoundary>,
+		);
+
+		expect(
+			screen.getByText("程序发生未知异常，请重新启动或刷新"),
+		).toBeInTheDocument();
+	});
 });

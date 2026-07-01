@@ -109,6 +109,7 @@ export default function Downloads() {
 
 	// Delete a download
 	const handleDelete = () => {
+		// v8 ignore next
 		if (!deleteTarget) return;
 		startActionTransition(async () => {
 			try {

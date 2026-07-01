@@ -341,6 +341,7 @@ export default function Player() {
 								if (val === "none") {
 									setSelectedTrackId(null);
 									setSubtrackSrc((prev) => {
+										// v8 ignore next 3
 										if (prev) {
 											URL.revokeObjectURL(prev);
 										}

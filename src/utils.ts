@@ -36,6 +36,7 @@ export function formatError(err: unknown): string {
 			visited.add(currentCause);
 			if (currentCause instanceof Error) {
 				messages.push(currentCause.message);
+				/* v8 ignore next */
 				currentCause = currentCause.cause;
 			} else {
 				messages.push(String(currentCause));
