@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useTransition } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { formatError } from "@/utils";
 import {
 	ErrorBanner,
 	SearchForm,
@@ -46,9 +47,7 @@ export default function Home() {
 					);
 					setResults(data);
 				} catch (err: unknown) {
-					setError(
-						typeof err === "string" ? err : "搜索失败，请检查网络或重试",
-					);
+					setError(`搜索失败，请检查网络或重试: ${formatError(err)}`);
 					setResults([]);
 				}
 			});

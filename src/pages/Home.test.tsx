@@ -234,7 +234,9 @@ describe("Home 页面组件", () => {
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
-			expect(screen.getByText("网络请求超时")).toBeInTheDocument();
+			expect(
+				screen.getByText("网络请求超时", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -253,7 +255,7 @@ describe("Home 页面组件", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("搜索失败，请检查网络或重试"),
+				screen.getByText("搜索失败，请检查网络或重试", { exact: false }),
 			).toBeInTheDocument();
 		});
 	});
@@ -379,7 +381,9 @@ describe("Home 页面组件", () => {
 		renderHome("/?keyword=凡人");
 
 		await waitFor(() => {
-			expect(screen.getByText("网络请求超时")).toBeInTheDocument();
+			expect(
+				screen.getByText("网络请求超时", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -392,7 +396,7 @@ describe("Home 页面组件", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("搜索失败，请检查网络或重试"),
+				screen.getByText("搜索失败，请检查网络或重试", { exact: false }),
 			).toBeInTheDocument();
 		});
 	});

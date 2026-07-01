@@ -17,7 +17,7 @@ import type {
 } from "@/domain/torrent/TorrentSchemas";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
-import { formatBytes } from "../utils";
+import { formatBytes, formatError } from "../utils";
 
 export default function Player() {
 	const navigate = useNavigate();
@@ -122,8 +122,8 @@ export default function Player() {
 					return url;
 				});
 				setSelectedTrackId(trackId);
-			} catch (_err: unknown) {
-				showToast("加载字幕失败，请重试");
+			} catch (err: unknown) {
+				showToast(`加载字幕失败: ${formatError(err)}`);
 			} finally {
 				setSubloading(false);
 			}
@@ -168,7 +168,9 @@ export default function Player() {
 						loadedTracks = true;
 						loadSubtitleVtt(tracks[0].id);
 					}
-				} catch (_err: unknown) {}
+				} catch (err: unknown) {
+					showToast(`获取字幕失败: ${formatError(err)}`);
+				}
 
 				// Start subscription to status stream
 				let isFirstEvent = true;
@@ -194,12 +196,14 @@ export default function Player() {
 									loadedTracks = true;
 									loadSubtitleVtt(tracks[0].id);
 								}
-							} catch (_err) {}
+							} catch (err: unknown) {
+								showToast(`获取字幕失败: ${formatError(err)}`);
+							}
 						}
 					}
 				});
-			} catch (_err: unknown) {
-				showToast("无法获取视频流，启动播放失败", 10000);
+			} catch (err: unknown) {
+				showToast(`无法获取视频流: ${formatError(err)}`, 10000);
 				setLoading(false);
 			}
 		};

@@ -123,7 +123,9 @@ describe("Downloads 页面组件", () => {
 			expect(
 				screen.queryByText("正在加载下载管理器..."),
 			).not.toBeInTheDocument();
-			expect(screen.getByText("获取下载列表失败")).toBeInTheDocument();
+			expect(
+				screen.getByText("获取下载列表失败", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -292,7 +294,7 @@ describe("Downloads 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("暂停失败，请重试")).toBeInTheDocument();
+		expect(screen.getByText("暂停失败", { exact: false })).toBeInTheDocument();
 
 		// 4. Resume action (success, unnamed)
 		fireEvent.click(resumeBtns[0]);
@@ -318,7 +320,7 @@ describe("Downloads 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("启动失败，请重试")).toBeInTheDocument();
+		expect(screen.getByText("启动失败", { exact: false })).toBeInTheDocument();
 	});
 
 	it("应该支持查看文件操作，正确进行路由跳转 (有名字)", async () => {
@@ -491,7 +493,9 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 
-		expect(screen.getByText("删除任务失败，请重试")).toBeInTheDocument();
+		expect(
+			screen.getByText("删除任务失败", { exact: false }),
+		).toBeInTheDocument();
 	});
 
 	it("应该能渲染已完成的下载任务", async () => {

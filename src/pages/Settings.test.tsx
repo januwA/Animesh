@@ -100,7 +100,9 @@ describe("Settings 页面组件", () => {
 
 		await waitFor(() => {
 			expect(screen.queryByText("正在加载设置面版...")).not.toBeInTheDocument();
-			expect(screen.getByText("加载设置失败")).toBeInTheDocument();
+			expect(
+				screen.getByText("加载设置失败", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -229,7 +231,9 @@ describe("Settings 页面组件", () => {
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);
 		await waitFor(() => {
-			expect(screen.getByText("Path not writeable")).toBeInTheDocument();
+			expect(
+				screen.getByText("Path not writeable", { exact: false }),
+			).toBeInTheDocument();
 		});
 
 		// 2. Non-string error (Error object)
@@ -240,7 +244,7 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(saveBtn);
 		await waitFor(() => {
 			expect(
-				screen.getByText("保存路径失败，请检查路径是否合法或是否有写权限"),
+				screen.getByText("Permission Denied", { exact: false }),
 			).toBeInTheDocument();
 		});
 	});
@@ -288,7 +292,9 @@ describe("Settings 页面组件", () => {
 
 		fireEvent.click(selectBtn);
 		await waitFor(() => {
-			expect(screen.getByText("选择文件夹失败")).toBeInTheDocument();
+			expect(
+				screen.getByText("选择文件夹失败", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 

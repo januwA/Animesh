@@ -238,7 +238,9 @@ describe("App 组件", () => {
 		fireEvent.submit(input.closest("form")!); // 可以直接回车提交
 
 		await waitFor(() => {
-			expect(screen.getByText("网络请求超时")).toBeInTheDocument();
+			expect(
+				screen.getByText("网络请求超时", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -255,7 +257,7 @@ describe("App 组件", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("搜索失败，请检查网络或重试"),
+				screen.getByText("搜索失败，请检查网络或重试", { exact: false }),
 			).toBeInTheDocument();
 		});
 	});
@@ -556,7 +558,7 @@ describe("App 组件", () => {
 			});
 		}
 		expect(
-			screen.getByText("无法获取视频流，启动播放失败"),
+			screen.getByText("无法获取视频流", { exact: false }),
 		).toBeInTheDocument();
 
 		vi.useRealTimers();
@@ -596,8 +598,12 @@ describe("App 组件", () => {
 		});
 
 		// Wait for error screen to render
-		expect(screen.getByText("种子解析失败")).toBeInTheDocument();
-		expect(screen.getByText("解析引擎启动超时")).toBeInTheDocument();
+		expect(
+			screen.getByText("种子解析失败", { exact: false }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByText("解析引擎启动超时", { exact: false }),
+		).toBeInTheDocument();
 
 		// Click "返回"
 		const backToSearchBtn = screen.getByRole("button", {

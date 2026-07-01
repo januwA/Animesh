@@ -259,7 +259,7 @@ describe("Player 页面组件", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("无法获取视频流，启动播放失败"),
+				screen.getByText("无法获取视频流", { exact: false }),
 			).toBeInTheDocument();
 			expect(screen.getByText("无法加载视频流")).toBeInTheDocument();
 		});
@@ -588,7 +588,9 @@ describe("Player 页面组件", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("加载字幕失败，请重试")).toBeInTheDocument();
+			expect(
+				screen.getByText("加载字幕失败", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 

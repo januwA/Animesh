@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { useDI } from "../di/DIContext";
-import { formatBytes } from "../utils";
+import { formatBytes, formatError } from "../utils";
 
 export default function TorrentDetail() {
 	const navigate = useNavigate();
@@ -43,8 +43,7 @@ export default function TorrentDetail() {
 				});
 				setTorrent(result);
 			} catch (err: unknown) {
-				const errMsg = typeof err === "string" ? err : "未找到该种子的缓存";
-				setError(errMsg);
+				setError(`解析种子失败: ${formatError(err)}`);
 			} finally {
 				setLoading(false);
 			}

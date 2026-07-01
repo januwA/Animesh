@@ -25,7 +25,7 @@ import { Progress } from "@/components/ui/progress";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
-import { formatBytes, formatLocalDate } from "../utils";
+import { formatBytes, formatError, formatLocalDate } from "../utils";
 
 export default function Downloads() {
 	const navigate = useNavigate();
@@ -69,8 +69,8 @@ export default function Downloads() {
 			.then((unsub) => {
 				unsubscribe = unsub;
 			})
-			.catch((_err: unknown) => {
-				showToast("获取下载列表失败");
+			.catch((err: unknown) => {
+				showToast(`获取下载列表失败: ${formatError(err)}`);
 				setLoading(false);
 			});
 
@@ -88,8 +88,8 @@ export default function Downloads() {
 				await pauseTorrentUseCase.execute(infoHash);
 				showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
 				await refreshTorrents();
-			} catch (_err: unknown) {
-				showToast("暂停失败，请重试");
+			} catch (err: unknown) {
+				showToast(`暂停失败: ${formatError(err)}`);
 			}
 		});
 	};
@@ -101,8 +101,8 @@ export default function Downloads() {
 				await resumeTorrentUseCase.execute(infoHash);
 				showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
 				await refreshTorrents();
-			} catch (_err: unknown) {
-				showToast("启动失败，请重试");
+			} catch (err: unknown) {
+				showToast(`启动失败: ${formatError(err)}`);
 			}
 		});
 	};
@@ -116,8 +116,8 @@ export default function Downloads() {
 				showToast(`已删除任务`);
 				setDeleteTarget(null);
 				await refreshTorrents();
-			} catch (_err: unknown) {
-				showToast("删除任务失败，请重试");
+			} catch (err: unknown) {
+				showToast(`删除任务失败: ${formatError(err)}`);
 			}
 		});
 	};

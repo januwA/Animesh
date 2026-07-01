@@ -150,7 +150,9 @@ describe("TorrentDetail 页面组件", () => {
 		const { unmount } = renderTorrentDetail("/torrent?magnet=maglink");
 
 		await waitFor(() => {
-			expect(screen.getByText("Resolve timeout")).toBeInTheDocument();
+			expect(
+				screen.getByText("Resolve timeout", { exact: false }),
+			).toBeInTheDocument();
 		});
 
 		unmount();
@@ -163,7 +165,9 @@ describe("TorrentDetail 页面组件", () => {
 		renderTorrentDetail("/torrent?magnet=maglink");
 
 		await waitFor(() => {
-			expect(screen.getByText("未找到该种子的缓存")).toBeInTheDocument();
+			expect(
+				screen.getByText("Fatal error", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -190,7 +194,9 @@ describe("TorrentDetail 页面组件", () => {
 		renderTorrentDetail("/torrent?infoHash=hash789");
 
 		await waitFor(() => {
-			expect(screen.getByText("Get files error")).toBeInTheDocument();
+			expect(
+				screen.getByText("Get files error", { exact: false }),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -319,7 +325,9 @@ describe("TorrentDetail 页面组件", () => {
 		);
 		const render1 = renderTorrentDetail("/torrent?magnet=maglink");
 		await waitFor(() => {
-			expect(screen.getByText("未找到该种子的缓存")).toBeInTheDocument();
+			expect(
+				screen.getByText("Fatal error object", { exact: false }),
+			).toBeInTheDocument();
 		});
 		render1.unmount();
 
@@ -329,7 +337,9 @@ describe("TorrentDetail 页面组件", () => {
 		);
 		const render2 = renderTorrentDetail("/torrent?infoHash=hash123");
 		await waitFor(() => {
-			expect(screen.getByText("未找到该种子的缓存")).toBeInTheDocument();
+			expect(
+				screen.getByText("Cache missing object", { exact: false }),
+			).toBeInTheDocument();
 		});
 		render2.unmount();
 	});

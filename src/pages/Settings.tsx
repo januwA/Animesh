@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatError } from "@/utils";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
 import { SettingsFormSchema } from "../domain/settings/SettingsSchemas";
@@ -27,8 +28,8 @@ export default function Settings() {
 				setDownloadDir(settings.download_dir);
 				setProxy(settings.proxy || "");
 				setTrackersText((settings.trackers || []).join("\n"));
-			} catch (_err: unknown) {
-				showToast("加载设置失败");
+			} catch (err: unknown) {
+				showToast(`加载设置失败: ${formatError(err)}`);
 			} finally {
 				setLoading(false);
 			}
@@ -44,8 +45,8 @@ export default function Settings() {
 				setDownloadDir(selected);
 				showToast("已选择目录，点击保存以生效");
 			}
-		} catch (_err: unknown) {
-			showToast("选择文件夹失败");
+		} catch (err: unknown) {
+			showToast(`选择文件夹失败: ${formatError(err)}`);
 		}
 	};
 
@@ -81,11 +82,7 @@ export default function Settings() {
 			);
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
-			const errMsg =
-				typeof err === "string"
-					? err
-					: "保存路径失败，请检查路径是否合法或是否有写权限";
-			showToast(errMsg, 5000);
+			showToast(`保存路径失败: ${formatError(err)}`, 5000);
 		} finally {
 			setSaving(false);
 		}
