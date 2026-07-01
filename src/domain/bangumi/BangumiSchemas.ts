@@ -27,10 +27,10 @@ export const BangumiCalendarItemSchema = z.object({
 	name_cn: z.string(),
 	air_date: z.string(),
 	air_weekday: z.number(),
-	rating: BangumiSubjectRatingSchema.optional(),
-	rank: z.number().optional(),
-	images: BangumiSubjectImagesSchema.optional(),
-	collection: z.object({ doing: z.number() }).optional(),
+	rating: BangumiSubjectRatingSchema.nullable().optional(),
+	rank: z.number().nullable().optional(),
+	images: BangumiSubjectImagesSchema.nullable().optional(),
+	collection: z.object({ doing: z.number() }).nullable().optional(),
 });
 
 export const BangumiCalendarDaySchema = z.object({
