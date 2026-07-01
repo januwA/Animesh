@@ -5,6 +5,7 @@ import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import { ErrorBanner } from "../components/AppComponents";
 import { WeeklyCalendar } from "../components/WeeklyCalendar";
 import { useDI } from "../di/DIContext";
+import { formatError } from "../utils";
 
 export default function Calendar() {
 	const navigate = useNavigate();
@@ -20,8 +21,8 @@ export default function Calendar() {
 			try {
 				const data = await getBangumiCalendarUseCase.execute();
 				setCalendar(data);
-			} catch (_err: unknown) {
-				setError("获取新番日历失败，请检查网络或重试");
+			} catch (err: unknown) {
+				setError(`获取新番日历失败，请检查网络或重试: ${formatError(err)}`);
 			}
 		});
 	}, [getBangumiCalendarUseCase]);

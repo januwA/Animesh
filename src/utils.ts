@@ -23,3 +23,26 @@ export function formatLocalDate(
 	const seconds = pad(date.getSeconds());
 	return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
+
+export function formatError(err: unknown): string {
+	if (err instanceof Error) {
+		const messages: string[] = [err.message];
+		let currentCause = err.cause;
+		const visited = new Set<unknown>();
+		while (currentCause) {
+			if (visited.has(currentCause)) {
+				break;
+			}
+			visited.add(currentCause);
+			if (currentCause instanceof Error) {
+				messages.push(currentCause.message);
+				currentCause = currentCause.cause;
+			} else {
+				messages.push(String(currentCause));
+				break;
+			}
+		}
+		return messages.join(" -> ");
+	}
+	return String(err);
+}

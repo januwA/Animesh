@@ -218,7 +218,9 @@ describe("Calendar 页面组件", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("获取新番日历失败，请检查网络或重试"),
+				screen.getByText("获取新番日历失败，请检查网络或重试", {
+					exact: false,
+				}),
 			).toBeInTheDocument();
 		});
 	});
