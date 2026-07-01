@@ -30,6 +30,7 @@ export const TorrentStatusInfoSchema = z.object({
 	paused: z.boolean(),
 	peers_connected: z.number(),
 	peers_total: z.number(),
+	created_at: z.number().optional(),
 });
 
 export const SubtitleTrackInfoSchema = z.object({

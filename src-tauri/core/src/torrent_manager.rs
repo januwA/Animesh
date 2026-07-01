@@ -66,7 +66,7 @@ impl TorrentManager {
         #[allow(unused_mut)]
         let mut opts = librqbit::SessionOptions {
             persistence: Some(librqbit::SessionPersistenceConfig::Json {
-                folder: Some(persistence_dir),
+                folder: Some(persistence_dir.clone()),
             }),
             disable_dht_persistence: true,
             ..Default::default()
@@ -110,11 +110,12 @@ impl TorrentManager {
                 session,
                 download_dir_fn,
                 trackers_fn,
+                persistence_dir.clone(),
             ),
         );
 
         // 启动 Axum 服务器并监听随机空闲端口
-        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        let listener = TcpListener::bind("0.0.0.0:0").await?;
         let port = listener.local_addr()?.port();
 
         let app = Router::new()
@@ -284,11 +285,19 @@ impl TorrentManager {
     }
 
     pub fn get_stream_url(&self, info_hash_hex: &str, file_id: usize) -> String {
+        let host = get_local_ip().unwrap_or_else(|| "127.0.0.1".to_string());
         format!(
-            "http://127.0.0.1:{}/stream/{}/{}",
-            self.port, info_hash_hex, file_id
+            "http://{}:{}/stream/{}/{}",
+            host, self.port, info_hash_hex, file_id
         )
     }
+}
+
+fn get_local_ip() -> Option<String> {
+    use std::net::UdpSocket;
+    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    socket.local_addr().ok().map(|addr| addr.ip().to_string())
 }
 
 async fn stream_handler(
@@ -550,5 +559,16 @@ mod tests {
         let content = std::fs::read_to_string(&settings_path).unwrap();
         let parsed: AppSettings = serde_json::from_str(&content).unwrap();
         assert_eq!(parsed.trackers, Some(new_trackers));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_获取局域网IP_逻辑() {
+        let ip = get_local_ip();
+        if let Some(ref addr) = ip {
+            assert_ne!(addr, "0.0.0.0");
+            assert_ne!(addr, "127.0.0.1");
+            assert_eq!(addr.split('.').count(), 4);
+        }
     }
 }

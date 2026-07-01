@@ -6,11 +6,13 @@ export function formatBytes(bytes: number | null | undefined): string {
 	return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
-export function formatLocalDate(dateStr: string): string {
-	if (!dateStr) return "";
-	const date = new Date(dateStr);
+export function formatLocalDate(
+	dateInput: string | number | null | undefined,
+): string {
+	if (!dateInput) return "";
+	const date = new Date(dateInput);
 	if (Number.isNaN(date.getTime())) {
-		return dateStr;
+		return String(dateInput);
 	}
 	const pad = (n: number) => String(n).padStart(2, "0");
 	const year = date.getFullYear();

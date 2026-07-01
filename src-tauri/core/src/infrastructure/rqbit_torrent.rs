@@ -4,10 +4,13 @@ use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
 use std::sync::Arc;
 
+use std::path::PathBuf;
+
 pub struct RqbitTorrentRepository {
     session: Arc<Session>,
     get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
     get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
+    persistence_dir: PathBuf,
 }
 
 impl RqbitTorrentRepository {
@@ -15,11 +18,13 @@ impl RqbitTorrentRepository {
         session: Arc<Session>,
         get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
         get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
+        persistence_dir: PathBuf,
     ) -> Self {
         Self {
             session,
             get_download_dir_fn,
             get_trackers_fn,
+            persistence_dir,
         }
     }
 
@@ -33,6 +38,30 @@ impl RqbitTorrentRepository {
             }
             None
         })
+    }
+
+    fn get_creation_time(&self, info_hash_hex: &str) -> u64 {
+        if let Ok(entries) = std::fs::read_dir(&self.persistence_dir) {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if name.to_lowercase().contains(&info_hash_hex.to_lowercase()) {
+                        if let Ok(metadata) = entry.metadata() {
+                            if let Ok(created) = metadata.created().or_else(|_| metadata.modified())
+                            {
+                                if let Ok(duration) = created.duration_since(std::time::UNIX_EPOCH)
+                                {
+                                    return duration.as_millis() as u64;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0)
     }
 }
 
@@ -113,6 +142,8 @@ impl TorrentRepository for RqbitTorrentRepository {
             })
             .unwrap_or((0, 0));
 
+        let created_at = self.get_creation_time(info_hash_hex);
+
         Some(TorrentStatusInfo {
             info_hash: info_hash_hex.to_string(),
             name: torrent.name(),
@@ -123,6 +154,7 @@ impl TorrentRepository for RqbitTorrentRepository {
             paused: torrent.is_paused(),
             peers_connected,
             peers_total,
+            created_at,
         })
     }
 
@@ -146,6 +178,7 @@ impl TorrentRepository for RqbitTorrentRepository {
                     })
                     .unwrap_or((0, 0));
                 let hex = format_hash(&torrent.info_hash().0);
+                let created_at = self.get_creation_time(&hex);
                 TorrentStatusInfo {
                     info_hash: hex,
                     name: torrent.name(),
@@ -156,6 +189,7 @@ impl TorrentRepository for RqbitTorrentRepository {
                     paused: torrent.is_paused(),
                     peers_connected,
                     peers_total,
+                    created_at,
                 }
             })
             .collect()

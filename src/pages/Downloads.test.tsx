@@ -532,4 +532,53 @@ describe("Downloads 页面组件", () => {
 			expect(screen.getAllByText("已完成").length).toBe(2);
 		});
 	});
+
+	it("应该在下载列表中展示创建时间，并按创建时间倒序排列(最新的在最前面)", async () => {
+		const mockTorrents = [
+			{
+				info_hash: "hashOld",
+				name: "较旧的任务",
+				progress_bytes: 100,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 10,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+				created_at: 1719816000000, // 2026-07-01 12:00:00 UTC (roughly)
+			},
+			{
+				info_hash: "hashNew",
+				name: "较新的任务",
+				progress_bytes: 200,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 20,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+				created_at: 1719819600000, // 2026-07-01 13:00:00 UTC (roughly)
+			},
+		];
+
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
+		);
+
+		renderDownloads();
+
+		await waitFor(() => {
+			expect(screen.getByText("较新的任务")).toBeInTheDocument();
+			expect(screen.getByText("较旧的任务")).toBeInTheDocument();
+		});
+
+		// 检查两个任务在 DOM 中的顺序，较新的任务应该在较旧的任务前面
+		const cards = screen.getAllByTitle(/较/);
+		const titles = cards.map((c) => c.textContent);
+		expect(titles[0]).toBe("较新的任务");
+		expect(titles[1]).toBe("较旧的任务");
+
+		// 检查创建时间是否渲染
+		expect(screen.getAllByText(/创建时间:/).length).toBe(2);
+	});
 });

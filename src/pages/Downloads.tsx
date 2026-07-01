@@ -25,7 +25,7 @@ import { Progress } from "@/components/ui/progress";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
-import { formatBytes } from "../utils";
+import { formatBytes, formatLocalDate } from "../utils";
 
 export default function Downloads() {
 	const navigate = useNavigate();
@@ -179,130 +179,137 @@ export default function Downloads() {
 			) : (
 				/* Download Cards List */
 				<div className="grid gap-4">
-					{torrents.map((t) => {
-						const progress = t.total_bytes
-							? (t.progress_bytes / t.total_bytes) * 100
-							: 0;
-						return (
-							<Card
-								key={t.info_hash}
-								className="bg-card/40 hover:bg-card-hover/50 border-white/5 transition-all duration-300"
-							>
-								<CardHeader className="p-5 pb-3">
-									<div className="flex items-start justify-between gap-4">
-										<div className="space-y-1.5 min-w-0 flex-1">
-											<CardTitle
-												className="text-base font-bold text-foreground leading-normal"
-												title={t.name || "正在解析元数据..."}
-											>
-												{t.name || "正在解析元数据..."}
-											</CardTitle>
-											<p className="text-[10px] font-mono text-muted-foreground">
-												Hash: {t.info_hash}
-											</p>
+					{[...torrents]
+						.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0))
+						.map((t) => {
+							const progress = t.total_bytes
+								? (t.progress_bytes / t.total_bytes) * 100
+								: 0;
+							return (
+								<Card
+									key={t.info_hash}
+									className="bg-card/40 hover:bg-card-hover/50 border-white/5 transition-all duration-300"
+								>
+									<CardHeader className="p-5 pb-3">
+										<div className="flex items-start justify-between gap-4">
+											<div className="space-y-1.5 min-w-0 flex-1">
+												<CardTitle
+													className="text-base font-bold text-foreground leading-normal"
+													title={t.name || "正在解析元数据..."}
+												>
+													{t.name || "正在解析元数据..."}
+												</CardTitle>
+												<div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-muted-foreground">
+													<span>Hash: {t.info_hash}</span>
+													{t.created_at && (
+														<span className="font-sans">
+															创建时间: {formatLocalDate(t.created_at)}
+														</span>
+													)}
+												</div>
+											</div>
+											<div className="flex items-center gap-1.5 flex-shrink-0">
+												{t.finished ? (
+													<Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">
+														已完成
+													</Badge>
+												) : t.paused ? (
+													<Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">
+														已暂停
+													</Badge>
+												) : (
+													<Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs flex items-center gap-1">
+														<Loader2 className="h-3 w-3 animate-spin" />
+														下载中
+													</Badge>
+												)}
+											</div>
 										</div>
-										<div className="flex items-center gap-1.5 flex-shrink-0">
-											{t.finished ? (
-												<Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">
-													已完成
-												</Badge>
-											) : t.paused ? (
-												<Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">
-													已暂停
-												</Badge>
-											) : (
-												<Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs flex items-center gap-1">
-													<Loader2 className="h-3 w-3 animate-spin" />
-													下载中
-												</Badge>
-											)}
-										</div>
-									</div>
-								</CardHeader>
+									</CardHeader>
 
-								<CardContent className="px-5 pb-5 pt-0 space-y-4">
-									{/* Progress Info */}
-									<div className="space-y-2">
-										<div className="flex justify-between text-xs font-medium">
-											<span className="flex items-center gap-1.5 text-muted-foreground">
-												<Download className="h-3.5 w-3.5 text-primary" />
-												进度: {progress.toFixed(2)}%
-											</span>
-											<span className="flex items-center gap-1.5 text-muted-foreground">
-												<Activity className="h-3.5 w-3.5 text-emerald-400" />
-												网速: {formatBytes(t.download_speed_bytes_per_sec)}/s
-												(同伴: {t.peers_connected}/{t.peers_total})
-											</span>
-										</div>
-										<Progress value={progress} className="h-2" />
-									</div>
-
-									{/* Storage Info & Actions */}
-									<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-1 text-xs">
-										<div className="flex gap-4 text-muted-foreground items-center">
-											<span className="flex items-center gap-1">
-												<HardDrive className="h-3.5 w-3.5" />
-												已下载: {formatBytes(t.progress_bytes)}
-											</span>
-											<span>/</span>
-											<span>总大小: {formatBytes(t.total_bytes)}</span>
+									<CardContent className="px-5 pb-5 pt-0 space-y-4">
+										{/* Progress Info */}
+										<div className="space-y-2">
+											<div className="flex justify-between text-xs font-medium">
+												<span className="flex items-center gap-1.5 text-muted-foreground">
+													<Download className="h-3.5 w-3.5 text-primary" />
+													进度: {progress.toFixed(2)}%
+												</span>
+												<span className="flex items-center gap-1.5 text-muted-foreground">
+													<Activity className="h-3.5 w-3.5 text-emerald-400" />
+													网速: {formatBytes(t.download_speed_bytes_per_sec)}/s
+													(同伴: {t.peers_connected}/{t.peers_total})
+												</span>
+											</div>
+											<Progress value={progress} className="h-2" />
 										</div>
 
-										<div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-											{/* Play / View files */}
-											<Button
-												variant="secondary"
-												size="sm"
-												onClick={() => handleViewFiles(t)}
-												className="h-8 gap-1 text-xs font-medium"
-											>
-												<FolderOpen className="h-3.5 w-3.5" />
-												查看文件
-											</Button>
+										{/* Storage Info & Actions */}
+										<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-1 text-xs">
+											<div className="flex gap-4 text-muted-foreground items-center">
+												<span className="flex items-center gap-1">
+													<HardDrive className="h-3.5 w-3.5" />
+													已下载: {formatBytes(t.progress_bytes)}
+												</span>
+												<span>/</span>
+												<span>总大小: {formatBytes(t.total_bytes)}</span>
+											</div>
 
-											{/* Pause / Resume */}
-											{!t.finished && (
+											<div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+												{/* Play / View files */}
 												<Button
-													variant="outline"
+													variant="secondary"
+													size="sm"
+													onClick={() => handleViewFiles(t)}
+													className="h-8 gap-1 text-xs font-medium"
+												>
+													<FolderOpen className="h-3.5 w-3.5" />
+													查看文件
+												</Button>
+
+												{/* Pause / Resume */}
+												{!t.finished && (
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => {
+															const nameFallback = t.name || "";
+															if (t.paused) {
+																handleResume(t.info_hash, nameFallback);
+															} else {
+																handlePause(t.info_hash, nameFallback);
+															}
+														}}
+														className="h-8 w-8 p-0"
+														title={t.paused ? "开始下载" : "暂停下载"}
+													>
+														{t.paused ? (
+															<Play className="h-3.5 w-3.5 fill-current" />
+														) : (
+															<Pause className="h-3.5 w-3.5 fill-current" />
+														)}
+													</Button>
+												)}
+
+												{/* Delete */}
+												<Button
+													variant="destructive"
 													size="sm"
 													onClick={() => {
-														const nameFallback = t.name || "";
-														if (t.paused) {
-															handleResume(t.info_hash, nameFallback);
-														} else {
-															handlePause(t.info_hash, nameFallback);
-														}
+														setDeleteTarget(t);
+														setDeleteFiles(false);
 													}}
 													className="h-8 w-8 p-0"
-													title={t.paused ? "开始下载" : "暂停下载"}
+													title="删除下载"
 												>
-													{t.paused ? (
-														<Play className="h-3.5 w-3.5 fill-current" />
-													) : (
-														<Pause className="h-3.5 w-3.5 fill-current" />
-													)}
+													<Trash2 className="h-3.5 w-3.5" />
 												</Button>
-											)}
-
-											{/* Delete */}
-											<Button
-												variant="destructive"
-												size="sm"
-												onClick={() => {
-													setDeleteTarget(t);
-													setDeleteFiles(false);
-												}}
-												className="h-8 w-8 p-0"
-												title="删除下载"
-											>
-												<Trash2 className="h-3.5 w-3.5" />
-											</Button>
+											</div>
 										</div>
-									</div>
-								</CardContent>
-							</Card>
-						);
-					})}
+									</CardContent>
+								</Card>
+							);
+						})}
 				</div>
 			)}
 
