@@ -22,7 +22,14 @@ import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
-import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
+
+const dummyLogger: Logger = {
+	debug: () => {},
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+	withCategory: () => dummyLogger,
+};
 
 export interface CreateContainerParamsForTest {
 	torrentRepository?: TorrentRepository;
@@ -154,7 +161,7 @@ export function createDIContainerForTest(
 
 	return {
 		notificationRepository: notificationRepo,
-		logger: params.logger || new ConsoleLogger("App"),
+		logger: params.logger || dummyLogger,
 
 		notifyDownloadCompletionUseCase: notifyUseCase,
 		searchTorrentsUseCase,

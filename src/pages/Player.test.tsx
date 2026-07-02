@@ -398,6 +398,47 @@ describe("Player 页面组件", () => {
 		});
 	});
 
+	it("在订阅建立的过程中如果组件被卸载，应该在订阅成功建立后立即执行取消订阅", async () => {
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1/stream",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		});
+
+		let resolveUnsubscribePromise: (value: any) => void = () => {};
+		const unsubscribePromise = new Promise<any>((resolve) => {
+			resolveUnsubscribePromise = resolve;
+		});
+		vi.mocked(mockTorrentRepository.subscribeTorrents).mockReturnValue(
+			unsubscribePromise,
+		);
+
+		const { unmount } = renderPlayer("/play/hash123/0");
+
+		await act(async () => {
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+
+		unmount();
+
+		const mockUnsub = vi.fn();
+		await act(async () => {
+			resolveUnsubscribePromise(mockUnsub);
+		});
+
+		expect(mockUnsub).toHaveBeenCalled();
+	});
+
 	it("应该成功获取字幕轨道并支持切换字幕轨道", async () => {
 		vi.useFakeTimers();
 

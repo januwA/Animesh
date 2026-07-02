@@ -232,9 +232,7 @@ export default function Player() {
 
 		return () => {
 			active = false;
-			if (unsubscribe) {
-				unsubscribe();
-			}
+			unsubscribe?.();
 		};
 	}, [
 		infoHash,
