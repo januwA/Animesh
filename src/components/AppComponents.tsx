@@ -205,14 +205,28 @@ export function SearchForm({
 	);
 }
 
+export interface SearchLoadingProps {
+	onCancel?: () => void;
+}
+
 // 搜索加载指示器
-export function SearchLoading() {
+export function SearchLoading({ onCancel }: SearchLoadingProps) {
 	return (
 		<div className="flex flex-col items-center justify-center py-20 space-y-4">
 			<Loader2 className="h-10 w-10 text-primary animate-spin" />
 			<p className="text-sm text-muted-foreground font-medium">
 				正在获取资源列表...
 			</p>
+			{onCancel && (
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={onCancel}
+					className="text-xs text-muted-foreground hover:text-foreground mt-2"
+				>
+					取消搜索
+				</Button>
+			)}
 		</div>
 	);
 }

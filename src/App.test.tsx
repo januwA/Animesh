@@ -173,7 +173,11 @@ describe("App 组件", () => {
 			);
 		});
 
-		expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "dmhy");
+		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+			expect.any(Object),
+			"凡人",
+			"dmhy",
+		);
 
 		// 检查资源渲染
 		expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();

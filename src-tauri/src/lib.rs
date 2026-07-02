@@ -1,44 +1,131 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use animesh_core::torrent::{AddTorrentResult, TorrentStatusInfo};
 use animesh_core::torrent_manager::TorrentManager;
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
 pub fn trace_log(msg: &str) {
     log::info!("[TRACE] {}", msg);
 }
 
+pub struct SearchTracker {
+    pub handles: Mutex<HashMap<String, tokio::task::AbortHandle>>,
+}
+
+impl Default for SearchTracker {
+    fn default() -> Self {
+        Self {
+            handles: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
+#[tauri::command]
+fn cancel_search(trace_id: String, tracker: tauri::State<'_, SearchTracker>) {
+    trace_log(&format!(
+        "Entering cancel_search command, trace_id: {}",
+        trace_id
+    ));
+    if let Ok(mut handles) = tracker.handles.lock() {
+        if let Some(handle) = handles.remove(&trace_id) {
+            handle.abort();
+            trace_log(&format!(
+                "Successfully aborted search for trace_id: {}",
+                trace_id
+            ));
+        } else {
+            trace_log(&format!(
+                "No active search found to abort for trace_id: {}",
+                trace_id
+            ));
+        }
+    }
+}
+
 #[tauri::command]
 async fn search_torrents(
+    trace_id: String,
     keyword: &str,
     engine: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
+    tracker: tauri::State<'_, SearchTracker>,
 ) -> Result<Vec<animesh_core::crawler::SearchResultItem>, String> {
     trace_log(&format!(
-        "Entering search_torrents command, keyword: {}, engine: {}",
-        keyword, engine
+        "Entering search_torrents command, trace_id: {}, keyword: {}, engine: {}",
+        trace_id, keyword, engine
     ));
-    let proxy = manager.get_proxy();
-    let res = match engine {
-        "dmhy" => manager.crawler_repo.search_dmhy(keyword, proxy).await,
-        "bangumi_moe" => {
-            manager
-                .crawler_repo
-                .search_bangumi_moe(keyword, proxy)
-                .await
+
+    let manager_clone = manager.inner().clone();
+    let keyword_string = keyword.to_string();
+    let engine_string = engine.to_string();
+
+    let task = tokio::spawn(async move {
+        let proxy = manager_clone.get_proxy();
+        match engine_string.as_str() {
+            "dmhy" => {
+                manager_clone
+                    .crawler_repo
+                    .search_dmhy(&keyword_string, proxy)
+                    .await
+            }
+            "bangumi_moe" => {
+                manager_clone
+                    .crawler_repo
+                    .search_bangumi_moe(&keyword_string, proxy)
+                    .await
+            }
+            "mikan" => {
+                manager_clone
+                    .crawler_repo
+                    .search_mikan(&keyword_string, proxy)
+                    .await
+            }
+            "nyaa" => {
+                manager_clone
+                    .crawler_repo
+                    .search_nyaa(&keyword_string, proxy)
+                    .await
+            }
+            _ => Err(format!("Unsupported search engine: {}", engine_string)),
         }
-        "mikan" => manager.crawler_repo.search_mikan(keyword, proxy).await,
-        "nyaa" => manager.crawler_repo.search_nyaa(keyword, proxy).await,
-        _ => Err(format!("Unsupported search engine: {}", engine)),
-    };
-    match &res {
-        Ok(items) => trace_log(&format!(
-            "search_torrents completed successfully, found {} items",
-            items.len()
-        )),
-        Err(e) => trace_log(&format!("search_torrents failed with error: {}", e)),
+    });
+
+    let abort_handle = task.abort_handle();
+    if let Ok(mut handles) = tracker.handles.lock() {
+        handles.insert(trace_id.clone(), abort_handle);
     }
-    res
+
+    let res = task.await;
+
+    if let Ok(mut handles) = tracker.handles.lock() {
+        handles.remove(&trace_id);
+    }
+
+    match res {
+        Ok(inner_res) => {
+            match &inner_res {
+                Ok(items) => trace_log(&format!(
+                    "search_torrents completed successfully, found {} items",
+                    items.len()
+                )),
+                Err(e) => trace_log(&format!("search_torrents failed with error: {}", e)),
+            }
+            inner_res
+        }
+        Err(join_err) => {
+            if join_err.is_cancelled() {
+                trace_log(&format!(
+                    "search_torrents was cancelled, trace_id: {}",
+                    trace_id
+                ));
+                Err("Search cancelled".to_string())
+            } else {
+                trace_log(&format!("search_torrents task panicked: {:?}", join_err));
+                Err("Search task panicked".to_string())
+            }
+        }
+    }
 }
 
 #[tauri::command]
@@ -377,10 +464,12 @@ pub fn run() {
             });
 
             app.manage(Arc::new(manager));
+            app.manage(SearchTracker::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             search_torrents,
+            cancel_search,
             torrent_add_magnet,
             torrent_get_status,
             torrent_get_stream_url,

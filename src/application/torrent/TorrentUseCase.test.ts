@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
+import { Background, WithValue } from "../../shared/context/context";
 import { AddTorrentMagnetUseCase } from "./AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "./DeleteTorrentUseCase";
 import { GetSubtitleTracksUseCase } from "./GetSubtitleTracksUseCase";
@@ -34,8 +35,9 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 		vi.mocked(mockRepo.search).mockResolvedValueOnce([
 			{ name: "test anime", magnet: "magnet:?xt=urn:btih:123" } as any,
 		]);
-		const results = await useCase.execute("test", "mikan");
-		expect(mockRepo.search).toHaveBeenCalledWith("test", "mikan");
+		const ctx = WithValue(Background, "traceId", "test-trace");
+		const results = await useCase.execute(ctx, "test", "mikan");
+		expect(mockRepo.search).toHaveBeenCalledWith(ctx, "test", "mikan");
 		expect(results).toEqual([
 			{ name: "test anime", magnet: "magnet:?xt=urn:btih:123" },
 		]);

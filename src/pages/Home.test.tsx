@@ -153,7 +153,11 @@ describe("Home 页面组件", () => {
 		await waitFor(() => {
 			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
 		});
-		expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "dmhy");
+		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+			expect.any(Object),
+			"凡人",
+			"dmhy",
+		);
 	});
 
 	it("当输入关键词并搜索成功时，应该显示结果", async () => {
@@ -187,7 +191,11 @@ describe("Home 页面组件", () => {
 		expect(document.querySelector(".results-count")?.textContent?.trim()).toBe(
 			"找到 1 个资源",
 		);
-		expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "dmhy");
+		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+			expect.any(Object),
+			"凡人",
+			"dmhy",
+		);
 	});
 
 	it("当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
@@ -427,6 +435,7 @@ describe("Home 页面组件", () => {
 
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+				expect.any(Object),
 				"凡人",
 				"bangumi_moe",
 			);
@@ -460,6 +469,7 @@ describe("Home 页面组件", () => {
 
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+				expect.any(Object),
 				"凡人",
 				"mikan",
 			);
@@ -492,7 +502,11 @@ describe("Home 页面组件", () => {
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
-			expect(mockTorrentRepository.search).toHaveBeenCalledWith("凡人", "nyaa");
+			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+				expect.any(Object),
+				"凡人",
+				"nyaa",
+			);
 			expect(screen.getByText("Nyaa资源 1")).toBeInTheDocument();
 		});
 	});
@@ -513,5 +527,75 @@ describe("Home 页面组件", () => {
 		renderHome("/?keyword=%20%20");
 
 		expect(mockTorrentRepository.search).not.toHaveBeenCalled();
+	});
+
+	it("当点击取消搜索按钮时，应该发起取消请求，并清空加载状态不显示错误", async () => {
+		let rejectSearch: any;
+		let isCancelled = false;
+		const searchPromise = new Promise<any>((_, reject) => {
+			rejectSearch = reject;
+		});
+		vi.mocked(mockTorrentRepository.search).mockImplementation((ctx) => {
+			ctx.done().then(() => {
+				isCancelled = true;
+			});
+			return searchPromise;
+		});
+
+		renderHome();
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.submit(input.closest("form")!);
+
+		expect(screen.getByText(/正在获取资源列表/)).toBeInTheDocument();
+		const cancelBtn = screen.getByRole("button", { name: "取消搜索" });
+		expect(cancelBtn).toBeInTheDocument();
+
+		fireEvent.click(cancelBtn);
+
+		await waitFor(() => {
+			expect(isCancelled).toBe(true);
+		});
+
+		await act(async () => {
+			rejectSearch(new Error("Search cancelled"));
+		});
+
+		await waitFor(() => {
+			expect(screen.queryByText(/正在获取资源列表/)).not.toBeInTheDocument();
+		});
+
+		expect(screen.queryByText(/搜索失败/)).not.toBeInTheDocument();
+		expect(screen.queryByText(/Search cancelled/)).not.toBeInTheDocument();
+	});
+
+	it("当组件卸载时，应该自动触发搜索的取消请求", async () => {
+		let isCancelled = false;
+		const searchPromise = new Promise<any>(() => {});
+		vi.mocked(mockTorrentRepository.search).mockImplementation((ctx) => {
+			ctx.done().then(() => {
+				isCancelled = true;
+			});
+			return searchPromise;
+		});
+
+		const { unmount } = renderHome();
+
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.submit(input.closest("form")!);
+
+		expect(screen.getByText(/正在获取资源列表/)).toBeInTheDocument();
+
+		unmount();
+
+		await waitFor(() => {
+			expect(isCancelled).toBe(true);
+		});
 	});
 });

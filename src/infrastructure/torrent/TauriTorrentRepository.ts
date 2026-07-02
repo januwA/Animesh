@@ -13,17 +13,38 @@ import {
 	type TorrentStatusInfo,
 	TorrentStatusInfoSchema,
 } from "../../domain/torrent/TorrentSchemas";
+import type { Context } from "../../shared/context/interface";
 
 export class TauriTorrentRepository implements TorrentRepository {
-	async search(keyword: string, engine: string): Promise<SearchResultItem[]> {
-		const raw = await invoke<unknown>("search_torrents", { keyword, engine });
-		const result = z.array(SearchResultItemSchema).safeParse(raw);
-		if (!result.success) {
-			throw new Error("search_torrents API structure mismatch", {
-				cause: result.error,
+	async search(
+		ctx: Context,
+		keyword: string,
+		engine: string,
+	): Promise<SearchResultItem[]> {
+		const traceId = ctx.value<string>("traceId") || "";
+		let isFinished = false;
+		ctx.done().then(() => {
+			if (!isFinished) {
+				invoke<void>("cancel_search", { traceId }).catch(() => {});
+			}
+		});
+
+		try {
+			const raw = await invoke<unknown>("search_torrents", {
+				traceId,
+				keyword,
+				engine,
 			});
+			const result = z.array(SearchResultItemSchema).safeParse(raw);
+			if (!result.success) {
+				throw new Error("search_torrents API structure mismatch", {
+					cause: result.error,
+				});
+			}
+			return result.data;
+		} finally {
+			isFinished = true;
 		}
-		return result.data;
 	}
 
 	async listTorrents(): Promise<TorrentStatusInfo[]> {

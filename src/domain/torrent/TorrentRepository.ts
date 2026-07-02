@@ -1,3 +1,4 @@
+import type { Context } from "../../shared/context/interface";
 import type {
 	AddTorrentResult,
 	FileDetails,
@@ -7,7 +8,11 @@ import type {
 } from "./TorrentSchemas";
 
 export interface TorrentRepository {
-	search(keyword: string, engine: string): Promise<SearchResultItem[]>;
+	search(
+		ctx: Context,
+		keyword: string,
+		engine: string,
+	): Promise<SearchResultItem[]>;
 	listTorrents(): Promise<TorrentStatusInfo[]>;
 	pauseTorrent(infoHash: string): Promise<void>;
 	resumeTorrent(infoHash: string): Promise<void>;

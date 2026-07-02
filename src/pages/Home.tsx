@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useTransition } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useRequestContext } from "@/hooks/useRequestContext";
 import { formatError } from "@/utils";
 import {
 	ErrorBanner,
@@ -11,6 +12,7 @@ import {
 } from "../components/AppComponents";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
+import { Canceled } from "../shared/context/interface";
 
 export default function Home() {
 	const navigate = useNavigate();
@@ -31,6 +33,7 @@ export default function Home() {
 	} = useAppContext();
 
 	const [isPending, startTransition] = useTransition();
+	const { createContext, cancel: cancelSearch } = useRequestContext();
 
 	const keywordParam = searchParams.get("keyword");
 
@@ -39,20 +42,33 @@ export default function Home() {
 			setError(null);
 			setHasSearched(true);
 
+			const ctx = createContext();
+
 			startTransition(async () => {
 				try {
 					const data = await searchTorrentsUseCase.execute(
+						ctx,
 						queryText,
 						searchEngine,
 					);
 					setResults(data);
 				} catch (err: unknown) {
+					if (ctx.err() === Canceled) {
+						return;
+					}
 					setError(`搜索失败，请检查网络或重试: ${formatError(err)}`);
 					setResults([]);
 				}
 			});
 		},
-		[searchTorrentsUseCase, searchEngine, setError, setHasSearched, setResults],
+		[
+			searchTorrentsUseCase,
+			searchEngine,
+			setError,
+			setHasSearched,
+			setResults,
+			createContext,
+		],
 	);
 
 	useEffect(() => {
@@ -102,7 +118,7 @@ export default function Home() {
 			/>
 
 			{/* 加载提示 */}
-			{isPending && <SearchLoading />}
+			{isPending && <SearchLoading onCancel={cancelSearch} />}
 
 			{/* 错误显示 */}
 			{error && <ErrorBanner message={error} />}
