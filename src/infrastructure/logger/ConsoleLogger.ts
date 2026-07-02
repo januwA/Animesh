@@ -7,6 +7,8 @@ const LogPriority: Record<LogLevel, number> = {
 	[LogLevel.ERROR]: 3,
 };
 
+const logConsole = globalThis.console;
+
 export class ConsoleLogger implements Logger {
 	constructor(
 		private readonly category: string = "App",
@@ -20,25 +22,30 @@ export class ConsoleLogger implements Logger {
 
 	debug(message: string, ...args: any[]): void {
 		if (LogPriority[this.minLevel] <= LogPriority[LogLevel.DEBUG]) {
-			console.debug(this.getFormattedPrefix("debug"), message, ...args);
+			logConsole.debug(this.getFormattedPrefix("debug"), message, ...args);
 		}
 	}
 
 	info(message: string, ...args: any[]): void {
 		if (LogPriority[this.minLevel] <= LogPriority[LogLevel.INFO]) {
-			console.info(this.getFormattedPrefix("info"), message, ...args);
+			logConsole.info(this.getFormattedPrefix("info"), message, ...args);
 		}
 	}
 
 	warn(message: string, ...args: any[]): void {
 		if (LogPriority[this.minLevel] <= LogPriority[LogLevel.WARN]) {
-			console.warn(this.getFormattedPrefix("warn"), message, ...args);
+			logConsole.warn(this.getFormattedPrefix("warn"), message, ...args);
 		}
 	}
 
 	error(message: string, error?: Error | unknown, ...args: any[]): void {
 		if (LogPriority[this.minLevel] <= LogPriority[LogLevel.ERROR]) {
-			console.error(this.getFormattedPrefix("error"), message, error, ...args);
+			logConsole.error(
+				this.getFormattedPrefix("error"),
+				message,
+				error,
+				...args,
+			);
 		}
 	}
 
