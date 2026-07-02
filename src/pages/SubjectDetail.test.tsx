@@ -93,6 +93,16 @@ describe("SubjectDetail 页面组件", () => {
 
 		const mockEpisodes: BangumiEpisode[] = [
 			{
+				id: 1002,
+				type: 1,
+				sort: 2,
+				name: "Second Ep",
+				name_cn: "第二集 中文",
+				duration: "24:00",
+				airdate: "2026-07-02",
+				desc: "第二集的简介内容",
+			},
+			{
 				id: 1001,
 				type: 0,
 				sort: 1,
@@ -101,6 +111,46 @@ describe("SubjectDetail 页面组件", () => {
 				duration: "24:00",
 				airdate: "2026-07-01",
 				desc: "第一集的简介内容",
+			},
+			{
+				id: 1003,
+				type: 2,
+				sort: 3,
+				name: "Third Ep",
+				name_cn: "第三集 中文",
+				duration: "24:00",
+				airdate: "2026-07-03",
+				desc: "",
+			},
+			{
+				id: 1004,
+				type: 3,
+				sort: 4,
+				name: "Fourth Ep",
+				name_cn: "第四集 中文",
+				duration: "24:00",
+				airdate: "2026-07-04",
+				desc: "",
+			},
+			{
+				id: 1005,
+				type: 4,
+				sort: 5,
+				name: "Fifth Ep",
+				name_cn: "第五集 中文",
+				duration: "24:00",
+				airdate: "2026-07-05",
+				desc: "",
+			},
+			{
+				id: 1006,
+				type: 5,
+				sort: 6,
+				name: "Sixth Ep",
+				name_cn: "第六集 中文",
+				duration: "24:00",
+				airdate: "2026-07-06",
+				desc: "",
 			},
 		];
 
@@ -120,6 +170,7 @@ describe("SubjectDetail 页面组件", () => {
 		expect(screen.getByText("8.5")).toBeInTheDocument();
 		expect(screen.getByText("Rank #42")).toBeInTheDocument();
 		expect(screen.getByText("第一集 中文")).toBeInTheDocument();
+		expect(screen.getByText("第二集 中文")).toBeInTheDocument();
 	});
 
 	it("点击剧集卡片时，应该跳转到主页并携带该剧集的搜索词", async () => {
@@ -348,5 +399,110 @@ describe("SubjectDetail 页面组件", () => {
 
 		expect(unairedCard!.className).toContain("bg-card/30");
 		expect(unairedCard!.className).toContain("border-white/5");
+	});
+
+	it("点击返回日历按钮时，应该返回上一页", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime Title",
+			name_cn: "测试动漫标题",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 1000 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter
+						initialEntries={["/calendar", "/subject/123"]}
+						initialIndex={1}
+					>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="calendar" element={<div>日历页面</div>} />
+								<Route path="subject/:subjectId" element={<SubjectDetail />} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
+		});
+
+		const backButton = screen.getByRole("button", { name: "返回日历" });
+		fireEvent.click(backButton);
+
+		await waitFor(() => {
+			expect(currentLocation.current?.pathname).toBe("/calendar");
+		});
+	});
+
+	it("当 API 返回的字段缺失时，页面应该正常渲染且不报错", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime Title",
+			name_cn: "",
+			summary: null,
+			images: null,
+			rating: null,
+			collection: null,
+			date: null,
+			eps: null,
+			platform: null,
+		};
+
+		renderSubjectDetail(Promise.resolve(mockSubject), Promise.resolve([]));
+
+		await waitFor(() => {
+			expect(screen.getByText("Test Anime Title")).toBeInTheDocument();
+		});
+	});
+
+	it("加载数据时应该显示正在加载动漫详情提示", async () => {
+		let resolveSubject: (value: BangumiSubject) => void = () => {};
+		const subjectPromise = new Promise<BangumiSubject>((resolve) => {
+			resolveSubject = resolve;
+		});
+
+		renderSubjectDetail(subjectPromise, Promise.resolve([]));
+
+		expect(screen.getByText("正在加载动漫详情...")).toBeInTheDocument();
+
+		// Resolve to prevent open promises warnings
+		resolveSubject({
+			id: 123,
+			name: "Anime",
+			name_cn: "",
+			summary: null,
+			images: null,
+			rating: null,
+			collection: null,
+			date: null,
+			eps: null,
+			platform: null,
+		});
 	});
 });
