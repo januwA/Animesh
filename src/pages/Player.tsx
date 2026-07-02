@@ -145,6 +145,29 @@ export default function Player() {
 		const parsedFileId = parseInt(fileId, 10);
 		let unsubscribe: (() => void) | null = null;
 
+		const fetchSubtitles = async (isInitial = false) => {
+			try {
+				const tracks = await getSubtitleTracksUseCase.execute(
+					infoHash,
+					parsedFileId,
+				);
+				if (!active) return;
+				setSubtracks(tracks || []);
+				loadedTracks = true;
+				if (tracks && tracks.length > 0) {
+					loadSubtitleVtt(tracks[0].id);
+				}
+			} catch (err: unknown) {
+				if (!active) return;
+				playerLogger.warn(
+					isInitial
+						? "Failed to fetch subtitle tracks initially:"
+						: "Failed to fetch subtitle tracks during subscription update:",
+					err,
+				);
+			}
+		};
+
 		const initializePlayback = async () => {
 			try {
 				const url = await getTorrentStreamUrlUseCase.execute(
@@ -162,21 +185,7 @@ export default function Player() {
 				setLoading(false);
 
 				// Fetch subtitle tracks
-				try {
-					const tracks = await getSubtitleTracksUseCase.execute(
-						infoHash,
-						parsedFileId,
-					);
-					if (!active) return;
-					setSubtracks(tracks || []);
-					loadedTracks = true;
-					if (tracks && tracks.length > 0) {
-						loadSubtitleVtt(tracks[0].id);
-					}
-				} catch (err: unknown) {
-					if (!active) return;
-					playerLogger.warn("Failed to fetch subtitle tracks initially:", err);
-				}
+				await fetchSubtitles(true);
 
 				// Start subscription to status stream
 				let isFirstEvent = true;
@@ -193,24 +202,7 @@ export default function Player() {
 
 						// If subtitle tracks haven't been loaded yet, try to load them as download progresses
 						if (!loadedTracks) {
-							try {
-								const tracks = await getSubtitleTracksUseCase.execute(
-									infoHash,
-									parsedFileId,
-								);
-								if (!active) return;
-								setSubtracks(tracks || []);
-								loadedTracks = true;
-								if (tracks && tracks.length > 0) {
-									loadSubtitleVtt(tracks[0].id);
-								}
-							} catch (err: unknown) {
-								if (!active) return;
-								playerLogger.warn(
-									"Failed to fetch subtitle tracks during subscription update:",
-									err,
-								);
-							}
+							await fetchSubtitles(false);
 						}
 					}
 				});
