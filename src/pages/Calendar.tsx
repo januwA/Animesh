@@ -33,7 +33,6 @@ export default function Calendar() {
 		});
 
 		return () => {
-			console.debug("卸载");
 			cancel();
 		};
 	}, [getBangumiCalendarUseCase]);

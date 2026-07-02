@@ -18,15 +18,18 @@ import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseC
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import type { DIContainer } from "../di/DIContext";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
+import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
+import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 
 export interface CreateContainerParamsForTest {
 	torrentRepository?: TorrentRepository;
 	settingsRepository?: SettingsRepository;
 	bangumiRepository?: BangumiRepository;
 	notificationRepository?: NotificationRepository;
+	logger?: Logger;
 
 	notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
 	searchTorrentsUseCase?: SearchTorrentsUseCase;
@@ -151,6 +154,7 @@ export function createDIContainerForTest(
 
 	return {
 		notificationRepository: notificationRepo,
+		logger: params.logger || new ConsoleLogger("App"),
 
 		notifyDownloadCompletionUseCase: notifyUseCase,
 		searchTorrentsUseCase,

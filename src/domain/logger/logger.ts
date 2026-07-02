@@ -10,10 +10,10 @@ export enum LogLevel {
  * 它是一个跨越所有层的横切关注点。
  */
 export interface Logger {
-	debug(message: string, ...args: any[]): void;
-	info(message: string, ...args: any[]): void;
-	warn(message: string, ...args: any[]): void;
-	error(message: string, error?: Error | unknown, ...args: any[]): void;
+	debug(message: string, ...args: unknown[]): void;
+	info(message: string, ...args: unknown[]): void;
+	warn(message: string, ...args: unknown[]): void;
+	error(message: string, error?: Error | unknown, ...args: unknown[]): void;
 
 	/**
 	 * withCategory 创建一个带有特定类别前缀的子日志记录器。

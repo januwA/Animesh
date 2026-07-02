@@ -16,29 +16,34 @@ export class ConsoleLogger implements Logger {
 	) {}
 
 	private getFormattedPrefix(level: string): string {
-		const timestamp = new Date().toISOString();
-		return `[${timestamp}] [${level.toUpperCase()}] [${this.category}]`;
+		const now = new Date();
+		const tzOffset = now.getTimezoneOffset() * 60000;
+		const localISOTime = new Date(now.getTime() - tzOffset)
+			.toISOString()
+			.slice(0, -1)
+			.replace("T", " ");
+		return `[${localISOTime}] [${level.toUpperCase()}] [${this.category}]`;
 	}
 
-	debug(message: string, ...args: any[]): void {
+	debug(message: string, ...args: unknown[]): void {
 		if (LogPriority[this.minLevel] <= LogPriority[LogLevel.DEBUG]) {
 			logConsole.debug(this.getFormattedPrefix("debug"), message, ...args);
 		}
 	}
 
-	info(message: string, ...args: any[]): void {
+	info(message: string, ...args: unknown[]): void {
 		if (LogPriority[this.minLevel] <= LogPriority[LogLevel.INFO]) {
 			logConsole.info(this.getFormattedPrefix("info"), message, ...args);
 		}
 	}
 
-	warn(message: string, ...args: any[]): void {
+	warn(message: string, ...args: unknown[]): void {
 		if (LogPriority[this.minLevel] <= LogPriority[LogLevel.WARN]) {
 			logConsole.warn(this.getFormattedPrefix("warn"), message, ...args);
 		}
 	}
 
-	error(message: string, error?: Error | unknown, ...args: any[]): void {
+	error(message: string, error?: Error | unknown, ...args: unknown[]): void {
 		if (LogPriority[this.minLevel] <= LogPriority[LogLevel.ERROR]) {
 			logConsole.error(
 				this.getFormattedPrefix("error"),

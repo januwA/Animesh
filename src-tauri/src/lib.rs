@@ -134,13 +134,10 @@ async fn torrent_get_subtitle_tracks(
     .await
     {
         Ok(Ok(tracks)) => Ok(tracks),
-        Ok(Err(e)) => {
-            println!(
-                "[Subtitle] Failed to extract tracks (possibly file is incomplete): {}",
-                e
-            );
-            Ok(Vec::new())
-        }
+        Ok(Err(e)) => Err(format!(
+            "Failed to extract tracks (possibly file is incomplete): {}",
+            e
+        )),
         Err(e) => Err(format!("Task spawn error: {}", e)),
     }
 }
@@ -326,6 +323,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
+                .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
                 .filter(|metadata| {
                     let target = metadata.target();
                     !target.starts_with("librqbit") && !target.starts_with("tracing")

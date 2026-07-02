@@ -1,5 +1,5 @@
 import { Activity, ArrowLeft, Download, Info, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -41,7 +41,9 @@ export default function Player() {
 		getSubtitleTracksUseCase,
 		getSubtitleVttUseCase,
 		subscribeTorrentsUseCase,
+		logger,
 	} = useDI();
+	const playerLogger = useMemo(() => logger.withCategory("Player"), [logger]);
 	const { showToast } = useAppContext();
 	const [streamUrl, setStreamUrl] = useState<string | null>(null);
 	const [torrentStatus, setTorrentStatus] = useState<TorrentStatusInfo | null>(
@@ -131,7 +133,6 @@ export default function Player() {
 		[infoHash, fileId, getSubtitleVttUseCase, showToast],
 	);
 
-	// Load stream URL and setup status subscription
 	useEffect(() => {
 		if (!infoHash || fileId === undefined) {
 			showToast("无效的视频播放参数");
@@ -139,6 +140,7 @@ export default function Player() {
 			return;
 		}
 
+		let active = true;
 		let loadedTracks = false;
 		const parsedFileId = parseInt(fileId, 10);
 		let unsubscribe: (() => void) | null = null;
@@ -150,10 +152,12 @@ export default function Player() {
 					parsedFileId,
 				);
 
+				if (!active) return;
 				setStreamUrl(url);
 
 				// Get initial status
 				const initialStatus = await getTorrentStatusUseCase.execute(infoHash);
+				if (!active) return;
 				setTorrentStatus(initialStatus);
 				setLoading(false);
 
@@ -163,18 +167,21 @@ export default function Player() {
 						infoHash,
 						parsedFileId,
 					);
+					if (!active) return;
+					setSubtracks(tracks || []);
+					loadedTracks = true;
 					if (tracks && tracks.length > 0) {
-						setSubtracks(tracks);
-						loadedTracks = true;
 						loadSubtitleVtt(tracks[0].id);
 					}
 				} catch (err: unknown) {
-					showToast(`获取字幕失败: ${formatError(err)}`);
+					if (!active) return;
+					playerLogger.warn("Failed to fetch subtitle tracks initially:", err);
 				}
 
 				// Start subscription to status stream
 				let isFirstEvent = true;
-				unsubscribe = await subscribeTorrentsUseCase.execute(async (list) => {
+				const unsub = await subscribeTorrentsUseCase.execute(async (list) => {
+					if (!active) return;
 					const status = list.find((t) => t && t.info_hash === infoHash);
 					if (status) {
 						setTorrentStatus(status);
@@ -191,27 +198,43 @@ export default function Player() {
 									infoHash,
 									parsedFileId,
 								);
+								if (!active) return;
+								setSubtracks(tracks || []);
+								loadedTracks = true;
 								if (tracks && tracks.length > 0) {
-									setSubtracks(tracks);
-									loadedTracks = true;
 									loadSubtitleVtt(tracks[0].id);
 								}
 							} catch (err: unknown) {
-								showToast(`获取字幕失败: ${formatError(err)}`);
+								if (!active) return;
+								playerLogger.warn(
+									"Failed to fetch subtitle tracks during subscription update:",
+									err,
+								);
 							}
 						}
 					}
 				});
+
+				if (!active) {
+					unsub();
+				} else {
+					unsubscribe = unsub;
+				}
 			} catch (err: unknown) {
-				showToast(`无法获取视频流: ${formatError(err)}`, 10000);
-				setLoading(false);
+				if (active) {
+					showToast(`无法获取视频流: ${formatError(err)}`, 10000);
+					setLoading(false);
+				}
 			}
 		};
 
 		initializePlayback();
 
 		return () => {
-			unsubscribe?.();
+			active = false;
+			if (unsubscribe) {
+				unsubscribe();
+			}
 		};
 	}, [
 		infoHash,
@@ -222,6 +245,7 @@ export default function Player() {
 		getSubtitleTracksUseCase,
 		subscribeTorrentsUseCase,
 		loadSubtitleVtt,
+		playerLogger,
 	]);
 
 	const handleCopyStreamUrl = async () => {

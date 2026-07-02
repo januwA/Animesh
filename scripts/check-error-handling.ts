@@ -277,12 +277,12 @@ function main() {
 				if (loc.severity === "error") {
 					totalErrors++;
 					console.error(
-						`❌ 错误: ${relativePath} (第 ${loc.line} 行, 第 ${loc.column} 列) - ${loc.message}`,
+						`❌ 错误: ${relativePath}:${loc.line}:${loc.column} - ${loc.message}`,
 					);
 				} else {
 					totalWarnings++;
 					console.warn(
-						`⚠️ 警告: ${relativePath} (第 ${loc.line} 行, 第 ${loc.column} 列) - ${loc.message}`,
+						`⚠️ 警告: ${relativePath}:${loc.line}:${loc.column} - ${loc.message}`,
 					);
 				}
 			}

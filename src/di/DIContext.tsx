@@ -17,14 +17,17 @@ import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseC
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
+import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
+import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
 import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
 
 export interface DIContainer {
 	notificationRepository: NotificationRepository;
+	logger: Logger;
 
 	// UseCases
 	notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
@@ -91,8 +94,11 @@ export function createDefaultDIContainer(): DIContainer {
 		bangumiRepository,
 	);
 
+	const logger = new ConsoleLogger("App");
+
 	return {
 		notificationRepository,
+		logger,
 
 		notifyDownloadCompletionUseCase,
 		searchTorrentsUseCase,
