@@ -2,6 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
+import { Background, WithCancel } from "@/shared/context/context";
 import { ErrorBanner } from "../components/AppComponents";
 import { WeeklyCalendar } from "../components/WeeklyCalendar";
 import { useDI } from "../di/DIContext";
@@ -16,15 +17,25 @@ export default function Calendar() {
 
 	useEffect(() => {
 		setError(null);
+		const [ctx, cancel] = WithCancel(Background);
 
 		startTransition(async () => {
 			try {
-				const data = await getBangumiCalendarUseCase.execute();
-				setCalendar(data);
+				const data = await getBangumiCalendarUseCase.execute(ctx);
+				if (!ctx.err()) {
+					setCalendar(data);
+				}
 			} catch (err: unknown) {
-				setError(`获取新番日历失败，请检查网络或重试: ${formatError(err)}`);
+				if (!ctx.err()) {
+					setError(`获取新番日历失败，请检查网络或重试: ${formatError(err)}`);
+				}
 			}
 		});
+
+		return () => {
+			console.debug("卸载");
+			cancel();
+		};
 	}, [getBangumiCalendarUseCase]);
 
 	const handleAnimeClick = (animeName: string) => {

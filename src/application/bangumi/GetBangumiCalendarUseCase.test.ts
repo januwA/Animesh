@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
+import { Background } from "../../shared/context/context";
 import { GetBangumiCalendarUseCase } from "./GetBangumiCalendarUseCase";
 
 describe("Bangumi 相关的 UseCase 业务编排", () => {
@@ -15,7 +16,7 @@ describe("Bangumi 相关的 UseCase 业务编排", () => {
 				items: [{ id: 101, name: "Anime Monday" } as any],
 			},
 		]);
-		const results = await useCase.execute();
+		const results = await useCase.execute(Background);
 		expect(mockRepo.getCalendar).toHaveBeenCalled();
 		expect(results).toEqual([
 			{

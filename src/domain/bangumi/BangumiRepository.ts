@@ -1,5 +1,6 @@
+import type { Context } from "../../shared/context/interface";
 import type { BangumiCalendarDay } from "./BangumiSchemas";
 
 export interface BangumiRepository {
-	getCalendar(): Promise<BangumiCalendarDay[]>;
+	getCalendar(ctx: Context): Promise<BangumiCalendarDay[]>;
 }
