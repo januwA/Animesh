@@ -28,7 +28,7 @@ Object.defineProperty(navigator, "clipboard", {
 describe("App 组件", () => {
 	let mockTorrentRepository: TorrentRepository;
 	let mockSettingsRepository: SettingsRepository;
-	let mockBangumiRepository: BangumiRepository;
+	let mockBangumiRepository: Partial<BangumiRepository>;
 	let mockNotificationRepository: NotificationRepository;
 	let testDIContainer: DIContainer;
 

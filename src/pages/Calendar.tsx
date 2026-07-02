@@ -37,8 +37,8 @@ export default function Calendar() {
 		};
 	}, [getBangumiCalendarUseCase]);
 
-	const handleAnimeClick = (animeName: string) => {
-		navigate(`/?keyword=${encodeURIComponent(animeName)}`);
+	const handleAnimeClick = (subjectId: number) => {
+		navigate(`/subject/${subjectId}`);
 	};
 
 	return (

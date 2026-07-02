@@ -177,7 +177,7 @@ describe("Calendar 页面组件", () => {
 		expect(screen.getByText("其他动漫4")).toBeInTheDocument();
 	});
 
-	it("当点击新番卡片时，应该跳转到主页并携带搜索词", async () => {
+	it("当点击新番卡片时，应该跳转到详情页", async () => {
 		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
 		const mockCalendar = [
 			{
@@ -204,13 +204,10 @@ describe("Calendar 页面组件", () => {
 			expect(screen.getByText("中文动漫名")).toBeInTheDocument();
 		});
 
-		const animeCard = screen.getByTitle("搜索: 中文动漫名");
+		const animeCard = screen.getByTitle("详情: 中文动漫名");
 		fireEvent.click(animeCard);
 
-		expect(currentLocation.current?.pathname).toBe("/");
-		expect(currentLocation.current?.search).toBe(
-			"?keyword=%E4%B8%AD%E6%96%87%E5%8A%A8%E6%BC%AB%E5%90%8D",
-		);
+		expect(currentLocation.current?.pathname).toBe("/subject/1");
 	});
 
 	it("当 bangumiRepository 请求失败时，应该显示错误提示", async () => {
@@ -284,83 +281,7 @@ describe("Calendar 页面组件", () => {
 		});
 	});
 
-	it("在 WeeklyCalendar 中，点击详情链接应该在浏览器中打开（通过 Tauri Opener 插件）且不触发搜索", async () => {
-		const { openUrl } = await import("@tauri-apps/plugin-opener");
-		vi.mocked(openUrl).mockResolvedValue(undefined);
-
-		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
-		const mockCalendar = [
-			{
-				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
-				items: [
-					{
-						id: 1,
-						url: "http://example.com/anime",
-						name: "Anime Original Name",
-						name_cn: "中文动漫名",
-					},
-				],
-			},
-		];
-
-		renderCalendar(
-			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
-		);
-
-		await waitFor(() => {
-			expect(screen.getByText("中文动漫名")).toBeInTheDocument();
-		});
-
-		const detailLink = screen.getByRole("link", { name: "详情" });
-		fireEvent.click(detailLink);
-
-		await waitFor(() => {
-			expect(openUrl).toHaveBeenCalledWith("http://example.com/anime");
-		});
-		expect(currentLocation.current?.pathname).not.toBe("/");
-	});
-
-	it("在 WeeklyCalendar 中，若 Tauri Opener 插件调用失败应该降级使用 window.open", async () => {
-		const { openUrl } = await import("@tauri-apps/plugin-opener");
-		vi.mocked(openUrl).mockRejectedValue(new Error("Tauri error"));
-
-		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
-		const mockCalendar = [
-			{
-				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
-				items: [
-					{
-						id: 1,
-						url: "http://example.com/anime",
-						name: "Anime Original Name",
-						name_cn: "中文动漫名",
-					},
-				],
-			},
-		];
-
-		renderCalendar(
-			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
-		);
-
-		await waitFor(() => {
-			expect(screen.getByText("中文动漫名")).toBeInTheDocument();
-		});
-
-		const detailLink = screen.getByRole("link", { name: "详情" });
-		fireEvent.click(detailLink);
-
-		await waitFor(() => {
-			expect(openUrl).toHaveBeenCalledWith("http://example.com/anime");
-			expect(window.open).toHaveBeenCalledWith(
-				"http://example.com/anime",
-				"_blank",
-			);
-		});
-		expect(currentLocation.current?.pathname).not.toBe("/");
-	});
-
-	it("在 WeeklyCalendar 中，按下 Enter 键应该触发搜索", async () => {
+	it("在 WeeklyCalendar 中，按下 Enter 键应该跳转到详情页", async () => {
 		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
 		const mockCalendar = [
 			{
@@ -383,21 +304,18 @@ describe("Calendar 页面组件", () => {
 			expect(screen.getByText("键盘测试动漫")).toBeInTheDocument();
 		});
 
-		const animeCard = screen.getByTitle("搜索: 键盘测试动漫");
+		const animeCard = screen.getByTitle("详情: 键盘测试动漫");
 
 		// 测试非 Enter/Space 键，不应该触发跳转
 		fireEvent.keyDown(animeCard, { key: "Escape" });
-		expect(currentLocation.current?.pathname).not.toBe("/");
+		expect(currentLocation.current?.pathname).not.toBe("/subject/1");
 
 		// 测试 Enter 键
 		fireEvent.keyDown(animeCard, { key: "Enter" });
-		expect(currentLocation.current?.pathname).toBe("/");
-		expect(currentLocation.current?.search).toBe(
-			"?keyword=%E9%94%AE%E7%9B%98%E6%B5%8B%E8%AF%95%E5%8A%A8%E6%BC%AB",
-		);
+		expect(currentLocation.current?.pathname).toBe("/subject/1");
 	});
 
-	it("在 WeeklyCalendar 中，按下空格键应该触发搜索", async () => {
+	it("在 WeeklyCalendar 中，按下空格键应该跳转到详情页", async () => {
 		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
 		const mockCalendar = [
 			{
@@ -420,14 +338,11 @@ describe("Calendar 页面组件", () => {
 			expect(screen.getByText("键盘测试动漫")).toBeInTheDocument();
 		});
 
-		const animeCard = screen.getByTitle("搜索: 键盘测试动漫");
+		const animeCard = screen.getByTitle("详情: 键盘测试动漫");
 
 		// 测试空格键
 		fireEvent.keyDown(animeCard, { key: " " });
-		expect(currentLocation.current?.pathname).toBe("/");
-		expect(currentLocation.current?.search).toBe(
-			"?keyword=%E9%94%AE%E7%9B%98%E6%B5%8B%E8%AF%95%E5%8A%A8%E6%BC%AB",
-		);
+		expect(currentLocation.current?.pathname).toBe("/subject/1");
 	});
 
 	it("应该能在周日正确渲染 WeeklyCalendar，且能处理无中文名动漫的展示", async () => {
@@ -470,7 +385,7 @@ describe("Calendar 页面组件", () => {
 		fireEvent.keyDown(card, { key: "Escape", code: "Escape" });
 	});
 
-	it("当今天是非星期日时，WeeklyCalendar 应该正确识别 weekday id，且点击无中文名的番剧应该回退到原名搜索", async () => {
+	it("当今天是非星期日时，WeeklyCalendar 应该正确识别 weekday id，且点击无中文名的番剧应该跳转详情页", async () => {
 		const getDaySpy = vi.spyOn(Date.prototype, "getDay").mockReturnValue(1); // 1 = Monday
 
 		const mockCalendar = [
@@ -499,11 +414,10 @@ describe("Calendar 页面组件", () => {
 		});
 
 		// Click the card with empty name_cn to cover the || item.name fallback
-		const animeCard = screen.getByTitle("搜索: Monday Anime Original");
+		const animeCard = screen.getByTitle("详情: Monday Anime Original");
 		fireEvent.click(animeCard);
 
-		expect(currentLocation.current?.pathname).toBe("/");
-		expect(currentLocation.current?.search).toContain("Monday");
+		expect(currentLocation.current?.pathname).toBe("/subject/1");
 
 		getDaySpy.mockRestore();
 	});

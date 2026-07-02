@@ -1,4 +1,4 @@
-import { Calendar, Globe, Star, Users } from "lucide-react";
+import { Calendar, Star, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -15,7 +15,7 @@ function getTodayWeekdayId(): number {
 
 interface WeeklyCalendarProps {
 	calendar: BangumiCalendarDay[];
-	onAnimeClick: (animeName: string) => void;
+	onAnimeClick: (subjectId: number) => void;
 }
 
 export function WeeklyCalendar({
@@ -77,7 +77,7 @@ export function WeeklyCalendar({
 					<AnimeCard
 						key={item.id}
 						item={item}
-						onClick={() => onAnimeClick(item.name_cn || item.name)}
+						onClick={() => onAnimeClick(item.id)}
 					/>
 				))}
 			</div>
@@ -110,11 +110,11 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 					}
 				}}
 				className="flex flex-col flex-1 w-full text-left"
-				title={`搜索: ${displayName}`}
+				title={`详情: ${displayName}`}
 			>
 				{/* Cover Image */}
 				{item.images?.large ? (
-					<div className="aspect-[3/4] w-full overflow-hidden bg-black/20">
+					<div className="aspect-3/4 w-full overflow-hidden bg-black/20">
 						<img
 							src={item.images.large}
 							alt={displayName}
@@ -129,7 +129,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 				)}
 
 				{/* Info */}
-				<div className="p-2 space-y-1 flex-1 flex flex-col w-full pb-10">
+				<div className="p-2 space-y-1 flex-1 flex flex-col w-full">
 					<h3 className="text-xs font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">
 						{displayName}
 					</h3>
@@ -150,29 +150,6 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 					</div>
 				</div>
 			</button>
-
-			{item.url && (
-				<a
-					href={item.url}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="absolute bottom-2 right-2 z-10 text-[10px] text-muted-foreground hover:text-primary flex items-center gap-0.5 transition-colors px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10"
-					onClick={async (e) => {
-						e.stopPropagation();
-						e.preventDefault();
-						try {
-							const { openUrl } = await import("@tauri-apps/plugin-opener");
-							await openUrl(item.url);
-						} catch {
-							window.open(item.url, "_blank");
-						}
-					}}
-					title={`在 Bangumi 打开: ${displayName}`}
-				>
-					<Globe className="h-2.5 w-2.5" />
-					<span>详情</span>
-				</a>
-			)}
 		</div>
 	);
 }

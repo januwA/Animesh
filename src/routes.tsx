@@ -5,6 +5,7 @@ import Downloads from "./pages/Downloads";
 import Home from "./pages/Home";
 import Player from "./pages/Player";
 import Settings from "./pages/Settings";
+import SubjectDetail from "./pages/SubjectDetail";
 import TorrentDetail from "./pages/TorrentDetail";
 
 export const routes: RouteObject[] = [
@@ -23,6 +24,10 @@ export const routes: RouteObject[] = [
 			{
 				path: "calendar",
 				element: <Calendar />,
+			},
+			{
+				path: "subject/:subjectId",
+				element: <SubjectDetail />,
 			},
 			{
 				path: "play/:infoHash/:fileId",

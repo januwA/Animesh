@@ -1,4 +1,6 @@
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
+import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
+import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
@@ -34,7 +36,7 @@ const dummyLogger: Logger = {
 export interface CreateContainerParamsForTest {
 	torrentRepository?: TorrentRepository;
 	settingsRepository?: SettingsRepository;
-	bangumiRepository?: BangumiRepository;
+	bangumiRepository?: Partial<BangumiRepository>;
 	notificationRepository?: NotificationRepository;
 	logger?: Logger;
 
@@ -58,6 +60,8 @@ export interface CreateContainerParamsForTest {
 	selectDirectoryUseCase?: SelectDirectoryUseCase;
 
 	getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
+	getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
+	getBangumiEpisodesUseCase?: GetBangumiEpisodesUseCase;
 }
 
 export function createDIContainerForTest(
@@ -101,11 +105,20 @@ export function createDIContainerForTest(
 			selectDirectory: async () => null,
 		} as SettingsRepository);
 
-	const bangumiRepo =
-		params.bangumiRepository ||
-		({
-			getCalendar: async () => [],
-		} as BangumiRepository);
+	const bangumiRepo: BangumiRepository = (
+		params.bangumiRepository
+			? {
+					getCalendar: async () => [],
+					getSubject: async () => ({}) as any,
+					getEpisodes: async () => [],
+					...params.bangumiRepository,
+				}
+			: {
+					getCalendar: async () => [],
+					getSubject: async () => ({}) as any,
+					getEpisodes: async () => [],
+				}
+	) as BangumiRepository;
 
 	const notificationRepo =
 		params.notificationRepository ||
@@ -159,6 +172,14 @@ export function createDIContainerForTest(
 		params.getBangumiCalendarUseCase ||
 		new GetBangumiCalendarUseCase(bangumiRepo);
 
+	const getBangumiSubjectUseCase =
+		params.getBangumiSubjectUseCase ||
+		new GetBangumiSubjectUseCase(bangumiRepo);
+
+	const getBangumiEpisodesUseCase =
+		params.getBangumiEpisodesUseCase ||
+		new GetBangumiEpisodesUseCase(bangumiRepo);
+
 	return {
 		notificationRepository: notificationRepo,
 		logger: params.logger || dummyLogger,
@@ -183,5 +204,7 @@ export function createDIContainerForTest(
 		selectDirectoryUseCase,
 
 		getBangumiCalendarUseCase,
+		getBangumiSubjectUseCase,
+		getBangumiEpisodesUseCase,
 	};
 }

@@ -1,5 +1,7 @@
 import { createContext, use } from "react";
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
+import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
+import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
@@ -50,6 +52,8 @@ export interface DIContainer {
 	selectDirectoryUseCase: SelectDirectoryUseCase;
 
 	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
+	getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
+	getBangumiEpisodesUseCase: GetBangumiEpisodesUseCase;
 }
 
 export function createDefaultDIContainer(): DIContainer {
@@ -93,6 +97,12 @@ export function createDefaultDIContainer(): DIContainer {
 	const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
 		bangumiRepository,
 	);
+	const getBangumiSubjectUseCase = new GetBangumiSubjectUseCase(
+		bangumiRepository,
+	);
+	const getBangumiEpisodesUseCase = new GetBangumiEpisodesUseCase(
+		bangumiRepository,
+	);
 
 	const logger = new ConsoleLogger("App");
 
@@ -120,6 +130,8 @@ export function createDefaultDIContainer(): DIContainer {
 		selectDirectoryUseCase,
 
 		getBangumiCalendarUseCase,
+		getBangumiSubjectUseCase,
+		getBangumiEpisodesUseCase,
 	};
 }
 
