@@ -1,4 +1,4 @@
-export type ContextKey = any;
+export type ContextKey = unknown;
 
 /**
  * Canceled 是当 Context 被取消时，Context.err 返回的错误内容。
@@ -41,7 +41,7 @@ export interface Context {
 	 * value 返回此 Context 中与 key 关联的值，如果没有与 key 关联的值，则返回 null。
 	 * 使用相同的 key 连续调用 value 返回相同的结果。
 	 */
-	value(key: ContextKey): any;
+	value<T = unknown>(key: ContextKey): T | null;
 }
 
 /**

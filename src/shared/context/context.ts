@@ -20,7 +20,7 @@ class emptyCtx implements Context {
 	err(): Error | null {
 		return null;
 	}
-	value(_key: ContextKey): any {
+	value<T = unknown>(_key: ContextKey): T | null {
 		return null;
 	}
 }
@@ -66,8 +66,8 @@ class cancelCtx implements Context {
 		return this._err;
 	}
 
-	value(key: ContextKey): any {
-		return this._parent.value(key);
+	value<T = unknown>(key: ContextKey): T | null {
+		return this._parent.value<T>(key);
 	}
 
 	protected propagateCancel(parent: Context) {
@@ -112,7 +112,7 @@ class valueCtx implements Context {
 	constructor(
 		protected parent: Context,
 		protected key: ContextKey,
-		protected val: any,
+		protected val: unknown,
 	) {}
 
 	deadline(): [Date, boolean] {
@@ -127,11 +127,11 @@ class valueCtx implements Context {
 		return this.parent.err();
 	}
 
-	value(key: ContextKey): any {
+	value<T = unknown>(key: ContextKey): T | null {
 		if (this.key === key) {
-			return this.val;
+			return this.val as T;
 		}
-		return this.parent.value(key);
+		return this.parent.value<T>(key);
 	}
 }
 
@@ -146,7 +146,11 @@ export function WithCancel(parent: Context): [Context, CancelFunc] {
 /**
  * WithValue 返回父级 Context 的副本，并带有新的键值对。
  */
-export function WithValue(parent: Context, key: ContextKey, val: any): Context {
+export function WithValue(
+	parent: Context,
+	key: ContextKey,
+	val: unknown,
+): Context {
 	if (key === null || key === undefined) {
 		throw new Error("nil key");
 	}
