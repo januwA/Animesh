@@ -505,4 +505,130 @@ describe("SubjectDetail 页面组件", () => {
 			platform: null,
 		});
 	});
+
+	it("当点击返回且支持视图过渡时，应该调用 startViewTransition 并返回上一页", async () => {
+		const startViewTransitionMock = vi.fn((cb) => cb());
+		document.startViewTransition = startViewTransitionMock as any;
+
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime Title",
+			name_cn: "测试动漫标题",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 1000 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter
+						initialEntries={["/calendar", "/subject/123"]}
+						initialIndex={1}
+					>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="calendar" element={<div>日历页面</div>} />
+								<Route path="subject/:subjectId" element={<SubjectDetail />} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
+		});
+
+		const backButton = screen.getByRole("button", { name: "返回日历" });
+		fireEvent.click(backButton);
+
+		expect(startViewTransitionMock).toHaveBeenCalled();
+		await waitFor(() => {
+			expect(currentLocation.current?.pathname).toBe("/calendar");
+		});
+
+		delete (document as any).startViewTransition;
+	});
+
+	it("进入页面处于加载状态时，如果路由 state 中含有数据，应该展示传递的数据", async () => {
+		let resolveSubject: (value: BangumiSubject) => void = () => {};
+		const subjectPromise = new Promise<BangumiSubject>((resolve) => {
+			resolveSubject = resolve;
+		});
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(subjectPromise),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter
+						initialEntries={[
+							{
+								pathname: "/subject/123",
+								state: {
+									name: "传递的动画名称",
+									imageUrl: "http://example.com/passed-cover.jpg",
+								},
+							},
+						]}
+					>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="subject/:subjectId" element={<SubjectDetail />} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		// 应该立即展示 state 中的名称和图片
+		expect(screen.getByText("传递的动画名称")).toBeInTheDocument();
+		const img = screen.getByRole("img", { name: "传递的动画名称" });
+		expect(img).toBeInTheDocument();
+		expect(img.getAttribute("src")).toBe("http://example.com/passed-cover.jpg");
+		expect(screen.getByText("正在加载动漫详情...")).toBeInTheDocument();
+
+		// 解决 Promise 以避免警告
+		resolveSubject({
+			id: 123,
+			name: "Anime",
+			name_cn: "",
+			summary: null,
+			images: null,
+			rating: null,
+			collection: null,
+			date: null,
+			eps: null,
+			platform: null,
+		});
+	});
 });
