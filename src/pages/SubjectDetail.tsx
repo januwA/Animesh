@@ -8,8 +8,8 @@ import {
 	Tv,
 	Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type {
@@ -24,12 +24,13 @@ import { formatError } from "../utils";
 export default function SubjectDetail() {
 	const { subjectId } = useParams<{ subjectId: string }>();
 	const navigate = useNavigate();
+	const location = useLocation();
+	const state = location.state as { name?: string; imageUrl?: string } | null;
 	const { getBangumiSubjectUseCase, getBangumiEpisodesUseCase } = useDI();
 
 	const [subject, setSubject] = useState<BangumiSubject | null>(null);
 	const [episodes, setEpisodes] = useState<BangumiEpisode[]>([]);
 	const [error, setError] = useState<string | null>(null);
-	const [isPending, startTransition] = useTransition();
 
 	const todayStr = useMemo(() => {
 		const today = new Date();
@@ -42,10 +43,12 @@ export default function SubjectDetail() {
 	useEffect(() => {
 		if (!subjectId) return;
 
+		setSubject(null);
+		setEpisodes([]);
 		setError(null);
 		const [ctx, cancel] = WithCancel(Background);
 
-		startTransition(async () => {
+		const fetchData = async () => {
 			try {
 				// Fetch subject detail and episodes in parallel
 				const [subjectData, episodesData] = await Promise.all([
@@ -64,7 +67,9 @@ export default function SubjectDetail() {
 					setError(`获取动漫详情失败: ${formatError(err)}`);
 				}
 			}
-		});
+		};
+
+		fetchData();
 
 		return () => {
 			cancel();
@@ -79,19 +84,14 @@ export default function SubjectDetail() {
 	};
 
 	const handleBack = () => {
-		navigate(-1);
+		if (document.startViewTransition) {
+			document.startViewTransition(() => {
+				navigate(-1);
+			});
+		} else {
+			navigate(-1);
+		}
 	};
-
-	if (isPending) {
-		return (
-			<div className="flex flex-col items-center justify-center py-20 space-y-4">
-				<Loader2 className="h-10 w-10 text-primary animate-spin" />
-				<p className="text-sm text-muted-foreground font-medium">
-					正在加载动漫详情...
-				</p>
-			</div>
-		);
-	}
 
 	if (error) {
 		return (
@@ -109,12 +109,14 @@ export default function SubjectDetail() {
 		);
 	}
 
-	if (!subject) {
-		return null;
-	}
-
-	const displayName = subject.name_cn || subject.name;
-	const originalName = subject.name !== displayName ? subject.name : "";
+	const displayName =
+		subject?.name_cn || subject?.name || state?.name || "加载中...";
+	const originalName = subject
+		? subject.name !== displayName
+			? subject.name
+			: ""
+		: "";
+	const imageUrl = subject?.images?.large || state?.imageUrl;
 
 	return (
 		<div className="w-full space-y-6 animate-in fade-in duration-300">
@@ -129,37 +131,44 @@ export default function SubjectDetail() {
 					返回日历
 				</button>
 
-				<a
-					href={`https://bgm.tv/subject/${subject.id}`}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors px-2.5 py-1 rounded bg-white/5 hover:bg-white/10"
-					onClick={async (e) => {
-						e.stopPropagation();
-						e.preventDefault();
-						const url = `https://bgm.tv/subject/${subject.id}`;
-						try {
-							const { openUrl } = await import("@tauri-apps/plugin-opener");
-							await openUrl(url);
-						} catch {
-							window.open(url, "_blank");
-						}
-					}}
-					title={`在 Bangumi 打开: ${displayName}`}
-				>
-					<Globe className="h-3.5 w-3.5" />
-					<span>详情</span>
-				</a>
+				{subject && (
+					<a
+						href={`https://bgm.tv/subject/${subject.id}`}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors px-2.5 py-1 rounded bg-white/5 hover:bg-white/10"
+						onClick={async (e) => {
+							e.stopPropagation();
+							e.preventDefault();
+							const url = `https://bgm.tv/subject/${subject.id}`;
+							try {
+								const { openUrl } = await import("@tauri-apps/plugin-opener");
+								await openUrl(url);
+							} catch {
+								window.open(url, "_blank");
+							}
+						}}
+						title={`在 Bangumi 打开: ${displayName}`}
+					>
+						<Globe className="h-3.5 w-3.5" />
+						<span>详情</span>
+					</a>
+				)}
 			</div>
 
 			{/* Info Header Card */}
 			<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/20 p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8">
 				{/* Poster Image */}
 				<div className="w-full md:w-48 shrink-0 flex justify-center">
-					{subject.images?.large ? (
+					{imageUrl ? (
 						<img
-							src={subject.images.large}
+							src={imageUrl}
 							alt={displayName}
+							style={
+								{
+									viewTransitionName: `anime-cover-${subjectId}`,
+								} as React.CSSProperties
+							}
 							className="w-48 aspect-3/4 object-cover rounded-xl shadow-lg border border-white/10"
 						/>
 					) : (
@@ -172,34 +181,42 @@ export default function SubjectDetail() {
 				{/* Title and Metadata */}
 				<div className="flex-1 flex flex-col justify-between space-y-4">
 					<div className="space-y-2">
-						<div className="flex flex-wrap items-center gap-2">
-							{subject.platform && (
-								<Badge
-									variant="secondary"
-									className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
-								>
-									<Tv className="h-3 w-3" />
-									{subject.platform}
-								</Badge>
-							)}
-							{subject.date && (
-								<Badge
-									variant="secondary"
-									className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
-								>
-									<Calendar className="h-3 w-3" />
-									{subject.date}
-								</Badge>
-							)}
-							{subject.eps !== undefined && subject.eps !== null && (
-								<Badge
-									variant="secondary"
-									className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
-								>
-									<Clock className="h-3 w-3" />共 {subject.eps} 话
-								</Badge>
-							)}
-						</div>
+						{subject ? (
+							<div className="flex flex-wrap items-center gap-2">
+								{subject.platform && (
+									<Badge
+										variant="secondary"
+										className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
+									>
+										<Tv className="h-3 w-3" />
+										{subject.platform}
+									</Badge>
+								)}
+								{subject.date && (
+									<Badge
+										variant="secondary"
+										className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
+									>
+										<Calendar className="h-3 w-3" />
+										{subject.date}
+									</Badge>
+								)}
+								{subject.eps !== undefined && subject.eps !== null && (
+									<Badge
+										variant="secondary"
+										className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
+									>
+										<Clock className="h-3 w-3" />共 {subject.eps} 话
+									</Badge>
+								)}
+							</div>
+						) : (
+							<div className="flex flex-wrap items-center gap-2 animate-pulse">
+								<div className="h-5 w-16 bg-white/5 rounded-full" />
+								<div className="h-5 w-24 bg-white/5 rounded-full" />
+								<div className="h-5 w-16 bg-white/5 rounded-full" />
+							</div>
+						)}
 
 						<h1 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
 							{displayName}
@@ -211,67 +228,93 @@ export default function SubjectDetail() {
 						)}
 					</div>
 
-					{/* Ratings / Stats */}
-					<div className="flex flex-wrap gap-6 items-center pt-2">
-						{subject.rating && (
-							<div className="flex items-center gap-2">
-								<div className="flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
-									<Star className="h-6 w-6 fill-current" />
-								</div>
-								<div>
-									<div className="text-xl font-bold text-amber-500">
-										{subject.rating.score.toFixed(1)}
+					{/* Ratings / Stats / Loading Status */}
+					{subject ? (
+						<div className="flex flex-wrap gap-6 items-center pt-2">
+							{subject.rating && (
+								<div className="flex items-center gap-2">
+									<div className="flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+										<Star className="h-6 w-6 fill-current" />
 									</div>
-									<div className="text-xs text-muted-foreground">
-										{subject.rating.total?.toLocaleString() ?? 0} 人评分
+									<div>
+										<div className="text-xl font-bold text-amber-500">
+											{subject.rating.score.toFixed(1)}
+										</div>
+										<div className="text-xs text-muted-foreground">
+											{subject.rating.total?.toLocaleString() ?? 0} 人评分
+										</div>
 									</div>
 								</div>
-							</div>
-						)}
+							)}
 
-						{subject.rating?.rank && (
-							<div className="flex items-center gap-2">
-								<div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-primary border border-primary/20">
-									<Tv className="h-6 w-6" />
-								</div>
-								<div>
-									<div className="text-xl font-bold text-primary">
-										Rank #{subject.rating.rank}
+							{subject.rating?.rank ? (
+								<div className="flex items-center gap-2">
+									<div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-primary border border-primary/20">
+										<Tv className="h-6 w-6" />
 									</div>
-									<div className="text-xs text-muted-foreground">
-										Bangumi 排名
+									<div>
+										<div className="text-xl font-bold text-primary">
+											Rank #{subject.rating.rank}
+										</div>
+										<div className="text-xs text-muted-foreground">
+											Bangumi 排名
+										</div>
 									</div>
 								</div>
-							</div>
-						)}
+							) : null}
 
-						{subject.collection?.doing != null && (
-							<div className="flex items-center gap-2">
-								<div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
-									<Users className="h-6 w-6" />
-								</div>
-								<div>
-									<div className="text-xl font-bold text-green-500">
-										{subject.collection.doing.toLocaleString()}
+							{subject.collection?.doing != null && (
+								<div className="flex items-center gap-2">
+									<div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
+										<Users className="h-6 w-6" />
 									</div>
-									<div className="text-xs text-muted-foreground">人在看</div>
+									<div>
+										<div className="text-xl font-bold text-green-500">
+											{subject.collection.doing.toLocaleString()}
+										</div>
+										<div className="text-xs text-muted-foreground">人在看</div>
+									</div>
 								</div>
+							)}
+						</div>
+					) : (
+						<div className="space-y-3 pt-2">
+							<div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+								<Loader2 className="h-4 w-4 text-primary animate-spin" />
+								<span>正在加载动漫详情...</span>
 							</div>
-						)}
-					</div>
+							<div className="flex gap-4 animate-pulse">
+								<div className="h-10 w-24 bg-white/5 rounded-lg" />
+								<div className="h-10 w-24 bg-white/5 rounded-lg" />
+							</div>
+						</div>
+					)}
 				</div>
 			</div>
 
 			{/* Synopsis / Summary */}
-			{subject.summary && (
-				<Card className="bg-card/40 border border-white/5 rounded-xl">
+			{subject ? (
+				subject.summary && (
+					<Card className="bg-card/40 border border-white/5 rounded-xl">
+						<CardContent className="p-6 space-y-2">
+							<h2 className="text-sm font-semibold text-muted-foreground">
+								剧情简介
+							</h2>
+							<p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+								{subject.summary}
+							</p>
+						</CardContent>
+					</Card>
+				)
+			) : (
+				<Card className="bg-card/40 border border-white/5 rounded-xl animate-pulse">
 					<CardContent className="p-6 space-y-2">
-						<h2 className="text-sm font-semibold text-muted-foreground">
-							剧情简介
-						</h2>
-						<p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-							{subject.summary}
-						</p>
+						<div className="h-4 w-20 bg-white/5 rounded" />
+						<div className="space-y-2">
+							<div className="h-3 w-full bg-white/5 rounded" />
+							<div className="h-3 w-5/6 bg-white/5 rounded" />
+							<div className="h-3 w-4/5 bg-white/5 rounded" />
+						</div>
 					</CardContent>
 				</Card>
 			)}
@@ -280,67 +323,80 @@ export default function SubjectDetail() {
 			<div className="space-y-4">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-bold text-foreground">剧集列表</h2>
-					<Badge
-						variant="outline"
-						className="text-xs border-white/10 text-muted-foreground"
-					>
-						点击剧集卡片搜索种子资源
-					</Badge>
+					{subject && (
+						<Badge
+							variant="outline"
+							className="text-xs border-white/10 text-muted-foreground"
+						>
+							点击剧集卡片搜索种子资源
+						</Badge>
+					)}
 				</div>
 
-				{episodes.length > 0 ? (
-					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-						{episodes.map((ep) => {
-							const isAired = ep.airdate ? todayStr >= ep.airdate : false;
-							return (
-								<button
-									key={ep.id}
-									type="button"
-									onClick={() => handleEpisodeClick(ep)}
-									className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
-										isAired
-											? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
-											: "bg-card/30 border border-white/5 hover:border-primary/30 hover:bg-card/60"
-									}`}
-								>
-									{/* Ep Number / Icon */}
-									<div
-										className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
+				{subject ? (
+					episodes.length > 0 ? (
+						<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+							{episodes.map((ep) => {
+								const isAired = ep.airdate ? todayStr >= ep.airdate : false;
+								return (
+									<button
+										key={ep.id}
+										type="button"
+										onClick={() => handleEpisodeClick(ep)}
+										className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
 											isAired
-												? "bg-primary/15 group-hover:bg-primary/25"
-												: "bg-white/5 group-hover:bg-primary/10"
+												? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
+												: "bg-card/30 border border-white/5 hover:border-primary/30 hover:bg-card/60"
 										}`}
 									>
-										<span
-											className={`text-sm font-bold transition-colors ${
+										{/* Ep Number / Icon */}
+										<div
+											className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
 												isAired
-													? "text-primary"
-													: "text-muted-foreground group-hover:text-primary"
+													? "bg-primary/15 group-hover:bg-primary/25"
+													: "bg-white/5 group-hover:bg-primary/10"
 											}`}
 										>
-											{String(ep.sort).padStart(2, "0")}
-										</span>
-									</div>
+											<span
+												className={`text-sm font-bold transition-colors ${
+													isAired
+														? "text-primary"
+														: "text-muted-foreground group-hover:text-primary"
+												}`}
+											>
+												{String(ep.sort).padStart(2, "0")}
+											</span>
+										</div>
 
-									{/* Ep Details */}
-									<div className="flex-1 min-w-0 space-y-1">
-										<div className="flex items-center gap-1.5 justify-between">
-											<h3 className="text-sm font-medium leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-												{ep.name_cn || ep.name}
-											</h3>
+										{/* Ep Details */}
+										<div className="flex-1 min-w-0 space-y-1">
+											<div className="flex items-center gap-1.5 justify-between">
+												<h3 className="text-sm font-medium leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+													{ep.name_cn || ep.name}
+												</h3>
+											</div>
+											<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+												{ep.duration && <span>时长 {ep.duration}</span>}
+												{ep.airdate && <span>首播 {ep.airdate}</span>}
+											</div>
 										</div>
-										<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-											{ep.duration && <span>时长 {ep.duration}</span>}
-											{ep.airdate && <span>首播 {ep.airdate}</span>}
-										</div>
-									</div>
-								</button>
-							);
-						})}
-					</div>
+									</button>
+								);
+							})}
+						</div>
+					) : (
+						<div className="text-center py-12 text-sm text-muted-foreground bg-card/20 border border-white/5 rounded-xl">
+							暂无剧集数据
+						</div>
+					)
 				) : (
-					<div className="text-center py-12 text-sm text-muted-foreground bg-card/20 border border-white/5 rounded-xl">
-						暂无剧集数据
+					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 animate-pulse">
+						{[1, 2, 3, 4, 5, 6].map((i) => (
+							<div
+								key={i}
+								className="flex items-start gap-3 p-3 rounded-xl bg-card/30 border border-white/5 h-16"
+							/>
+						))}
 					</div>
 				)}
 			</div>

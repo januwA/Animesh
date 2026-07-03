@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
+import type { BangumiCalendarItem } from "@/domain/bangumi/BangumiSchemas";
 import { Background, WithCancel } from "@/shared/context/context";
 import { ErrorBanner } from "../components/AppComponents";
 import { WeeklyCalendar } from "../components/WeeklyCalendar";
@@ -40,8 +41,14 @@ export default function Calendar() {
 		};
 	}, [getBangumiCalendarUseCase, calendar.length, setCalendar]);
 
-	const handleAnimeClick = (subjectId: number) => {
-		navigate(`/subject/${subjectId}`);
+	const handleAnimeClick = (item: BangumiCalendarItem) => {
+		navigate(`/subject/${item.id}`, {
+			viewTransition: true,
+			state: {
+				name: item.name_cn || item.name,
+				imageUrl: item.images?.large,
+			},
+		});
 	};
 
 	return (

@@ -152,3 +152,14 @@ body {
 		@apply font-sans;
 	}
 }
+
+/* View Transitions 动画时长与缓动定制 */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation-duration: 0.22s;
+}
+
+::view-transition-group(*) {
+	animation-duration: 0.28s;
+	animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}

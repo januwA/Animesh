@@ -16,7 +16,7 @@ function getTodayWeekdayId(): number {
 
 interface WeeklyCalendarProps {
 	calendar: BangumiCalendarDay[];
-	onAnimeClick: (subjectId: number) => void;
+	onAnimeClick: (item: BangumiCalendarItem) => void;
 }
 
 export function WeeklyCalendar({
@@ -87,7 +87,7 @@ export function WeeklyCalendar({
 					<AnimeCard
 						key={item.id}
 						item={item}
-						onClick={() => onAnimeClick(item.id)}
+						onClick={() => onAnimeClick(item)}
 					/>
 				))}
 			</div>
@@ -128,6 +128,11 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 						<img
 							src={item.images.large}
 							alt={displayName}
+							style={
+								{
+									viewTransitionName: `anime-cover-${item.id}`,
+								} as React.CSSProperties
+							}
 							className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
 							loading="lazy"
 						/>
