@@ -77,7 +77,7 @@ dependencies = [
 
 [[package]]
 name = "animesh"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "animesh_core",
  "log",
@@ -95,7 +95,7 @@ dependencies = [
 
 [[package]]
 name = "animesh_core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "axum",

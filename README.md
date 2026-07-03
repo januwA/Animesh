@@ -73,6 +73,21 @@ pnpm test:rust
 pnpm test:rust:coverage
 ```
 
+## 版本发布与迭代
+
+更新应用版本号时，为了确保多处版本配置（前端与 Rust 后端）的同步和安全性，可以直接运行：
+```bash
+pnpm bump-version <新版本号>
+```
+例如：
+```bash
+pnpm bump-version 0.3.0
+```
+该脚本会自动：
+1. 校验输入的目标版本是否符合 SemVer 格式。
+2. 比较目标版本与当前版本，禁止重复更新或版本降级。
+3. 自动同步更新 `./package.json`、`./src-tauri/Cargo.toml` 以及 `./src-tauri/core/Cargo.toml`。
+
 ## 代码规范与提交流程
 
 - 本项目使用 **Biome** 作为代码格式化与静态检查工具。提交代码前请运行：
@@ -80,3 +95,4 @@ pnpm test:rust:coverage
   pnpm check:apply
   ```
 - **Git Commit 规则**：在执行 `git commit` 时，**必须**使用中文编写提交信息。
+

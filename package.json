@@ -1,7 +1,7 @@
 {
 	"name": "animesh",
 	"private": true,
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
@@ -16,7 +16,8 @@
 		"check:error-handling": "tsx scripts/check-error-handling.ts",
 		"check:application-params": "tsx scripts/check-application-params.ts",
 		"typecheck": "tsc --noEmit",
-		"test:coverage": "vitest run --coverage"
+		"test:coverage": "vitest run --coverage",
+		"bump-version": "tsx scripts/bump-version.ts"
 	},
 	"dependencies": {
 		"@fontsource-variable/geist": "^5.2.9",
