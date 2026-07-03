@@ -15,6 +15,8 @@ import {
 } from "../../domain/torrent/TorrentSchemas";
 import type { Context } from "../../shared/context/interface";
 
+const sessionId = crypto.randomUUID();
+
 export class TauriTorrentRepository implements TorrentRepository {
 	async search(
 		ctx: Context,
@@ -139,6 +141,7 @@ export class TauriTorrentRepository implements TorrentRepository {
 	async subscribeTorrents(
 		onUpdate: (torrents: TorrentStatusInfo[]) => void,
 	): Promise<() => void> {
+		const subscriptionId = crypto.randomUUID();
 		const channel = new Channel<unknown>((data) => {
 			const result = z.array(TorrentStatusInfoSchema).safeParse(data);
 			if (!result.success) {
@@ -149,8 +152,14 @@ export class TauriTorrentRepository implements TorrentRepository {
 			onUpdate(result.data);
 		});
 
-		await invoke<void>("torrent_subscribe", { onEvent: channel });
+		await invoke<void>("torrent_subscribe", {
+			subscriptionId,
+			sessionId,
+			onEvent: channel,
+		});
 
-		return () => {};
+		return () => {
+			invoke<void>("torrent_unsubscribe", { subscriptionId }).catch(() => {});
+		};
 	}
 }

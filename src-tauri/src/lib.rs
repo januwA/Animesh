@@ -21,6 +21,19 @@ impl Default for SearchTracker {
     }
 }
 
+pub struct SubscriptionTracker {
+    // Maps subscription_id to (window_label, session_id)
+    pub subscriptions: Arc<Mutex<HashMap<String, (String, String)>>>,
+}
+
+impl Default for SubscriptionTracker {
+    fn default() -> Self {
+        Self {
+            subscriptions: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+}
+
 #[tauri::command]
 fn cancel_search(trace_id: String, tracker: tauri::State<'_, SearchTracker>) {
     trace_log(&format!(
@@ -307,12 +320,39 @@ fn torrent_list(
 
 #[tauri::command]
 async fn torrent_subscribe(
+    window: tauri::Window,
+    subscription_id: String,
+    session_id: String,
     on_event: tauri::ipc::Channel<Vec<TorrentStatusInfo>>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
+    tracker: tauri::State<'_, SubscriptionTracker>,
 ) -> Result<(), String> {
+    let window_label = window.label().to_string();
+
+    let subs_clone = tracker.subscriptions.clone();
+    if let Ok(mut subs) = tracker.subscriptions.lock() {
+        // Find and remove any subscriptions that belong to the same window but a different session
+        subs.retain(|_, (w_label, s_id)| !(w_label == &window_label && s_id != &session_id));
+
+        // Insert the new subscription
+        subs.insert(subscription_id.clone(), (window_label, session_id));
+    }
+
     let manager = manager.inner().clone();
     tauri::async_runtime::spawn(async move {
         loop {
+            // Check if subscription is still active
+            {
+                let active = if let Ok(subs) = subs_clone.lock() {
+                    subs.contains_key(&subscription_id)
+                } else {
+                    false
+                };
+                if !active {
+                    break;
+                }
+            }
+
             let torrents = manager.list_torrents();
             if on_event.send(torrents).is_err() {
                 break;
@@ -321,6 +361,13 @@ async fn torrent_subscribe(
         }
     });
     Ok(())
+}
+
+#[tauri::command]
+fn torrent_unsubscribe(subscription_id: String, tracker: tauri::State<'_, SubscriptionTracker>) {
+    if let Ok(mut subs) = tracker.subscriptions.lock() {
+        subs.remove(&subscription_id);
+    }
 }
 
 #[tauri::command]
@@ -465,6 +512,7 @@ pub fn run() {
 
             app.manage(Arc::new(manager));
             app.manage(SearchTracker::default());
+            app.manage(SubscriptionTracker::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -479,6 +527,7 @@ pub fn run() {
             torrent_delete,
             torrent_list,
             torrent_subscribe,
+            torrent_unsubscribe,
             settings_get,
             settings_set_download_dir,
             settings_set_proxy,
