@@ -11,6 +11,7 @@ pub struct RqbitTorrentRepository {
     get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
     get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
     persistence_dir: PathBuf,
+    start_time: std::time::Instant,
 }
 
 impl RqbitTorrentRepository {
@@ -25,6 +26,7 @@ impl RqbitTorrentRepository {
             get_download_dir_fn,
             get_trackers_fn,
             persistence_dir,
+            start_time: std::time::Instant::now(),
         }
     }
 
@@ -143,13 +145,16 @@ impl TorrentRepository for RqbitTorrentRepository {
             .unwrap_or((0, 0));
 
         let created_at = self.get_creation_time(info_hash_hex);
+        let is_startup = self.start_time.elapsed().as_secs() < 15;
+        let finished = stats.finished
+            || (is_startup && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
 
         Some(TorrentStatusInfo {
             info_hash: info_hash_hex.to_string(),
             name: torrent.name(),
             progress_bytes: stats.progress_bytes,
             total_bytes: stats.total_bytes,
-            finished: stats.finished,
+            finished,
             download_speed_bytes_per_sec: speed,
             paused: torrent.is_paused(),
             peers_connected,
@@ -159,6 +164,7 @@ impl TorrentRepository for RqbitTorrentRepository {
     }
 
     fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
+        let is_startup = self.start_time.elapsed().as_secs() < 15;
         self.session.with_torrents(|iter| {
             iter.map(|(_, torrent)| {
                 let stats = torrent.stats();
@@ -179,12 +185,15 @@ impl TorrentRepository for RqbitTorrentRepository {
                     .unwrap_or((0, 0));
                 let hex = format_hash(&torrent.info_hash().0);
                 let created_at = self.get_creation_time(&hex);
+                let finished = stats.finished
+                    || (is_startup
+                        && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
                 TorrentStatusInfo {
                     info_hash: hex,
                     name: torrent.name(),
                     progress_bytes: stats.progress_bytes,
                     total_bytes: stats.total_bytes,
-                    finished: stats.finished,
+                    finished,
                     download_speed_bytes_per_sec: speed,
                     paused: torrent.is_paused(),
                     peers_connected,
