@@ -110,11 +110,11 @@ export default function Player() {
 			setSubloading(true);
 			try {
 				const parsedFileId = parseInt(fileId, 10);
-				const vttContent = await getSubtitleVttUseCase.execute(
+				const vttContent = await getSubtitleVttUseCase.execute({
 					infoHash,
-					parsedFileId,
+					fileId: parsedFileId,
 					trackId,
-				);
+				});
 				const blob = new Blob([vttContent], { type: "text/vtt" });
 				const url = URL.createObjectURL(blob);
 				setSubtrackSrc((prev) => {

@@ -19,6 +19,8 @@ pre-push:
       run: pnpm typecheck
     "前端_错误处理规范检查":
       run: pnpm check:error-handling
+    "前端_接口设计参数检查":
+      run: pnpm check:application-params
     "前端_单元测试与覆盖率":
       run: pnpm test:coverage
     "后端_Rust静态代码检查(Clippy)":

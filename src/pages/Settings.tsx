@@ -75,11 +75,11 @@ export default function Settings() {
 
 		setSaving(true);
 		try {
-			await saveSettingsUseCase.execute(
-				validatedData.downloadDir,
-				validatedData.proxy,
-				validatedData.trackers,
-			);
+			await saveSettingsUseCase.execute({
+				downloadDir: validatedData.downloadDir,
+				proxy: validatedData.proxy,
+				trackers: validatedData.trackers,
+			});
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
 			showToast(`保存路径失败: ${formatError(err)}`, 5000);

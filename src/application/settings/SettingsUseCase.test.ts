@@ -35,9 +35,11 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
 		vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
 		vi.mocked(rawMockRepo.setTrackers).mockResolvedValueOnce(undefined);
-		await useCase.execute("/mock/dir2", "http://127.0.0.1:1080", [
-			"udp://tracker1",
-		]);
+		await useCase.execute({
+			downloadDir: "/mock/dir2",
+			proxy: "http://127.0.0.1:1080",
+			trackers: ["udp://tracker1"],
+		});
 		expect(rawMockRepo.setDownloadDir).toHaveBeenCalledWith("/mock/dir2");
 		expect(rawMockRepo.setProxy).toHaveBeenCalledWith("http://127.0.0.1:1080");
 		expect(rawMockRepo.setTrackers).toHaveBeenCalledWith(["udp://tracker1"]);

@@ -46,11 +46,10 @@ export default function Home() {
 
 			startTransition(async () => {
 				try {
-					const data = await searchTorrentsUseCase.execute(
-						ctx,
-						queryText,
-						searchEngine,
-					);
+					const data = await searchTorrentsUseCase.execute(ctx, {
+						keyword: queryText,
+						engine: searchEngine,
+					});
 					setResults(data);
 				} catch (err: unknown) {
 					if (ctx.err() === Canceled) {

@@ -7,9 +7,8 @@ export class SearchTorrentsUseCase {
 
 	execute(
 		ctx: Context,
-		keyword: string,
-		engine: string,
+		dto: { keyword: string; engine: string },
 	): Promise<SearchResultItem[]> {
-		return this.torrentRepository.search(ctx, keyword, engine);
+		return this.torrentRepository.search(ctx, dto.keyword, dto.engine);
 	}
 }

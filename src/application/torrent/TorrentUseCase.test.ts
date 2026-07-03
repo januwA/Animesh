@@ -36,7 +36,10 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 			{ name: "test anime", magnet: "magnet:?xt=urn:btih:123" } as any,
 		]);
 		const ctx = WithValue(Background, "traceId", "test-trace");
-		const results = await useCase.execute(ctx, "test", "mikan");
+		const results = await useCase.execute(ctx, {
+			keyword: "test",
+			engine: "mikan",
+		});
 		expect(mockRepo.search).toHaveBeenCalledWith(ctx, "test", "mikan");
 		expect(results).toEqual([
 			{ name: "test anime", magnet: "magnet:?xt=urn:btih:123" },
@@ -131,7 +134,11 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 	it("GetSubtitleVttUseCase 应该正确调用 repository 的 getSubtitleVtt 方法", async () => {
 		const useCase = new GetSubtitleVttUseCase(mockRepo);
 		vi.mocked(mockRepo.getSubtitleVtt).mockResolvedValueOnce("WEBVTT\n...");
-		const result = await useCase.execute("123", 1, 2);
+		const result = await useCase.execute({
+			infoHash: "123",
+			fileId: 1,
+			trackId: 2,
+		});
 		expect(mockRepo.getSubtitleVtt).toHaveBeenCalledWith("123", 1, 2);
 		expect(result).toBe("WEBVTT\n...");
 	});
