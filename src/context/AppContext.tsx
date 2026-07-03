@@ -1,4 +1,5 @@
 import { createContext, use, useCallback, useState } from "react";
+import type { BangumiCalendarDay } from "../domain/bangumi/BangumiSchemas";
 import type { SearchResultItem } from "../domain/torrent/TorrentSchemas";
 
 export interface ToastMessage {
@@ -22,6 +23,10 @@ interface AppContextType {
 	removeToast: (id: number) => void;
 	searchEngine: string;
 	setSearchEngine: (val: string) => void;
+	calendar: BangumiCalendarDay[];
+	setCalendar: (val: BangumiCalendarDay[]) => void;
+	calendarActiveDay: number | null;
+	setCalendarActiveDay: (val: number | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -38,6 +43,10 @@ export function AppContextProvider({
 	const [hasSearched, setHasSearched] = useState(false);
 	const [toasts, setToasts] = useState<ToastMessage[]>([]);
 	const [searchEngine, setSearchEngine] = useState("dmhy");
+	const [calendar, setCalendar] = useState<BangumiCalendarDay[]>([]);
+	const [calendarActiveDay, setCalendarActiveDay] = useState<number | null>(
+		null,
+	);
 
 	const showToast = useCallback((text: string, duration = 3000) => {
 		const id = Date.now() + Math.random();
@@ -69,6 +78,10 @@ export function AppContextProvider({
 				removeToast,
 				searchEngine,
 				setSearchEngine,
+				calendar,
+				setCalendar,
+				calendarActiveDay,
+				setCalendarActiveDay,
 			}}
 		>
 			{children}

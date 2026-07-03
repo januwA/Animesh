@@ -17,3 +17,12 @@ vi.mock("@tauri-apps/plugin-notification", () => ({
 	requestPermission: vi.fn().mockResolvedValue("granted"),
 	sendNotification: vi.fn(),
 }));
+
+// Mock ScrollRestoration to prevent useMatches error in tests using MemoryRouter
+vi.mock("react-router-dom", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("react-router-dom")>();
+	return {
+		...actual,
+		ScrollRestoration: () => null,
+	};
+});

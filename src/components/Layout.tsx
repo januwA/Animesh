@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, ScrollRestoration } from "react-router-dom";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
 import { AppHeader, ToastContainer } from "./AppComponents";
@@ -49,6 +49,9 @@ export default function Layout() {
 
 			{/* 提示消息 */}
 			<ToastContainer toasts={toasts} onClose={removeToast} />
+
+			{/* 滚动位置恢复 */}
+			<ScrollRestoration />
 		</main>
 	);
 }

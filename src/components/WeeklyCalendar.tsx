@@ -1,10 +1,11 @@
 import { Calendar, Star, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import type {
 	BangumiCalendarDay,
 	BangumiCalendarItem,
 } from "@/domain/bangumi/BangumiSchemas";
+import { useAppContext } from "../context/AppContext";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -22,18 +23,27 @@ export function WeeklyCalendar({
 	calendar,
 	onAnimeClick,
 }: WeeklyCalendarProps) {
+	const { calendarActiveDay, setCalendarActiveDay } = useAppContext();
 	const todayId = useMemo(() => getTodayWeekdayId(), []);
-	const [activeDay, setActiveDay] = useState(todayId);
 
-	const currentDayData = calendar.find((d) => d.weekday.id === activeDay);
-	const sortedItems = useMemo(() => {
-		if (!currentDayData) return [];
-		return [...currentDayData.items].sort((a, b) => {
-			const rankA = a.rank ?? Number.MAX_SAFE_INTEGER;
-			const rankB = b.rank ?? Number.MAX_SAFE_INTEGER;
-			return rankA - rankB;
-		});
-	}, [currentDayData]);
+	const activeDay = calendarActiveDay ?? todayId;
+
+	const setActiveDay = (dayId: number) => {
+		setCalendarActiveDay(dayId);
+	};
+
+	// 提前构建的 Map，避免在标签页切换时重复执行 O(N) 搜索
+	const calendarMap = useMemo(() => {
+		const map = new Map<number, BangumiCalendarItem[]>();
+		for (const day of calendar) {
+			map.set(day.weekday.id, day.items);
+		}
+		return map;
+	}, [calendar]);
+
+	const currentItems = useMemo(() => {
+		return calendarMap.get(activeDay) ?? [];
+	}, [calendarMap, activeDay]);
 
 	return (
 		<section className="w-full space-y-4 mt-2">
@@ -73,7 +83,7 @@ export function WeeklyCalendar({
 
 			{/* Anime Grid */}
 			<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-				{sortedItems.map((item) => (
+				{currentItems.map((item) => (
 					<AnimeCard
 						key={item.id}
 						item={item}
@@ -82,7 +92,7 @@ export function WeeklyCalendar({
 				))}
 			</div>
 
-			{sortedItems.length === 0 && (
+			{currentItems.length === 0 && (
 				<div className="text-center py-10 text-sm text-muted-foreground">
 					暂无更新
 				</div>
@@ -123,7 +133,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 						/>
 					</div>
 				) : (
-					<div className="aspect-[3/4] w-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+					<div className="aspect-3/4 w-full bg-linear-to-br from-primary/10 to-primary/5 flex items-center justify-center">
 						<Calendar className="h-8 w-8 text-primary/30" />
 					</div>
 				)}

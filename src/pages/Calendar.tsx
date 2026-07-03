@@ -1,21 +1,24 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { useNavigate } from "react-router-dom";
-import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import { Background, WithCancel } from "@/shared/context/context";
 import { ErrorBanner } from "../components/AppComponents";
 import { WeeklyCalendar } from "../components/WeeklyCalendar";
+import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
 import { formatError } from "../utils";
 
 export default function Calendar() {
 	const navigate = useNavigate();
 	const { getBangumiCalendarUseCase } = useDI();
-	const [calendar, setCalendar] = useState<BangumiCalendarDay[]>([]);
+	const { calendar, setCalendar } = useAppContext();
 	const [error, setError] = useState<string | null>(null);
 	const [isPending, startTransition] = useTransition();
 
 	useEffect(() => {
+		if (calendar.length > 0) {
+			return;
+		}
 		setError(null);
 		const [ctx, cancel] = WithCancel(Background);
 
@@ -35,7 +38,7 @@ export default function Calendar() {
 		return () => {
 			cancel();
 		};
-	}, [getBangumiCalendarUseCase]);
+	}, [getBangumiCalendarUseCase, calendar.length, setCalendar]);
 
 	const handleAnimeClick = (subjectId: number) => {
 		navigate(`/subject/${subjectId}`);
