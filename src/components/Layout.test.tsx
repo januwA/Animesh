@@ -207,4 +207,73 @@ describe("Layout 布局组件", () => {
 			expect(mockListTorrents).toHaveBeenCalled();
 		});
 	});
+
+	it("当自动同步更新成功返回数量时，应该弹出 Toast 提示", async () => {
+		const mockAutoUpdateExecute = vi.fn().mockResolvedValue(5);
+		const mockContainer = createDIContainerForTest({
+			notificationRepository: {
+				requestPermission: mockRequestPermission as () => Promise<boolean>,
+				sendNotification: vi.fn(),
+			},
+			notifyDownloadCompletionUseCase: {
+				execute: mockExecute as () => Promise<void>,
+			} as any,
+			autoUpdateTrackersUseCase: {
+				execute: mockAutoUpdateExecute,
+			} as any,
+		});
+
+		const { findByText } = render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/"]}>
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="" element={<div>首页内容</div>} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		const toastMessage = await findByText(/自动更新 Tracker 列表成功/);
+		expect(toastMessage).toBeInTheDocument();
+	});
+
+	it("当自动同步更新发生异常时，应该安全捕获不崩溃", async () => {
+		const mockAutoUpdateExecute = vi
+			.fn()
+			.mockRejectedValue(new Error("Sync failed"));
+		const mockContainer = createDIContainerForTest({
+			notificationRepository: {
+				requestPermission: mockRequestPermission as () => Promise<boolean>,
+				sendNotification: vi.fn(),
+			},
+			notifyDownloadCompletionUseCase: {
+				execute: mockExecute as () => Promise<void>,
+			} as any,
+			autoUpdateTrackersUseCase: {
+				execute: mockAutoUpdateExecute,
+			} as any,
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/"]}>
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="" element={<div>首页内容</div>} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(mockAutoUpdateExecute).toHaveBeenCalled();
+		});
+	});
 });

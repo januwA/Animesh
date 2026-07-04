@@ -82,4 +82,24 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		);
 		expect(result).toEqual(["udp://tracker1"]);
 	});
+
+	it("SaveSettingsUseCase 在可选参数为空时应该正确传递 null 到 repository 中", async () => {
+		const useCase = new SaveSettingsUseCase(mockRepo);
+		vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setTrackers).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setTrackerOptions).mockResolvedValueOnce(undefined);
+		await useCase.execute({
+			downloadDir: "/mock/dir2",
+			proxy: null,
+			trackers: ["udp://tracker1"],
+		});
+		expect(rawMockRepo.setTrackerOptions).toHaveBeenCalledWith({
+			sourceType: null,
+			cdn: null,
+			customUrl: null,
+			autoUpdate: null,
+			lastUpdateTime: null,
+		});
+	});
 });

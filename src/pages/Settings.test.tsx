@@ -379,4 +379,125 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
 		expect(currentLocation.current?.pathname).toBe("/");
 	});
+
+	it("应该支持切换不同的 Tracker 列表源与 CDN 加速节点，更改自动更新选项，更改自定义URL，并测试追加同步以及各类失败校验", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			trackers: ["udp://oldtracker"],
+			tracker_source_type: "best",
+			tracker_cdn: "jsdelivr",
+			tracker_custom_url: "",
+			tracker_auto_update: false,
+			tracker_last_update_time: 0,
+		});
+
+		vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([
+			"udp://newtracker1",
+			"http://newtracker2",
+		]);
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("选择列表源")).toBeInTheDocument();
+		});
+
+		// 1. 切换列表源预设 (例如：完整列表)
+		const allBtn = screen.getByText("完整列表");
+		fireEvent.click(allBtn);
+		await waitFor(() => {
+			expect(allBtn).toHaveClass("bg-primary");
+		});
+
+		// 2. 切换 CDN 节点 (例如：GitMirror)
+		const mirrorBtn = screen.getByRole("button", { name: /GitMirror/ });
+		fireEvent.click(mirrorBtn);
+		await waitFor(() => {
+			expect(mirrorBtn).toHaveClass("bg-primary");
+		});
+
+		// 3. 勾选自动更新
+		const autoUpdateCheckbox = screen.getByLabelText(
+			"启动时自动更新 (每24小时)",
+		);
+		fireEvent.click(autoUpdateCheckbox);
+		await waitFor(() => {
+			expect(autoUpdateCheckbox).toBeChecked();
+		});
+
+		// 4. 追加同步按钮点击
+		const appendBtn = screen.getByRole("button", { name: /追加同步/ });
+		fireEvent.click(appendBtn);
+
+		await waitFor(() => {
+			expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
+				"udp://oldtracker\nudp://newtracker1\nhttp://newtracker2",
+			);
+			expect(screen.getByText(/已追加/)).toBeInTheDocument();
+		});
+
+		// 5. 切换为自定义源，且自定义 URL 为空时点击同步，应该提示请输入 URL
+		const customBtn = screen.getByText("自定义");
+		fireEvent.click(customBtn);
+		await waitFor(() => {
+			expect(customBtn).toHaveClass("bg-primary");
+		});
+
+		const syncBtn = screen.getByRole("button", { name: /立即同步并替换/ });
+		fireEvent.click(syncBtn);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText("请输入自定义 Tracker 列表 URL"),
+			).toBeInTheDocument();
+		});
+
+		// 6. 输入自定义 URL
+		const customUrlInput = screen.getByLabelText("自定义 URL 地址");
+		fireEvent.change(customUrlInput, {
+			target: { value: "https://custom.com/trackers.txt" },
+		});
+		expect(customUrlInput).toHaveValue("https://custom.com/trackers.txt");
+
+		// 7. 当拉取在线列表铺出异常时，应该进行相应的提示处理
+		vi.mocked(mockSettingsRepository.fetchTrackers).mockRejectedValueOnce(
+			new Error("Fetch failed"),
+		);
+		fireEvent.click(syncBtn);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText(/同步 Tracker 失败: Fetch failed/),
+			).toBeInTheDocument();
+		});
+	});
+
+	it("当同步在线 Tracker 列表返回为空时，应该进行相应的提示处理", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			trackers: ["udp://oldtracker"],
+			tracker_source_type: "best",
+			tracker_cdn: "jsdelivr",
+			tracker_custom_url: "",
+			tracker_auto_update: false,
+			tracker_last_update_time: 0,
+		});
+
+		vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([]);
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("选择列表源")).toBeInTheDocument();
+		});
+
+		const syncBtn = screen.getByRole("button", { name: /立即同步并替换/ });
+		fireEvent.click(syncBtn);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText("未获取到有效的 Tracker 地址"),
+			).toBeInTheDocument();
+		});
+	});
 });

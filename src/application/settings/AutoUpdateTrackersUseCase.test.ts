@@ -86,4 +86,67 @@ describe("AutoUpdateTrackersUseCase 自动同步更新用例", () => {
 			lastUpdateTime: expect.any(Number),
 		});
 	});
+
+	it("如果 getSettings 返回空，应该直接返回 null", async () => {
+		const settingsRepoMock = {
+			getSettings: vi.fn().mockResolvedValue(null),
+		} as any;
+		const useCase = new AutoUpdateTrackersUseCase(settingsRepoMock);
+		const result = await useCase.execute();
+		expect(result).toBeNull();
+	});
+
+	it("如果设置中缺省了 sourceType 与 cdn，应该使用默认值且成功拉取并保存", async () => {
+		const settingsRepoMock = {
+			getSettings: vi.fn().mockResolvedValue({
+				download_dir: "C:\\Downloads",
+				tracker_auto_update: true,
+				tracker_last_update_time: 0,
+			}),
+			setTrackers: vi.fn().mockResolvedValue(undefined),
+			setTrackerOptions: vi.fn().mockResolvedValue(undefined),
+			fetchTrackers: vi.fn().mockResolvedValue(["udp://new1:80"]),
+		} as any;
+		const useCase = new AutoUpdateTrackersUseCase(settingsRepoMock);
+		const result = await useCase.execute();
+		expect(result).toBe(1);
+		expect(settingsRepoMock.fetchTrackers).toHaveBeenCalledWith(
+			"https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt",
+		);
+	});
+
+	it("如果生成的 URL 为空，应该返回 null 且不执行更新", async () => {
+		const settingsRepoMock = {
+			getSettings: vi.fn().mockResolvedValue({
+				download_dir: "C:\\Downloads",
+				tracker_auto_update: true,
+				tracker_last_update_time: 0,
+				tracker_source_type: "custom",
+				tracker_custom_url: "",
+			}),
+			setTrackers: vi.fn(),
+			fetchTrackers: vi.fn(),
+		} as any;
+		const useCase = new AutoUpdateTrackersUseCase(settingsRepoMock);
+		const result = await useCase.execute();
+		expect(result).toBeNull();
+		expect(settingsRepoMock.fetchTrackers).not.toHaveBeenCalled();
+	});
+
+	it("如果拉取到的 Tracker 列表为空，应该返回 null", async () => {
+		const settingsRepoMock = {
+			getSettings: vi.fn().mockResolvedValue({
+				download_dir: "C:\\Downloads",
+				tracker_auto_update: true,
+				tracker_last_update_time: 0,
+				tracker_source_type: "best",
+				tracker_cdn: "jsdelivr",
+			}),
+			setTrackers: vi.fn(),
+			fetchTrackers: vi.fn().mockResolvedValue([]),
+		} as any;
+		const useCase = new AutoUpdateTrackersUseCase(settingsRepoMock);
+		const result = await useCase.execute();
+		expect(result).toBeNull();
+	});
 });
