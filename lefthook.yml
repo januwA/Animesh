@@ -1,31 +1,41 @@
 # Lefthook Configuration
 # Refer to https://github.com/evilmartians/lefthook for more details
 
+glob_matcher: doublestar
+
 pre-commit:
   parallel: false # 关闭并行，保持流程清晰
   commands:
     "前端_Biome代码自动格式化":
-      run: pnpm check:apply
+      glob: "src/**/*.{ts,tsx,json,css}"
+      run: pnpm check:apply {staged_files}
       stage_fixed: true
     "后端_Rust代码格式化检查":
+      glob: "src-tauri/**/*.rs"
       run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
 
 pre-push:
   parallel: false
   commands:
     "前端_Biome代码规范检查":
-      run: pnpm check
+      glob: "src/**/*.{ts,tsx,json,css}"
+      run: pnpm check {push_files}
     "前端_TypeScript类型检查":
-      run: pnpm typecheck
+      run: pnpm typecheck # 全量检查，确保类型安全
     "前端_错误处理规范检查":
-      run: pnpm check:error-handling
+      glob: "src/**/*.{ts,tsx}"
+      run: pnpm check:error-handling {push_files}
     "前端_接口设计参数检查":
-      run: pnpm check:application-params
+      glob: "src/application/**/*.{ts,tsx}"
+      run: pnpm check:application-params {push_files}
     "前端_接口可空设计检查":
-      run: pnpm check:interface-methods
+      glob: "src/**/*.{ts,tsx}"
+      run: pnpm check:interface-methods {push_files}
     "前端_单元测试与覆盖率":
-      run: pnpm test:coverage
+      run: pnpm test:coverage # 全量测试及覆盖率阈值检查
     "后端_Rust静态代码检查(Clippy)":
+      glob: "src-tauri/**/*"
       run: cargo clippy --manifest-path src-tauri/Cargo.toml -p animesh_core -- -D warnings
     "后端_Rust单元测试与覆盖率":
+      glob: "src-tauri/**/*"
       run: pnpm test:rust:coverage
