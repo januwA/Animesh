@@ -409,25 +409,34 @@ fn settings_set_trackers(
 
 #[tauri::command]
 async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    let path = tauri::async_runtime::spawn_blocking(move || {
-        use tauri_plugin_dialog::DialogExt;
-        app.dialog()
-            .file()
-            .blocking_pick_folder()
-            .and_then(|file_path| match file_path {
-                tauri_plugin_dialog::FilePath::Path(p) => Some(p.to_string_lossy().to_string()),
-                tauri_plugin_dialog::FilePath::Url(u) => {
-                    if let Ok(p) = u.to_file_path() {
-                        Some(p.to_string_lossy().to_string())
-                    } else {
-                        Some(u.to_string())
+    #[cfg(mobile)]
+    {
+        let _ = app;
+        return Err("Directory selection is not supported on mobile devices.".to_string());
+    }
+
+    #[cfg(desktop)]
+    {
+        let path = tauri::async_runtime::spawn_blocking(move || {
+            use tauri_plugin_dialog::DialogExt;
+            app.dialog()
+                .file()
+                .blocking_pick_folder()
+                .and_then(|file_path| match file_path {
+                    tauri_plugin_dialog::FilePath::Path(p) => Some(p.to_string_lossy().to_string()),
+                    tauri_plugin_dialog::FilePath::Url(u) => {
+                        if let Ok(p) = u.to_file_path() {
+                            Some(p.to_string_lossy().to_string())
+                        } else {
+                            Some(u.to_string())
+                        }
                     }
-                }
-            })
-    })
-    .await
-    .map_err(|e| e.to_string())?;
-    Ok(path)
+                })
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(path)
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -453,7 +462,8 @@ pub fn run() {
         );
     }));
 
-    tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Info)
@@ -465,8 +475,14 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .plugin(tauri_plugin_store::Builder::default().build());
+
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+    }
+
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {

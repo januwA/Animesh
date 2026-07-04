@@ -1,4 +1,11 @@
-import { Activity, ArrowLeft, Download, Info, Loader2 } from "lucide-react";
+import {
+	Activity,
+	ArrowLeft,
+	Download,
+	Info,
+	Loader2,
+	RefreshCw,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -56,6 +63,11 @@ export default function Player() {
 	const [subtrackSrc, setSubtrackSrc] = useState<string | null>(null);
 	const [subloading, setSubloading] = useState<boolean>(false);
 	const videoRef = useRef<HTMLVideoElement | null>(null);
+	const [refreshKey, setRefreshKey] = useState<number>(0);
+
+	const handleRefresh = useCallback(() => {
+		setRefreshKey((prev) => prev + 1);
+	}, []);
 
 	// Clean up subtitle object URL on unmount
 	useEffect(() => {
@@ -134,6 +146,9 @@ export default function Player() {
 	);
 
 	useEffect(() => {
+		// Reference refreshKey to trigger re-run on refresh
+		const _trigger = refreshKey;
+
 		if (!infoHash || fileId === undefined) {
 			showToast("无效的视频播放参数");
 			setLoading(false);
@@ -236,6 +251,7 @@ export default function Player() {
 		subscribeTorrentsUseCase,
 		loadSubtitleVtt,
 		playerLogger,
+		refreshKey,
 	]);
 
 	const handleCopyStreamUrl = async () => {
@@ -275,6 +291,15 @@ export default function Player() {
 						className="h-8 gap-1 text-muted-foreground hover:text-foreground"
 					>
 						📋 复制视频流地址
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={handleRefresh}
+						className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+					>
+						<RefreshCw className="h-4 w-4" />
+						刷新
 					</Button>
 					<Button
 						variant="ghost"

@@ -54,6 +54,35 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
+### 4. Android 移动端开发与避坑指南
+
+#### 运行与打包
+- **初始化 Android 项目** (仅首次需执行)：
+  ```bash
+  pnpm tauri android init
+  ```
+- **启动真机/模拟器开发调试**：
+  ```bash
+  pnpm tauri android dev
+  pnpm tauri android dev --force-ip-prompt
+  ```
+- **构建 Android 安装包 (APK/AAB)**：
+  ```bash
+  pnpm tauri android build
+  ```
+
+#### 常见问题与避坑
+
+1. **Gradle 报错：`Unsupported class file major version 69` (Java 25 冲突)**
+   - **原因**：你的系统全局默认 JDK 版本过高（例如 JDK 25），而当前的 Gradle 8.14.3 无法识别过高版本的 Java 字节码。
+   - **解决方式**：为本地 Gradle 配置兼容的 Java 版本（如 JDK 21），且不要直接修改项目目录中的属性文件（避免影响 CI 构建）。建议在你的系统用户目录下，创建或修改**全局** Gradle 配置文件：
+     - Windows 路径：`C:\Users\<你的用户名>\.gradle\gradle.properties`
+     - macOS/Linux 路径：`~/.gradle/gradle.properties`
+     并在其中写入 Android Studio 自带的 JDK（JBR）路径（以 Windows 为例）：
+     ```properties
+     org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
+     ```
+
 ## 测试
 
 项目内包含了前端与后端单元测试：
@@ -95,4 +124,3 @@ pnpm bump-version 0.3.0
   pnpm check:apply
   ```
 - **Git Commit 规则**：在执行 `git commit` 时，**必须**使用中文编写提交信息。
-
