@@ -203,7 +203,7 @@ export default function Downloads() {
 												<div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-muted-foreground">
 													<span>Hash: {t.info_hash}</span>
 													{t.created_at && (
-														<span className="font-sans">
+														<span>
 															创建时间: {formatLocalDate(t.created_at)}
 														</span>
 													)}
