@@ -89,3 +89,82 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  publish-android:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Changelog
+        id: changelog
+        shell: bash
+        run: |
+          # 获取最近的 tag，如果不存在则使用首个 commit
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Generating changelog since $PREV_TAG"
+          
+          # 提取提交记录，避免哈希，只保留信息
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          git log $PREV_TAG..HEAD --pretty=format:"* %s" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26d
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Build and Publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'Animesh v__VERSION__'
+          releaseBody: |
+            ### Update Log / 更新日志
+            ${{ env.CHANGELOG }}
+            
+            ---
+            See the assets below to download and install.
+          releaseDraft: false
+          prerelease: false
+          mobile: android
+          args: --apk
+
