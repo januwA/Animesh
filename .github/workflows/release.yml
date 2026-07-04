@@ -149,21 +149,76 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
-      - name: Build and Publish
+      - name: Build Android App
+        id: tauri
         uses: tauri-apps/tauri-action@dev
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          BINDGEN_EXTRA_CLANG_ARGS: --sysroot=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/sysroot
         with:
-          tagName: v__VERSION__
-          releaseName: 'Animesh v__VERSION__'
-          releaseBody: |
+          mobile: android
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-artifacts-android
+          path: ${{ fromJSON(steps.tauri.outputs.artifactPaths) }}
+
+  release:
+    permissions:
+      contents: write
+    needs: [publish-tauri, publish-android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Get version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Generate Changelog
+        shell: bash
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Generating changelog since $PREV_TAG"
+          
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          git log $PREV_TAG..HEAD --pretty=format:"* %s" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tauri-artifacts-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: 'Animesh v${{ env.VERSION }}'
+          body: |
             ### Update Log / 更新日志
             ${{ env.CHANGELOG }}
             
             ---
             See the assets below to download and install.
-          releaseDraft: false
+          draft: false
           prerelease: false
-          mobile: android
+          files: |
+            artifacts/**/*
 
