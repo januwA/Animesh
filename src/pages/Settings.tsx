@@ -259,7 +259,7 @@ export default function Settings() {
 					<CardHeader className="p-5">
 						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
 							<Globe className="h-4 w-4 text-primary" />
-							网络设置 (动漫花园代理)
+							网络设置
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="px-5 pb-6 space-y-4 text-xs">
@@ -278,8 +278,8 @@ export default function Settings() {
 								className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
 							/>
 							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
-								💡 提示：部分地区可能无法直接访问动漫花园。如果 RSS
-								搜索无结果，可配置代理。支持 HTTP、HTTPS 或 SOCKS5 代理。
+								💡 提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
+								HTTP、HTTPS 或 SOCKS5 代理。
 							</p>
 						</div>
 					</CardContent>
