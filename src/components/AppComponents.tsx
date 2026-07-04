@@ -177,14 +177,14 @@ export function SearchForm({
 				onSubmit={onSubmit}
 				className="relative flex items-center bg-card/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg p-1 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"
 			>
-				<div className="flex items-center pl-3 gap-1">
-					<Search className="h-5 w-5 text-muted-foreground shrink-0" />
+				<div className="flex items-center pl-1.5 md:pl-3 gap-0.5 md:gap-1">
+					<Search className="h-5 w-5 text-muted-foreground shrink-0 hidden md:block" />
 					<Select
 						value={searchEngine}
 						onValueChange={setSearchEngine}
 						disabled={loading}
 					>
-						<SelectTrigger className="h-8 border-0 bg-transparent py-0 px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-1">
+						<SelectTrigger className="h-8 border-0 bg-transparent py-0 px-1.5 md:px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-0.5 md:gap-1 max-w-[70px] sm:max-w-[85px] md:max-w-none">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
@@ -195,11 +195,11 @@ export function SearchForm({
 						</SelectContent>
 					</Select>
 				</div>
-				<div className="h-5 w-[1px] bg-white/10 self-center" />
+				<div className="h-5 w-[1px] bg-white/10 self-center shrink-0" />
 				<Input
 					id="search-input"
 					data-testid="search-input"
-					className="flex-1 pl-3 pr-28 py-6 bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
+					className="flex-1 pl-2 md:pl-3 pr-12 md:pr-28 py-5 md:py-6 bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base min-w-0"
 					value={keyword}
 					onChange={(e) => setKeyword(e.target.value)}
 					placeholder="输入动漫名称，例如：凡人修仙传..."
@@ -207,16 +207,19 @@ export function SearchForm({
 				/>
 				<Button
 					type="submit"
-					className="absolute right-2 px-6 h-10 font-medium"
+					className="absolute right-1.5 md:right-2 w-9 md:w-auto h-9 md:h-10 px-0 md:px-6 font-medium flex items-center justify-center shrink-0"
 					disabled={loading || !keyword.trim()}
 				>
 					{loading ? (
 						<>
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							搜索中...
+							<Loader2 className="h-4 w-4 animate-spin shrink-0" />
+							<span className="hidden md:inline ml-2">搜索中...</span>
 						</>
 					) : (
-						"搜索"
+						<>
+							<Search className="h-4 w-4 md:hidden" />
+							<span className="hidden md:inline">搜索</span>
+						</>
 					)}
 				</Button>
 			</form>

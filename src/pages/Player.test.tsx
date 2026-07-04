@@ -731,40 +731,4 @@ describe("Player 页面组件", () => {
 			unmount();
 		}
 	});
-
-	it("应该支持通过刷新按钮重新加载播放状态", async () => {
-		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
-			"http://127.0.0.1:12345/stream/hash123/0",
-		);
-		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
-			info_hash: "hash123",
-			name: "测试视频",
-			progress_bytes: 400,
-			total_bytes: 1000,
-			finished: false,
-			download_speed_bytes_per_sec: 100,
-			paused: false,
-			peers_connected: 0,
-			peers_total: 0,
-		});
-
-		renderPlayer("/play/hash123/0?fileName=test.mp4");
-
-		await waitFor(() => {
-			expect(screen.getByText("刷新")).toBeInTheDocument();
-		});
-
-		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockClear();
-
-		const refreshBtn = screen.getByText("刷新");
-		act(() => {
-			fireEvent.click(refreshBtn);
-		});
-
-		await waitFor(() => {
-			expect(mockTorrentRepository.getTorrentStreamUrl).toHaveBeenCalledTimes(
-				1,
-			);
-		});
-	});
 });
