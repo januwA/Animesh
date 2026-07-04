@@ -36,22 +36,6 @@ export default function Settings() {
 	const [lastUpdateTime, setLastUpdateTime] = useState(0);
 	const [syncing, setSyncing] = useState(false);
 
-	const handleSourceTypeChange = (type: TrackerSourceType) => {
-		setSourceType(type);
-	};
-
-	const handleCdnChange = (c: TrackerCdnType) => {
-		setCdn(c);
-	};
-
-	const handleCustomUrlChange = (url: string) => {
-		setCustomUrl(url);
-	};
-
-	const handleAutoUpdateChange = (checked: boolean) => {
-		setAutoUpdate(checked);
-	};
-
 	const currentUrl = getTrackerUrl(sourceType, cdn, customUrl);
 
 	const handleSync = async (mode: "replace" | "append") => {
@@ -344,7 +328,7 @@ export default function Settings() {
 													<button
 														key={type}
 														type="button"
-														onClick={() => handleSourceTypeChange(type)}
+														onClick={() => setSourceType(type)}
 														className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 ${
 															isActive
 																? "bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.2)]"
@@ -377,7 +361,7 @@ export default function Settings() {
 															<button
 																key={cdnType}
 																type="button"
-																onClick={() => handleCdnChange(cdnType)}
+																onClick={() => setCdn(cdnType)}
 																className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 ${
 																	isActive
 																		? "bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.2)]"
@@ -399,7 +383,7 @@ export default function Settings() {
 											id="auto-update-checkbox"
 											type="checkbox"
 											checked={autoUpdate}
-											onChange={(e) => handleAutoUpdateChange(e.target.checked)}
+											onChange={(e) => setAutoUpdate(e.target.checked)}
 											className="h-3.5 w-3.5 rounded border-white/10 bg-black/20 text-primary focus:ring-primary focus:ring-offset-0 accent-primary"
 										/>
 										<label
@@ -427,7 +411,7 @@ export default function Settings() {
 											value={sourceType === "custom" ? customUrl : currentUrl}
 											onChange={(e) => {
 												if (sourceType === "custom") {
-													handleCustomUrlChange(e.target.value);
+													setCustomUrl(e.target.value);
 												}
 											}}
 											disabled={sourceType !== "custom"}
