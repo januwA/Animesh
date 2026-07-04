@@ -150,7 +150,7 @@ jobs:
         run: pnpm install
 
       - name: Build and Publish
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@dev
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -166,5 +166,4 @@ jobs:
           releaseDraft: false
           prerelease: false
           mobile: android
-          args: --apk
 
