@@ -17,3 +17,4 @@ tower = { version = "0.5", features = ["util"] }
 matroska-demuxer = "0.7.0"
 log = "0.4"
 async-trait = "0.1"
+aws-lc-sys = { version = "0.42.0", features = ["prebuilt-nasm"] }

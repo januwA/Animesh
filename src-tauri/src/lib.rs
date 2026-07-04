@@ -422,13 +422,13 @@ async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, Strin
             app.dialog()
                 .file()
                 .blocking_pick_folder()
-                .and_then(|file_path| match file_path {
-                    tauri_plugin_dialog::FilePath::Path(p) => Some(p.to_string_lossy().to_string()),
+                .map(|file_path| match file_path {
+                    tauri_plugin_dialog::FilePath::Path(p) => p.to_string_lossy().to_string(),
                     tauri_plugin_dialog::FilePath::Url(u) => {
                         if let Ok(p) = u.to_file_path() {
-                            Some(p.to_string_lossy().to_string())
+                            p.to_string_lossy().to_string()
                         } else {
-                            Some(u.to_string())
+                            u.to_string()
                         }
                     }
                 })

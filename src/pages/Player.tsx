@@ -147,7 +147,7 @@ export default function Player() {
 
 	useEffect(() => {
 		// Reference refreshKey to trigger re-run on refresh
-		const _trigger = refreshKey;
+		void refreshKey;
 
 		if (!infoHash || fileId === undefined) {
 			showToast("无效的视频播放参数");

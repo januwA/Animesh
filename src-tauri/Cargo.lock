@@ -99,6 +99,7 @@ name = "animesh_core"
 version = "0.2.0"
 dependencies = [
  "async-trait",
+ "aws-lc-sys",
  "axum",
  "librqbit",
  "log",
