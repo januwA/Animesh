@@ -1,6 +1,9 @@
+import { Clock, X } from "lucide-react";
 import type { FormEvent } from "react";
-import { useCallback, useEffect, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useRequestContext } from "@/hooks/useRequestContext";
 import { formatError } from "@/utils";
 import {
@@ -35,12 +38,34 @@ export default function Home() {
 	const [isPending, startTransition] = useTransition();
 	const { createContext, cancel: cancelSearch } = useRequestContext();
 
+	const [history, setHistory] = useState<string[]>(() => {
+		try {
+			const raw = localStorage.getItem("animesh_search_history");
+			return raw ? JSON.parse(raw) : [];
+		} catch {
+			return [];
+		}
+	});
+
 	const keywordParam = searchParams.get("keyword");
 
 	const performSearch = useCallback(
 		(queryText: string) => {
 			setError(null);
 			setHasSearched(true);
+
+			const trimmed = queryText.trim();
+			if (trimmed) {
+				setHistory((prev) => {
+					const filtered = prev.filter((item) => item !== trimmed);
+					const nextHistory = [trimmed, ...filtered];
+					localStorage.setItem(
+						"animesh_search_history",
+						JSON.stringify(nextHistory),
+					);
+					return nextHistory;
+				});
+			}
 
 			const ctx = createContext();
 
@@ -89,6 +114,31 @@ export default function Home() {
 		performSearch(query);
 	}
 
+	const handleHistoryClick = (item: string) => {
+		setKeyword(item);
+		performSearch(item);
+	};
+
+	const handleDeleteHistory = (item: string) => {
+		setHistory((prev) => {
+			const nextHistory = prev.filter((x) => x !== item);
+			if (nextHistory.length === 0) {
+				localStorage.removeItem("animesh_search_history");
+			} else {
+				localStorage.setItem(
+					"animesh_search_history",
+					JSON.stringify(nextHistory),
+				);
+			}
+			return nextHistory;
+		});
+	};
+
+	const handleClearHistory = () => {
+		setHistory([]);
+		localStorage.removeItem("animesh_search_history");
+	};
+
 	const handleCopyMagnet = async (magnet: string) => {
 		try {
 			await navigator.clipboard.writeText(magnet);
@@ -115,6 +165,45 @@ export default function Home() {
 				searchEngine={searchEngine}
 				setSearchEngine={setSearchEngine}
 			/>
+
+			{/* 搜索历史记录 */}
+			{history.length > 0 && (
+				<div className="max-w-2xl mx-auto w-full mb-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
+					<span className="flex items-center gap-1 font-medium">
+						<Clock className="h-3.5 w-3.5" />
+						最近搜索:
+					</span>
+					{history.map((item) => (
+						<Badge
+							key={item}
+							variant="secondary"
+							className="cursor-pointer hover:bg-secondary/80 flex items-center gap-1 px-2.5 py-0.5"
+							onClick={() => handleHistoryClick(item)}
+						>
+							{item}
+							<button
+								type="button"
+								data-testid={`delete-history-${item}`}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleDeleteHistory(item);
+								}}
+								className="text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-white/10 transition-colors"
+							>
+								<X className="h-3 w-3" />
+							</button>
+						</Badge>
+					))}
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-6 px-2 text-[10px] ml-auto text-muted-foreground hover:text-foreground cursor-pointer"
+						onClick={handleClearHistory}
+					>
+						清空
+					</Button>
+				</div>
+			)}
 
 			{/* 加载提示 */}
 			{isPending && <SearchLoading onCancel={cancelSearch} />}

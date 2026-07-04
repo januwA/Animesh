@@ -74,6 +74,7 @@ describe("Home 页面组件", () => {
 	let mockContainer: DIContainer;
 
 	beforeEach(() => {
+		localStorage.clear();
 		mockTorrentRepository = {
 			search: vi.fn(),
 			addTorrentMagnet: vi.fn(),
@@ -587,5 +588,132 @@ describe("Home 页面组件", () => {
 		await waitFor(() => {
 			expect(isCancelled).toBe(true);
 		});
+	});
+
+	it("应该从 localStorage 初始化并渲染历史搜索记录", () => {
+		localStorage.setItem(
+			"animesh_search_history",
+			JSON.stringify(["凡人", "柯南"]),
+		);
+		renderHome();
+		expect(screen.getByText("最近搜索:")).toBeInTheDocument();
+		expect(screen.getByText("凡人")).toBeInTheDocument();
+		expect(screen.getByText("柯南")).toBeInTheDocument();
+	});
+
+	it("应该在执行搜索时将关键词加入历史记录（去重、置顶，不限数量）", async () => {
+		const mockResults = [];
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+		renderHome();
+		const input = screen.getByPlaceholderText(
+			"输入动漫名称，例如：凡人修仙传...",
+		);
+
+		// 1. 搜索 "凡人"
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.submit(input.closest("form")!);
+		await waitFor(() => {
+			expect(screen.getByText("最近搜索:")).toBeInTheDocument();
+		});
+		expect(screen.getByText("凡人")).toBeInTheDocument();
+		expect(
+			JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
+		).toEqual(["凡人"]);
+
+		// 2. 搜索 "柯南"
+		fireEvent.change(input, { target: { value: "柯南" } });
+		fireEvent.submit(input.closest("form")!);
+		await waitFor(() => {
+			expect(screen.getByText("柯南")).toBeInTheDocument();
+		});
+		expect(
+			JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
+		).toEqual(["柯南", "凡人"]);
+
+		// 3. 再次搜索 "凡人" (置顶)
+		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.submit(input.closest("form")!);
+		await waitFor(() => {
+			expect(screen.getByText("凡人")).toBeInTheDocument();
+		});
+		expect(
+			JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
+		).toEqual(["凡人", "柯南"]);
+
+		// 4. 连续搜索超过 10 个不同的词
+		for (let i = 1; i <= 10; i++) {
+			fireEvent.change(input, { target: { value: `动漫_${i}` } });
+			fireEvent.submit(input.closest("form")!);
+			await waitFor(() => {
+				expect(screen.getByText(`动漫_${i}`)).toBeInTheDocument();
+			});
+		}
+		// 历史记录不限数量，"柯南"和"凡人"不应被淘汰
+		const historyList = JSON.parse(
+			localStorage.getItem("animesh_search_history") || "[]",
+		);
+		expect(historyList.length).toBe(12);
+		expect(historyList[0]).toBe("动漫_10");
+		expect(historyList.includes("柯南")).toBe(true);
+		expect(historyList.includes("凡人")).toBe(true);
+	});
+
+	it("点击历史搜索记录项时，应该将关键词填入输入框并触发搜索", async () => {
+		localStorage.setItem("animesh_search_history", JSON.stringify(["柯南"]));
+		const mockResults = [];
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+		renderHome();
+
+		const historyItem = screen.getByText("柯南");
+		fireEvent.click(historyItem);
+
+		expect(screen.getByTestId("search-input")).toHaveValue("柯南");
+		await waitFor(() => {
+			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+				expect.any(Object),
+				"柯南",
+				"dmhy",
+			);
+		});
+	});
+
+	it("点击删除单个历史记录按钮时，应该将其从列表中移除并更新 localStorage", async () => {
+		localStorage.setItem(
+			"animesh_search_history",
+			JSON.stringify(["凡人", "柯南"]),
+		);
+		renderHome();
+
+		expect(screen.getByText("凡人")).toBeInTheDocument();
+		expect(screen.getByText("柯南")).toBeInTheDocument();
+
+		const deleteBtn = screen.getByTestId("delete-history-凡人");
+		fireEvent.click(deleteBtn);
+
+		expect(screen.queryByText("凡人")).not.toBeInTheDocument();
+		expect(screen.getByText("柯南")).toBeInTheDocument();
+		expect(
+			JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
+		).toEqual(["柯南"]);
+	});
+
+	it("点击清空按钮时，应该清空所有历史记录并更新 localStorage", async () => {
+		localStorage.setItem(
+			"animesh_search_history",
+			JSON.stringify(["凡人", "柯南"]),
+		);
+		renderHome();
+
+		expect(screen.getByText("最近搜索:")).toBeInTheDocument();
+
+		const clearBtn = screen.getByText("清空");
+		fireEvent.click(clearBtn);
+
+		expect(screen.queryByText("最近搜索:")).not.toBeInTheDocument();
+		expect(screen.queryByText("凡人")).not.toBeInTheDocument();
+		expect(screen.queryByText("柯南")).not.toBeInTheDocument();
+		expect(localStorage.getItem("animesh_search_history")).toBeNull();
 	});
 });
