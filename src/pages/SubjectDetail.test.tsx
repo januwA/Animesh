@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type {
@@ -492,17 +498,19 @@ describe("SubjectDetail 页面组件", () => {
 		expect(screen.getByText("正在加载动漫详情...")).toBeInTheDocument();
 
 		// Resolve to prevent open promises warnings
-		resolveSubject({
-			id: 123,
-			name: "Anime",
-			name_cn: "",
-			summary: null,
-			images: null,
-			rating: null,
-			collection: null,
-			date: null,
-			eps: null,
-			platform: null,
+		await act(async () => {
+			resolveSubject({
+				id: 123,
+				name: "Anime",
+				name_cn: "",
+				summary: null,
+				images: null,
+				rating: null,
+				collection: null,
+				date: null,
+				eps: null,
+				platform: null,
+			});
 		});
 	});
 
@@ -618,17 +626,19 @@ describe("SubjectDetail 页面组件", () => {
 		expect(screen.getByText("正在加载动漫详情...")).toBeInTheDocument();
 
 		// 解决 Promise 以避免警告
-		resolveSubject({
-			id: 123,
-			name: "Anime",
-			name_cn: "",
-			summary: null,
-			images: null,
-			rating: null,
-			collection: null,
-			date: null,
-			eps: null,
-			platform: null,
+		await act(async () => {
+			resolveSubject({
+				id: 123,
+				name: "Anime",
+				name_cn: "",
+				summary: null,
+				images: null,
+				rating: null,
+				collection: null,
+				date: null,
+				eps: null,
+				platform: null,
+			});
 		});
 	});
 

@@ -314,10 +314,13 @@ export default function Player() {
 
 			{/* Player Video aspect-ratio */}
 			<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black shadow-inner flex items-center justify-center">
-				{loading ? (
+				{loading ||
+				!streamUrl ||
+				!torrentStatus ||
+				(torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 < 1 ? (
 					<Loader2 className="h-10 w-10 text-primary animate-spin" />
-				) : streamUrl ? (
-					/* biome-ignore lint/a11y/useMediaCaption: no captions for local torrent stream */
+				) : (
+					// biome-ignore lint/a11y/useMediaCaption: no captions for local torrent stream
 					<video
 						ref={videoRef}
 						src={streamUrl}
@@ -332,19 +335,13 @@ export default function Player() {
 								kind="subtitles"
 								src={subtrackSrc}
 								srcLang={
-									subtracks.find((t) => t.id === selectedTrackId)?.language ||
-									"zh"
+									subtracks.find((t) => t.id === selectedTrackId)?.language
 								}
-								label={
-									subtracks.find((t) => t.id === selectedTrackId)?.title ||
-									"默认字幕"
-								}
+								label={subtracks.find((t) => t.id === selectedTrackId)?.title}
 								default
 							/>
 						)}
 					</video>
-				) : (
-					<div className="text-muted-foreground text-sm">无法加载视频流</div>
 				)}
 			</div>
 
