@@ -20,6 +20,11 @@ export default function Settings() {
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 
+	const isMobile =
+		["android", "ios"].includes(import.meta.env.TAURI_ENV_PLATFORM || "") ||
+		(typeof navigator !== "undefined" &&
+			/android|iphone|ipad|ipod/i.test(navigator.userAgent));
+
 	// Load settings
 	useEffect(() => {
 		const loadSettings = async () => {
@@ -134,23 +139,39 @@ export default function Settings() {
 								<Input
 									id="download-dir-input"
 									value={downloadDir}
+									disabled={isMobile}
 									onChange={(e) => setDownloadDir(e.target.value)}
-									placeholder="选择或输入下载路径，例如 D:\AnimeshDownloads"
-									className="flex-1 bg-black/20 border-white/10 text-foreground py-5 text-xs"
+									placeholder={
+										isMobile
+											? "应用沙盒内部路径"
+											: "选择或输入下载路径，例如 D:\\AnimeshDownloads"
+									}
+									className="flex-1 bg-black/20 border-white/10 text-foreground py-5 text-xs disabled:opacity-80"
 								/>
-								<Button
-									type="button"
-									variant="secondary"
-									onClick={handleSelectDir}
-									className="gap-1.5 h-10.5 font-medium px-4 text-xs"
-								>
-									<Folder className="h-4 w-4" />
-									选择目录
-								</Button>
+								{!isMobile && (
+									<Button
+										type="button"
+										variant="secondary"
+										onClick={handleSelectDir}
+										className="gap-1.5 h-10.5 font-medium px-4 text-xs"
+									>
+										<Folder className="h-4 w-4" />
+										选择目录
+									</Button>
+								)}
 							</div>
 							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
-								💡
-								提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
+								{isMobile ? (
+									<span>
+										ℹ️
+										移动端（Android/iOS）已自动选用应用沙盒内部路径，无需且不支持手动更改。
+									</span>
+								) : (
+									<span>
+										💡
+										提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
+									</span>
+								)}
 							</p>
 						</div>
 					</CardContent>
