@@ -631,4 +631,100 @@ describe("SubjectDetail 页面组件", () => {
 			platform: null,
 		});
 	});
+
+	it("应该对较长剧情简介展示展开/收起按钮并在点击时正确切换状态", async () => {
+		// Mock scrollHeight and clientHeight to simulate overflow
+		const spyScrollHeight = vi
+			.spyOn(HTMLElement.prototype, "scrollHeight", "get")
+			.mockImplementation(function (this: HTMLElement) {
+				if (
+					this.tagName === "P" &&
+					this.textContent?.includes("这是一个很长很长的剧情简介")
+				) {
+					return 300;
+				}
+				return 0;
+			});
+
+		const spyClientHeight = vi
+			.spyOn(HTMLElement.prototype, "clientHeight", "get")
+			.mockImplementation(function (this: HTMLElement) {
+				if (
+					this.tagName === "P" &&
+					this.textContent?.includes("这是一个很长很长的剧情简介")
+				) {
+					return 100;
+				}
+				return 0;
+			});
+
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime Title",
+			name_cn: "测试动漫标题",
+			summary:
+				"这是一个很长很长的剧情简介，超出显示行数限制，需要展示折叠/展开按钮。",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 1000 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		// Wait for rendering
+		await waitFor(() => {
+			expect(
+				screen.getByText(/这是一个很长很长的剧情简介/),
+			).toBeInTheDocument();
+		});
+
+		// "展开" button should be present
+		const expandBtn = await screen.findByRole("button", { name: "展开" });
+		expect(expandBtn).toBeInTheDocument();
+
+		// Click "展开"
+		fireEvent.click(expandBtn);
+
+		// "收起" button should now be present
+		const collapseBtn = await screen.findByRole("button", { name: "收起" });
+		expect(collapseBtn).toBeInTheDocument();
+
+		// Click "收起"
+		fireEvent.click(collapseBtn);
+
+		// Should show "展开" again
+		expect(
+			await screen.findByRole("button", { name: "展开" }),
+		).toBeInTheDocument();
+
+		spyScrollHeight.mockRestore();
+		spyClientHeight.mockRestore();
+	});
 });

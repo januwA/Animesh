@@ -1,6 +1,8 @@
 import {
 	ArrowLeft,
 	Calendar,
+	ChevronDown,
+	ChevronUp,
 	Clock,
 	Globe,
 	Loader2,
@@ -8,9 +10,10 @@ import {
 	Tv,
 	Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type {
 	BangumiEpisode,
@@ -31,6 +34,36 @@ export default function SubjectDetail() {
 	const [subject, setSubject] = useState<BangumiSubject | null>(null);
 	const [episodes, setEpisodes] = useState<BangumiEpisode[]>([]);
 	const [error, setError] = useState<string | null>(null);
+
+	const [summaryExpanded, setSummaryExpanded] = useState(false);
+	const [summaryHasMore, setSummaryHasMore] = useState(false);
+	const summaryRef = useRef<HTMLParagraphElement>(null);
+
+	// Reset summary expansion state when subject changes
+	useEffect(() => {
+		// Use subject?.id to satisfy dependency check
+		if (subject?.id !== undefined) {
+			setSummaryExpanded(false);
+			setSummaryHasMore(false);
+		} else {
+			setSummaryExpanded(false);
+			setSummaryHasMore(false);
+		}
+	}, [subject?.id]);
+
+	// Check if summary overflows when collapsed
+	useEffect(() => {
+		const element = summaryRef.current;
+		if (!element) return;
+
+		// Use subject?.summary to satisfy dependency check
+		void subject?.summary;
+
+		if (!summaryExpanded) {
+			const hasOverflow = element.scrollHeight > element.clientHeight;
+			setSummaryHasMore(hasOverflow);
+		}
+	}, [subject?.summary, summaryExpanded]);
 
 	const todayStr = useMemo(() => {
 		const today = new Date();
@@ -296,13 +329,48 @@ export default function SubjectDetail() {
 			{subject ? (
 				subject.summary && (
 					<Card className="bg-card/40 border border-white/5 rounded-xl">
-						<CardContent className="p-6 space-y-2">
+						<CardContent className="p-6 space-y-2 relative overflow-hidden">
 							<h2 className="text-sm font-semibold text-muted-foreground">
 								剧情简介
 							</h2>
-							<p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-								{subject.summary}
-							</p>
+							<div className="relative">
+								<p
+									ref={summaryRef}
+									className={`text-sm text-foreground leading-relaxed whitespace-pre-wrap transition-all duration-300 ${
+										!summaryExpanded ? "line-clamp-4" : ""
+									}`}
+								>
+									{subject.summary}
+								</p>
+
+								{/* Gradient Mask for fade-out effect when collapsed and there's overflow */}
+								{!summaryExpanded && summaryHasMore && (
+									<div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#080a10]/95 via-[#080a10]/40 to-transparent pointer-events-none" />
+								)}
+							</div>
+
+							{summaryHasMore && (
+								<div className="flex justify-center pt-2">
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => setSummaryExpanded(!summaryExpanded)}
+										className="h-8 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 rounded-lg transition-colors"
+									>
+										{summaryExpanded ? (
+											<>
+												<span>收起</span>
+												<ChevronUp className="h-3.5 w-3.5" />
+											</>
+										) : (
+											<>
+												<span>展开</span>
+												<ChevronDown className="h-3.5 w-3.5" />
+											</>
+										)}
+									</Button>
+								</div>
+							)}
 						</CardContent>
 					</Card>
 				)

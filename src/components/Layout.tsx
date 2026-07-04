@@ -40,7 +40,7 @@ export default function Layout() {
 	}, [subscribeTorrentsUseCase, notifyDownloadCompletionUseCase]);
 
 	return (
-		<main className="container max-w-4xl mx-auto px-4 py-10 flex flex-col min-h-screen">
+		<main className="container max-w-4xl mx-auto px-4 pt-6 pb-24 md:py-10 flex flex-col min-h-screen">
 			{/* 页面头部 */}
 			<AppHeader />
 
