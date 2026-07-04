@@ -5,5 +5,13 @@ export interface SettingsRepository {
 	setDownloadDir(dir: string): Promise<void>;
 	setProxy(proxy: string | null): Promise<void>;
 	setTrackers(trackers: string[]): Promise<void>;
+	setTrackerOptions(options: {
+		sourceType: string | null;
+		cdn: string | null;
+		customUrl: string | null;
+		autoUpdate: boolean | null;
+		lastUpdateTime: number | null;
+	}): Promise<void>;
+	fetchTrackers(url: string): Promise<string[]>;
 	selectDirectory(): Promise<string | null>;
 }

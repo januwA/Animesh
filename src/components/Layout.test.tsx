@@ -18,32 +18,6 @@ describe("Layout 布局组件", () => {
 
 	const renderLayout = () => {
 		const mockContainer = createDIContainerForTest({
-			torrentRepository: {
-				search: vi.fn(),
-				addTorrentMagnet: vi.fn(),
-				getTorrentFiles: vi.fn(),
-				listTorrents: vi.fn(),
-				pauseTorrent: vi.fn(),
-				resumeTorrent: vi.fn(),
-				deleteTorrent: vi.fn(),
-				getTorrentStreamUrl: vi.fn(),
-				getTorrentStatus: vi.fn(),
-				getSubtitleTracks: vi.fn(),
-				getSubtitleVtt: vi.fn(),
-				subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
-			},
-			settingsRepository: {
-				getSettings: vi
-					.fn()
-					.mockResolvedValue({ download_dir: "", proxy: null }),
-				setDownloadDir: vi.fn(),
-				setProxy: vi.fn(),
-				setTrackers: vi.fn(),
-				selectDirectory: vi.fn(),
-			},
-			bangumiRepository: {
-				getCalendar: vi.fn(),
-			},
 			notificationRepository: {
 				requestPermission: mockRequestPermission as () => Promise<boolean>,
 				sendNotification: vi.fn(),
@@ -149,18 +123,6 @@ describe("Layout 布局组件", () => {
 					return Promise.resolve(() => clearInterval(interval));
 				}),
 			},
-			settingsRepository: {
-				getSettings: vi
-					.fn()
-					.mockResolvedValue({ download_dir: "", proxy: null }),
-				setDownloadDir: vi.fn(),
-				setProxy: vi.fn(),
-				setTrackers: vi.fn(),
-				selectDirectory: vi.fn(),
-			},
-			bangumiRepository: {
-				getCalendar: vi.fn(),
-			},
 			notificationRepository: {
 				requestPermission: mockRequestPermission as () => Promise<boolean>,
 				sendNotification: vi.fn(),
@@ -217,18 +179,6 @@ describe("Layout 布局组件", () => {
 					}, 3000);
 					return Promise.resolve(() => clearInterval(interval));
 				}),
-			},
-			settingsRepository: {
-				getSettings: vi
-					.fn()
-					.mockResolvedValue({ download_dir: "", proxy: null }),
-				setDownloadDir: vi.fn(),
-				setProxy: vi.fn(),
-				setTrackers: vi.fn(),
-				selectDirectory: vi.fn(),
-			},
-			bangumiRepository: {
-				getCalendar: vi.fn(),
 			},
 			notificationRepository: {
 				requestPermission: mockRequestPermission as () => Promise<boolean>,

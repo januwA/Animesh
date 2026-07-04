@@ -3,9 +3,11 @@ import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCale
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
+import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
+import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleTracksUseCase } from "../application/torrent/GetSubtitleTracksUseCase";
@@ -50,6 +52,8 @@ export interface DIContainer {
 	getSettingsUseCase: GetSettingsUseCase;
 	saveSettingsUseCase: SaveSettingsUseCase;
 	selectDirectoryUseCase: SelectDirectoryUseCase;
+	syncTrackersUseCase: SyncTrackersUseCase;
+	autoUpdateTrackersUseCase: AutoUpdateTrackersUseCase;
 
 	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
 	getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
@@ -93,6 +97,10 @@ export function createDefaultDIContainer(): DIContainer {
 	const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
 	const saveSettingsUseCase = new SaveSettingsUseCase(settingsRepository);
 	const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
+	const syncTrackersUseCase = new SyncTrackersUseCase(settingsRepository);
+	const autoUpdateTrackersUseCase = new AutoUpdateTrackersUseCase(
+		settingsRepository,
+	);
 
 	const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
 		bangumiRepository,
@@ -128,6 +136,8 @@ export function createDefaultDIContainer(): DIContainer {
 		getSettingsUseCase,
 		saveSettingsUseCase,
 		selectDirectoryUseCase,
+		syncTrackersUseCase,
+		autoUpdateTrackersUseCase,
 
 		getBangumiCalendarUseCase,
 		getBangumiSubjectUseCase,

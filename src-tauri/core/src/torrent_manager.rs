@@ -49,6 +49,16 @@ pub struct AppSettings {
     pub proxy: Option<String>,
     #[serde(default)]
     pub trackers: Option<Vec<String>>,
+    #[serde(default)]
+    pub tracker_source_type: Option<String>,
+    #[serde(default)]
+    pub tracker_cdn: Option<String>,
+    #[serde(default)]
+    pub tracker_custom_url: Option<String>,
+    #[serde(default)]
+    pub tracker_auto_update: Option<bool>,
+    #[serde(default)]
+    pub tracker_last_update_time: Option<i64>,
 }
 
 impl TorrentManager {
@@ -163,12 +173,22 @@ impl TorrentManager {
                 download_dir: dir.clone(),
                 proxy: self.get_proxy(),
                 trackers: Some(self.get_trackers()),
+                tracker_source_type: None,
+                tracker_cdn: None,
+                tracker_custom_url: None,
+                tracker_auto_update: None,
+                tracker_last_update_time: None,
             })
         } else {
             AppSettings {
                 download_dir: dir.clone(),
                 proxy: self.get_proxy(),
                 trackers: Some(self.get_trackers()),
+                tracker_source_type: None,
+                tracker_cdn: None,
+                tracker_custom_url: None,
+                tracker_auto_update: None,
+                tracker_last_update_time: None,
             }
         };
         settings.download_dir = dir;
@@ -198,12 +218,22 @@ impl TorrentManager {
                 download_dir: self.get_download_dir(),
                 proxy: proxy.clone(),
                 trackers: Some(self.get_trackers()),
+                tracker_source_type: None,
+                tracker_cdn: None,
+                tracker_custom_url: None,
+                tracker_auto_update: None,
+                tracker_last_update_time: None,
             })
         } else {
             AppSettings {
                 download_dir: self.get_download_dir(),
                 proxy: proxy.clone(),
                 trackers: Some(self.get_trackers()),
+                tracker_source_type: None,
+                tracker_cdn: None,
+                tracker_custom_url: None,
+                tracker_auto_update: None,
+                tracker_last_update_time: None,
             }
         };
         settings.proxy = proxy.clone();
@@ -233,12 +263,22 @@ impl TorrentManager {
                 download_dir: self.get_download_dir(),
                 proxy: self.get_proxy(),
                 trackers: Some(trackers.clone()),
+                tracker_source_type: None,
+                tracker_cdn: None,
+                tracker_custom_url: None,
+                tracker_auto_update: None,
+                tracker_last_update_time: None,
             })
         } else {
             AppSettings {
                 download_dir: self.get_download_dir(),
                 proxy: self.get_proxy(),
                 trackers: Some(trackers.clone()),
+                tracker_source_type: None,
+                tracker_cdn: None,
+                tracker_custom_url: None,
+                tracker_auto_update: None,
+                tracker_last_update_time: None,
             }
         };
         settings.trackers = Some(trackers.clone());
@@ -247,6 +287,62 @@ impl TorrentManager {
         serde_json::to_writer_pretty(file, &settings)?;
 
         *self.trackers.write().unwrap() = trackers;
+        Ok(())
+    }
+
+    pub fn get_settings(&self) -> Result<AppSettings, Box<dyn std::error::Error>> {
+        if self.settings_path.exists() {
+            let file = std::fs::File::open(&self.settings_path)?;
+            let mut settings: AppSettings = serde_json::from_reader(file)?;
+            if settings.trackers.is_none() {
+                settings.trackers = Some(self.get_trackers());
+            }
+            Ok(settings)
+        } else {
+            Ok(AppSettings {
+                download_dir: self.get_download_dir(),
+                proxy: self.get_proxy(),
+                trackers: Some(self.get_trackers()),
+                tracker_source_type: None,
+                tracker_cdn: None,
+                tracker_custom_url: None,
+                tracker_auto_update: None,
+                tracker_last_update_time: None,
+            })
+        }
+    }
+
+    pub fn set_tracker_options(
+        &self,
+        source_type: Option<String>,
+        cdn: Option<String>,
+        custom_url: Option<String>,
+        auto_update: Option<bool>,
+        last_update_time: Option<i64>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(parent) = self.settings_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let mut settings = self.get_settings().unwrap_or_else(|_| AppSettings {
+            download_dir: self.get_download_dir(),
+            proxy: self.get_proxy(),
+            trackers: Some(self.get_trackers()),
+            tracker_source_type: None,
+            tracker_cdn: None,
+            tracker_custom_url: None,
+            tracker_auto_update: None,
+            tracker_last_update_time: None,
+        });
+
+        settings.tracker_source_type = source_type;
+        settings.tracker_cdn = cdn;
+        settings.tracker_custom_url = custom_url;
+        settings.tracker_auto_update = auto_update;
+        settings.tracker_last_update_time = last_update_time;
+
+        let file = std::fs::File::create(&self.settings_path)?;
+        serde_json::to_writer_pretty(file, &settings)?;
         Ok(())
     }
 

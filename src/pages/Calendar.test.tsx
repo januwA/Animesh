@@ -40,27 +40,6 @@ describe("Calendar 页面组件", () => {
 		mockCalendarPromise: Promise<BangumiCalendarDay[]>,
 	) => {
 		mockContainer = createDIContainerForTest({
-			torrentRepository: {
-				search: vi.fn(),
-				addTorrentMagnet: vi.fn(),
-				getTorrentFiles: vi.fn(),
-				listTorrents: vi.fn(),
-				pauseTorrent: vi.fn(),
-				resumeTorrent: vi.fn(),
-				deleteTorrent: vi.fn(),
-				getTorrentStreamUrl: vi.fn(),
-				getTorrentStatus: vi.fn(),
-				getSubtitleTracks: vi.fn(),
-				getSubtitleVtt: vi.fn(),
-				subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
-			},
-			settingsRepository: {
-				getSettings: vi.fn(),
-				setDownloadDir: vi.fn(),
-				setProxy: vi.fn(),
-				setTrackers: vi.fn(),
-				selectDirectory: vi.fn(),
-			},
 			bangumiRepository: {
 				getCalendar: vi.fn().mockReturnValue(mockCalendarPromise),
 			},

@@ -4,21 +4,98 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { formatError } from "@/utils";
+import { formatError, formatLocalDate } from "@/utils";
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
 import { SettingsFormSchema } from "../domain/settings/SettingsSchemas";
+import {
+	getTrackerUrl,
+	type TrackerCdnType,
+	type TrackerSourceType,
+} from "../domain/settings/TrackerSettings";
 
 export default function Settings() {
 	const navigate = useNavigate();
-	const { getSettingsUseCase, saveSettingsUseCase, selectDirectoryUseCase } =
-		useDI();
+	const {
+		getSettingsUseCase,
+		saveSettingsUseCase,
+		selectDirectoryUseCase,
+		syncTrackersUseCase,
+	} = useDI();
 	const { showToast } = useAppContext();
 	const [downloadDir, setDownloadDir] = useState("");
 	const [proxy, setProxy] = useState("");
 	const [trackersText, setTrackersText] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
+
+	const [sourceType, setSourceType] = useState<TrackerSourceType>("best");
+	const [cdn, setCdn] = useState<TrackerCdnType>("jsdelivr");
+	const [customUrl, setCustomUrl] = useState("");
+	const [autoUpdate, setAutoUpdate] = useState(false);
+	const [lastUpdateTime, setLastUpdateTime] = useState(0);
+	const [syncing, setSyncing] = useState(false);
+
+	const handleSourceTypeChange = (type: TrackerSourceType) => {
+		setSourceType(type);
+	};
+
+	const handleCdnChange = (c: TrackerCdnType) => {
+		setCdn(c);
+	};
+
+	const handleCustomUrlChange = (url: string) => {
+		setCustomUrl(url);
+	};
+
+	const handleAutoUpdateChange = (checked: boolean) => {
+		setAutoUpdate(checked);
+	};
+
+	const currentUrl = getTrackerUrl(sourceType, cdn, customUrl);
+
+	const handleSync = async (mode: "replace" | "append") => {
+		if (sourceType === "custom" && !customUrl) {
+			showToast("请输入自定义 Tracker 列表 URL");
+			return;
+		}
+
+		setSyncing(true);
+		try {
+			const url = getTrackerUrl(sourceType, cdn, customUrl);
+			const fetched = await syncTrackersUseCase.execute(url);
+
+			if (fetched.length === 0) {
+				showToast("未获取到有效的 Tracker 地址");
+				return;
+			}
+
+			if (mode === "replace") {
+				setTrackersText(fetched.join("\n"));
+				showToast(
+					`同步成功：已替换为最新的 ${fetched.length} 个 Tracker，请保存设置`,
+				);
+			} else {
+				const currentTrackers = trackersText
+					.split("\n")
+					.map((t) => t.trim())
+					.filter((t) => t.length > 0);
+				const merged = Array.from(new Set([...currentTrackers, ...fetched]));
+				setTrackersText(merged.join("\n"));
+				const addedCount = merged.length - currentTrackers.length;
+				showToast(
+					`同步成功：已追加 ${addedCount} 个新 Tracker (共计 ${merged.length} 个)，请保存设置`,
+				);
+			}
+
+			const now = Date.now();
+			setLastUpdateTime(now);
+		} catch (err: unknown) {
+			showToast(`同步 Tracker 失败: ${formatError(err)}`);
+		} finally {
+			setSyncing(false);
+		}
+	};
 
 	const isMobile =
 		["android", "ios"].includes(import.meta.env.TAURI_ENV_PLATFORM || "") ||
@@ -33,6 +110,13 @@ export default function Settings() {
 				setDownloadDir(settings.download_dir);
 				setProxy(settings.proxy || "");
 				setTrackersText((settings.trackers || []).join("\n"));
+				setSourceType(
+					(settings.tracker_source_type || "best") as TrackerSourceType,
+				);
+				setCdn((settings.tracker_cdn || "jsdelivr") as TrackerCdnType);
+				setCustomUrl(settings.tracker_custom_url || "");
+				setAutoUpdate(settings.tracker_auto_update === true);
+				setLastUpdateTime(settings.tracker_last_update_time || 0);
 			} catch (err: unknown) {
 				showToast(`加载设置失败: ${formatError(err)}`);
 			} finally {
@@ -68,6 +152,11 @@ export default function Settings() {
 			downloadDir,
 			proxy,
 			trackers: parsedTrackers,
+			trackerSourceType: sourceType,
+			trackerCdn: cdn,
+			trackerCustomUrl: customUrl,
+			trackerAutoUpdate: autoUpdate,
+			trackerLastUpdateTime: lastUpdateTime,
 		});
 
 		if (!validation.success) {
@@ -84,6 +173,11 @@ export default function Settings() {
 				downloadDir: validatedData.downloadDir,
 				proxy: validatedData.proxy,
 				trackers: validatedData.trackers,
+				trackerSourceType: validatedData.trackerSourceType,
+				trackerCdn: validatedData.trackerCdn,
+				trackerCustomUrl: validatedData.trackerCustomUrl,
+				trackerAutoUpdate: validatedData.trackerAutoUpdate,
+				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
 			});
 			showToast("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
@@ -215,6 +309,174 @@ export default function Settings() {
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+						{/* Tracker Online Sync & Enhancement Section */}
+						<div className="border border-white/5 bg-black/10 rounded-lg p-4 space-y-4 mb-6">
+							<div className="flex items-center justify-between border-b border-white/5 pb-2">
+								<h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+									🌐 在线同步与自动更新 (ngosang/trackerslist)
+								</h4>
+								<span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+									每日自动同步
+								</span>
+							</div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								{/* Left side: Configs */}
+								<div className="space-y-3.5">
+									{/* Source Type Selection */}
+									<div className="space-y-1.5">
+										<span className="text-[11px] text-muted-foreground font-medium">
+											选择列表源
+										</span>
+										<div className="flex flex-wrap gap-1">
+											{(
+												["best", "all", "best_ip", "all_ip", "custom"] as const
+											).map((type) => {
+												const labels: Record<string, string> = {
+													best: "最优列表 (推荐)",
+													all: "完整列表",
+													best_ip: "最优 IP",
+													all_ip: "完整 IP",
+													custom: "自定义",
+												};
+												const isActive = sourceType === type;
+												return (
+													<button
+														key={type}
+														type="button"
+														onClick={() => handleSourceTypeChange(type)}
+														className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 ${
+															isActive
+																? "bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.2)]"
+																: "bg-black/20 border-white/5 text-muted-foreground hover:bg-black/30 hover:text-foreground"
+														}`}
+													>
+														{labels[type]}
+													</button>
+												);
+											})}
+										</div>
+									</div>
+
+									{/* CDN Selection */}
+									{sourceType !== "custom" && (
+										<div className="space-y-1.5">
+											<span className="text-[11px] text-muted-foreground font-medium">
+												CDN 加速节点
+											</span>
+											<div className="flex flex-wrap gap-1">
+												{(["jsdelivr", "gitmirror", "github"] as const).map(
+													(cdnType) => {
+														const labels: Record<string, string> = {
+															jsdelivr: "jsDelivr (中国加速)",
+															gitmirror: "GitMirror (镜像)",
+															github: "GitHub (原始)",
+														};
+														const isActive = cdn === cdnType;
+														return (
+															<button
+																key={cdnType}
+																type="button"
+																onClick={() => handleCdnChange(cdnType)}
+																className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 ${
+																	isActive
+																		? "bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.2)]"
+																		: "bg-black/20 border-white/5 text-muted-foreground hover:bg-black/30 hover:text-foreground"
+																}`}
+															>
+																{labels[cdnType]}
+															</button>
+														);
+													},
+												)}
+											</div>
+										</div>
+									)}
+
+									{/* Auto Update Checkbox */}
+									<div className="flex items-center gap-2 pt-1">
+										<input
+											id="auto-update-checkbox"
+											type="checkbox"
+											checked={autoUpdate}
+											onChange={(e) => handleAutoUpdateChange(e.target.checked)}
+											className="h-3.5 w-3.5 rounded border-white/10 bg-black/20 text-primary focus:ring-primary focus:ring-offset-0 accent-primary"
+										/>
+										<label
+											htmlFor="auto-update-checkbox"
+											className="text-[11px] text-foreground font-medium cursor-pointer select-none"
+										>
+											启动时自动更新 (每24小时)
+										</label>
+									</div>
+								</div>
+
+								{/* Right side: Input URL & Sync actions */}
+								<div className="flex flex-col justify-between space-y-3">
+									<div className="space-y-1.5">
+										<label
+											htmlFor="tracker-url-input"
+											className="text-[11px] text-muted-foreground font-medium"
+										>
+											{sourceType === "custom"
+												? "自定义 URL 地址"
+												: "当前解析同步地址"}
+										</label>
+										<Input
+											id="tracker-url-input"
+											value={sourceType === "custom" ? customUrl : currentUrl}
+											onChange={(e) => {
+												if (sourceType === "custom") {
+													handleCustomUrlChange(e.target.value);
+												}
+											}}
+											disabled={sourceType !== "custom"}
+											placeholder="引导地址例如 https://example.com/trackers.txt"
+											className="bg-black/20 border-white/10 text-foreground py-2 text-[11px] h-8"
+										/>
+									</div>
+
+									{/* Sync actions */}
+									<div className="space-y-2">
+										<div className="flex gap-2">
+											<Button
+												type="button"
+												variant="secondary"
+												disabled={syncing}
+												onClick={() => handleSync("replace")}
+												className="flex-1 text-[11px] h-8.5 font-medium gap-1"
+											>
+												{syncing ? (
+													<Loader2 className="h-3 w-3 animate-spin" />
+												) : (
+													"🔄"
+												)}
+												立即同步并替换
+											</Button>
+											<Button
+												type="button"
+												variant="outline"
+												disabled={syncing}
+												onClick={() => handleSync("append")}
+												className="flex-1 text-[11px] h-8.5 font-medium gap-1 border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+											>
+												📥 追加同步
+											</Button>
+										</div>
+
+										<div className="flex items-center justify-between text-[10px] text-muted-foreground/80 px-0.5">
+											<span>最后更新时间：</span>
+											<span className="font-mono">
+												{lastUpdateTime
+													? formatLocalDate(lastUpdateTime)
+													: "从未更新"}
+											</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
 								<label

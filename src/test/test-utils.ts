@@ -2,9 +2,11 @@ import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCale
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
+import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
+import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleTracksUseCase } from "../application/torrent/GetSubtitleTracksUseCase";
@@ -34,10 +36,10 @@ const dummyLogger: Logger = {
 };
 
 export interface CreateContainerParamsForTest {
-	torrentRepository?: TorrentRepository;
-	settingsRepository?: SettingsRepository;
+	torrentRepository?: Partial<TorrentRepository>;
+	settingsRepository?: Partial<SettingsRepository>;
 	bangumiRepository?: Partial<BangumiRepository>;
-	notificationRepository?: NotificationRepository;
+	notificationRepository?: Partial<NotificationRepository>;
 	logger?: Logger;
 
 	notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
@@ -58,6 +60,8 @@ export interface CreateContainerParamsForTest {
 	getSettingsUseCase?: GetSettingsUseCase;
 	saveSettingsUseCase?: SaveSettingsUseCase;
 	selectDirectoryUseCase?: SelectDirectoryUseCase;
+	syncTrackersUseCase?: SyncTrackersUseCase;
+	autoUpdateTrackersUseCase?: AutoUpdateTrackersUseCase;
 
 	getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
 	getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
@@ -67,65 +71,48 @@ export interface CreateContainerParamsForTest {
 export function createDIContainerForTest(
 	params: CreateContainerParamsForTest,
 ): DIContainer {
-	const torrentRepo = params.torrentRepository
-		? ({
-				...params.torrentRepository,
-				subscribeTorrents:
-					params.torrentRepository.subscribeTorrents ||
-					(async (onUpdate: (list: any[]) => void) => {
-						onUpdate([]);
-						return () => {};
-					}),
-			} as unknown as TorrentRepository)
-		: ({
-				search: async () => [],
-				listTorrents: async () => [],
-				pauseTorrent: async () => {},
-				resumeTorrent: async () => {},
-				deleteTorrent: async () => {},
-				addTorrentMagnet: async () => ({ info_hash: "", name: "", files: [] }),
-				getTorrentFiles: async () => [],
-				getTorrentStreamUrl: async () => "",
-				getTorrentStatus: async () => ({}) as any,
-				getSubtitleTracks: async () => [],
-				getSubtitleVtt: async () => "",
-				subscribeTorrents: async (onUpdate: (list: any[]) => void) => {
-					onUpdate([]);
-					return () => {};
-				},
-			} as unknown as TorrentRepository);
+	const torrentRepo = {
+		search: async () => [],
+		listTorrents: async () => [],
+		pauseTorrent: async () => {},
+		resumeTorrent: async () => {},
+		deleteTorrent: async () => {},
+		addTorrentMagnet: async () => ({ info_hash: "", name: "", files: [] }),
+		getTorrentFiles: async () => [],
+		getTorrentStreamUrl: async () => "",
+		getTorrentStatus: async () => ({}) as any,
+		getSubtitleTracks: async () => [],
+		getSubtitleVtt: async () => "",
+		subscribeTorrents: async (onUpdate: (list: any[]) => void) => {
+			onUpdate([]);
+			return () => {};
+		},
+		...params.torrentRepository,
+	} as unknown as TorrentRepository;
 
-	const settingsRepo =
-		params.settingsRepository ||
-		({
-			getSettings: async () => ({ download_dir: "", trackers: [] }),
-			setDownloadDir: async () => {},
-			setProxy: async () => {},
-			setTrackers: async () => {},
-			selectDirectory: async () => null,
-		} as SettingsRepository);
+	const settingsRepo = {
+		getSettings: async () => ({ download_dir: "", trackers: [] }),
+		setDownloadDir: async () => {},
+		setProxy: async () => {},
+		setTrackers: async () => {},
+		setTrackerOptions: async () => {},
+		fetchTrackers: async () => [],
+		selectDirectory: async () => null,
+		...params.settingsRepository,
+	} as SettingsRepository;
 
-	const bangumiRepo: BangumiRepository = (
-		params.bangumiRepository
-			? {
-					getCalendar: async () => [],
-					getSubject: async () => ({}) as any,
-					getEpisodes: async () => [],
-					...params.bangumiRepository,
-				}
-			: {
-					getCalendar: async () => [],
-					getSubject: async () => ({}) as any,
-					getEpisodes: async () => [],
-				}
-	) as BangumiRepository;
+	const bangumiRepo = {
+		getCalendar: async () => [],
+		getSubject: async () => ({}) as any,
+		getEpisodes: async () => [],
+		...params.bangumiRepository,
+	} as BangumiRepository;
 
-	const notificationRepo =
-		params.notificationRepository ||
-		({
-			requestPermission: async () => false,
-			sendNotification: async () => {},
-		} as NotificationRepository);
+	const notificationRepo = {
+		requestPermission: async () => false,
+		sendNotification: async () => {},
+		...params.notificationRepository,
+	} as NotificationRepository;
 
 	const notifyUseCase =
 		params.notifyDownloadCompletionUseCase ||
@@ -167,6 +154,11 @@ export function createDIContainerForTest(
 		params.saveSettingsUseCase || new SaveSettingsUseCase(settingsRepo);
 	const selectDirectoryUseCase =
 		params.selectDirectoryUseCase || new SelectDirectoryUseCase(settingsRepo);
+	const syncTrackersUseCase =
+		params.syncTrackersUseCase || new SyncTrackersUseCase(settingsRepo);
+	const autoUpdateTrackersUseCase =
+		params.autoUpdateTrackersUseCase ||
+		new AutoUpdateTrackersUseCase(settingsRepo);
 
 	const getBangumiCalendarUseCase =
 		params.getBangumiCalendarUseCase ||
@@ -202,6 +194,8 @@ export function createDIContainerForTest(
 		getSettingsUseCase,
 		saveSettingsUseCase,
 		selectDirectoryUseCase,
+		syncTrackersUseCase,
+		autoUpdateTrackersUseCase,
 
 		getBangumiCalendarUseCase,
 		getBangumiSubjectUseCase,

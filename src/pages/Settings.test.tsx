@@ -27,32 +27,22 @@ describe("Settings 页面组件", () => {
 				download_dir: "/default/download",
 				proxy: "",
 				trackers: [],
+				tracker_source_type: "best",
+				tracker_cdn: "jsdelivr",
+				tracker_custom_url: "",
+				tracker_auto_update: false,
+				tracker_last_update_time: 0,
 			}),
 			setDownloadDir: vi.fn(),
 			setProxy: vi.fn(),
 			setTrackers: vi.fn(),
+			setTrackerOptions: vi.fn(),
+			fetchTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 		};
 
 		mockContainer = createDIContainerForTest({
-			torrentRepository: {
-				search: vi.fn(),
-				addTorrentMagnet: vi.fn(),
-				getTorrentFiles: vi.fn(),
-				listTorrents: vi.fn(),
-				pauseTorrent: vi.fn(),
-				resumeTorrent: vi.fn(),
-				deleteTorrent: vi.fn(),
-				getTorrentStreamUrl: vi.fn(),
-				getTorrentStatus: vi.fn(),
-				getSubtitleTracks: vi.fn(),
-				getSubtitleVtt: vi.fn(),
-				subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
-			},
 			settingsRepository: mockSettingsRepository,
-			bangumiRepository: {
-				getCalendar: vi.fn().mockResolvedValue([]),
-			},
 		});
 
 		currentLocation.current = null;
@@ -333,6 +323,42 @@ describe("Settings 页面组件", () => {
 			expect(mockSettingsRepository.setTrackers).toHaveBeenCalled();
 			expect(
 				screen.getByText("设置已保存，后续下载任务将使用新路径"),
+			).toBeInTheDocument();
+		});
+	});
+
+	it("应该支持选择不同的 Tracker 列表源和 CDN 节点，并进行在线同步", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			trackers: ["udp://oldtracker"],
+			tracker_source_type: "best",
+			tracker_cdn: "jsdelivr",
+			tracker_custom_url: "",
+			tracker_auto_update: false,
+			tracker_last_update_time: 0,
+		});
+
+		vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([
+			"udp://newtracker1",
+			"http://newtracker2",
+		]);
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("选择列表源")).toBeInTheDocument();
+		});
+
+		// Click "立即同步并替换"
+		const syncBtn = screen.getByRole("button", { name: /立即同步并替换/ });
+		fireEvent.click(syncBtn);
+
+		await waitFor(() => {
+			expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
+				"udp://newtracker1\nhttp://newtracker2",
+			);
+			expect(
+				screen.getByText(/同步成功：已替换为最新的 2 个 Tracker/),
 			).toBeInTheDocument();
 		});
 	});

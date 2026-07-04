@@ -4,6 +4,11 @@ export const SettingsSchema = z.object({
 	download_dir: z.string(),
 	proxy: z.string().nullable().optional(),
 	trackers: z.array(z.string()).optional(),
+	tracker_source_type: z.string().nullable().optional(),
+	tracker_cdn: z.string().nullable().optional(),
+	tracker_custom_url: z.string().nullable().optional(),
+	tracker_auto_update: z.boolean().nullable().optional(),
+	tracker_last_update_time: z.number().nullable().optional(),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -37,6 +42,11 @@ export const SettingsFormSchema = z.object({
 		.nullable()
 		.or(z.literal("")),
 	trackers: z.array(z.string().trim().url("Tracker 地址必须是合法的 URL")),
+	trackerSourceType: z.string().nullable().optional(),
+	trackerCdn: z.string().nullable().optional(),
+	trackerCustomUrl: z.string().nullable().optional(),
+	trackerAutoUpdate: z.boolean().nullable().optional(),
+	trackerLastUpdateTime: z.number().nullable().optional(),
 });
 
 export type SettingsFormInput = z.infer<typeof SettingsFormSchema>;

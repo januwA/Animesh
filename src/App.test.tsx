@@ -65,6 +65,8 @@ describe("App 组件", () => {
 			setDownloadDir: vi.fn(),
 			setProxy: vi.fn(),
 			setTrackers: vi.fn(),
+			setTrackerOptions: vi.fn(),
+			fetchTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 		};
 

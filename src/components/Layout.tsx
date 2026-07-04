@@ -5,11 +5,12 @@ import { useDI } from "../di/DIContext";
 import { AppHeader, ToastContainer } from "./AppComponents";
 
 export default function Layout() {
-	const { toasts, removeToast } = useAppContext();
+	const { toasts, removeToast, showToast } = useAppContext();
 	const {
 		notificationRepository,
 		notifyDownloadCompletionUseCase,
 		subscribeTorrentsUseCase,
+		autoUpdateTrackersUseCase,
 	} = useDI();
 
 	// 请求系统通知权限
@@ -38,6 +39,17 @@ export default function Layout() {
 			}
 		};
 	}, [subscribeTorrentsUseCase, notifyDownloadCompletionUseCase]);
+
+	useEffect(() => {
+		autoUpdateTrackersUseCase
+			.execute()
+			.then((count) => {
+				if (count !== null && count > 0) {
+					showToast(`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`);
+				}
+			})
+			.catch(() => {});
+	}, [autoUpdateTrackersUseCase, showToast]);
 
 	return (
 		<main className="container max-w-4xl mx-auto px-4 pt-6 pb-24 md:py-10 flex flex-col min-h-screen">

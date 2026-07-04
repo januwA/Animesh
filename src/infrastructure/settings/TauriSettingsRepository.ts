@@ -4,6 +4,7 @@ import {
 	type Settings,
 	SettingsSchema,
 } from "../../domain/settings/SettingsSchemas";
+import { parseTrackers } from "../../domain/settings/TrackerSettings";
 
 export class TauriSettingsRepository implements SettingsRepository {
 	async getSettings(): Promise<Settings> {
@@ -27,6 +28,38 @@ export class TauriSettingsRepository implements SettingsRepository {
 
 	async setTrackers(trackers: string[]): Promise<void> {
 		return invoke<void>("settings_set_trackers", { trackers });
+	}
+
+	async setTrackerOptions(options: {
+		sourceType: string | null;
+		cdn: string | null;
+		customUrl: string | null;
+		autoUpdate: boolean | null;
+		lastUpdateTime: number | null;
+	}): Promise<void> {
+		return invoke<void>("settings_set_tracker_options", {
+			sourceType: options.sourceType,
+			cdn: options.cdn,
+			customUrl: options.customUrl,
+			autoUpdate: options.autoUpdate,
+			lastUpdateTime: options.lastUpdateTime,
+		});
+	}
+
+	async fetchTrackers(url: string): Promise<string[]> {
+		if (!url) {
+			throw new Error("Tracker URL 不能为空");
+		}
+		const response = await fetch(url).catch((err) => {
+			throw new Error("获取 Tracker 列表网络连接失败", { cause: err });
+		});
+		if (!response.ok) {
+			throw new Error(
+				`获取 Tracker 列表失败: HTTP ${response.status} ${response.statusText}`,
+			);
+		}
+		const text = await response.text();
+		return parseTrackers(text);
 	}
 
 	async selectDirectory(): Promise<string | null> {
