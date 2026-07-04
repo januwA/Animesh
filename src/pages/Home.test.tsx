@@ -602,8 +602,7 @@ describe("Home 页面组件", () => {
 	});
 
 	it("应该在执行搜索时将关键词加入历史记录（去重、置顶，不限数量）", async () => {
-		const mockResults = [];
-		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
 		renderHome();
 		const input = screen.getByPlaceholderText(
@@ -661,8 +660,7 @@ describe("Home 页面组件", () => {
 
 	it("点击历史搜索记录项时，应该将关键词填入输入框并触发搜索", async () => {
 		localStorage.setItem("animesh_search_history", JSON.stringify(["柯南"]));
-		const mockResults = [];
-		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
 		renderHome();
 
@@ -715,5 +713,24 @@ describe("Home 页面组件", () => {
 		expect(screen.queryByText("凡人")).not.toBeInTheDocument();
 		expect(screen.queryByText("柯南")).not.toBeInTheDocument();
 		expect(localStorage.getItem("animesh_search_history")).toBeNull();
+	});
+
+	it("点击删除最后一个历史记录项时，应该清空历史记录并从 localStorage 移除该键", async () => {
+		localStorage.setItem("animesh_search_history", JSON.stringify(["凡人"]));
+		renderHome();
+
+		expect(screen.getByText("凡人")).toBeInTheDocument();
+
+		const deleteBtn = screen.getByTestId("delete-history-凡人");
+		fireEvent.click(deleteBtn);
+
+		expect(screen.queryByText("凡人")).not.toBeInTheDocument();
+		expect(localStorage.getItem("animesh_search_history")).toBeNull();
+	});
+
+	it("当 localStorage 中的历史记录数据格式不合法时，应该降级初始化为空数组", () => {
+		localStorage.setItem("animesh_search_history", "invalid-json{");
+		renderHome();
+		expect(screen.queryByText("最近搜索:")).not.toBeInTheDocument();
 	});
 });
