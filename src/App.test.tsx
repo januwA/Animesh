@@ -192,7 +192,7 @@ describe("App 组件", () => {
 		vi.useFakeTimers();
 
 		// 点击复制磁力按钮
-		const copyButtons = screen.getAllByRole("button", { name: "🧲 复制磁力" });
+		const copyButtons = screen.getAllByRole("button", { name: "复制磁力" });
 		fireEvent.click(copyButtons[0]);
 		expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
 			"magnet:?xt=urn:btih:TEST1",
@@ -216,7 +216,7 @@ describe("App 组件", () => {
 		vi.useFakeTimers();
 
 		// 点击边下边播按钮
-		const playButtons = screen.getAllByRole("button", { name: "▶ 边下边播" });
+		const playButtons = screen.getAllByRole("button", { name: "边下边播" });
 		fireEvent.click(playButtons[0]);
 
 		// 应该展示“正在启动下载流媒体引擎”的 Toast
@@ -312,7 +312,7 @@ describe("App 组件", () => {
 		// 在触发点击前启动 fake timers，这样 setTimeout 就会注册在 fake timer 队列里
 		vi.useFakeTimers();
 
-		const copyBtn = screen.getByRole("button", { name: "🧲 复制磁力" });
+		const copyBtn = screen.getByRole("button", { name: "复制磁力" });
 		fireEvent.click(copyBtn);
 
 		await act(async () => {
@@ -396,7 +396,7 @@ describe("App 组件", () => {
 		vi.useFakeTimers();
 
 		// 点击边下边播
-		const playBtn = screen.getByRole("button", { name: "▶ 边下边播" });
+		const playBtn = screen.getByRole("button", { name: "边下边播" });
 		fireEvent.click(playBtn);
 
 		// 此时应该正在解析种子并加载
@@ -420,7 +420,7 @@ describe("App 组件", () => {
 		expect(screen.getByText("subtitle.srt")).toBeInTheDocument();
 
 		// 点击播放第一个文件
-		const filePlayBtns = screen.getAllByRole("button", { name: "▶ 播放" });
+		const filePlayBtns = screen.getAllByRole("button", { name: "播放" });
 		fireEvent.click(filePlayBtns[0]);
 
 		// 推进第一步：加载 streamUrl 和 activeFileId，但此时 torrentStatus 还是 null
@@ -460,7 +460,7 @@ describe("App 组件", () => {
 
 		// 模拟复制流地址
 		const copyStreamBtn = screen.getByRole("button", {
-			name: "📋 复制视频流地址",
+			name: "复制视频流地址",
 		});
 		fireEvent.click(copyStreamBtn);
 		expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -549,7 +549,7 @@ describe("App 组件", () => {
 		vi.useFakeTimers();
 
 		// 点击播放
-		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+		fireEvent.click(screen.getByRole("button", { name: "边下边播" }));
 		for (let i = 0; i < 3; i++) {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
@@ -557,7 +557,7 @@ describe("App 组件", () => {
 		}
 		expect(screen.getByText("选择要播放的文件：")).toBeInTheDocument();
 
-		fireEvent.click(screen.getByRole("button", { name: "▶ 播放" }));
+		fireEvent.click(screen.getByRole("button", { name: "播放" }));
 		for (let i = 0; i < 4; i++) {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
@@ -596,7 +596,7 @@ describe("App 组件", () => {
 
 		vi.useFakeTimers();
 
-		const playBtn = screen.getByRole("button", { name: "▶ 边下边播" });
+		const playBtn = screen.getByRole("button", { name: "边下边播" });
 		fireEvent.click(playBtn);
 
 		await act(async () => {
@@ -675,7 +675,7 @@ describe("App 组件", () => {
 		await waitFor(() => expect(screen.getByText("凡人1")).toBeInTheDocument());
 
 		vi.useFakeTimers();
-		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+		fireEvent.click(screen.getByRole("button", { name: "边下边播" }));
 		for (let i = 0; i < 3; i++) {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
@@ -685,7 +685,7 @@ describe("App 组件", () => {
 		// 检查标题是否正确渲染为“未命名种子”
 		expect(screen.getByText("未命名种子")).toBeInTheDocument();
 
-		fireEvent.click(screen.getByRole("button", { name: "▶ 播放" }));
+		fireEvent.click(screen.getByRole("button", { name: "播放" }));
 		for (let i = 0; i < 4; i++) {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
@@ -723,7 +723,7 @@ describe("App 组件", () => {
 
 		vi.useFakeTimers();
 
-		const copyBtn = screen.getByRole("button", { name: "🧲 复制磁力" });
+		const copyBtn = screen.getByRole("button", { name: "复制磁力" });
 		fireEvent.click(copyBtn);
 
 		await act(async () => {
@@ -790,7 +790,7 @@ describe("App 组件", () => {
 
 		// Trigger fake timers for resolving magnet
 		vi.useFakeTimers();
-		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+		fireEvent.click(screen.getByRole("button", { name: "边下边播" }));
 
 		// Advance timers so TorrentDetail mounts
 		for (let i = 0; i < 3; i++) {
@@ -839,7 +839,7 @@ describe("App 组件", () => {
 			expect(count).toBeInTheDocument();
 		});
 
-		fireEvent.click(screen.getByRole("button", { name: "▶ 边下边播" }));
+		fireEvent.click(screen.getByRole("button", { name: "边下边播" }));
 
 		// Now we should be on loader page
 		const cancelBtn = screen.getByRole("button", { name: "取消解析并返回" });

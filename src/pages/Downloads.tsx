@@ -146,7 +146,8 @@ export default function Downloads() {
 			<div className="flex items-center justify-between border-b border-white/5 pb-4">
 				<div>
 					<h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-						📥 下载管理
+						<Download className="h-5 w-5 text-primary" />
+						下载管理
 					</h2>
 					<p className="text-xs text-muted-foreground mt-1">
 						管理所有在后台进行的种子下载与边下边播任务
@@ -161,8 +162,8 @@ export default function Downloads() {
 			{torrents.length === 0 ? (
 				<Card className="bg-card/30 border-white/5 py-16 text-center">
 					<CardContent className="space-y-4">
-						<div className="text-4xl text-muted-foreground/60 select-none">
-							📥
+						<div className="flex justify-center text-muted-foreground/60 select-none">
+							<Download className="h-12 w-12" />
 						</div>
 						<div className="space-y-1">
 							<h3 className="text-sm font-semibold text-foreground">

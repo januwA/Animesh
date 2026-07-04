@@ -1,4 +1,4 @@
-import { ArrowLeft, FileVideo, Film, Loader2 } from "lucide-react";
+import { ArrowLeft, FileVideo, Film, Loader2, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -165,7 +165,8 @@ export default function TorrentDetail() {
 									onClick={() => handleStartPlayback(file.id, file.name)}
 									className="gap-1.5 h-8 shrink-0"
 								>
-									▶ 播放
+									<Play className="h-3.5 w-3.5 fill-current" />
+									播放
 								</Button>
 							</div>
 						))}

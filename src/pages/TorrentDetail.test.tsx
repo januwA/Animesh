@@ -123,7 +123,7 @@ describe("TorrentDetail 页面组件", () => {
 			expect(screen.getByText("file2.mkv")).toBeInTheDocument();
 		});
 
-		const playButtons = screen.getAllByRole("button", { name: "▶ 播放" });
+		const playButtons = screen.getAllByRole("button", { name: "播放" });
 		fireEvent.click(playButtons[0]);
 
 		expect(getCurrentLocation()?.pathname).toBe("/play/hash123/0");
@@ -299,7 +299,7 @@ describe("TorrentDetail 页面组件", () => {
 			expect(screen.getByText("cached_file.mp4")).toBeInTheDocument();
 		});
 
-		const playBtn = screen.getByRole("button", { name: "▶ 播放" });
+		const playBtn = screen.getByRole("button", { name: "播放" });
 		fireEvent.click(playBtn);
 
 		expect(getCurrentLocation()?.pathname).toBe("/play/hashCached/0");
@@ -347,7 +347,7 @@ describe("TorrentDetail 页面组件", () => {
 			expect(screen.getByText("file1.mp4")).toBeInTheDocument();
 		});
 
-		const playBtn = screen.getByRole("button", { name: "▶ 播放" });
+		const playBtn = screen.getByRole("button", { name: "播放" });
 		fireEvent.click(playBtn);
 
 		expect(getCurrentLocation()?.pathname).toBe("/play/hash123/0");

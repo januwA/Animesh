@@ -1,4 +1,16 @@
-import { Folder, Globe, HardDrive, Link2, Loader2, Save } from "lucide-react";
+import {
+	Download,
+	Folder,
+	Globe,
+	HardDrive,
+	Info,
+	Lightbulb,
+	Link2,
+	Loader2,
+	RefreshCw,
+	Save,
+	Settings as SettingsIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -188,7 +200,8 @@ export default function Settings() {
 			<div className="flex items-center justify-between border-b border-white/5 pb-4">
 				<div>
 					<h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-						⚙️ 设置选项
+						<SettingsIcon className="h-5 w-5 text-primary" />
+						设置选项
 					</h2>
 					<p className="text-xs text-muted-foreground mt-1">
 						配置软件全局选项，如缓存目录和存储大小
@@ -238,16 +251,18 @@ export default function Settings() {
 									</Button>
 								)}
 							</div>
-							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
+							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex flex-col gap-1.5">
 								{isMobile ? (
-									<span>
-										ℹ️
+									<span className="flex items-center gap-1">
+										<Info className="h-3.5 w-3.5 text-primary shrink-0" />
 										移动端（Android/iOS）已自动选用应用沙盒内部路径，无需且不支持手动更改。
 									</span>
 								) : (
-									<span>
-										💡
-										提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
+									<span className="flex items-start gap-1">
+										<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+										<span>
+											提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
+										</span>
 									</span>
 								)}
 							</p>
@@ -277,9 +292,12 @@ export default function Settings() {
 								placeholder="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:7890 (留空则不使用代理)"
 								className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
 							/>
-							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
-								💡 提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
-								HTTP、HTTPS 或 SOCKS5 代理。
+							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
+								<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+								<span>
+									提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
+									HTTP、HTTPS 或 SOCKS5 代理。
+								</span>
 							</p>
 						</div>
 					</CardContent>
@@ -297,7 +315,8 @@ export default function Settings() {
 						<div className="border border-white/5 bg-black/10 rounded-lg p-4 space-y-4 mb-6">
 							<div className="flex items-center justify-between border-b border-white/5 pb-2">
 								<h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-									🌐 在线同步与自动更新 (ngosang/trackerslist)
+									<Globe className="h-3.5 w-3.5 text-primary" />
+									在线同步与自动更新 (ngosang/trackerslist)
 								</h4>
 								<span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
 									每日自动同步
@@ -428,12 +447,12 @@ export default function Settings() {
 												variant="secondary"
 												disabled={syncing}
 												onClick={() => handleSync("replace")}
-												className="flex-1 text-[11px] h-8.5 font-medium gap-1"
+												className="flex-1 text-[11px] h-8.5 font-medium gap-1.5"
 											>
 												{syncing ? (
-													<Loader2 className="h-3 w-3 animate-spin" />
+													<Loader2 className="h-3.5 w-3.5 animate-spin" />
 												) : (
-													"🔄"
+													<RefreshCw className="h-3.5 w-3.5" />
 												)}
 												立即同步并替换
 											</Button>
@@ -442,9 +461,10 @@ export default function Settings() {
 												variant="outline"
 												disabled={syncing}
 												onClick={() => handleSync("append")}
-												className="flex-1 text-[11px] h-8.5 font-medium gap-1 border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+												className="flex-1 text-[11px] h-8.5 font-medium gap-1.5 border-white/10 bg-black/10 text-foreground hover:bg-black/20"
 											>
-												📥 追加同步
+												<Download className="h-3.5 w-3.5" />
+												追加同步
 											</Button>
 										</div>
 
@@ -503,10 +523,13 @@ export default function Settings() {
 								rows={8}
 								className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 							/>
-							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1">
-								💡 提示：添加高质量的公网 Tracker
-								可以极大地加快纯净磁力链接的解析速度，并帮助你更快地连接到
-								Peers。
+							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
+								<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+								<span>
+									提示：添加高质量的公网 Tracker
+									可以极大地加快纯净磁力链接的解析速度，并帮助你更快地连接到
+									Peers。
+								</span>
 							</p>
 						</div>
 

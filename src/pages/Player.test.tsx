@@ -264,7 +264,7 @@ describe("Player 页面组件", () => {
 			"/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
 		);
 
-		const copyBtn = screen.getByRole("button", { name: "📋 复制视频流地址" });
+		const copyBtn = screen.getByRole("button", { name: "复制视频流地址" });
 		fireEvent.click(copyBtn);
 		expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
 
@@ -296,7 +296,7 @@ describe("Player 页面组件", () => {
 		vi.useFakeTimers();
 
 		const copyBtnLoaded = screen.getByRole("button", {
-			name: "📋 复制视频流地址",
+			name: "复制视频流地址",
 		});
 
 		// Success path

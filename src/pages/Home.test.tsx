@@ -284,7 +284,7 @@ describe("Home 页面组件", () => {
 
 		vi.useFakeTimers();
 
-		const copyBtn = screen.getByRole("button", { name: "🧲 复制磁力" });
+		const copyBtn = screen.getByRole("button", { name: "复制磁力" });
 		fireEvent.click(copyBtn);
 
 		expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -326,7 +326,7 @@ describe("Home 页面组件", () => {
 
 		vi.useFakeTimers();
 
-		const copyBtn = screen.getByRole("button", { name: "🧲 复制磁力" });
+		const copyBtn = screen.getByRole("button", { name: "复制磁力" });
 		fireEvent.click(copyBtn);
 
 		await act(async () => {
@@ -361,7 +361,7 @@ describe("Home 页面组件", () => {
 
 		vi.useFakeTimers();
 
-		const playBtn = screen.getByRole("button", { name: "▶ 边下边播" });
+		const playBtn = screen.getByRole("button", { name: "边下边播" });
 		fireEvent.click(playBtn);
 
 		await act(async () => {

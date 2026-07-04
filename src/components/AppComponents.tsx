@@ -1,10 +1,14 @@
 import {
+	Bell,
 	Calendar,
 	Clock,
 	Download,
+	ExternalLink,
 	Globe,
 	HardDrive,
 	Loader2,
+	Magnet,
+	Play,
 	Search,
 	Settings as SettingsIcon,
 	X,
@@ -286,7 +290,8 @@ export function WelcomeGuide() {
 			<Card className="bg-card/25 border-white/5">
 				<CardHeader className="pb-2">
 					<CardTitle className="text-sm font-semibold flex items-center gap-2">
-						🌐 边下边播
+						<Play className="h-4 w-4 text-cyan-400 fill-current" />
+						边下边播
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="text-xs text-muted-foreground leading-relaxed">
@@ -296,7 +301,8 @@ export function WelcomeGuide() {
 			<Card className="bg-card/25 border-white/5">
 				<CardHeader className="pb-2">
 					<CardTitle className="text-sm font-semibold flex items-center gap-2">
-						🌐 外部播放
+						<ExternalLink className="h-4 w-4 text-cyan-400" />
+						外部播放
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="text-xs text-muted-foreground leading-relaxed">
@@ -348,7 +354,8 @@ export function SearchResultCard({
 					className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
 					title="在浏览器中打开网页"
 				>
-					<Globe className="h-3.5 w-3.5" />🌐 网页
+					<Globe className="h-3.5 w-3.5" />
+					网页
 				</a>
 
 				<div className="flex gap-2">
@@ -356,17 +363,19 @@ export function SearchResultCard({
 						variant="secondary"
 						size="sm"
 						onClick={() => onCopyMagnet(item.magnet)}
-						className="h-8 text-xs font-medium"
+						className="h-8 text-xs font-medium gap-1.5"
 					>
-						🧲 复制磁力
+						<Magnet className="h-3.5 w-3.5" />
+						复制磁力
 					</Button>
 					<Button
 						variant="default"
 						size="sm"
 						onClick={() => onPlay(item.magnet, item.title)}
-						className="h-8 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground"
+						className="h-8 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
 					>
-						▶ 边下边播
+						<Play className="h-3.5 w-3.5 fill-current" />
+						边下边播
 					</Button>
 				</div>
 			</CardFooter>
@@ -387,7 +396,7 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
 					key={toast.id.toString()}
 					className="toast pointer-events-auto bg-card border border-white/10 text-card-foreground p-4 pr-10 rounded-lg shadow-xl flex items-center gap-3 animate-in slide-in-from-bottom duration-300"
 				>
-					<span className="text-primary flex-shrink-0">🔔</span>
+					<Bell className="h-4 w-4 text-primary flex-shrink-0" />
 					<AlertDescription className="text-sm font-medium leading-relaxed">
 						{toast.text}
 					</AlertDescription>

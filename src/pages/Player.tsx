@@ -1,4 +1,11 @@
-import { Activity, ArrowLeft, Download, Info, Loader2 } from "lucide-react";
+import {
+	Activity,
+	ArrowLeft,
+	Clipboard,
+	Download,
+	Info,
+	Loader2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -274,7 +281,8 @@ export default function Player() {
 						onClick={handleCopyStreamUrl}
 						className="h-8 gap-1 text-muted-foreground hover:text-foreground"
 					>
-						📋 复制视频流地址
+						<Clipboard className="h-4 w-4" />
+						复制视频流地址
 					</Button>
 					<Button
 						variant="ghost"
