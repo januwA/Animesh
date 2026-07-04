@@ -9,12 +9,7 @@ export class AutoUpdateTrackersUseCase {
 	constructor(private settingsRepository: SettingsRepository) {}
 
 	async execute(): Promise<number | null> {
-		const settings = await this.settingsRepository
-			.getSettings()
-			.catch((err) => {
-				console.error("Auto update load settings failed:", err);
-				return null;
-			});
+		const settings = await this.settingsRepository.getSettings();
 		if (!settings) return null;
 
 		const autoUpdate = settings.tracker_auto_update === true;
@@ -39,23 +34,18 @@ export class AutoUpdateTrackersUseCase {
 		);
 		if (!url) return null;
 
-		try {
-			const fetched = await this.settingsRepository.fetchTrackers(url);
-			if (fetched.length === 0) return null;
+		const fetched = await this.settingsRepository.fetchTrackers(url);
+		if (fetched.length === 0) return null;
 
-			await this.settingsRepository.setTrackers(fetched);
-			await this.settingsRepository.setTrackerOptions({
-				sourceType,
-				cdn,
-				customUrl,
-				autoUpdate: true,
-				lastUpdateTime: now,
-			});
+		await this.settingsRepository.setTrackers(fetched);
+		await this.settingsRepository.setTrackerOptions({
+			sourceType,
+			cdn,
+			customUrl,
+			autoUpdate: true,
+			lastUpdateTime: now,
+		});
 
-			return fetched.length;
-		} catch (err) {
-			console.error("Auto update trackers failed:", err);
-			return null;
-		}
+		return fetched.length;
 	}
 }

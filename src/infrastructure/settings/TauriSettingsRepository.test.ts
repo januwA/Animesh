@@ -48,13 +48,12 @@ describe("基础设施层 TauriSettingsRepository", () => {
 			const networkError = new Error("DNS resolution failed");
 			vi.mocked(fetch).mockRejectedValueOnce(networkError);
 
-			try {
-				await repository.fetchTrackers("https://example.com/trackers.txt");
-				expect(true).toBe(false); // Should not reach here
-			} catch (err: any) {
-				expect(err.message).toBe("获取 Tracker 列表网络连接失败");
-				expect(err.cause).toBe(networkError);
-			}
+			const promise = repository.fetchTrackers(
+				"https://example.com/trackers.txt",
+			);
+			await expect(promise).rejects.toThrow("获取 Tracker 列表网络连接失败");
+			const err = await promise.catch((e) => e);
+			expect(err.cause).toBe(networkError);
 		});
 	});
 });
