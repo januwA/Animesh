@@ -38,7 +38,6 @@ jobs:
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "Generating changelog since $PREV_TAG"
           
-          # 提取提交记录，避免哈希，只保留信息
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
           git log $PREV_TAG..HEAD --pretty=format:"* %s" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
@@ -86,7 +85,7 @@ jobs:
             
             ---
             See the assets below to download and install.
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
 
@@ -104,11 +103,9 @@ jobs:
         id: changelog
         shell: bash
         run: |
-          # 获取最近的 tag，如果不存在则使用首个 commit
           PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
           echo "Generating changelog since $PREV_TAG"
           
-          # 提取提交记录，避免哈希，只保留信息
           echo "CHANGELOG<<EOF" >> $GITHUB_ENV
           git log $PREV_TAG..HEAD --pretty=format:"* %s" >> $GITHUB_ENV
           echo "" >> $GITHUB_ENV
@@ -149,21 +146,24 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
-      - name: Build Android App
-        id: tauri
+      - name: Build and Publish
         uses: tauri-apps/tauri-action@dev
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           BINDGEN_EXTRA_CLANG_ARGS: --sysroot=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/sysroot
         with:
+          tagName: v__VERSION__
+          releaseName: 'Animesh v__VERSION__'
+          releaseBody: |
+            ### Update Log / 更新日志
+            ${{ env.CHANGELOG }}
+            
+            ---
+            See the assets below to download and install.
+          releaseDraft: true
+          prerelease: false
           mobile: android
-
-      - name: Upload Android Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: tauri-artifacts-android
-          path: ${{ fromJSON(steps.tauri.outputs.artifactPaths) }}
 
   release:
     permissions:
@@ -186,39 +186,8 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Generate Changelog
-        shell: bash
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
-          echo "Generating changelog since $PREV_TAG"
-          
-          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-          git log $PREV_TAG..HEAD --pretty=format:"* %s" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: tauri-artifacts-*
-          path: artifacts
-          merge-multiple: true
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      - name: Publish Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ env.VERSION }}
-          name: 'Animesh v${{ env.VERSION }}'
-          body: |
-            ### Update Log / 更新日志
-            ${{ env.CHANGELOG }}
-            
-            ---
-            See the assets below to download and install.
-          draft: false
-          prerelease: false
-          files: |
-            artifacts/**/*
-
+        run: |
+          gh release edit v${{ env.VERSION }} --draft=false
