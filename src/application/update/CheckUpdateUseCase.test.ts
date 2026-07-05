@@ -57,11 +57,9 @@ describe("CheckUpdateUseCase 单元测试", () => {
 
 		await expect(useCase.execute()).rejects.toThrow("检查更新失败");
 
-		try {
-			await useCase.execute();
-		} catch (err: unknown) {
-			const error = err as Error;
-			expect(error.cause).toBe(originalError);
-		}
+		const resultError = await useCase
+			.execute()
+			.catch((err: unknown) => err as Error);
+		expect(resultError.cause).toBe(originalError);
 	});
 });

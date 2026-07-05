@@ -500,4 +500,173 @@ describe("Settings 页面组件", () => {
 			).toBeInTheDocument();
 		});
 	});
+
+	it("应该支持检查更新，并在发现新版本时支持前往 GitHub 下载", async () => {
+		const mockCheckUpdate = {
+			execute: vi.fn().mockResolvedValue({
+				hasUpdate: true,
+				latestVersion: "0.3.2",
+				currentVersion: "0.3.1",
+				notes: "修复了一些已知问题",
+				url: "https://example.com/download",
+				htmlUrl: "https://github.com/example/repo",
+			}),
+		};
+		const mockOpenUrl = {
+			execute: vi.fn().mockResolvedValue(undefined),
+		};
+		const mockGetVersion = {
+			execute: vi.fn().mockResolvedValue("0.3.1"),
+		};
+
+		mockContainer = createDIContainerForTest({
+			settingsRepository: mockSettingsRepository,
+			checkUpdateUseCase: mockCheckUpdate as any,
+			openUpdateUrlUseCase: mockOpenUrl as any,
+			getCurrentVersionUseCase: mockGetVersion as any,
+		});
+
+		renderSettings();
+
+		// 等待版本号显示
+		await waitFor(() => {
+			expect(screen.getByText("当前版本：0.3.1")).toBeInTheDocument();
+		});
+
+		// 点击检查更新按钮
+		const checkBtn = screen.getByRole("button", { name: /检查更新/ });
+		fireEvent.click(checkBtn);
+
+		// 检查 toast 提示和新版本内容渲染
+		await waitFor(() => {
+			expect(screen.getByText("发现新版本 v0.3.2")).toBeInTheDocument();
+			expect(screen.getByText("发现新版本！")).toBeInTheDocument();
+			expect(screen.getByText("修复了一些已知问题")).toBeInTheDocument();
+		});
+
+		// 点击前往下载按钮
+		const downloadBtn = screen.getByRole("button", {
+			name: /前往 GitHub 下载/,
+		});
+		fireEvent.click(downloadBtn);
+
+		await waitFor(() => {
+			expect(mockOpenUrl.execute).toHaveBeenCalledWith(
+				"https://github.com/example/repo",
+			);
+		});
+	});
+
+	it("当检查更新显示没有新版本时，应该显示最新提示", async () => {
+		const mockCheckUpdate = {
+			execute: vi.fn().mockResolvedValue({
+				hasUpdate: false,
+				latestVersion: "0.3.1",
+				currentVersion: "0.3.1",
+				notes: "",
+				htmlUrl: "https://github.com/example/repo",
+			}),
+		};
+		const mockGetVersion = {
+			execute: vi.fn().mockResolvedValue("0.3.1"),
+		};
+
+		mockContainer = createDIContainerForTest({
+			settingsRepository: mockSettingsRepository,
+			checkUpdateUseCase: mockCheckUpdate as any,
+			getCurrentVersionUseCase: mockGetVersion as any,
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("当前版本：0.3.1")).toBeInTheDocument();
+		});
+
+		const checkBtn = screen.getByRole("button", { name: /检查更新/ });
+		fireEvent.click(checkBtn);
+
+		await waitFor(() => {
+			expect(screen.getAllByText("当前已是最新版本").length).toBeGreaterThan(0);
+		});
+	});
+
+	it("当检查更新失败时，应当妥善提示错误信息", async () => {
+		const mockCheckUpdate = {
+			execute: vi.fn().mockRejectedValue(new Error("网络连接失败")),
+		};
+		const mockGetVersion = {
+			execute: vi.fn().mockResolvedValue("0.3.1"),
+		};
+
+		mockContainer = createDIContainerForTest({
+			settingsRepository: mockSettingsRepository,
+			checkUpdateUseCase: mockCheckUpdate as any,
+			getCurrentVersionUseCase: mockGetVersion as any,
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("当前版本：0.3.1")).toBeInTheDocument();
+		});
+
+		const checkBtn = screen.getByRole("button", { name: /检查更新/ });
+		fireEvent.click(checkBtn);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText("检查更新失败: 网络连接失败"),
+			).toBeInTheDocument();
+		});
+	});
+
+	it("当打开链接失败时，应当妥善提示错误信息", async () => {
+		const mockCheckUpdateSuccess = {
+			execute: vi.fn().mockResolvedValue({
+				hasUpdate: true,
+				latestVersion: "0.3.2",
+				currentVersion: "0.3.1",
+				notes: "修复了一些已知问题",
+				url: "https://example.com/download",
+				htmlUrl: "https://github.com/example/repo",
+			}),
+		};
+		const mockOpenUrlFail = {
+			execute: vi.fn().mockRejectedValue(new Error("打不开系统默认浏览器")),
+		};
+		const mockGetVersion = {
+			execute: vi.fn().mockResolvedValue("0.3.1"),
+		};
+
+		mockContainer = createDIContainerForTest({
+			settingsRepository: mockSettingsRepository,
+			checkUpdateUseCase: mockCheckUpdateSuccess as any,
+			openUpdateUrlUseCase: mockOpenUrlFail as any,
+			getCurrentVersionUseCase: mockGetVersion as any,
+		});
+
+		renderSettings();
+
+		// 点击检查更新以呈现下载按钮
+		await waitFor(() => {
+			const checkBtn = screen.getByRole("button", { name: /检查更新/ });
+			fireEvent.click(checkBtn);
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("发现新版本 v0.3.2")).toBeInTheDocument();
+		});
+
+		const downloadBtn = screen.getByRole("button", {
+			name: /前往 GitHub 下载/,
+		});
+		fireEvent.click(downloadBtn);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText("无法打开链接: 打不开系统默认浏览器"),
+			).toBeInTheDocument();
+		});
+	});
 });

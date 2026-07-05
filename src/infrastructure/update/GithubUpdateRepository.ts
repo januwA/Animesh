@@ -66,10 +66,16 @@ export class GithubUpdateRepository implements UpdateRepository {
 			const { openUrl } = await import("@tauri-apps/plugin-opener");
 			await openUrl(url);
 		} catch (err: unknown) {
+			let fallbackSuccess = false;
 			try {
 				window.open(url, "_blank");
-			} catch (_fallbackErr) {
-				throw new Error("打开链接失败", { cause: err });
+				fallbackSuccess = true;
+			} catch (fallbackErr: unknown) {
+				throw new Error("打开链接失败", { cause: fallbackErr });
+			}
+
+			if (!fallbackSuccess) {
+				throw err;
 			}
 		}
 	}
