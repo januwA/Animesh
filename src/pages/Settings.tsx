@@ -25,6 +25,7 @@ import {
 	type TrackerCdnType,
 	type TrackerSourceType,
 } from "../domain/settings/TrackerSettings";
+import type { UpdateCheckResult } from "../domain/update/UpdateInfo";
 
 export default function Settings() {
 	const navigate = useNavigate();
@@ -39,7 +40,9 @@ export default function Settings() {
 	const { showToast } = useAppContext();
 	const [currentVersion, setCurrentVersion] = useState("");
 	const [checkingUpdate, setCheckingUpdate] = useState(false);
-	const [updateResult, setUpdateResult] = useState<any>(null);
+	const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(
+		null,
+	);
 	const [downloadDir, setDownloadDir] = useState("");
 	const [proxy, setProxy] = useState("");
 	const [trackersText, setTrackersText] = useState("");
