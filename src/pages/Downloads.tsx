@@ -8,7 +8,7 @@ import {
 	Play,
 	Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ export default function Downloads() {
 	const { showToast } = useAppContext();
 	const [torrents, setTorrents] = useState<TorrentStatusInfo[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [isActionPending, startActionTransition] = useTransition();
+	const [isActionPending, setIsActionPending] = useState(false);
 
 	// Deletion target state
 	const [deleteTarget, setDeleteTarget] = useState<TorrentStatusInfo | null>(
@@ -83,35 +83,42 @@ export default function Downloads() {
 
 	// Pause a download
 	const handlePause = (infoHash: string, name: string) => {
-		startActionTransition(async () => {
+		setIsActionPending(true);
+		(async () => {
 			try {
 				await pauseTorrentUseCase.execute(infoHash);
 				showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
 				await refreshTorrents();
 			} catch (err: unknown) {
 				showToast(`暂停失败: ${formatError(err)}`);
+			} finally {
+				setIsActionPending(false);
 			}
-		});
+		})();
 	};
 
 	// Resume a download
 	const handleResume = (infoHash: string, name: string) => {
-		startActionTransition(async () => {
+		setIsActionPending(true);
+		(async () => {
 			try {
 				await resumeTorrentUseCase.execute(infoHash);
 				showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
 				await refreshTorrents();
 			} catch (err: unknown) {
 				showToast(`启动失败: ${formatError(err)}`);
+			} finally {
+				setIsActionPending(false);
 			}
-		});
+		})();
 	};
 
 	// Delete a download
 	const handleDelete = () => {
 		// v8 ignore next
 		if (!deleteTarget) return;
-		startActionTransition(async () => {
+		setIsActionPending(true);
+		(async () => {
 			try {
 				await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
 				showToast(`已删除任务`);
@@ -119,8 +126,10 @@ export default function Downloads() {
 				await refreshTorrents();
 			} catch (err: unknown) {
 				showToast(`删除任务失败: ${formatError(err)}`);
+			} finally {
+				setIsActionPending(false);
 			}
-		});
+		})();
 	};
 
 	const handleViewFiles = (torrent: TorrentStatusInfo) => {

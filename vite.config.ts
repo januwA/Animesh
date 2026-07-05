@@ -10,9 +10,9 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig((config) => {
-	console.log(config,process.env);
-	
-	return ({
+	console.log(config, process.env);
+
+	return {
 		plugins: [react(), tailwindcss()],
 		envPrefix: ["VITE_", "TAURI_ENV_*"],
 		resolve: {
@@ -32,10 +32,10 @@ export default defineConfig((config) => {
 			host: host || false,
 			hmr: host
 				? {
-					protocol: "ws",
-					host,
-					port: 1421,
-				}
+						protocol: "ws",
+						host,
+						port: 1421,
+					}
 				: undefined,
 			watch: {
 				// 3. tell Vite to ignore watching `src-tauri`
@@ -68,5 +68,5 @@ export default defineConfig((config) => {
 				},
 			},
 		},
-	});
+	};
 });

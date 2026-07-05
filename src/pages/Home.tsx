@@ -1,6 +1,6 @@
 import { Clock, X } from "lucide-react";
 import type { FormEvent } from "react";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ export default function Home() {
 		setSearchEngine,
 	} = useAppContext();
 
-	const [isPending, startTransition] = useTransition();
+	const [isSearching, setIsSearching] = useState(false);
 	const { createContext, cancel: cancelSearch } = useRequestContext();
 
 	const [history, setHistory] = useState<string[]>(() => {
@@ -68,8 +68,9 @@ export default function Home() {
 			}
 
 			const ctx = createContext();
+			setIsSearching(true);
 
-			startTransition(async () => {
+			(async () => {
 				try {
 					const data = await searchTorrentsUseCase.execute(ctx, {
 						keyword: queryText,
@@ -82,8 +83,10 @@ export default function Home() {
 					}
 					setError(`搜索失败，请检查网络或重试: ${formatError(err)}`);
 					setResults([]);
+				} finally {
+					setIsSearching(false);
 				}
-			});
+			})();
 		},
 		[
 			searchTorrentsUseCase,
@@ -160,7 +163,7 @@ export default function Home() {
 			<SearchForm
 				keyword={keyword}
 				setKeyword={setKeyword}
-				loading={isPending}
+				loading={isSearching}
 				onSubmit={handleSearch}
 				searchEngine={searchEngine}
 				setSearchEngine={setSearchEngine}
@@ -206,13 +209,13 @@ export default function Home() {
 			)}
 
 			{/* 加载提示 */}
-			{isPending && <SearchLoading onCancel={cancelSearch} />}
+			{isSearching && <SearchLoading onCancel={cancelSearch} />}
 
 			{/* 错误显示 */}
 			{error && <ErrorBanner message={error} />}
 
 			{/* 未搜索空状态或结果为空提示 */}
-			{!isPending &&
+			{!isSearching &&
 				!error &&
 				(hasSearched && results.length === 0 ? (
 					<div className="text-center py-20 space-y-2">
@@ -225,7 +228,7 @@ export default function Home() {
 				) : null)}
 
 			{/* 搜索结果列表 */}
-			{!isPending && !error && results.length > 0 && (
+			{!isSearching && !error && results.length > 0 && (
 				<section className="w-full space-y-4">
 					<div className="flex items-center justify-between border-b border-white/5 pb-2">
 						<div className="results-count text-sm text-muted-foreground">
