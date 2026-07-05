@@ -20,12 +20,15 @@ import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseC
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
+import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
+import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import type { DIContainer } from "../di/DIContext";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
+import type { UpdateRepository } from "../domain/update/UpdateRepository";
 
 const dummyLogger: Logger = {
 	debug: () => {},
@@ -66,6 +69,9 @@ export interface CreateContainerParamsForTest {
 	getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
 	getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
 	getBangumiEpisodesUseCase?: GetBangumiEpisodesUseCase;
+	updateRepository?: Partial<UpdateRepository>;
+	checkUpdateUseCase?: CheckUpdateUseCase;
+	getCurrentVersionUseCase?: GetCurrentVersionUseCase;
 }
 
 export function createDIContainerForTest(
@@ -113,6 +119,16 @@ export function createDIContainerForTest(
 		sendNotification: async () => {},
 		...params.notificationRepository,
 	} as NotificationRepository;
+
+	const updateRepo = {
+		getLatestRelease: async () => ({
+			version: "0.0.0",
+			notes: "",
+			htmlUrl: "",
+		}),
+		getCurrentVersion: async () => "0.0.0",
+		...params.updateRepository,
+	} as unknown as UpdateRepository;
 
 	const notifyUseCase =
 		params.notifyDownloadCompletionUseCase ||
@@ -172,6 +188,11 @@ export function createDIContainerForTest(
 		params.getBangumiEpisodesUseCase ||
 		new GetBangumiEpisodesUseCase(bangumiRepo);
 
+	const checkUpdateUseCase =
+		params.checkUpdateUseCase || new CheckUpdateUseCase(updateRepo);
+	const getCurrentVersionUseCase =
+		params.getCurrentVersionUseCase || new GetCurrentVersionUseCase(updateRepo);
+
 	return {
 		notificationRepository: notificationRepo,
 		logger: params.logger || dummyLogger,
@@ -200,5 +221,7 @@ export function createDIContainerForTest(
 		getBangumiCalendarUseCase,
 		getBangumiSubjectUseCase,
 		getBangumiEpisodesUseCase,
+		checkUpdateUseCase,
+		getCurrentVersionUseCase,
 	};
 }

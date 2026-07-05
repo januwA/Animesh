@@ -21,6 +21,8 @@ import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseC
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
+import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
+import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
@@ -28,6 +30,7 @@ import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
 import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
+import { GithubUpdateRepository } from "../infrastructure/update/GithubUpdateRepository";
 
 export interface DIContainer {
 	notificationRepository: NotificationRepository;
@@ -58,6 +61,8 @@ export interface DIContainer {
 	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
 	getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
 	getBangumiEpisodesUseCase: GetBangumiEpisodesUseCase;
+	checkUpdateUseCase: CheckUpdateUseCase;
+	getCurrentVersionUseCase: GetCurrentVersionUseCase;
 }
 
 export function createDefaultDIContainer(): DIContainer {
@@ -65,6 +70,7 @@ export function createDefaultDIContainer(): DIContainer {
 	const settingsRepository = new TauriSettingsRepository();
 	const bangumiRepository = new HttpBangumiRepository();
 	const notificationRepository = new TauriNotificationRepository();
+	const updateRepository = new GithubUpdateRepository();
 
 	const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
 		torrentRepository,
@@ -111,6 +117,10 @@ export function createDefaultDIContainer(): DIContainer {
 	const getBangumiEpisodesUseCase = new GetBangumiEpisodesUseCase(
 		bangumiRepository,
 	);
+	const checkUpdateUseCase = new CheckUpdateUseCase(updateRepository);
+	const getCurrentVersionUseCase = new GetCurrentVersionUseCase(
+		updateRepository,
+	);
 
 	const logger = new ConsoleLogger("App");
 
@@ -142,6 +152,8 @@ export function createDefaultDIContainer(): DIContainer {
 		getBangumiCalendarUseCase,
 		getBangumiSubjectUseCase,
 		getBangumiEpisodesUseCase,
+		checkUpdateUseCase,
+		getCurrentVersionUseCase,
 	};
 }
 

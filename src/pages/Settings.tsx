@@ -33,8 +33,13 @@ export default function Settings() {
 		saveSettingsUseCase,
 		selectDirectoryUseCase,
 		syncTrackersUseCase,
+		checkUpdateUseCase,
+		getCurrentVersionUseCase,
 	} = useDI();
 	const { showToast } = useAppContext();
+	const [currentVersion, setCurrentVersion] = useState("");
+	const [checkingUpdate, setCheckingUpdate] = useState(false);
+	const [updateResult, setUpdateResult] = useState<any>(null);
 	const [downloadDir, setDownloadDir] = useState("");
 	const [proxy, setProxy] = useState("");
 	const [trackersText, setTrackersText] = useState("");
@@ -121,6 +126,33 @@ export default function Settings() {
 		};
 		loadSettings();
 	}, [showToast, getSettingsUseCase]);
+
+	// Load version
+	useEffect(() => {
+		const loadVersion = async () => {
+			const version = await getCurrentVersionUseCase.execute();
+			setCurrentVersion(version);
+		};
+		loadVersion();
+	}, [getCurrentVersionUseCase]);
+
+	const handleCheckUpdate = async () => {
+		setCheckingUpdate(true);
+		setUpdateResult(null);
+		try {
+			const result = await checkUpdateUseCase.execute();
+			setUpdateResult(result);
+			if (result.hasUpdate) {
+				showToast(`发现新版本 v${result.latestVersion}`);
+			} else {
+				showToast("当前已是最新版本");
+			}
+		} catch (err: unknown) {
+			showToast(`检查更新失败: ${formatError(err)}`);
+		} finally {
+			setCheckingUpdate(false);
+		}
+	};
 
 	// Handle native directory selection
 	const handleSelectDir = async () => {
@@ -300,6 +332,87 @@ export default function Settings() {
 								</span>
 							</p>
 						</div>
+					</CardContent>
+				</Card>
+
+				<Card className="bg-card/40 border-white/5">
+					<CardHeader className="p-5">
+						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+							<Info className="h-4 w-4 text-primary" />
+							关于 & 检查更新
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+						<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-white/5 bg-black/10 rounded-lg p-4">
+							<div className="space-y-1">
+								<p className="font-semibold text-foreground">Animesh 客户端</p>
+								<p className="text-muted-foreground">
+									当前版本：{currentVersion || "加载中..."}
+								</p>
+							</div>
+							<div className="flex gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									disabled={checkingUpdate}
+									onClick={handleCheckUpdate}
+									className="text-xs h-8.5 font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+								>
+									{checkingUpdate ? (
+										<Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+									) : (
+										<RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+									)}
+									检查更新
+								</Button>
+							</div>
+						</div>
+
+						{updateResult && (
+							<div className="border border-white/5 bg-black/20 rounded-lg p-4 space-y-3">
+								<div className="flex items-center justify-between">
+									<h4 className="text-xs font-semibold text-foreground">
+										{updateResult.hasUpdate
+											? "发现新版本！"
+											: "当前已是最新版本"}
+									</h4>
+									{updateResult.hasUpdate && (
+										<span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-medium">
+											v{updateResult.latestVersion}
+										</span>
+									)}
+								</div>
+
+								{updateResult.hasUpdate && (
+									<>
+										<p className="text-muted-foreground/90 whitespace-pre-wrap leading-relaxed">
+											{updateResult.notes}
+										</p>
+										<div className="flex gap-2 pt-1">
+											<Button
+												type="button"
+												onClick={() => {
+													if (updateResult.htmlUrl) {
+														import("@tauri-apps/plugin-opener").then(
+															({ open }) => {
+																open(updateResult.htmlUrl).catch((err) => {
+																	showToast(
+																		`无法打开链接: ${formatError(err)}`,
+																	);
+																});
+															},
+														);
+													}
+												}}
+												className="text-xs h-8 font-medium px-3 bg-primary text-primary-foreground"
+											>
+												前往 GitHub 下载
+											</Button>
+										</div>
+									</>
+								)}
+							</div>
+						)}
 					</CardContent>
 				</Card>
 
