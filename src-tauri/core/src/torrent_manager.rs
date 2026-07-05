@@ -389,7 +389,97 @@ impl TorrentManager {
     }
 }
 
+fn select_best_local_ip(interfaces: Vec<(String, std::net::IpAddr)>) -> Option<String> {
+    use std::net::IpAddr;
+
+    let mut best_ip: Option<(String, i32)> = None;
+
+    for (name, ip) in interfaces {
+        let ipv4 = match ip {
+            IpAddr::V4(v4) => v4,
+            _ => continue, // Ignore IPv6 for stream URL compatibility
+        };
+
+        if ipv4.is_loopback() || ipv4.is_unspecified() {
+            continue;
+        }
+
+        let name_lower = name.to_lowercase();
+        let mut score = 0;
+
+        let octets = ipv4.octets();
+        let is_private = (octets[0] == 10)
+            || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
+            || (octets[0] == 192 && octets[1] == 168);
+
+        let is_link_local = octets[0] == 169 && octets[1] == 254;
+
+        if is_private {
+            score += 10;
+        }
+        if is_link_local {
+            score -= 10;
+        }
+
+        let ignore_keywords = [
+            "virtual",
+            "vbox",
+            "vmware",
+            "virtualbox",
+            "hyper-v",
+            "wsl",
+            "veth",
+            "vethernet",
+            "xray",
+            "tun",
+            "tap",
+            "tailscale",
+            "zerotier",
+            "vpn",
+            "ppp",
+            "docker",
+            "loopback",
+        ];
+
+        if ignore_keywords.iter().any(|&kw| name_lower.contains(kw)) {
+            score -= 100;
+        }
+
+        let wifi_keywords = ["wlan", "wifi", "wi-fi", "wireless", "无线"];
+        let ethernet_keywords = ["ethernet", "eth", "以太网", "本地连接", "lan"];
+
+        if wifi_keywords.iter().any(|&kw| name_lower.contains(kw)) {
+            score += 50;
+        } else if ethernet_keywords.iter().any(|&kw| name_lower.contains(kw)) {
+            score += 30;
+        }
+
+        let ip_str = ipv4.to_string();
+        match &best_ip {
+            Some((_, best_score)) => {
+                if score > *best_score {
+                    best_ip = Some((ip_str, score));
+                }
+            }
+            None => {
+                best_ip = Some((ip_str, score));
+            }
+        }
+    }
+
+    best_ip.map(|(ip, _score)| ip)
+}
+
 fn get_local_ip() -> Option<String> {
+    use local_ip_address::list_afinet_netifas;
+
+    if let Ok(interfaces) = list_afinet_netifas() {
+        if let Some(ip) = select_best_local_ip(interfaces) {
+            return Some(ip);
+        }
+    }
+
+    // Fallback: original UdpSocket connection method
     use std::net::UdpSocket;
     let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
     socket.connect("8.8.8.8:80").ok()?;
@@ -666,5 +756,64 @@ mod tests {
             assert_ne!(addr, "127.0.0.1");
             assert_eq!(addr.split('.').count(), 4);
         }
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_选择最佳局域网IP_优先级() {
+        use std::net::IpAddr;
+
+        // 1. 用户实际多网卡场景
+        let user_interfaces = vec![
+            ("xray0".to_string(), "198.18.0.1".parse::<IpAddr>().unwrap()),
+            (
+                "vEthernet (WSL (Hyper-V firewall))".to_string(),
+                "172.31.208.1".parse::<IpAddr>().unwrap(),
+            ),
+            (
+                "WLAN".to_string(),
+                "192.168.0.106".parse::<IpAddr>().unwrap(),
+            ),
+        ];
+        assert_eq!(
+            super::select_best_local_ip(user_interfaces),
+            Some("192.168.0.106".to_string())
+        );
+
+        // 2. 只有回环地址和未指定地址的情况
+        let loopback_only = vec![
+            ("lo".to_string(), "127.0.0.1".parse::<IpAddr>().unwrap()),
+            (
+                "unspecified".to_string(),
+                "0.0.0.0".parse::<IpAddr>().unwrap(),
+            ),
+        ];
+        assert_eq!(super::select_best_local_ip(loopback_only), None);
+
+        // 3. 多个物理网卡（无线优先于有线）
+        let multiple_physical = vec![
+            (
+                "以太网".to_string(),
+                "192.168.1.100".parse::<IpAddr>().unwrap(),
+            ),
+            (
+                "WLAN".to_string(),
+                "192.168.1.101".parse::<IpAddr>().unwrap(),
+            ),
+        ];
+        assert_eq!(
+            super::select_best_local_ip(multiple_physical),
+            Some("192.168.1.101".to_string())
+        );
+
+        // 4. 普通网卡无特定关键词
+        let simple_ip = vec![(
+            "my_nic".to_string(),
+            "192.168.1.50".parse::<IpAddr>().unwrap(),
+        )];
+        assert_eq!(
+            super::select_best_local_ip(simple_ip),
+            Some("192.168.1.50".to_string())
+        );
     }
 }
