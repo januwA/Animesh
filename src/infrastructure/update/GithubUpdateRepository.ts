@@ -68,7 +68,7 @@ export class GithubUpdateRepository implements UpdateRepository {
 		} catch (err: unknown) {
 			try {
 				window.open(url, "_blank");
-			} catch (fallbackErr) {
+			} catch (_fallbackErr) {
 				throw new Error("打开链接失败", { cause: err });
 			}
 		}
