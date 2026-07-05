@@ -128,8 +128,16 @@ impl TorrentManager {
         let listener = TcpListener::bind("0.0.0.0:0").await?;
         let port = listener.local_addr()?.port();
 
+        // 配置 CORS 允许 Webview/本地网络访问流地址
+        use tower_http::cors::{Any, CorsLayer};
+        let cors = CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any);
+
         let app = Router::new()
             .route("/stream/:info_hash/:file_id", get(stream_handler))
+            .layer(cors)
             .with_state(torrent_repo.clone());
 
         tokio::spawn(async move {
