@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +13,7 @@ const CARGO_PATHS = [
 	path.join(ROOT_DIR, "src-tauri/core/Cargo.toml"),
 ];
 
-function parseSemver(version: string): { major: number; minor: number; patch: number; pre?: string } {
+export function parseSemver(version: string): { major: number; minor: number; patch: number; pre?: string } {
 	const match = version.match(/^(\d+)\.(\d+)\.(\d+)(?:-([\w.]+))?$/);
 	if (!match) {
 		throw new Error(`无效的版本号格式: "${version}"。请使用标准的 SemVer 格式 (如: 1.0.0 或 1.2.3-alpha.1)。`);
@@ -25,7 +26,7 @@ function parseSemver(version: string): { major: number; minor: number; patch: nu
 	};
 }
 
-function compareSemver(v1: string, v2: string): number {
+export function compareSemver(v1: string, v2: string): number {
 	const s1 = parseSemver(v1);
 	const s2 = parseSemver(v2);
 
@@ -42,7 +43,7 @@ function compareSemver(v1: string, v2: string): number {
 	return 0;
 }
 
-function updateCargoToml(filePath: string, newVersion: string) {
+export function updateCargoToml(filePath: string, newVersion: string) {
 	const content = fs.readFileSync(filePath, "utf-8");
 	const regex = /(\[package\][\s\S]*?version\s*=\s*")[^"]+(")/;
 	if (!regex.test(content)) {
@@ -96,6 +97,16 @@ function main() {
 			}
 		}
 
+		// 3. 更新 src-tauri/Cargo.lock
+		const tauriCargoToml = path.join(ROOT_DIR, "src-tauri/Cargo.toml");
+		if (fs.existsSync(tauriCargoToml)) {
+			console.log("正在更新 src-tauri/Cargo.lock...");
+			execSync(`cargo update --workspace --manifest-path "${tauriCargoToml}"`, {
+				stdio: "inherit",
+			});
+			console.log("[✔] 成功更新 src-tauri/Cargo.lock");
+		}
+
 		console.log(`\n🎉 版本号已成功升级至 ${targetVersion}!`);
 	} catch (err: any) {
 		console.error(`\n❌ 更新版本号失败: ${err.message}`);
@@ -103,4 +114,10 @@ function main() {
 	}
 }
 
-main();
+if (
+	process.argv[1] &&
+	(process.argv[1].endsWith("bump-version.ts") ||
+		process.argv[1].endsWith("bump-version.js"))
+) {
+	main();
+}
