@@ -22,6 +22,7 @@ import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseC
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
+import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { DIContainer } from "../di/DIContext";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
 import type { Logger } from "../domain/logger/logger";
@@ -72,6 +73,7 @@ export interface CreateContainerParamsForTest {
 	updateRepository?: Partial<UpdateRepository>;
 	checkUpdateUseCase?: CheckUpdateUseCase;
 	getCurrentVersionUseCase?: GetCurrentVersionUseCase;
+	openUpdateUrlUseCase?: OpenUpdateUrlUseCase;
 }
 
 export function createDIContainerForTest(
@@ -192,6 +194,8 @@ export function createDIContainerForTest(
 		params.checkUpdateUseCase || new CheckUpdateUseCase(updateRepo);
 	const getCurrentVersionUseCase =
 		params.getCurrentVersionUseCase || new GetCurrentVersionUseCase(updateRepo);
+	const openUpdateUrlUseCase =
+		params.openUpdateUrlUseCase || new OpenUpdateUrlUseCase(updateRepo);
 
 	return {
 		notificationRepository: notificationRepo,
@@ -223,5 +227,6 @@ export function createDIContainerForTest(
 		getBangumiEpisodesUseCase,
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
+		openUpdateUrlUseCase,
 	};
 }

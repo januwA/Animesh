@@ -60,4 +60,17 @@ export class GithubUpdateRepository implements UpdateRepository {
 			throw new Error("获取当前应用版本失败", { cause: err });
 		}
 	}
+
+	async openUrl(url: string): Promise<void> {
+		try {
+			const { openUrl } = await import("@tauri-apps/plugin-opener");
+			await openUrl(url);
+		} catch (err: unknown) {
+			try {
+				window.open(url, "_blank");
+			} catch (fallbackErr) {
+				throw new Error("打开链接失败", { cause: err });
+			}
+		}
+	}
 }

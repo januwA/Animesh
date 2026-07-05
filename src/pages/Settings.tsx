@@ -36,6 +36,7 @@ export default function Settings() {
 		syncTrackersUseCase,
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
+		openUpdateUrlUseCase,
 	} = useDI();
 	const { showToast } = useAppContext();
 	const [currentVersion, setCurrentVersion] = useState("");
@@ -394,17 +395,15 @@ export default function Settings() {
 										<div className="flex gap-2 pt-1">
 											<Button
 												type="button"
-												onClick={() => {
+												onClick={async () => {
 													if (updateResult.htmlUrl) {
-														import("@tauri-apps/plugin-opener").then(
-															({ open }) => {
-																open(updateResult.htmlUrl).catch((err) => {
-																	showToast(
-																		`无法打开链接: ${formatError(err)}`,
-																	);
-																});
-															},
-														);
+														try {
+															await openUpdateUrlUseCase.execute(
+																updateResult.htmlUrl,
+															);
+														} catch (err: unknown) {
+															showToast(`无法打开链接: ${formatError(err)}`);
+														}
 													}
 												}}
 												className="text-xs h-8 font-medium px-3 bg-primary text-primary-foreground"

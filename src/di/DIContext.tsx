@@ -23,6 +23,7 @@ import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseC
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
+import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
@@ -63,6 +64,7 @@ export interface DIContainer {
 	getBangumiEpisodesUseCase: GetBangumiEpisodesUseCase;
 	checkUpdateUseCase: CheckUpdateUseCase;
 	getCurrentVersionUseCase: GetCurrentVersionUseCase;
+	openUpdateUrlUseCase: OpenUpdateUrlUseCase;
 }
 
 export function createDefaultDIContainer(): DIContainer {
@@ -121,6 +123,7 @@ export function createDefaultDIContainer(): DIContainer {
 	const getCurrentVersionUseCase = new GetCurrentVersionUseCase(
 		updateRepository,
 	);
+	const openUpdateUrlUseCase = new OpenUpdateUrlUseCase(updateRepository);
 
 	const logger = new ConsoleLogger("App");
 
@@ -154,6 +157,7 @@ export function createDefaultDIContainer(): DIContainer {
 		getBangumiEpisodesUseCase,
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
+		openUpdateUrlUseCase,
 	};
 }
 
