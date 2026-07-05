@@ -124,7 +124,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -146,12 +146,20 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      - name: Decrypt Android Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEY_BASE64 }}" | base64 --decode > src-tauri/gen/android/animesh-release-key.jks
+
       - name: Build and Publish
         uses: tauri-apps/tauri-action@dev
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           BINDGEN_EXTRA_CLANG_ARGS: --sysroot=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+          TAURI_ANDROID_KEYSTORE: ${{ github.workspace }}/src-tauri/gen/android/animesh-release-key.jks
+          TAURI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TAURI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          TAURI_ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
           releaseName: 'Animesh v__VERSION__'
@@ -164,6 +172,7 @@ jobs:
           releaseDraft: true
           prerelease: false
           mobile: android
+          args: '--apk --target aarch64'
 
   release:
     permissions:

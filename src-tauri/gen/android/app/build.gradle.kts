@@ -24,6 +24,23 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    signingConfigs {
+        create("release") {
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            val keystoreProperties = Properties()
+            if (keystorePropertiesFile.exists()) {
+                keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+            }
+            
+            val storeFilePath = (keystoreProperties["storeFile"] as? String) ?: System.getenv("TAURI_ANDROID_KEYSTORE") ?: ""
+            if (storeFilePath.isNotEmpty()) {
+                storeFile = file(storeFilePath)
+                storePassword = (keystoreProperties["storePassword"] as? String) ?: System.getenv("TAURI_ANDROID_KEYSTORE_PASSWORD") ?: ""
+                keyAlias = (keystoreProperties["keyAlias"] as? String) ?: System.getenv("TAURI_ANDROID_KEY_ALIAS") ?: ""
+                keyPassword = (keystoreProperties["keyPassword"] as? String) ?: System.getenv("TAURI_ANDROID_KEY_PASSWORD") ?: ""
+            }
+        }
+    }
     buildTypes {
         getByName("debug") {
             manifestPlaceholders["usesCleartextTraffic"] = "true"
@@ -43,6 +60,10 @@ android {
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
                     .toList().toTypedArray()
             )
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists() || System.getenv("TAURI_ANDROID_KEYSTORE") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     kotlinOptions {

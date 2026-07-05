@@ -67,13 +67,74 @@ pnpm tauri build
   pnpm tauri android dev --force-ip-prompt
   ```
 - **构建 Android 安装包 (APK/AAB)**：
-  ```bash
-  pnpm tauri android build
-  ```
+  - **本地免 CMake 打包（仅限 aarch64）**：
+    ```bash
+    pnpm tauri:android:apk
+    # 或手动指定 target
+    pnpm tauri android build --apk --target aarch64
+    ```
+  - **全架构打包（包含 armv7/x86，本地需要配置 cmake）**：
+    ```bash
+    pnpm tauri android build
+    ```
+
+#### 自动签名配置
+为了避免每次构建 Release 包时都生成未签名的（`-unsigned.apk`）软件包而导致手机无法安装，项目已集成自动签名逻辑：
+
+1. **本地打包自动签名**：
+   在 `src-tauri/gen/android/` 目录下创建 `keystore.properties` 文件（该文件已加入 `.gitignore`），并填入你的 `.jks` 证书信息：
+   ```properties
+   storeFile=你的密钥库文件绝对路径（以双反斜杠分隔，如 D:\\work\\my-key.jks）
+   storePassword=你的密钥库密码
+   keyAlias=你的证书别名
+   keyPassword=你的别名密码
+   ```
+2. **CI/CD 自动化签名**：
+   在 GitHub Repository Secrets 中配置以下密文，CI 在打包时会自动解码并进行发布签名：
+   - `ANDROID_KEY_BASE64`：`.jks` 文件的 Base64 编码字符串（可在本地 PowerShell 运行 `[Convert]::ToBase64String([IO.File]::ReadAllBytes("my-key.jks"))` 获得）
+   - `ANDROID_KEYSTORE_PASSWORD`：密钥库密码
+   - `ANDROID_KEY_ALIAS`：证书别名
+   - `ANDROID_KEY_PASSWORD`：证书别名密码
 
 #### 常见问题与避坑
 
-1. **Gradle 报错：`Unsupported class file major version 69` (Java 25 冲突)**
+1. **国内 Gradle 依赖下载超时/失败**
+   - **解决方式**：在你的系统用户目录下创建全局 Gradle 初始化脚本 `init.gradle`（Windows 路径：`C:\Users\<你的用户名>\.gradle\init.gradle`），配置阿里云镜像源加速下载：
+     ```groovy
+     gradle.beforeSettings { settings ->
+         settings.pluginManagement {
+             repositories {
+                 maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+                 maven { url 'https://maven.aliyun.com/repository/public' }
+                 gradlePluginPortal()
+             }
+         }
+         settings.dependencyResolutionManagement {
+             repositories {
+                 maven { url 'https://maven.aliyun.com/repository/public' }
+                 maven { url 'https://maven.aliyun.com/repository/google' }
+                 maven { url 'https://maven.aliyun.com/repository/central' }
+                 google()
+                 mavenCentral()
+             }
+         }
+     }
+     allprojects {
+         buildscript {
+             repositories {
+                 maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+                 maven { url 'https://maven.aliyun.com/repository/public' }
+             }
+         }
+         repositories {
+             maven { url 'https://maven.aliyun.com/repository/public' }
+             maven { url 'https://maven.aliyun.com/repository/google' }
+             maven { url 'https://maven.aliyun.com/repository/central' }
+         }
+     }
+     ```
+
+2. **Gradle 报错：`Unsupported class file major version 69` (Java 25 冲突)**
    - **原因**：你的系统全局默认 JDK 版本过高（例如 JDK 25），而当前的 Gradle 8.14.3 无法识别过高版本的 Java 字节码。
    - **解决方式**：为本地 Gradle 配置兼容的 Java 版本（如 JDK 21），且不要直接修改项目目录中的属性文件（避免影响 CI 构建）。建议在你的系统用户目录下，创建或修改**全局** Gradle 配置文件：
      - Windows 路径：`C:\Users\<你的用户名>\.gradle\gradle.properties`

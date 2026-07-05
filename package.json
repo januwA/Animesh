@@ -8,6 +8,7 @@
 		"build": "tsc && vite build",
 		"preview": "vite preview",
 		"tauri": "tauri",
+		"tauri:android:apk": "tauri android build --apk --target aarch64",
 		"test": "vitest run",
 		"test:rust": "cargo test --manifest-path src-tauri/Cargo.toml -p animesh_core -- --test-threads=1",
 		"test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml -p animesh_core --fail-under-lines 90 --fail-under-functions 90 --ignore-filename-regex \"torrent_manager|src/subtitles\\.rs|infrastructure\" --no-clean -- --test-threads=1",
