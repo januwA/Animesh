@@ -98,80 +98,81 @@ export default function TorrentDetail() {
 	}
 
 	return (
-		<div
-			role="dialog"
-			className="bg-card/30 border border-white/5 rounded-xl p-6 space-y-6"
-		>
-			{/* Header info */}
-			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
-				<div className="space-y-1 flex-1 min-w-0">
-					<h2
-						className="text-xl font-bold break-all pr-4 text-foreground"
-						title={torrent.name || "未命名种子"}
-					>
-						{torrent.name || "未命名种子"}
-					</h2>
-					<p className="text-xs text-muted-foreground font-mono break-all">
-						Hash: {torrent.info_hash}
-					</p>
-				</div>
-				<div className="flex items-center gap-2">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={handleBack}
-						className="h-8 gap-1 text-muted-foreground hover:text-foreground self-start md:self-auto"
-					>
-						<ArrowLeft className="h-4 w-4" />
-						返回
-					</Button>
-				</div>
-			</div>
+		<div className="w-full space-y-4 animate-in fade-in duration-300">
+			{/* Navigation Header */}
+			<button
+				type="button"
+				onClick={handleBack}
+				className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+			>
+				<ArrowLeft className="h-4 w-4" />
+				返回
+			</button>
 
-			{/* File List */}
-			<div className="space-y-4">
-				<div className="flex items-center justify-between">
-					<h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-						<Film className="h-4 w-4 text-primary" />
-						选择要播放的文件：
-					</h3>
-					<Badge variant="secondary" className="text-xs">
-						共 {torrent.files.length} 个文件
-					</Badge>
-				</div>
-				<ScrollArea className="border border-white/5 rounded-lg bg-black/25 p-3">
-					<div className="space-y-2">
-						{torrent.files.map((file) => (
-							<div
-								key={file.id}
-								className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group"
-							>
-								<div className="flex items-start gap-3 flex-1 min-w-0 pr-4">
-									<FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
-									<div className="min-w-0">
-										<p
-											className="text-sm font-medium text-foreground break-all"
-											title={file.name}
-										>
-											{file.name}
-										</p>
-										<p className="text-xs text-muted-foreground mt-0.5">
-											{formatBytes(file.len)}
-										</p>
-									</div>
-								</div>
-								<Button
-									size="sm"
-									onClick={() => handleStartPlayback(file.id, file.name)}
-									className="gap-1.5 h-8 shrink-0"
-								>
-									<Play className="h-3.5 w-3.5 fill-current" />
-									播放
-								</Button>
-							</div>
-						))}
+			<div
+				role="dialog"
+				className="bg-card/30 border border-white/5 rounded-xl p-6 space-y-6"
+			>
+				{/* Header info */}
+				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
+					<div className="space-y-1 flex-1 min-w-0">
+						<h2
+							className="text-xl font-bold break-all pr-4 text-foreground"
+							title={torrent.name || "未命名种子"}
+						>
+							{torrent.name || "未命名种子"}
+						</h2>
+						<p className="text-xs text-muted-foreground font-mono break-all">
+							Hash: {torrent.info_hash}
+						</p>
 					</div>
-				</ScrollArea>
+				</div>
+
+				{/* File List */}
+				<div className="space-y-4">
+					<div className="flex items-center justify-between">
+						<h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+							<Film className="h-4 w-4 text-primary" />
+							选择要播放的文件：
+						</h3>
+						<Badge variant="secondary" className="text-xs">
+							共 {torrent.files.length} 个文件
+						</Badge>
+					</div>
+					<ScrollArea className="border border-white/5 rounded-lg bg-black/25 p-3">
+						<div className="space-y-2">
+							{torrent.files.map((file) => (
+								<div
+									key={file.id}
+									className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group"
+								>
+									<div className="flex items-start gap-3 flex-1 min-w-0 pr-4">
+										<FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
+										<div className="min-w-0">
+											<p
+												className="text-sm font-medium text-foreground break-all"
+												title={file.name}
+											>
+												{file.name}
+											</p>
+											<p className="text-xs text-muted-foreground mt-0.5">
+												{formatBytes(file.len)}
+											</p>
+										</div>
+									</div>
+									<Button
+										size="sm"
+										onClick={() => handleStartPlayback(file.id, file.name)}
+										className="gap-1.5 h-8 shrink-0"
+									>
+										<Play className="h-3.5 w-3.5 fill-current" />
+										播放
+									</Button>
+								</div>
+							))}
+						</div>
+					</ScrollArea>
+				</div>
 			</div>
 		</div>
 	);
