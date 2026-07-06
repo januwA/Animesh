@@ -518,6 +518,7 @@ pub fn run() {
                         proxy = settings.proxy;
                     }
                 }
+            } else {
                 let settings = animesh_core::torrent_manager::AppSettings {
                     download_dir: download_dir.to_string_lossy().to_string(),
                     proxy: None,
