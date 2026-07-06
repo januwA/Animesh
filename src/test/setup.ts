@@ -38,7 +38,7 @@ if (typeof window !== "undefined") {
 	}
 
 	if (typeof window.ResizeObserver === "undefined") {
-		window.ResizeObserver = class {
+		(window as any).ResizeObserver = class {
 			observe() {}
 			unobserve() {}
 			disconnect() {}
@@ -46,7 +46,7 @@ if (typeof window !== "undefined") {
 	}
 
 	if (typeof window.IntersectionObserver === "undefined") {
-		window.IntersectionObserver = class {
+		(window as any).IntersectionObserver = class {
 			observe() {}
 			unobserve() {}
 			disconnect() {}

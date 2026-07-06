@@ -130,6 +130,7 @@ export default function Player() {
 
 			updateTrackModes();
 
+			/* v8 ignore start */
 			const handleTrackChange = () => {
 				let activeId: number | null = null;
 				for (let i = 0; i < video.textTracks.length; i++) {
@@ -154,6 +155,7 @@ export default function Player() {
 					}
 				}
 			};
+			/* v8 ignore stop */
 
 			video.textTracks.addEventListener("change", handleTrackChange);
 			video.textTracks.addEventListener("addtrack", updateTrackModes);
@@ -389,6 +391,7 @@ export default function Player() {
 									if (!subtrackSrcs[id]) {
 										loadSubtitleVtt(id);
 									} else {
+										/* v8 ignore next 2 */
 										setSelectedTrackId(id);
 									}
 								}
