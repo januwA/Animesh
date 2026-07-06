@@ -26,3 +26,30 @@ vi.mock("react-router-dom", async (importOriginal) => {
 		ScrollRestoration: () => null,
 	};
 });
+
+// Mock CSS.supports to prevent JSDOM crash when initializing video.js components
+if (typeof window !== "undefined") {
+	if (typeof window.CSS === "undefined") {
+		(window as any).CSS = {
+			supports: () => false,
+		};
+	} else if (typeof window.CSS.supports === "undefined") {
+		window.CSS.supports = () => false;
+	}
+
+	if (typeof window.ResizeObserver === "undefined") {
+		window.ResizeObserver = class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		};
+	}
+
+	if (typeof window.IntersectionObserver === "undefined") {
+		window.IntersectionObserver = class {
+			observe() {}
+			unobserve() {}
+			disconnect() {}
+		};
+	}
+}

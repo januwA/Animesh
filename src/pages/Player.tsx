@@ -1,3 +1,6 @@
+import { createPlayer } from "@videojs/react";
+import { Video, VideoSkin, videoFeatures } from "@videojs/react/video";
+import "@videojs/react/video/skin.css";
 import {
 	Activity,
 	ArrowLeft,
@@ -25,6 +28,8 @@ import type {
 import { useAppContext } from "../context/AppContext";
 import { useDI } from "../di/DIContext";
 import { formatBytes, formatError } from "../utils";
+
+const MyVideoPlayer = createPlayer({ features: videoFeatures });
 
 export default function Player() {
 	const navigate = useNavigate();
@@ -60,55 +65,21 @@ export default function Player() {
 
 	const [subtracks, setSubtracks] = useState<SubtitleTrackInfo[]>([]);
 	const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
-	const [subtrackSrc, setSubtrackSrc] = useState<string | null>(null);
+	const [subtrackSrcs, setSubtrackSrcs] = useState<Record<number, string>>({});
 	const [subloading, setSubloading] = useState<boolean>(false);
 	const videoRef = useRef<HTMLVideoElement | null>(null);
+	const subtrackSrcsRef = useRef<Record<number, string>>({});
 
-	// Clean up subtitle object URL on unmount
+	// Clean up subtitle object URLs on unmount
 	useEffect(() => {
 		return () => {
-			if (subtrackSrc) {
-				URL.revokeObjectURL(subtrackSrc);
+			for (const src of Object.values(subtrackSrcsRef.current)) {
+				if (src) {
+					URL.revokeObjectURL(src);
+				}
 			}
 		};
-	}, [subtrackSrc]);
-
-	// Force showing the track when loaded
-	useEffect(() => {
-		if (videoRef.current && subtrackSrc && selectedTrackId !== null) {
-			const video = videoRef.current;
-			const expectedId = selectedTrackId.toString();
-
-			const updateTrackModes = () => {
-				for (let i = 0; i < video.textTracks.length; i++) {
-					const track = video.textTracks[i];
-					if (track.id === expectedId) {
-						track.mode = "showing";
-					} else {
-						track.mode = "disabled";
-					}
-				}
-			};
-
-			// Show immediately if already parsed
-			updateTrackModes();
-
-			// Listen for new tracks being added
-			const handleAddTrack = () => {
-				updateTrackModes();
-			};
-
-			video.textTracks.addEventListener("addtrack", handleAddTrack);
-
-			// Timeout fallback
-			const timer = setTimeout(updateTrackModes, 150);
-
-			return () => {
-				clearTimeout(timer);
-				video.textTracks.removeEventListener("addtrack", handleAddTrack);
-			};
-		}
-	}, [subtrackSrc, selectedTrackId]);
+	}, []);
 
 	const loadSubtitleVtt = useCallback(
 		async (trackId: number) => {
@@ -124,11 +95,10 @@ export default function Player() {
 				});
 				const blob = new Blob([vttContent], { type: "text/vtt" });
 				const url = URL.createObjectURL(blob);
-				setSubtrackSrc((prev) => {
-					if (prev) {
-						URL.revokeObjectURL(prev);
-					}
-					return url;
+				setSubtrackSrcs((prev) => {
+					const next = { ...prev, [trackId]: url };
+					subtrackSrcsRef.current = next;
+					return next;
 				});
 				setSelectedTrackId(trackId);
 			} catch (err: unknown) {
@@ -139,6 +109,61 @@ export default function Player() {
 		},
 		[infoHash, fileId, getSubtitleVttUseCase, showToast],
 	);
+
+	// Synchronize subtitle track selection between Video.js and external state
+	useEffect(() => {
+		if (videoRef.current) {
+			const video = videoRef.current;
+
+			const updateTrackModes = () => {
+				const expectedId =
+					selectedTrackId !== null ? selectedTrackId.toString() : "none";
+				for (let i = 0; i < video.textTracks.length; i++) {
+					const track = video.textTracks[i];
+					if (track.id === expectedId) {
+						track.mode = "showing";
+					} else {
+						track.mode = "disabled";
+					}
+				}
+			};
+
+			updateTrackModes();
+
+			const handleTrackChange = () => {
+				let activeId: number | null = null;
+				for (let i = 0; i < video.textTracks.length; i++) {
+					const track = video.textTracks[i];
+					if (track.mode === "showing") {
+						const parsedId = parseInt(track.id, 10);
+						if (!Number.isNaN(parsedId)) {
+							activeId = parsedId;
+						}
+					}
+				}
+
+				if (activeId !== selectedTrackId) {
+					if (activeId === null) {
+						setSelectedTrackId(null);
+					} else {
+						if (!subtrackSrcs[activeId]) {
+							loadSubtitleVtt(activeId);
+						} else {
+							setSelectedTrackId(activeId);
+						}
+					}
+				}
+			};
+
+			video.textTracks.addEventListener("change", handleTrackChange);
+			video.textTracks.addEventListener("addtrack", updateTrackModes);
+
+			return () => {
+				video.textTracks.removeEventListener("change", handleTrackChange);
+				video.textTracks.removeEventListener("addtrack", updateTrackModes);
+			};
+		}
+	}, [selectedTrackId, subtrackSrcs, loadSubtitleVtt]);
 
 	useEffect(() => {
 		if (!infoHash || fileId === undefined) {
@@ -320,28 +345,28 @@ export default function Player() {
 				(torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 < 1 ? (
 					<Loader2 className="h-10 w-10 text-primary animate-spin" />
 				) : (
-					// biome-ignore lint/a11y/useMediaCaption: no captions for local torrent stream
-					<video
-						ref={videoRef}
-						src={streamUrl}
-						controls
-						autoPlay
-						className="h-full w-full object-contain"
-					>
-						{subtrackSrc && selectedTrackId !== null && (
-							<track
-								id={selectedTrackId.toString()}
-								key={subtrackSrc}
-								kind="subtitles"
-								src={subtrackSrc}
-								srcLang={
-									subtracks.find((t) => t.id === selectedTrackId)?.language
-								}
-								label={subtracks.find((t) => t.id === selectedTrackId)?.title}
-								default
-							/>
-						)}
-					</video>
+					<MyVideoPlayer.Provider>
+						<VideoSkin>
+							<Video
+								ref={videoRef}
+								src={streamUrl}
+								autoPlay
+								className="h-full w-full object-contain"
+							>
+								{subtracks.map((track) => (
+									<track
+										id={track.id.toString()}
+										key={track.id}
+										kind="subtitles"
+										src={subtrackSrcs[track.id] || undefined}
+										srcLang={track.language}
+										label={track.title || `轨道 ${track.id}`}
+										default={track.id === selectedTrackId}
+									/>
+								))}
+							</Video>
+						</VideoSkin>
+					</MyVideoPlayer.Provider>
 				)}
 			</div>
 
@@ -359,15 +384,13 @@ export default function Player() {
 							onValueChange={(val) => {
 								if (val === "none") {
 									setSelectedTrackId(null);
-									setSubtrackSrc((prev) => {
-										// v8 ignore next 3
-										if (prev) {
-											URL.revokeObjectURL(prev);
-										}
-										return null;
-									});
 								} else {
-									loadSubtitleVtt(parseInt(val, 10));
+									const id = parseInt(val, 10);
+									if (!subtrackSrcs[id]) {
+										loadSubtitleVtt(id);
+									} else {
+										setSelectedTrackId(id);
+									}
 								}
 							}}
 							disabled={subloading}
