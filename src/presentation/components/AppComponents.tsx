@@ -385,11 +385,11 @@ interface ToastContainerProps {
 }
 export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
 	return (
-		<div className="toast-container fixed bottom-4 right-4 z-[999] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
+		<div className="toast-container fixed top-4 left-4 right-4 mx-auto md:top-auto md:bottom-4 md:right-4 md:left-auto md:mx-0 max-w-sm w-[calc(100vw-2rem)] md:w-full z-[999] flex flex-col gap-2 pointer-events-none">
 			{toasts.map((toast) => (
 				<Alert
 					key={toast.id.toString()}
-					className="toast pointer-events-auto bg-card border border-white/10 text-card-foreground p-4 pr-10 rounded-lg shadow-xl flex items-center gap-3 animate-in slide-in-from-bottom duration-300"
+					className="toast pointer-events-auto bg-zinc-950 border border-white/10 text-card-foreground p-4 pr-10 rounded-lg shadow-2xl flex items-center gap-3 animate-in slide-in-from-top md:slide-in-from-bottom duration-300"
 				>
 					<Bell className="h-4 w-4 text-primary flex-shrink-0" />
 					<AlertDescription className="text-sm font-medium leading-relaxed">
