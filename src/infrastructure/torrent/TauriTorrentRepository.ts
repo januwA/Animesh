@@ -1,5 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { z } from "zod";
+import type { Context } from "../../crosscutting/context/interface";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
 	type AddTorrentResult,
@@ -13,7 +14,6 @@ import {
 	type TorrentStatusInfo,
 	TorrentStatusInfoSchema,
 } from "../../domain/torrent/TorrentSchemas";
-import type { Context } from "../../shared/context/interface";
 
 const sessionId = crypto.randomUUID();
 

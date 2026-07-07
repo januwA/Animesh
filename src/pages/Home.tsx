@@ -14,8 +14,8 @@ import {
 	WelcomeGuide,
 } from "../components/AppComponents";
 import { useAppContext } from "../context/AppContext";
+import { Canceled } from "../crosscutting/context/interface";
 import { useDI } from "../di/DIContext";
-import { Canceled } from "../shared/context/interface";
 
 export default function Home() {
 	const navigate = useNavigate();

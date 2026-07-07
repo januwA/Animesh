@@ -15,11 +15,11 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Background, WithCancel } from "@/crosscutting/context/context";
 import type {
 	BangumiEpisode,
 	BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
-import { Background, WithCancel } from "@/shared/context/context";
 import { ErrorBanner } from "../components/AppComponents";
 import { useDI } from "../di/DIContext";
 import { formatError } from "../utils";

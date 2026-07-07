@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Background, WithCancel, WithValue } from "@/shared/context/context";
-import type { CancelFunc } from "@/shared/context/interface";
+import {
+	Background,
+	WithCancel,
+	WithValue,
+} from "@/crosscutting/context/context";
+import type { CancelFunc } from "@/crosscutting/context/interface";
 
 export function useRequestContext() {
 	const activeCancelRef = useRef<CancelFunc | null>(null);

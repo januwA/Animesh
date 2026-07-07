@@ -1,6 +1,6 @@
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { Context } from "../../crosscutting/context/interface";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import type { Context } from "../../shared/context/interface";
 
 export class SearchTorrentsUseCase {
 	constructor(private torrentRepository: TorrentRepository) {}

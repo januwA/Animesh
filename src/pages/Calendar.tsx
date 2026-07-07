@@ -1,8 +1,8 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Background, WithCancel } from "@/crosscutting/context/context";
 import type { BangumiCalendarItem } from "@/domain/bangumi/BangumiSchemas";
-import { Background, WithCancel } from "@/shared/context/context";
 import { ErrorBanner } from "../components/AppComponents";
 import { WeeklyCalendar } from "../components/WeeklyCalendar";
 import { useAppContext } from "../context/AppContext";

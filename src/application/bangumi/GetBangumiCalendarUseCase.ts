@@ -1,6 +1,6 @@
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
+import type { Context } from "../../crosscutting/context/interface";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
-import type { Context } from "../../shared/context/interface";
 
 export class GetBangumiCalendarUseCase {
 	constructor(private bangumiRepository: BangumiRepository) {}

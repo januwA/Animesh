@@ -27,6 +27,7 @@ import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
+import { HttpClient } from "../infrastructure/http/HttpClient";
 import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
@@ -70,7 +71,8 @@ export interface DIContainer {
 export function createDefaultDIContainer(): DIContainer {
 	const torrentRepository = new TauriTorrentRepository();
 	const settingsRepository = new TauriSettingsRepository();
-	const bangumiRepository = new HttpBangumiRepository();
+	const httpClient = new HttpClient();
+	const bangumiRepository = new HttpBangumiRepository(httpClient);
 	const notificationRepository = new TauriNotificationRepository();
 	const updateRepository = new GithubUpdateRepository();
 

@@ -6,7 +6,7 @@ import {
 	WithTimeout,
 	WithValue,
 } from "./context";
-import { Canceled, DeadlineExceeded } from "./interface";
+import { Canceled, type Context, DeadlineExceeded } from "./interface";
 
 describe("Context", () => {
 	describe("Background", () => {
@@ -283,6 +283,49 @@ describe("Context", () => {
 			await Promise.resolve();
 			await Promise.resolve();
 			expect(ctx.err()).toBeNull();
+		});
+	});
+
+	describe("多任务使用ctx", () => {
+		it("WithCancel 能够正确取消关联的异步任务", async () => {
+			vi.useFakeTimers();
+
+			const runLogs: string[] = [];
+			const cancelLogs: string[] = [];
+
+			function task(ctx: Context, timeout: number) {
+				const t = setTimeout(() => {
+					runLogs.push(`task${timeout}`);
+				}, timeout);
+				ctx.done().then(() => {
+					clearTimeout(t);
+					cancelLogs.push(`task${timeout}`);
+				});
+			}
+
+			const [ctx, cancel] = WithCancel(Background);
+			task(ctx, 10);
+			task(ctx, 20);
+
+			// 推进时间到 10ms，此时 task10 应该执行完成
+			vi.advanceTimersByTime(10);
+			await Promise.resolve(); // 运行微任务
+			expect(runLogs).toEqual(["task10"]);
+			expect(cancelLogs).toEqual([]);
+
+			// 推进时间到 15ms 并触发 context 取消
+			vi.advanceTimersByTime(5);
+			cancel();
+			await Promise.resolve(); // 运行微任务以确保 ctx.done() 的 then 回调执行
+			expect(runLogs).toEqual(["task10"]);
+			expect(cancelLogs).toEqual(["task10", "task20"]);
+
+			// 推进时间到 20ms，确认 task20 已被取消，没有再被执行
+			vi.advanceTimersByTime(5);
+			await Promise.resolve();
+			expect(runLogs).toEqual(["task10"]);
+
+			vi.useRealTimers();
 		});
 	});
 });
