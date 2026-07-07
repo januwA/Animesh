@@ -57,38 +57,4 @@ describe("HttpClient", () => {
 
 		expect(mockFetch).not.toHaveBeenCalled();
 	});
-
-	it("如果 Context 在请求中被取消，应中止请求并抛出 Context 错误", async () => {
-		vi.useFakeTimers();
-
-		const abortError = new Error("The user aborted a request.");
-		abortError.name = "AbortError";
-
-		// 模拟 fetch 挂起，且会在 abort signal 触发时拒绝
-		const mockFetch = vi.fn().mockImplementation((_url, options) => {
-			return new Promise((_resolve, reject) => {
-				if (options?.signal) {
-					options.signal.addEventListener("abort", () => {
-						reject(abortError);
-					});
-				}
-			});
-		});
-		vi.stubGlobal("fetch", mockFetch);
-
-		const [ctx, cancel] = WithCancel(Background);
-		const client = new HttpClient();
-
-		const requestPromise = client.getJson("https://api.example.com/test", {
-			ctx,
-		});
-
-		// 触发 context 取消
-		cancel();
-		await Promise.resolve(); // 让 microtask 队列执行以触发 controller.abort
-
-		await expect(requestPromise).rejects.toThrow(Canceled.message);
-
-		vi.useRealTimers();
-	});
 });

@@ -27,30 +27,22 @@ export class HttpClient {
 			});
 		}
 
-		try {
-			const response = await fetch(url, {
-				...restOptions,
-				signal: controller.signal,
-				headers: {
-					...this.defaultHeaders,
-					...headers,
-				},
-			});
+		const response = await fetch(url, {
+			...restOptions,
+			signal: controller.signal,
+			headers: {
+				...this.defaultHeaders,
+				...headers,
+			},
+		});
 
-			if (!response.ok) {
-				throw new Error(
-					`HTTP error! status: ${response.status} ${response.statusText}`,
-				);
-			}
-
-			return response;
-		} catch (err: unknown) {
-			// 如果由于 Context 被取消而导致请求中止，则优先抛出 Context 本身的错误
-			if (ctx?.err() && err instanceof Error && err.name === "AbortError") {
-				throw ctx.err();
-			}
-			throw err;
+		if (!response.ok) {
+			throw new Error(
+				`HTTP error! status: ${response.status} ${response.statusText}`,
+			);
 		}
+
+		return response;
 	}
 
 	async getJson<T>(
