@@ -1,6 +1,3 @@
-import { createPlayer } from "@videojs/react";
-import { Video, VideoSkin, videoFeatures } from "@videojs/react/video";
-import "@videojs/react/video/skin.css";
 import {
 	Activity,
 	ArrowLeft,
@@ -33,10 +30,9 @@ import {
 import { formatBytes, formatError } from "@/utils";
 import { useAppContext } from "../context/AppContext";
 
-const MyVideoPlayer = createPlayer({ features: videoFeatures });
-
 export default function Player() {
 	const navigate = useNavigate();
+
 	const { infoHash, fileId } = useParams<{
 		infoHash: string;
 		fileId: string;
@@ -354,28 +350,27 @@ export default function Player() {
 						1 ? (
 						<Loader2 className="h-10 w-10 text-primary animate-spin" />
 					) : (
-						<MyVideoPlayer.Provider>
-							<VideoSkin>
-								<Video
-									ref={videoRef}
-									src={streamUrl}
-									autoPlay
-									className="h-full w-full object-contain"
-								>
-									{subtracks.map((track) => (
-										<track
-											id={track.id.toString()}
-											key={track.id}
-											kind="subtitles"
-											src={subtrackSrcs[track.id] || undefined}
-											srcLang={track.language}
-											label={track.title || `轨道 ${track.id}`}
-											default={track.id === selectedTrackId}
-										/>
-									))}
-								</Video>
-							</VideoSkin>
-						</MyVideoPlayer.Provider>
+						/* biome-ignore lint/a11y/useMediaCaption: subtitles are loaded dynamically from torrent file */
+						<video
+							ref={videoRef}
+							src={streamUrl}
+							controls
+							playsInline
+							webkit-playsinline="true"
+							className="h-full w-full object-contain"
+						>
+							{subtracks.map((track) => (
+								<track
+									id={track.id.toString()}
+									key={track.id}
+									kind="subtitles"
+									src={subtrackSrcs[track.id] || undefined}
+									srcLang={track.language}
+									label={track.title || `轨道 ${track.id}`}
+									default={track.id === selectedTrackId}
+								/>
+							))}
+						</video>
 					)}
 				</div>
 
@@ -441,16 +436,16 @@ export default function Player() {
 				{/* Progress & Speed */}
 				<div className="space-y-4">
 					<div className="space-y-2">
-						<div className="flex justify-between text-sm font-medium">
+						<div className="flex flex-col sm:flex-row sm:justify-between gap-2 text-xs sm:text-sm font-medium">
 							<span className="flex items-center gap-1.5">
-								<Download className="h-4 w-4 text-primary animate-pulse" />
+								<Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-pulse" />
 								下载进度:{" "}
 								{torrentStatus
 									? `${((torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100).toFixed(2)}%`
 									: "计算中..."}
 							</span>
 							<span className="flex items-center gap-1.5 text-muted-foreground">
-								<Activity className="h-4 w-4 text-emerald-400" />
+								<Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
 								速度:{" "}
 								{torrentStatus
 									? `${formatBytes(torrentStatus.download_speed_bytes_per_sec)}/s (连接: ${torrentStatus.peers_connected}/${torrentStatus.peers_total})`
@@ -469,40 +464,40 @@ export default function Player() {
 					</div>
 
 					{/* Stats Grid */}
-					<div className="grid grid-cols-4 gap-2.5">
+					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
 						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
-							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
 								已下载
 							</span>
-							<span className="text-sm font-semibold">
+							<span className="text-sm font-semibold whitespace-nowrap">
 								{torrentStatus
 									? formatBytes(torrentStatus.progress_bytes)
 									: "0 B"}
 							</span>
 						</div>
 						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
-							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
 								总大小
 							</span>
-							<span className="text-sm font-semibold">
+							<span className="text-sm font-semibold whitespace-nowrap">
 								{torrentStatus ? formatBytes(torrentStatus.total_bytes) : "0 B"}
 							</span>
 						</div>
 						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
-							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-								同伴 (连接/发现)
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+								同伴 (连接/总数)
 							</span>
-							<span className="text-sm font-semibold">
+							<span className="text-sm font-semibold whitespace-nowrap">
 								{torrentStatus
 									? `${torrentStatus.peers_connected} / ${torrentStatus.peers_total}`
 									: "0 / 0"}
 							</span>
 						</div>
 						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
-							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
 								状态
 							</span>
-							<span className="text-sm font-semibold text-primary">
+							<span className="text-sm font-semibold text-primary whitespace-nowrap">
 								{torrentStatus
 									? torrentStatus.finished
 										? "已完成"
