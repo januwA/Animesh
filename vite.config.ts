@@ -55,7 +55,7 @@ export default defineConfig((config) => {
 					"src/test/**",
 					"**/*.test.{ts,tsx}",
 					"**/*.d.ts",
-					"src/components/ui/**",
+					"src/presentation/components/ui/**",
 					"src/di/**",
 					"src/domain/**",
 					"src/infrastructure/**",

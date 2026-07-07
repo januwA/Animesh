@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { Background } from "../../crosscutting/context/context";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
-import { Background } from "../../shared/context/context";
 import { GetBangumiCalendarUseCase } from "./GetBangumiCalendarUseCase";
 
 describe("Bangumi 相关的 UseCase 业务编排", () => {

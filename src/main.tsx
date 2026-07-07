@@ -1,9 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createHashRouter } from "react-router-dom";
-import App from "./App";
 import { createDefaultDIContainer } from "./di/DIContext";
-import { routes } from "./routes";
+import App from "./presentation/App";
+import { routes } from "./presentation/routes";
 
 const router = createHashRouter(routes);
 

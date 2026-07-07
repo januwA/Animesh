@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { Background, WithValue } from "../../crosscutting/context/context";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import { Background, WithValue } from "../../shared/context/context";
 import { AddTorrentMagnetUseCase } from "./AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "./DeleteTorrentUseCase";
 import { GetSubtitleTracksUseCase } from "./GetSubtitleTracksUseCase";

@@ -1,3 +1,4 @@
+import type { Context } from "../../crosscutting/context/interface";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 import {
 	type BangumiCalendarDay,
@@ -7,140 +8,79 @@ import {
 	type BangumiSubject,
 	BangumiSubjectSchema,
 } from "../../domain/bangumi/BangumiSchemas";
-import type { Context } from "../../shared/context/interface";
-
-const BANGUMI_CALENDAR_URL = "https://api.bgm.tv/calendar";
+import type { HttpClient } from "../http/HttpClient";
 
 export class HttpBangumiRepository implements BangumiRepository {
+	constructor(private readonly client: HttpClient) {}
+
 	async getCalendar(ctx: Context): Promise<BangumiCalendarDay[]> {
-		const controller = new AbortController();
-		let completed = false;
-
-		if (ctx.err()) {
-			throw ctx.err();
-		}
-		ctx.done().then(() => {
-			if (!completed) {
-				controller.abort(ctx.err() || undefined);
-			}
-		});
-
+		let data: unknown;
 		try {
-			const response = await fetch(BANGUMI_CALENDAR_URL, {
-				signal: controller.signal,
-				headers: {
-					Accept: "application/json",
-				},
+			data = await this.client.getJson<unknown>("https://api.bgm.tv/calendar", {
+				ctx,
 			});
-
-			if (!response.ok) {
-				throw new Error(
-					`Failed to fetch calendar: ${response.status} ${response.statusText}`,
-				);
+		} catch (err: unknown) {
+			if (ctx.err() && err === ctx.err()) {
+				throw err;
 			}
-
-			const data = await response.json();
-			const result = BangumiCalendarResponseSchema.safeParse(data);
-			if (!result.success) {
-				throw new Error("Calendar API response structure mismatch", {
-					cause: result.error,
-				});
-			}
-
-			return result.data;
-		} finally {
-			completed = true;
+			throw new Error("Failed to fetch calendar", { cause: err });
 		}
+
+		const result = BangumiCalendarResponseSchema.safeParse(data);
+		if (!result.success) {
+			throw new Error("Calendar API response structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async getSubject(ctx: Context, subjectId: string): Promise<BangumiSubject> {
-		const controller = new AbortController();
-		let completed = false;
-
-		if (ctx.err()) {
-			throw ctx.err();
-		}
-		ctx.done().then(() => {
-			if (!completed) {
-				controller.abort(ctx.err() || undefined);
-			}
-		});
-
+		let data: unknown;
 		try {
-			const response = await fetch(
+			data = await this.client.getJson<unknown>(
 				`https://api.bgm.tv/v0/subjects/${subjectId}`,
-				{
-					signal: controller.signal,
-					headers: {
-						Accept: "application/json",
-					},
-				},
+				{ ctx },
 			);
-
-			if (!response.ok) {
-				throw new Error(
-					`Failed to fetch subject detail: ${response.status} ${response.statusText}`,
-				);
+		} catch (err: unknown) {
+			if (ctx.err() && err === ctx.err()) {
+				throw err;
 			}
-
-			const data = await response.json();
-			const result = BangumiSubjectSchema.safeParse(data);
-			if (!result.success) {
-				throw new Error("Subject API response structure mismatch", {
-					cause: result.error,
-				});
-			}
-
-			return result.data;
-		} finally {
-			completed = true;
+			throw new Error("Failed to fetch subject detail", { cause: err });
 		}
+
+		const result = BangumiSubjectSchema.safeParse(data);
+		if (!result.success) {
+			throw new Error("Subject API response structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 
 	async getEpisodes(
 		ctx: Context,
 		subjectId: string,
 	): Promise<BangumiEpisode[]> {
-		const controller = new AbortController();
-		let completed = false;
-
-		if (ctx.err()) {
-			throw ctx.err();
-		}
-		ctx.done().then(() => {
-			if (!completed) {
-				controller.abort(ctx.err() || undefined);
-			}
-		});
-
+		let data: unknown;
 		try {
-			const response = await fetch(
+			data = await this.client.getJson<{ data: BangumiEpisode[] }>(
 				`https://api.bgm.tv/v0/episodes?subject_id=${subjectId}&limit=100`,
-				{
-					signal: controller.signal,
-					headers: {
-						Accept: "application/json",
-					},
-				},
+				{ ctx },
 			);
-
-			if (!response.ok) {
-				throw new Error(
-					`Failed to fetch episodes: ${response.status} ${response.statusText}`,
-				);
+		} catch (err: unknown) {
+			if (ctx.err() && err === ctx.err()) {
+				throw err;
 			}
-
-			const data = await response.json();
-			const result = BangumiEpisodesResponseSchema.safeParse(data);
-			if (!result.success) {
-				throw new Error("Episodes API response structure mismatch", {
-					cause: result.error,
-				});
-			}
-
-			return result.data.data;
-		} finally {
-			completed = true;
+			throw new Error("Failed to fetch episodes", { cause: err });
 		}
+
+		const result = BangumiEpisodesResponseSchema.safeParse(data);
+		if (!result.success) {
+			throw new Error("Episodes API response structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data.data;
 	}
 }
