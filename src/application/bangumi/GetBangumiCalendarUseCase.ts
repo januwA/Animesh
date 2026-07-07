@@ -1,5 +1,5 @@
+import type { Context } from "ajanuw-context";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
-import type { Context } from "../../crosscutting/context/interface";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 
 export class GetBangumiCalendarUseCase {

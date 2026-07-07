@@ -1,10 +1,6 @@
+import type { CancelFunc } from "ajanuw-context";
+import { Background, WithCancel, WithValue } from "ajanuw-context";
 import { useCallback, useEffect, useRef } from "react";
-import {
-	Background,
-	WithCancel,
-	WithValue,
-} from "@/crosscutting/context/context";
-import type { CancelFunc } from "@/crosscutting/context/interface";
 
 export function useRequestContext() {
 	const activeCancelRef = useRef<CancelFunc | null>(null);

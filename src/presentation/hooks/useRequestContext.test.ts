@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
+import { Canceled } from "ajanuw-context";
 import { describe, expect, it } from "vitest";
-import { Canceled } from "@/crosscutting/context/interface";
 import { useRequestContext } from "./useRequestContext";
 
 describe("useRequestContext", () => {

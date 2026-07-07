@@ -1,5 +1,5 @@
+import { Background } from "ajanuw-context";
 import { describe, expect, it, vi } from "vitest";
-import { Background } from "../../crosscutting/context/context";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 import { GetBangumiCalendarUseCase } from "./GetBangumiCalendarUseCase";
 

@@ -1,5 +1,5 @@
+import type { Context } from "ajanuw-context";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
-import type { Context } from "../../crosscutting/context/interface";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 
 export class GetBangumiSubjectUseCase {
