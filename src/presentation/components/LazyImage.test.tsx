@@ -137,4 +137,27 @@ describe("LazyImage 懒加载图片组件", () => {
 		// 错误占位符应该被渲染
 		expect(screen.getByTestId("fallback")).toBeInTheDocument();
 	});
+
+	it("在不支持 IntersectionObserver 的环境下，应该立即渲染图片", () => {
+		const originalIntersectionObserver = window.IntersectionObserver;
+		Object.defineProperty(window, "IntersectionObserver", {
+			writable: true,
+			value: undefined,
+		});
+
+		render(
+			<LazyImage src="https://example.com/no-io.jpg" alt="非观察者图片" />,
+		);
+
+		// 应该能直接在文档里找到该图片且 src 正确
+		const img = screen.getByAltText("非观察者图片");
+		expect(img).toBeInTheDocument();
+		expect(img).toHaveAttribute("src", "https://example.com/no-io.jpg");
+
+		// 还原 Mock
+		Object.defineProperty(window, "IntersectionObserver", {
+			writable: true,
+			value: originalIntersectionObserver,
+		});
+	});
 });

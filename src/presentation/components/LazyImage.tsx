@@ -38,7 +38,7 @@ export function LazyImage({
 		const container = containerRef.current;
 		if (!container) return;
 
-		if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
+		if (typeof window === "undefined" || !window.IntersectionObserver) {
 			setInView(true);
 			return;
 		}
