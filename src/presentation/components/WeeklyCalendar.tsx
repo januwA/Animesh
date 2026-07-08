@@ -1,5 +1,5 @@
 import { Calendar, Star, Users } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
 	BangumiCalendarDay,
 	BangumiCalendarItem,
@@ -46,19 +46,45 @@ export function WeeklyCalendar({
 		return calendarMap.get(activeDay) ?? [];
 	}, [calendarMap, activeDay]);
 
-	return (
-		<section className="w-full space-y-4 mt-2">
-			{/* Header */}
-			<div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-				<Calendar className="h-4 w-4 text-primary" />
-				<span>一周新番</span>
-			</div>
+	const [isSticky, setIsSticky] = useState(false);
+	const sentinelRef = useRef<HTMLDivElement>(null);
 
+	useEffect(() => {
+		if (typeof IntersectionObserver === "undefined") {
+			return;
+		}
+		const sentinel = sentinelRef.current;
+		if (!sentinel) return;
+
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				setIsSticky(!entry.isIntersecting);
+			},
+			{
+				threshold: [0],
+				rootMargin: "-1px 0px 0px 0px",
+			},
+		);
+
+		observer.observe(sentinel);
+		return () => {
+			observer.unobserve(sentinel);
+		};
+	}, []);
+
+	return (
+		<section className="w-full relative">
+			<div
+				ref={sentinelRef}
+				className="absolute -top-px left-0 right-0 h-0 pointer-events-none"
+			/>
 			{/* Weekday Tabs */}
 			<div
 				className="sticky top-0 z-10 bg-background/85 backdrop-blur-md pb-2 -mx-4 px-4"
 				style={{
-					paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)",
+					paddingTop: isSticky
+						? "calc(env(safe-area-inset-top, 0px) + 0.5rem)"
+						: "0.5rem",
 				}}
 			>
 				<div className="flex gap-1 p-1 bg-card/30 border border-white/5 rounded-xl">

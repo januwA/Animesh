@@ -85,9 +85,8 @@ describe("Calendar 页面组件", () => {
 		);
 
 		await waitFor(() => {
-			expect(screen.getByText("一周新番")).toBeInTheDocument();
+			expect(screen.getByText("中文动漫名")).toBeInTheDocument();
 		});
-		expect(screen.getByText("中文动漫名")).toBeInTheDocument();
 		expect(screen.getByText("8.5")).toBeInTheDocument();
 		expect(screen.getByText("1,200")).toBeInTheDocument();
 	});

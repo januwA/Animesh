@@ -327,7 +327,7 @@ export function SearchResultCard({
 			className="bg-card/50 hover:bg-card-hover border-white/5 hover:border-white/10 transition-all duration-300 group"
 		>
 			<CardHeader className="p-5 pb-3">
-				<CardTitle className="text-base font-semibold leading-relaxed group-hover:text-primary transition-colors line-clamp-2">
+				<CardTitle className="text-base font-semibold leading-relaxed group-hover:text-primary transition-colors">
 					{item.title}
 				</CardTitle>
 			</CardHeader>

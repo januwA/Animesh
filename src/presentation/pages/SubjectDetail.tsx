@@ -439,7 +439,7 @@ export default function SubjectDetail() {
 										{/* Ep Details */}
 										<div className="flex-1 min-w-0 space-y-1">
 											<div className="flex items-center gap-1.5 justify-between">
-												<h3 className="text-sm font-medium leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+												<h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
 													{ep.name_cn || ep.name}
 												</h3>
 											</div>
