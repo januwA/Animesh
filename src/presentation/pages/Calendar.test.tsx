@@ -15,10 +15,6 @@ import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import CalendarPage from "./Calendar";
 
-vi.mock("@tauri-apps/plugin-opener", () => ({
-	openUrl: vi.fn(),
-}));
-
 const currentLocation = {
 	current: null as { pathname: string; search: string } | null,
 };
@@ -477,9 +473,8 @@ describe("Calendar 页面组件", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("暂无更新")).toBeInTheDocument();
+			expect(mockObserve).toHaveBeenCalled();
 		});
-
-		expect(mockObserve).toHaveBeenCalled();
 
 		// 模拟哨兵不可见（触发 sticky）
 		await act(async () => {

@@ -2,6 +2,7 @@ import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCale
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
+import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
@@ -27,6 +28,7 @@ import type { DIContainer } from "../di/DIContext";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
+import type { OpenerRepository } from "../domain/opener/OpenerRepository";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import type { UpdateRepository } from "../domain/update/UpdateRepository";
@@ -74,6 +76,8 @@ export interface CreateContainerParamsForTest {
 	checkUpdateUseCase?: CheckUpdateUseCase;
 	getCurrentVersionUseCase?: GetCurrentVersionUseCase;
 	openUpdateUrlUseCase?: OpenUpdateUrlUseCase;
+	openerRepository?: Partial<OpenerRepository>;
+	openUrlUseCase?: OpenUrlUseCase;
 }
 
 export function createDIContainerForTest(
@@ -129,8 +133,14 @@ export function createDIContainerForTest(
 			htmlUrl: "",
 		}),
 		getCurrentVersion: async () => "0.0.0",
+		openUrl: async () => {},
 		...params.updateRepository,
 	} as unknown as UpdateRepository;
+
+	const openerRepo = {
+		openUrl: async () => {},
+		...params.openerRepository,
+	} as OpenerRepository;
 
 	const notifyUseCase =
 		params.notifyDownloadCompletionUseCase ||
@@ -196,6 +206,8 @@ export function createDIContainerForTest(
 		params.getCurrentVersionUseCase || new GetCurrentVersionUseCase(updateRepo);
 	const openUpdateUrlUseCase =
 		params.openUpdateUrlUseCase || new OpenUpdateUrlUseCase(updateRepo);
+	const openUrlUseCase =
+		params.openUrlUseCase || new OpenUrlUseCase(openerRepo);
 
 	return {
 		notificationRepository: notificationRepo,
@@ -228,5 +240,6 @@ export function createDIContainerForTest(
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
 		openUpdateUrlUseCase,
+		openUrlUseCase,
 	};
 }

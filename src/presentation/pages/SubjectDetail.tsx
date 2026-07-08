@@ -29,7 +29,11 @@ export default function SubjectDetail() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const state = location.state as { name?: string; imageUrl?: string } | null;
-	const { getBangumiSubjectUseCase, getBangumiEpisodesUseCase } = useDI();
+	const {
+		getBangumiSubjectUseCase,
+		getBangumiEpisodesUseCase,
+		openUrlUseCase,
+	} = useDI();
 
 	const [subject, setSubject] = useState<BangumiSubject | null>(null);
 	const [episodes, setEpisodes] = useState<BangumiEpisode[]>([]);
@@ -174,12 +178,7 @@ export default function SubjectDetail() {
 							e.stopPropagation();
 							e.preventDefault();
 							const url = `https://bgm.tv/subject/${subject.id}`;
-							try {
-								const { openUrl } = await import("@tauri-apps/plugin-opener");
-								await openUrl(url);
-							} catch {
-								window.open(url, "_blank");
-							}
+							await openUrlUseCase.execute(url);
 						}}
 						title={`在 Bangumi 打开: ${displayName}`}
 					>
