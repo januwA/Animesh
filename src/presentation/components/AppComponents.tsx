@@ -411,3 +411,15 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
 		</div>
 	);
 }
+
+// 页面懒加载 Loading 占位组件
+export function PageLoader() {
+	return (
+		<div className="flex flex-col items-center justify-center py-20 space-y-4 animate-in fade-in duration-300">
+			<Loader2 className="h-10 w-10 text-primary animate-spin" />
+			<p className="text-sm text-muted-foreground font-medium">
+				正在载入页面...
+			</p>
+		</div>
+	);
+}

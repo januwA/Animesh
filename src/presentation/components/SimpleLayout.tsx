@@ -1,16 +1,13 @@
 import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
-import { AppHeader, PageLoader, ToastContainer } from "./AppComponents";
+import { PageLoader, ToastContainer } from "./AppComponents";
 
-export default function Layout() {
+export default function SimpleLayout() {
 	const { toasts, removeToast } = useGlobalEffects();
 
 	return (
 		<main className="container max-w-4xl mx-auto px-4 pt-6 pb-24 md:py-10 flex flex-col min-h-screen">
-			{/* 页面头部 */}
-			<AppHeader />
-
 			{/* 路由视图 */}
 			<Suspense fallback={<PageLoader />}>
 				<Outlet />

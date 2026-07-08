@@ -14,8 +14,41 @@ import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import OriginalApp from "./App";
+import Layout from "./components/Layout";
+import SimpleLayout from "./components/SimpleLayout";
 import { useAppContext } from "./context/AppContext";
-import { routes } from "./routes";
+import Calendar from "./pages/Calendar";
+import Downloads from "./pages/Downloads";
+import Home from "./pages/Home";
+import Player from "./pages/Player";
+import Settings from "./pages/Settings";
+import SubjectDetail from "./pages/SubjectDetail";
+import TorrentDetail from "./pages/TorrentDetail";
+
+const testRoutes = [
+	{
+		path: "/",
+		children: [
+			{
+				element: <Layout />,
+				children: [
+					{ path: "", element: <Home /> },
+					{ path: "calendar", element: <Calendar /> },
+					{ path: "downloads", element: <Downloads /> },
+					{ path: "settings", element: <Settings /> },
+				],
+			},
+			{
+				element: <SimpleLayout />,
+				children: [
+					{ path: "torrent", element: <TorrentDetail /> },
+					{ path: "subject/:subjectId", element: <SubjectDetail /> },
+					{ path: "play/:infoHash/:fileId", element: <Player /> },
+				],
+			},
+		],
+	},
+];
 
 // Mock clipboard API
 Object.defineProperty(navigator, "clipboard", {
@@ -34,7 +67,7 @@ describe("App 组件", () => {
 
 	// Wrap App for testing compatibility to automatically inject a memory router
 	const App = () => {
-		const router = createMemoryRouter(routes, {
+		const router = createMemoryRouter(testRoutes, {
 			initialEntries: [window.location.hash.replace(/^#/, "") || "/"],
 		});
 		return <OriginalApp diContainer={testDIContainer} router={router} />;
@@ -428,7 +461,6 @@ describe("App 组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 
-		// 检查渲染了“计算中...”和“0 B/s”分支（覆盖 torrentStatus 为 null 时的分支）
 		expect(screen.getByText("下载进度: 计算中...")).toBeInTheDocument();
 		expect(screen.getByText("速度: 0 B/s")).toBeInTheDocument();
 		expect(screen.getByText("连接中...")).toBeInTheDocument();
