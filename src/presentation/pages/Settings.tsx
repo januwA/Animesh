@@ -176,7 +176,7 @@ export default function Settings() {
 	};
 
 	// Save settings
-	const handleSave = async (e: React.FormEvent) => {
+	const handleSave = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 
 		const parsedTrackers = trackersText

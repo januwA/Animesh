@@ -1,42 +1,19 @@
 import {
 	Bell,
 	Calendar,
-	Clock,
 	Download,
-	ExternalLink,
-	Globe,
-	HardDrive,
 	Loader2,
-	Magnet,
-	Play,
 	Search,
 	Settings as SettingsIcon,
 	X,
 } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
-import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import type { ToastMessage } from "@/presentation/context/AppContext";
-import { formatBytes, formatLocalDate } from "@/utils";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
-import { Input } from "./ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
 
 // 页面头部组件
 export function AppHeader() {
@@ -153,105 +130,6 @@ export function AppHeader() {
 	);
 }
 
-// 搜索栏组件
-interface SearchFormProps {
-	keyword: string;
-	setKeyword: (val: string) => void;
-	loading: boolean;
-	onSubmit: (e: FormEvent) => void;
-	searchEngine: string;
-	setSearchEngine: (val: string) => void;
-}
-export function SearchForm({
-	keyword,
-	setKeyword,
-	loading,
-	onSubmit,
-	searchEngine,
-	setSearchEngine,
-}: SearchFormProps) {
-	return (
-		<section className="max-w-2xl mx-auto w-full mb-8">
-			<form
-				onSubmit={onSubmit}
-				className="relative flex items-center bg-card/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg p-1 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"
-			>
-				<div className="flex items-center pl-1.5 md:pl-3 gap-0.5 md:gap-1">
-					<Search className="h-5 w-5 text-muted-foreground shrink-0 hidden md:block" />
-					<Select
-						value={searchEngine}
-						onValueChange={setSearchEngine}
-						disabled={loading}
-					>
-						<SelectTrigger className="h-8 border-0 bg-transparent py-0 px-1.5 md:px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-0.5 md:gap-1 max-w-[70px] sm:max-w-[85px] md:max-w-none">
-							<SelectValue />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="dmhy">动漫花园</SelectItem>
-							<SelectItem value="bangumi_moe">萌番组</SelectItem>
-							<SelectItem value="mikan">蜜柑计划</SelectItem>
-							<SelectItem value="nyaa">Nyaa</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-				<div className="h-5 w-[1px] bg-white/10 self-center shrink-0" />
-				<Input
-					id="search-input"
-					data-testid="search-input"
-					className="flex-1 pl-2 md:pl-3 pr-12 md:pr-28 py-5 md:py-6 bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base min-w-0"
-					value={keyword}
-					onChange={(e) => setKeyword(e.target.value)}
-					placeholder="输入动漫名称，例如：凡人修仙传..."
-					disabled={loading}
-				/>
-				<Button
-					type="submit"
-					className="absolute right-1.5 md:right-2 w-9 md:w-auto h-9 md:h-10 px-0 md:px-6 font-medium flex items-center justify-center shrink-0"
-					disabled={loading || !keyword.trim()}
-				>
-					{loading ? (
-						<>
-							<Loader2 className="h-4 w-4 animate-spin shrink-0" />
-							<span className="hidden md:inline ml-2">搜索中...</span>
-						</>
-					) : (
-						<>
-							<Search className="h-4 w-4 md:hidden" />
-							<span className="hidden md:inline">搜索</span>
-						</>
-					)}
-				</Button>
-			</form>
-		</section>
-	);
-}
-
-export interface SearchLoadingProps {
-	onCancel?: () => void;
-}
-
-// 搜索加载指示器
-export function SearchLoading({ onCancel }: SearchLoadingProps) {
-	return (
-		<div className="flex flex-col items-center justify-center py-20 space-y-4">
-			<Loader2 className="h-10 w-10 text-primary animate-spin" />
-			<p className="text-sm text-muted-foreground font-medium">
-				正在获取资源列表...
-			</p>
-			{onCancel && (
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={onCancel}
-					className="text-xs text-muted-foreground hover:text-foreground mt-2"
-				>
-					取消搜索
-				</Button>
-			)}
-		</div>
-	);
-}
-
 // 错误横幅
 export function ErrorBanner({ message }: { message: string }) {
 	return (
@@ -264,117 +142,6 @@ export function ErrorBanner({ message }: { message: string }) {
 				<AlertDescription className="text-sm">{message}</AlertDescription>
 			</Alert>
 		</div>
-	);
-}
-
-// 初始引导推荐组件
-export function WelcomeGuide() {
-	return (
-		<div className="max-w-2xl mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 opacity-75">
-			<Card className="bg-card/25 border-white/5">
-				<CardHeader className="pb-2">
-					<CardTitle className="text-sm font-semibold flex items-center gap-2">
-						<Search className="h-4 w-4 text-cyan-400" />
-						聚合搜索
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="text-xs text-muted-foreground leading-relaxed">
-					一键检索动漫花园资源列表，快速检索并汇总磁力资源。
-				</CardContent>
-			</Card>
-			<Card className="bg-card/25 border-white/5">
-				<CardHeader className="pb-2">
-					<CardTitle className="text-sm font-semibold flex items-center gap-2">
-						<Play className="h-4 w-4 text-cyan-400 fill-current" />
-						边下边播
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="text-xs text-muted-foreground leading-relaxed">
-					内置高性能 BT 流媒体播放引擎，无须等待下载完毕，边下边放。
-				</CardContent>
-			</Card>
-			<Card className="bg-card/25 border-white/5">
-				<CardHeader className="pb-2">
-					<CardTitle className="text-sm font-semibold flex items-center gap-2">
-						<ExternalLink className="h-4 w-4 text-cyan-400" />
-						外部播放
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="text-xs text-muted-foreground leading-relaxed">
-					支持一键拷贝本地视频流 URL，可在 VLC 或 PotPlayer 中播放。
-				</CardContent>
-			</Card>
-		</div>
-	);
-}
-
-// 搜索结果卡片组件
-interface SearchResultCardProps {
-	item: SearchResultItem;
-	index: number;
-	onCopyMagnet: (magnet: string) => void;
-	onPlay: (magnet: string, title: string) => void;
-}
-export function SearchResultCard({
-	item,
-	index,
-	onCopyMagnet,
-	onPlay,
-}: SearchResultCardProps) {
-	return (
-		<Card
-			id={`torrent-item-${index}`}
-			className="bg-card/50 hover:bg-card-hover border-white/5 hover:border-white/10 transition-all duration-300 group"
-		>
-			<CardHeader className="p-5 pb-3">
-				<CardTitle className="text-base font-semibold leading-relaxed group-hover:text-primary transition-colors">
-					{item.title}
-				</CardTitle>
-			</CardHeader>
-			<CardContent className="px-5 pb-4 pt-0 flex flex-wrap gap-4 text-xs text-muted-foreground items-center">
-				<div className="flex items-center gap-1.5">
-					<Clock className="h-3.5 w-3.5" />
-					<span>{formatLocalDate(item.pub_date)}</span>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<HardDrive className="h-3.5 w-3.5" />
-					<span>{formatBytes(item.size)}</span>
-				</div>
-			</CardContent>
-			<CardFooter className="px-5 py-3.5 bg-muted/10 border-t border-white/5 flex items-center justify-between gap-4">
-				<a
-					href={String(item.link)}
-					target="_blank"
-					rel="noopener noreferrer"
-					className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-					title="在浏览器中打开网页"
-				>
-					<Globe className="h-3.5 w-3.5" />
-					网页
-				</a>
-
-				<div className="flex gap-2">
-					<Button
-						variant="secondary"
-						size="sm"
-						onClick={() => onCopyMagnet(item.magnet)}
-						className="h-8 text-xs font-medium gap-1.5"
-					>
-						<Magnet className="h-3.5 w-3.5" />
-						复制磁力
-					</Button>
-					<Button
-						variant="default"
-						size="sm"
-						onClick={() => onPlay(item.magnet, item.title)}
-						className="h-8 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
-					>
-						<Play className="h-3.5 w-3.5 fill-current" />
-						边下边播
-					</Button>
-				</div>
-			</CardFooter>
-		</Card>
 	);
 }
 
