@@ -13,7 +13,10 @@ export default defineConfig((config) => {
 	console.log(config, process.env);
 
 	return {
-		plugins: [react(), tailwindcss()],
+		plugins: [
+			react(),
+			process.env.VITEST !== "true" && tailwindcss(),
+		].filter(Boolean),
 		envPrefix: ["VITE_", "TAURI_ENV_*"],
 		resolve: {
 			alias: {
@@ -44,7 +47,7 @@ export default defineConfig((config) => {
 		},
 		test: {
 			globals: true,
-			environment: "jsdom",
+			environment: "happy-dom",
 			setupFiles: "./src/test/setup.ts",
 			coverage: {
 				provider: "v8",
