@@ -62,7 +62,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 		// 2. 跳转到日历页 /calendar 并等待载入 (Lazy)
 		router.navigate("/calendar");
 		await waitFor(() => {
-			expect(screen.getByText(/一周新番|未找到新番数据/)).toBeInTheDocument();
+			expect(screen.getByText(/^一$|未找到新番数据/)).toBeInTheDocument();
 		});
 
 		// 3. 跳转到下载管理 /downloads 并等待载入 (Lazy)
