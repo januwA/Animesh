@@ -430,4 +430,68 @@ describe("Calendar 页面组件", () => {
 
 		getDaySpy.mockRestore();
 	});
+
+	it("当 IntersectionObserver 未定义时，WeeklyCalendar 应该安全降级而不报错", async () => {
+		vi.stubGlobal("IntersectionObserver", undefined);
+
+		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
+		const mockCalendar = [
+			{
+				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+				items: [],
+			},
+		];
+
+		renderCalendar(Promise.resolve(mockCalendar as any));
+
+		await waitFor(() => {
+			expect(screen.getByText("暂无更新")).toBeInTheDocument();
+		});
+	});
+
+	it("当触发 IntersectionObserver 改变吸顶状态时，WeeklyCalendar 应该正确切换 state", async () => {
+		let observerCallback: any = null;
+		const mockObserve = vi.fn();
+		const mockUnobserve = vi.fn();
+
+		class MockIntersectionObserver {
+			constructor(callback: any) {
+				observerCallback = callback;
+			}
+			observe = mockObserve;
+			unobserve = mockUnobserve;
+			disconnect = vi.fn();
+		}
+
+		vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+
+		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
+		const mockCalendar = [
+			{
+				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+				items: [],
+			},
+		];
+
+		const { unmount } = renderCalendar(Promise.resolve(mockCalendar as any));
+
+		await waitFor(() => {
+			expect(screen.getByText("暂无更新")).toBeInTheDocument();
+		});
+
+		expect(mockObserve).toHaveBeenCalled();
+
+		// 模拟哨兵不可见（触发 sticky）
+		await act(async () => {
+			observerCallback([{ isIntersecting: false }]);
+		});
+
+		// 模拟哨兵重新可见（取消 sticky）
+		await act(async () => {
+			observerCallback([{ isIntersecting: true }]);
+		});
+
+		unmount();
+		expect(mockUnobserve).toHaveBeenCalled();
+	});
 });
