@@ -18,10 +18,6 @@ import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import SubjectDetail from "./SubjectDetail";
 
-vi.mock("@tauri-apps/plugin-opener", () => ({
-	openUrl: vi.fn(),
-}));
-
 const currentLocation = {
 	current: null as { pathname: string; search: string } | null,
 };
@@ -42,6 +38,7 @@ describe("SubjectDetail 页面组件", () => {
 	const renderSubjectDetail = (
 		mockSubjectPromise: Promise<BangumiSubject>,
 		mockEpisodesPromise: Promise<BangumiEpisode[]>,
+		openerRepository?: any,
 	) => {
 		mockContainer = createDIContainerForTest({
 			bangumiRepository: {
@@ -49,6 +46,7 @@ describe("SubjectDetail 页面组件", () => {
 				getSubject: vi.fn().mockReturnValue(mockSubjectPromise),
 				getEpisodes: vi.fn().mockReturnValue(mockEpisodesPromise),
 			},
+			openerRepository,
 		});
 
 		return render(
@@ -250,9 +248,8 @@ describe("SubjectDetail 页面组件", () => {
 		});
 	});
 
-	it("点击详情链接应该在浏览器中打开（通过 Tauri Opener 插件）", async () => {
-		const { openUrl } = await import("@tauri-apps/plugin-opener");
-		vi.mocked(openUrl).mockResolvedValue(undefined);
+	it("点击详情链接应该在浏览器中打开", async () => {
+		const mockOpenUrl = vi.fn().mockResolvedValue(undefined);
 
 		const mockSubject: BangumiSubject = {
 			id: 123,
@@ -273,7 +270,9 @@ describe("SubjectDetail 页面组件", () => {
 			platform: "TV",
 		};
 
-		renderSubjectDetail(Promise.resolve(mockSubject), Promise.resolve([]));
+		renderSubjectDetail(Promise.resolve(mockSubject), Promise.resolve([]), {
+			openUrl: mockOpenUrl,
+		});
 
 		await waitFor(() => {
 			expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
@@ -283,48 +282,7 @@ describe("SubjectDetail 页面组件", () => {
 		fireEvent.click(detailLink);
 
 		await waitFor(() => {
-			expect(openUrl).toHaveBeenCalledWith("https://bgm.tv/subject/123");
-		});
-	});
-
-	it("若 Tauri Opener 插件调用失败应该降级使用 window.open", async () => {
-		const { openUrl } = await import("@tauri-apps/plugin-opener");
-		vi.mocked(openUrl).mockRejectedValue(new Error("Tauri error"));
-
-		const mockSubject: BangumiSubject = {
-			id: 123,
-			name: "Test Anime Title",
-			name_cn: "测试动漫标题",
-			summary: "简介",
-			images: {
-				large: "http://example.com/large.jpg",
-				common: "",
-				medium: "",
-				small: "",
-				grid: "",
-			},
-			rating: { score: 8.5, rank: 42, total: 1000 },
-			collection: { doing: 200 },
-			date: "2026-07-01",
-			eps: 12,
-			platform: "TV",
-		};
-
-		renderSubjectDetail(Promise.resolve(mockSubject), Promise.resolve([]));
-
-		await waitFor(() => {
-			expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
-		});
-
-		const detailLink = screen.getByRole("link", { name: "详情" });
-		fireEvent.click(detailLink);
-
-		await waitFor(() => {
-			expect(openUrl).toHaveBeenCalledWith("https://bgm.tv/subject/123");
-			expect(window.open).toHaveBeenCalledWith(
-				"https://bgm.tv/subject/123",
-				"_blank",
-			);
+			expect(mockOpenUrl).toHaveBeenCalledWith("https://bgm.tv/subject/123");
 		});
 	});
 

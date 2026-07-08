@@ -78,7 +78,9 @@ describe("Settings 页面组件", () => {
 
 		renderSettings();
 
-		expect(screen.getByText("正在加载设置面版...")).toBeInTheDocument();
+		await waitFor(() => {
+			expect(screen.getByText("正在加载设置面版...")).toBeInTheDocument();
+		});
 	});
 
 	it("当加载设置失败时，应该显示 Toast 提示并关闭加载状态", async () => {

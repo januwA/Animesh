@@ -3,6 +3,7 @@ import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCale
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
+import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
@@ -30,6 +31,7 @@ import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepo
 import { HttpClient } from "../infrastructure/http/HttpClient";
 import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
+import { TauriOpenerRepository } from "../infrastructure/opener/TauriOpenerRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
 import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
 import { GithubUpdateRepository } from "../infrastructure/update/GithubUpdateRepository";
@@ -66,6 +68,7 @@ export interface DIContainer {
 	checkUpdateUseCase: CheckUpdateUseCase;
 	getCurrentVersionUseCase: GetCurrentVersionUseCase;
 	openUpdateUrlUseCase: OpenUpdateUrlUseCase;
+	openUrlUseCase: OpenUrlUseCase;
 }
 
 export function createDefaultDIContainer(): DIContainer {
@@ -74,7 +77,8 @@ export function createDefaultDIContainer(): DIContainer {
 	const httpClient = new HttpClient();
 	const bangumiRepository = new HttpBangumiRepository(httpClient);
 	const notificationRepository = new TauriNotificationRepository();
-	const updateRepository = new GithubUpdateRepository();
+	const openerRepository = new TauriOpenerRepository();
+	const updateRepository = new GithubUpdateRepository(openerRepository);
 
 	const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
 		torrentRepository,
@@ -126,6 +130,7 @@ export function createDefaultDIContainer(): DIContainer {
 		updateRepository,
 	);
 	const openUpdateUrlUseCase = new OpenUpdateUrlUseCase(updateRepository);
+	const openUrlUseCase = new OpenUrlUseCase(openerRepository);
 
 	const logger = new ConsoleLogger("App");
 
@@ -160,6 +165,7 @@ export function createDefaultDIContainer(): DIContainer {
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
 		openUpdateUrlUseCase,
+		openUrlUseCase,
 	};
 }
 

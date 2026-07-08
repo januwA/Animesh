@@ -31,6 +31,9 @@ pre-push:
     "前端_接口可空设计检查":
       glob: "src/**/*.{ts,tsx}"
       run: pnpm check:interface-methods {push_files}
+    "前端_表现层Tauri导入检查":
+      glob: "src/presentation/**/*.{ts,tsx}"
+      run: pnpm check:presentation-tauri-imports {push_files}
     "前端_单元测试与覆盖率":
       run: pnpm test:coverage # 全量测试及覆盖率阈值检查
     "后端_Rust静态代码检查(Clippy)":

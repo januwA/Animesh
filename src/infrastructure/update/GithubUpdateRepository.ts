@@ -1,8 +1,10 @@
 import { getVersion } from "@tauri-apps/api/app";
+import type { OpenerRepository } from "../../domain/opener/OpenerRepository";
 import type { UpdateInfo } from "../../domain/update/UpdateInfo";
 import type { UpdateRepository } from "../../domain/update/UpdateRepository";
 
 export class GithubUpdateRepository implements UpdateRepository {
+	constructor(private readonly openerRepository: OpenerRepository) {}
 	private readonly githubApiUrl =
 		"https://api.github.com/repos/januwA/Animesh/releases/latest";
 
@@ -62,21 +64,6 @@ export class GithubUpdateRepository implements UpdateRepository {
 	}
 
 	async openUrl(url: string): Promise<void> {
-		try {
-			const { openUrl } = await import("@tauri-apps/plugin-opener");
-			await openUrl(url);
-		} catch (err: unknown) {
-			let fallbackSuccess = false;
-			try {
-				window.open(url, "_blank");
-				fallbackSuccess = true;
-			} catch (fallbackErr: unknown) {
-				throw new Error("打开链接失败", { cause: fallbackErr });
-			}
-
-			if (!fallbackSuccess) {
-				throw err;
-			}
-		}
+		return this.openerRepository.openUrl(url);
 	}
 }

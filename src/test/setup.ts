@@ -11,13 +11,6 @@ globalThis.fetch = vi.fn().mockImplementation(() =>
 	),
 );
 
-// Mock @tauri-apps/plugin-notification globally
-vi.mock("@tauri-apps/plugin-notification", () => ({
-	isPermissionGranted: vi.fn().mockResolvedValue(true),
-	requestPermission: vi.fn().mockResolvedValue("granted"),
-	sendNotification: vi.fn(),
-}));
-
 // Mock ScrollRestoration to prevent useMatches error in tests using MemoryRouter
 vi.mock("react-router-dom", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("react-router-dom")>();

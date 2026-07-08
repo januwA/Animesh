@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { DIProvider } from "@/di/DIContext";
@@ -60,37 +60,49 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 		expect(screen.getByTestId("search-input")).toBeInTheDocument();
 
 		// 2. 跳转到日历页 /calendar 并等待载入 (Lazy)
-		router.navigate("/calendar");
+		await act(async () => {
+			router.navigate("/calendar");
+		});
 		await waitFor(() => {
 			expect(screen.getByText(/^一$|未找到新番数据/)).toBeInTheDocument();
 		});
 
 		// 3. 跳转到下载管理 /downloads 并等待载入 (Lazy)
-		router.navigate("/downloads");
+		await act(async () => {
+			router.navigate("/downloads");
+		});
 		await waitFor(() => {
 			expect(screen.getByText(/暂无下载任务|正在加载/)).toBeInTheDocument();
 		});
 
 		// 4. 跳转到设置页 /settings 并等待载入 (Lazy)
-		router.navigate("/settings");
+		await act(async () => {
+			router.navigate("/settings");
+		});
 		await waitFor(() => {
 			expect(screen.getByText(/下载保存目录|正在加载/)).toBeInTheDocument();
 		});
 
 		// 5. 跳转到种子详情 /torrent 并等待载入 (Lazy)
-		router.navigate("/torrent?infoHash=123");
+		await act(async () => {
+			router.navigate("/torrent?infoHash=123");
+		});
 		await waitFor(() => {
 			expect(screen.getByText(/种子解析失败|正在启动/)).toBeInTheDocument();
 		});
 
 		// 6. 跳转到番剧详情 /subject/1 并等待载入 (Lazy)
-		router.navigate("/subject/1");
+		await act(async () => {
+			router.navigate("/subject/1");
+		});
 		await waitFor(() => {
 			expect(screen.getByText(/返回日历|加载中/)).toBeInTheDocument();
 		});
 
 		// 7. 跳转到播放页 /play/1/1 并等待载入 (Lazy)
-		router.navigate("/play/1/1?title=Test");
+		await act(async () => {
+			router.navigate("/play/1/1?title=Test");
+		});
 		await waitFor(() => {
 			expect(screen.getByText(/下载进度:|正在缓存/)).toBeInTheDocument();
 		});
