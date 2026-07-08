@@ -1,7 +1,7 @@
+import { Background, WithCancel } from "ajanuw-context";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Background, WithCancel } from "@/crosscutting/context/context";
 import { useDI } from "@/di/DIContext";
 import type { BangumiCalendarItem } from "@/domain/bangumi/BangumiSchemas";
 import { formatError } from "@/utils";

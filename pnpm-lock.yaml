@@ -29,6 +29,9 @@ importers:
       '@tauri-apps/plugin-window-state':
         specifier: ^2
         version: 2.4.1
+      ajanuw-context:
+        specifier: ^1.0.0
+        version: 1.0.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1874,6 +1877,10 @@ packages:
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
+
+  ajanuw-context@1.0.0:
+    resolution: {integrity: sha512-7R3gCG0BtFgESQdhB8vQvSYjpkAxbwj9g3bys0aATjXcrClMRG83mLlCn4NPgt2BVD6UguXenHYR/NllRtdDNQ==}
+    engines: {node: '>=16.0.0'}
 
   ajv-formats@2.1.1:
     resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==}
@@ -5243,6 +5250,8 @@ snapshots:
       negotiator: 1.0.0
 
   agent-base@7.1.4: {}
+
+  ajanuw-context@1.0.0: {}
 
   ajv-formats@2.1.1(ajv@8.20.0):
     optionalDependencies:

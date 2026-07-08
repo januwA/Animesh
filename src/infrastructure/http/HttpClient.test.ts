@@ -1,6 +1,5 @@
+import { Background, Canceled, WithCancel } from "ajanuw-context";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Background, WithCancel } from "../../crosscutting/context/context";
-import { Canceled } from "../../crosscutting/context/interface";
 import { HttpClient } from "./HttpClient";
 
 describe("HttpClient", () => {

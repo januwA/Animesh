@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
-import { AppHeader, PageLoader, ToastContainer } from "./AppComponents";
+import { PageLoader, ToastContainer } from "./AppComponents";
 
-export default function Layout() {
+export default function SimpleLayout() {
 	const { toasts, removeToast } = useGlobalEffects();
 
 	return (
@@ -13,9 +13,6 @@ export default function Layout() {
 				paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
 			}}
 		>
-			{/* 页面头部 */}
-			<AppHeader />
-
 			{/* 路由视图 */}
 			<Suspense fallback={<PageLoader />}>
 				<Outlet />

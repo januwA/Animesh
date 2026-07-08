@@ -9,7 +9,6 @@ import {
 	Loader2,
 	RefreshCw,
 	Save,
-	Settings as SettingsIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -237,21 +236,8 @@ export default function Settings() {
 
 	return (
 		<div className="space-y-6">
-			{/* Page Header */}
-			<div className="flex items-center justify-between border-b border-white/5 pb-4">
-				<div>
-					<h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-						<SettingsIcon className="h-5 w-5 text-primary" />
-						设置选项
-					</h2>
-					<p className="text-xs text-muted-foreground mt-1">
-						配置软件全局选项，如缓存目录和存储大小
-					</p>
-				</div>
-			</div>
-
 			{/* Settings Form */}
-			<form onSubmit={handleSave} className="space-y-4">
+			<form onSubmit={handleSave}>
 				<Card className="bg-card/40 border-white/5">
 					<CardHeader className="p-5">
 						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
@@ -348,7 +334,7 @@ export default function Settings() {
 					<CardHeader className="p-5">
 						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
 							<Info className="h-4 w-4 text-primary" />
-							关于 & 检查更新
+							检查更新
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="px-5 pb-6 space-y-4 text-xs">
@@ -491,7 +477,7 @@ export default function Settings() {
 												{(["jsdelivr", "gitmirror", "github"] as const).map(
 													(cdnType) => {
 														const labels: Record<string, string> = {
-															jsdelivr: "jsDelivr (中国加速)",
+															jsdelivr: "jsDelivr 加速)",
 															gitmirror: "GitMirror (镜像)",
 															github: "GitHub (原始)",
 														};

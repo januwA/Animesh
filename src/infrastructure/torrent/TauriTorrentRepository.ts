@@ -1,6 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import type { Context } from "ajanuw-context";
 import { z } from "zod";
-import type { Context } from "../../crosscutting/context/interface";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
 	type AddTorrentResult,

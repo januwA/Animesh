@@ -1,8 +1,8 @@
+import { Canceled } from "ajanuw-context";
 import { Clock, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Canceled } from "@/crosscutting/context/interface";
 import { useDI } from "@/di/DIContext";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";

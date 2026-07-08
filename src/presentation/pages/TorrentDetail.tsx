@@ -111,13 +111,13 @@ export default function TorrentDetail() {
 
 			<div
 				role="dialog"
-				className="bg-card/30 border border-white/5 rounded-xl p-6 space-y-6"
+				className="bg-card/30 border border-white/5 rounded-xl p-4 sm:p-6 space-y-4 sm:space-y-6"
 			>
 				{/* Header info */}
 				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
 					<div className="space-y-1 flex-1 min-w-0">
 						<h2
-							className="text-xl font-bold break-all pr-4 text-foreground"
+							className="text-lg sm:text-xl font-bold break-all text-foreground"
 							title={torrent.name || "未命名种子"}
 						>
 							{torrent.name || "未命名种子"}
@@ -144,11 +144,11 @@ export default function TorrentDetail() {
 							{torrent.files.map((file) => (
 								<div
 									key={file.id}
-									className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group"
+									className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group gap-3"
 								>
-									<div className="flex items-start gap-3 flex-1 min-w-0 pr-4">
+									<div className="flex items-start gap-3 flex-1 min-w-0">
 										<FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
-										<div className="min-w-0">
+										<div className="min-w-0 flex-1">
 											<p
 												className="text-sm font-medium text-foreground break-all"
 												title={file.name}
@@ -163,7 +163,7 @@ export default function TorrentDetail() {
 									<Button
 										size="sm"
 										onClick={() => handleStartPlayback(file.id, file.name)}
-										className="gap-1.5 h-8 shrink-0"
+										className="gap-1.5 h-8 shrink-0 w-full sm:w-auto"
 									>
 										<Play className="h-3.5 w-3.5 fill-current" />
 										播放

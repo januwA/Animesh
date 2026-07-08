@@ -327,7 +327,7 @@ export function SearchResultCard({
 			className="bg-card/50 hover:bg-card-hover border-white/5 hover:border-white/10 transition-all duration-300 group"
 		>
 			<CardHeader className="p-5 pb-3">
-				<CardTitle className="text-base font-semibold leading-relaxed group-hover:text-primary transition-colors line-clamp-2">
+				<CardTitle className="text-base font-semibold leading-relaxed group-hover:text-primary transition-colors">
 					{item.title}
 				</CardTitle>
 			</CardHeader>
@@ -408,6 +408,18 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
 					</AlertAction>
 				</Alert>
 			))}
+		</div>
+	);
+}
+
+// 页面懒加载 Loading 占位组件
+export function PageLoader() {
+	return (
+		<div className="flex flex-col items-center justify-center py-20 space-y-4 animate-in fade-in duration-300">
+			<Loader2 className="h-10 w-10 text-primary animate-spin" />
+			<p className="text-sm text-muted-foreground font-medium">
+				正在载入页面...
+			</p>
 		</div>
 	);
 }

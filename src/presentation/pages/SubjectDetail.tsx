@@ -1,3 +1,4 @@
+import { Background, WithCancel } from "ajanuw-context";
 import {
 	ArrowLeft,
 	Calendar,
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Background, WithCancel } from "@/crosscutting/context/context";
 import { useDI } from "@/di/DIContext";
 import type {
 	BangumiEpisode,
@@ -439,7 +439,7 @@ export default function SubjectDetail() {
 										{/* Ep Details */}
 										<div className="flex-1 min-w-0 space-y-1">
 											<div className="flex items-center gap-1.5 justify-between">
-												<h3 className="text-sm font-medium leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+												<h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
 													{ep.name_cn || ep.name}
 												</h3>
 											</div>

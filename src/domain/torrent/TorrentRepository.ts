@@ -1,4 +1,4 @@
-import type { Context } from "../../crosscutting/context/interface";
+import type { Context } from "ajanuw-context";
 import type {
 	AddTorrentResult,
 	FileDetails,

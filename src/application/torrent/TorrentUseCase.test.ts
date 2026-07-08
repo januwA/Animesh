@@ -1,5 +1,5 @@
+import { Background, WithValue } from "ajanuw-context";
 import { describe, expect, it, vi } from "vitest";
-import { Background, WithValue } from "../../crosscutting/context/context";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import { AddTorrentMagnetUseCase } from "./AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "./DeleteTorrentUseCase";
