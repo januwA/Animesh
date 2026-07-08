@@ -5,6 +5,7 @@ import type {
 	BangumiCalendarItem,
 } from "@/domain/bangumi/BangumiSchemas";
 import { useAppContext } from "../context/AppContext";
+import { LazyImage } from "./LazyImage";
 import { Button } from "./ui/button";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
@@ -54,35 +55,45 @@ export function WeeklyCalendar({
 			</div>
 
 			{/* Weekday Tabs */}
-			<div className="flex gap-1 p-1 bg-card/30 border border-white/5 rounded-xl">
-				{WEEKDAY_LABELS.map((label, index) => {
-					const dayId = index + 1;
-					const isActive = dayId === activeDay;
-					const isToday = dayId === todayId;
+			<div
+				className="sticky top-0 z-10 bg-background/85 backdrop-blur-md pb-2 -mx-4 px-4"
+				style={{
+					paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.5rem)",
+				}}
+			>
+				<div className="flex gap-1 p-1 bg-card/30 border border-white/5 rounded-xl">
+					{WEEKDAY_LABELS.map((label, index) => {
+						const dayId = index + 1;
+						const isActive = dayId === activeDay;
+						const isToday = dayId === todayId;
 
-					return (
-						<Button
-							key={dayId}
-							variant={isActive ? "default" : "ghost"}
-							size="sm"
-							className={`flex-1 text-xs font-medium relative ${
-								isActive
-									? "bg-primary text-primary-foreground shadow-sm"
-									: "text-muted-foreground hover:text-foreground hover:bg-white/5"
-							}`}
-							onClick={() => setActiveDay(dayId)}
-						>
-							{label}
-							{isToday && !isActive && (
-								<span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
-							)}
-						</Button>
-					);
-				})}
+						return (
+							<Button
+								key={dayId}
+								variant={isActive ? "default" : "ghost"}
+								size="sm"
+								className={`flex-1 text-xs font-medium relative ${
+									isActive
+										? "bg-primary text-primary-foreground shadow-sm"
+										: "text-muted-foreground hover:text-foreground hover:bg-white/5"
+								}`}
+								onClick={() => setActiveDay(dayId)}
+							>
+								{label}
+								{isToday && !isActive && (
+									<span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
+								)}
+							</Button>
+						);
+					})}
+				</div>
 			</div>
 
 			{/* Anime Grid */}
-			<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+			<div
+				className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+				style={{ transform: "translate3d(0, 0, 0)" }}
+			>
 				{currentItems.map((item) => (
 					<AnimeCard
 						key={item.id}
@@ -125,7 +136,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 				{/* Cover Image */}
 				{item.images?.large ? (
 					<div className="aspect-3/4 w-full overflow-hidden bg-black/20">
-						<img
+						<LazyImage
 							src={item.images.large}
 							alt={displayName}
 							style={
@@ -134,7 +145,6 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 								} as React.CSSProperties
 							}
 							className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-							loading="lazy"
 						/>
 					</div>
 				) : (
