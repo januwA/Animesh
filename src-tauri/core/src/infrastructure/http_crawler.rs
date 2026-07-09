@@ -104,7 +104,7 @@ mod tests {
         };
 
         let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
-        let result = repo.search_dmhy("凡人", Some("://bad".to_string())).await;
+        let result = repo.search_dmhy("xxx", Some("://bad".to_string())).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Invalid proxy"));
     }
@@ -126,7 +126,7 @@ mod tests {
 
         let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
         let result = repo
-            .search_bangumi_moe("凡人", Some("://bad".to_string()))
+            .search_bangumi_moe("xxx", Some("://bad".to_string()))
             .await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Invalid proxy"));
@@ -138,9 +138,9 @@ mod tests {
         let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
   <channel>
-    <title>动漫花园 -- 凡人</title>
+    <title>动漫花园 -- xxx</title>
     <item>
-      <title>[神楽坂 まひろ] 凡人修仙传 - 9 (1080P HEVC MKV)</title>
+      <title>[神楽坂 まひろ] xxx - 9 (1080P HEVC MKV)</title>
       <link>http://share.dmhy.org/topics/view/635711.html</link>
       <pubDate>Mon, 23 Jun 2026 12:00:00 +0800</pubDate>
       <enclosure url="magnet:?xt=urn:btih:TESTMAGNET" length="350000000" type="application/x-bittorrent" />
@@ -151,19 +151,16 @@ mod tests {
         let mock_client = MockHttpClient {
             get_handler: Arc::new(move |url, _proxy| {
                 assert!(url.contains("rss.xml"));
-                assert!(url.contains("keyword=%E5%87%A1%E4%BA%BA"));
+                assert!(url.contains("keyword=xxx"));
                 Ok(mock_xml.to_string())
             }),
             ..Default::default()
         };
 
         let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
-        let results = repo.search_dmhy("凡人", None).await.unwrap();
+        let results = repo.search_dmhy("xxx", None).await.unwrap();
         assert_eq!(results.len(), 1);
-        assert_eq!(
-            results[0].title,
-            "[神楽坂 まひろ] 凡人修仙传 - 9 (1080P HEVC MKV)"
-        );
+        assert_eq!(results[0].title, "[神楽坂 まひろ] xxx - 9 (1080P HEVC MKV)");
         assert_eq!(results[0].magnet, "magnet:?xt=urn:btih:TESTMAGNET");
     }
 
@@ -174,7 +171,7 @@ mod tests {
             "torrents": [
                 {
                     "_id": "6a38a56aa9616b2639aa281d",
-                    "title": "[黒ネズミたち] 凡人修仙传 EP 179",
+                    "title": "[黒ネズミたち] xxx EP 179",
                     "publish_time": "2026-06-22T03:00:58.506Z",
                     "magnet": "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff",
                     "infoHash": "9e7a29997087a067e5e0b6fa50653288bd2aabff",
@@ -187,16 +184,16 @@ mod tests {
             post_handler: Arc::new(move |url, body, content_type, _proxy| {
                 assert_eq!(url, "https://bangumi.moe/api/v2/torrent/search");
                 assert_eq!(content_type, Some("text/plain;charset=UTF-8".to_string()));
-                assert!(body.contains("凡人"));
+                assert!(body.contains("xxx"));
                 Ok(mock_json.to_string())
             }),
             ..Default::default()
         };
 
         let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
-        let results = repo.search_bangumi_moe("凡人", None).await.unwrap();
+        let results = repo.search_bangumi_moe("xxx", None).await.unwrap();
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].title, "[黒ネズミたち] 凡人修仙传 EP 179");
+        assert_eq!(results[0].title, "[黒ネズミたち] xxx EP 179");
     }
 
     #[tokio::test]
@@ -207,7 +204,7 @@ mod tests {
   <channel>
     <title>Mikan Project</title>
     <item>
-      <title>[黒ネズミたち] 凡人修仙传 - 179</title>
+      <title>[黒ネズミたち] xxx - 179</title>
       <link>https://mikanani.me/Home/Episode/9e7a29997087a067e5e0b6fa50653288bd2aabff</link>
       <torrent xmlns="https://mikanani.me/0.1/">
         <link>https://mikanani.me/Home/Episode/9e7a29997087a067e5e0b6fa50653288bd2aabff</link>
@@ -228,9 +225,9 @@ mod tests {
         };
 
         let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
-        let results = repo.search_mikan("凡人", None).await.unwrap();
+        let results = repo.search_mikan("xxx", None).await.unwrap();
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].title, "[黒ネズミたち] 凡人修仙传 - 179");
+        assert_eq!(results[0].title, "[黒ネズミたち] xxx - 179");
     }
 
     #[tokio::test]
@@ -260,7 +257,7 @@ mod tests {
         };
 
         let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
-        let results = repo.search_nyaa("凡人", None).await.unwrap();
+        let results = repo.search_nyaa("xxx", None).await.unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(
             results[0].title,

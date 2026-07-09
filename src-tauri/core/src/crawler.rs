@@ -284,7 +284,7 @@ mod tests {
             "torrents": [
                 {
                     "_id": "6a38a56aa9616b2639aa281d",
-                    "title": "[黒ネズミたち] 凡人修仙传 EP 179",
+                    "title": "[黒ネズミたち] xxx EP 179",
                     "publish_time": "2026-06-22T03:00:58.506Z",
                     "magnet": "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff",
                     "infoHash": "9e7a29997087a067e5e0b6fa50653288bd2aabff",
@@ -296,7 +296,7 @@ mod tests {
         let results = parse_bangumi_moe_json(mock_json).unwrap();
         assert_eq!(results.len(), 1);
         let item = &results[0];
-        assert_eq!(item.title, "[黒ネズミたち] 凡人修仙传 EP 179");
+        assert_eq!(item.title, "[黒ネズミたち] xxx EP 179");
         assert_eq!(
             item.link,
             "https://bangumi.moe/torrent/6a38a56aa9616b2639aa281d"
@@ -314,9 +314,9 @@ mod tests {
         let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
   <channel>
-    <title>动漫花园 -- 凡人</title>
+    <title>动漫花园 -- xxx</title>
     <item>
-      <title>[神楽坂 まひろ] 凡人修仙传 - 9 (1080P HEVC MKV)</title>
+      <title>[神楽坂 まひろ] xxx - 9 (1080P HEVC MKV)</title>
       <link>http://share.dmhy.org/topics/view/635711.html</link>
       <pubDate>Mon, 23 Jun 2026 12:00:00 +0800</pubDate>
       <enclosure url="magnet:?xt=urn:btih:TESTMAGNET" length="350000000" type="application/x-bittorrent" />
@@ -327,10 +327,7 @@ mod tests {
         let items = parse_dmhy_rss(mock_xml).unwrap();
         assert_eq!(items.len(), 1);
         let item = &items[0];
-        assert_eq!(
-            item.title,
-            "[神楽坂 まひろ] 凡人修仙传 - 9 (1080P HEVC MKV)"
-        );
+        assert_eq!(item.title, "[神楽坂 まひろ] xxx - 9 (1080P HEVC MKV)");
         assert_eq!(item.link, "http://share.dmhy.org/topics/view/635711.html");
         assert_eq!(item.pub_date, "Mon, 23 Jun 2026 12:00:00 +0800");
         assert_eq!(item.magnet, "magnet:?xt=urn:btih:TESTMAGNET");
@@ -381,9 +378,9 @@ mod tests {
         let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
   <channel>
-    <title>Mikan Project - 搜索结果:凡人修仙</title>
+    <title>Mikan Project - 搜索结果:xxx</title>
     <item>
-      <title>[黒ネズミたち] 凡人修仙传 - 179</title>
+      <title>[黒ネズミたち] xxx - 179</title>
       <link>https://mikanani.me/Home/Episode/9e7a29997087a067e5e0b6fa50653288bd2aabff</link>
       <torrent xmlns="https://mikanani.me/0.1/">
         <link>https://mikanani.me/Home/Episode/9e7a29997087a067e5e0b6fa50653288bd2aabff</link>
@@ -398,7 +395,7 @@ mod tests {
         let items = parse_mikan_rss(mock_xml).unwrap();
         assert_eq!(items.len(), 1);
         let item = &items[0];
-        assert_eq!(item.title, "[黒ネズミたち] 凡人修仙传 - 179");
+        assert_eq!(item.title, "[黒ネズミたち] xxx - 179");
         assert_eq!(
             item.link,
             "https://mikanani.me/Home/Episode/9e7a29997087a067e5e0b6fa50653288bd2aabff"
@@ -416,9 +413,9 @@ mod tests {
         let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
 <rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nyaa="https://nyaa.si/xmlns/nyaa" version="2.0">
   <channel>
-    <title>Nyaa - "凡人修仙" - Torrent File RSS</title>
+    <title>Nyaa - "xxx" - Torrent File RSS</title>
     <item>
-      <title>[FSP DN] A Record of a Mortal’s Journey to Immortality - 179 (1080p) | 凡人修仙传</title>
+      <title>[FSP DN] A Record of a Mortal’s Journey to Immortality - 179 (1080p) | xxx</title>
       <link>https://nyaa.si/download/2123662.torrent</link>
       <guid isPermaLink="true">https://nyaa.si/view/2123662</guid>
       <pubDate>Sat, 20 Jun 2026 14:23:11 -0000</pubDate>
@@ -433,7 +430,7 @@ mod tests {
         let item = &items[0];
         assert_eq!(
             item.title,
-            "[FSP DN] A Record of a Mortal’s Journey to Immortality - 179 (1080p) | 凡人修仙传"
+            "[FSP DN] A Record of a Mortal’s Journey to Immortality - 179 (1080p) | xxx"
         );
         assert_eq!(item.link, "https://nyaa.si/download/2123662.torrent");
         assert_eq!(item.pub_date, "Sat, 20 Jun 2026 14:23:11 -0000");

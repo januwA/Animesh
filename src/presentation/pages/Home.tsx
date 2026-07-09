@@ -86,7 +86,7 @@ function SearchForm({
 					className="flex-1 pl-2 md:pl-3 pr-12 md:pr-28 py-5 md:py-6 bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base min-w-0"
 					value={keyword}
 					onChange={(e) => setKeyword(e.target.value)}
-					placeholder="输入动漫名称，例如：凡人修仙传..."
+					placeholder="输入动漫名称"
 					disabled={loading}
 				/>
 				<Button

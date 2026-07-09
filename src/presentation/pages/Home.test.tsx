@@ -130,7 +130,7 @@ describe("Home 页面组件", () => {
 	it("应该在组件挂载时读取 URL 的 keyword 参数并自动触发搜索", async () => {
 		const mockResults = [
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -139,14 +139,14 @@ describe("Home 页面组件", () => {
 		];
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-		renderHome("/?keyword=凡人");
+		renderHome("/?keyword=xxx");
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 			expect.any(Object),
-			"凡人",
+			"xxx",
 			"dmhy",
 		);
 	});
@@ -154,7 +154,7 @@ describe("Home 页面组件", () => {
 	it("当输入关键词并搜索成功时，应该显示结果", async () => {
 		const mockResults = [
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -166,17 +166,15 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByPlaceholderText("输入动漫名称");
 
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		expect(screen.getByText(/正在获取资源列表/)).toBeInTheDocument();
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 
 		expect(document.querySelector(".results-count")?.textContent?.trim()).toBe(
@@ -184,7 +182,7 @@ describe("Home 页面组件", () => {
 		);
 		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 			expect.any(Object),
-			"凡人",
+			"xxx",
 			"dmhy",
 		);
 	});
@@ -194,10 +192,8 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
@@ -210,9 +206,7 @@ describe("Home 页面组件", () => {
 	it("当输入空白关键词并提交时，不应该触发搜索", async () => {
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-				"输入动漫名称，例如：凡人修仙传...",
-			),
+		const input = screen.getByPlaceholderText("输入动漫名称"),
 			button = screen.getByRole("button", { name: "搜索" });
 
 		fireEvent.change(input, { target: { value: "   " } });
@@ -226,10 +220,8 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
@@ -246,10 +238,8 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
@@ -262,7 +252,7 @@ describe("Home 页面组件", () => {
 	it("当点击复制磁力按钮成功时，应该显示Toast提示", async () => {
 		const mockResults = [
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -273,14 +263,12 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 
 		vi.useFakeTimers();
@@ -301,7 +289,7 @@ describe("Home 页面组件", () => {
 	it("当复制磁力链接失败时，应该显示失败的Toast提示", async () => {
 		const mockResults = [
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -315,14 +303,12 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 
 		vi.useFakeTimers();
@@ -339,7 +325,7 @@ describe("Home 页面组件", () => {
 	it("当点击边下边播时，应该跳转", async () => {
 		const mockResults = [
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -350,14 +336,12 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 
 		vi.useFakeTimers();
@@ -377,7 +361,7 @@ describe("Home 页面组件", () => {
 	it("当挂载时从 URL 读取 keyword 触发的搜索失败（字符串错误）时，应该显示错误提示", async () => {
 		vi.mocked(mockTorrentRepository.search).mockRejectedValue("网络请求超时");
 
-		renderHome("/?keyword=凡人");
+		renderHome("/?keyword=xxx");
 
 		await waitFor(() => {
 			expect(
@@ -391,7 +375,7 @@ describe("Home 页面组件", () => {
 			new Error("error"),
 		);
 
-		renderHome("/?keyword=凡人");
+		renderHome("/?keyword=xxx");
 
 		await waitFor(() => {
 			expect(
@@ -414,10 +398,8 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 
 		const select = screen.getByRole("combobox");
 		fireEvent.change(select, { target: { value: "bangumi_moe" } });
@@ -427,7 +409,7 @@ describe("Home 页面组件", () => {
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 				expect.any(Object),
-				"凡人",
+				"xxx",
 				"bangumi_moe",
 			);
 			expect(screen.getByText("萌番组资源 1")).toBeInTheDocument();
@@ -448,10 +430,8 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 
 		const select = screen.getByRole("combobox");
 		fireEvent.change(select, { target: { value: "mikan" } });
@@ -461,7 +441,7 @@ describe("Home 页面组件", () => {
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 				expect.any(Object),
-				"凡人",
+				"xxx",
 				"mikan",
 			);
 			expect(screen.getByText("蜜柑计划资源 1")).toBeInTheDocument();
@@ -482,10 +462,8 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 
 		const select = screen.getByRole("combobox");
 		fireEvent.change(select, { target: { value: "nyaa" } });
@@ -495,7 +473,7 @@ describe("Home 页面组件", () => {
 		await waitFor(() => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 				expect.any(Object),
-				"凡人",
+				"xxx",
 				"nyaa",
 			);
 			expect(screen.getByText("Nyaa资源 1")).toBeInTheDocument();
@@ -505,7 +483,7 @@ describe("Home 页面组件", () => {
 	it("应该在组件挂载时读取 URL 的 keyword 参数，当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
-		renderHome("/?keyword=凡人");
+		renderHome("/?keyword=xxx");
 
 		await waitFor(() => {
 			expect(
@@ -535,10 +513,8 @@ describe("Home 页面组件", () => {
 
 		renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		expect(screen.getByText(/正在获取资源列表/)).toBeInTheDocument();
@@ -575,10 +551,8 @@ describe("Home 页面组件", () => {
 
 		const { unmount } = renderHome();
 
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
-		fireEvent.change(input, { target: { value: "凡人" } });
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 
 		expect(screen.getByText(/正在获取资源列表/)).toBeInTheDocument();
@@ -593,11 +567,11 @@ describe("Home 页面组件", () => {
 	it("应该从 localStorage 初始化并渲染历史搜索记录", () => {
 		localStorage.setItem(
 			"animesh_search_history",
-			JSON.stringify(["凡人", "柯南"]),
+			JSON.stringify(["xxx", "柯南"]),
 		);
 		renderHome();
 		expect(screen.getByText("最近搜索:")).toBeInTheDocument();
-		expect(screen.getByText("凡人")).toBeInTheDocument();
+		expect(screen.getByText("xxx")).toBeInTheDocument();
 		expect(screen.getByText("柯南")).toBeInTheDocument();
 	});
 
@@ -605,20 +579,18 @@ describe("Home 页面组件", () => {
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
 		renderHome();
-		const input = screen.getByPlaceholderText(
-			"输入动漫名称，例如：凡人修仙传...",
-		);
+		const input = screen.getByPlaceholderText("输入动漫名称");
 
-		// 1. 搜索 "凡人"
-		fireEvent.change(input, { target: { value: "凡人" } });
+		// 1. 搜索 "xxx"
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 		await waitFor(() => {
 			expect(screen.getByText("最近搜索:")).toBeInTheDocument();
 		});
-		expect(screen.getByText("凡人")).toBeInTheDocument();
+		expect(screen.getByText("xxx")).toBeInTheDocument();
 		expect(
 			JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
-		).toEqual(["凡人"]);
+		).toEqual(["xxx"]);
 
 		// 2. 搜索 "柯南"
 		fireEvent.change(input, { target: { value: "柯南" } });
@@ -628,17 +600,17 @@ describe("Home 页面组件", () => {
 		});
 		expect(
 			JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
-		).toEqual(["柯南", "凡人"]);
+		).toEqual(["柯南", "xxx"]);
 
-		// 3. 再次搜索 "凡人" (置顶)
-		fireEvent.change(input, { target: { value: "凡人" } });
+		// 3. 再次搜索 "xxx" (置顶)
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!);
 		await waitFor(() => {
-			expect(screen.getByText("凡人")).toBeInTheDocument();
+			expect(screen.getByText("xxx")).toBeInTheDocument();
 		});
 		expect(
 			JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
-		).toEqual(["凡人", "柯南"]);
+		).toEqual(["xxx", "柯南"]);
 
 		// 4. 连续搜索超过 10 个不同的词
 		for (let i = 1; i <= 10; i++) {
@@ -648,14 +620,14 @@ describe("Home 页面组件", () => {
 				expect(screen.getByText(`动漫_${i}`)).toBeInTheDocument();
 			});
 		}
-		// 历史记录不限数量，"柯南"和"凡人"不应被淘汰
+		// 历史记录不限数量，"柯南"和"xxx"不应被淘汰
 		const historyList = JSON.parse(
 			localStorage.getItem("animesh_search_history") || "[]",
 		);
 		expect(historyList.length).toBe(12);
 		expect(historyList[0]).toBe("动漫_10");
 		expect(historyList.includes("柯南")).toBe(true);
-		expect(historyList.includes("凡人")).toBe(true);
+		expect(historyList.includes("xxx")).toBe(true);
 	});
 
 	it("点击历史搜索记录项时，应该将关键词填入输入框并触发搜索", async () => {
@@ -680,17 +652,17 @@ describe("Home 页面组件", () => {
 	it("点击删除单个历史记录按钮时，应该将其从列表中移除并更新 localStorage", async () => {
 		localStorage.setItem(
 			"animesh_search_history",
-			JSON.stringify(["凡人", "柯南"]),
+			JSON.stringify(["xxx", "柯南"]),
 		);
 		renderHome();
 
-		expect(screen.getByText("凡人")).toBeInTheDocument();
+		expect(screen.getByText("xxx")).toBeInTheDocument();
 		expect(screen.getByText("柯南")).toBeInTheDocument();
 
-		const deleteBtn = screen.getByTestId("delete-history-凡人");
+		const deleteBtn = screen.getByTestId("delete-history-xxx");
 		fireEvent.click(deleteBtn);
 
-		expect(screen.queryByText("凡人")).not.toBeInTheDocument();
+		expect(screen.queryByText("xxx")).not.toBeInTheDocument();
 		expect(screen.getByText("柯南")).toBeInTheDocument();
 		expect(
 			JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
@@ -700,7 +672,7 @@ describe("Home 页面组件", () => {
 	it("点击清空按钮时，应该清空所有历史记录并更新 localStorage", async () => {
 		localStorage.setItem(
 			"animesh_search_history",
-			JSON.stringify(["凡人", "柯南"]),
+			JSON.stringify(["xxx", "柯南"]),
 		);
 		renderHome();
 
@@ -710,21 +682,21 @@ describe("Home 页面组件", () => {
 		fireEvent.click(clearBtn);
 
 		expect(screen.queryByText("最近搜索:")).not.toBeInTheDocument();
-		expect(screen.queryByText("凡人")).not.toBeInTheDocument();
+		expect(screen.queryByText("xxx")).not.toBeInTheDocument();
 		expect(screen.queryByText("柯南")).not.toBeInTheDocument();
 		expect(localStorage.getItem("animesh_search_history")).toBeNull();
 	});
 
 	it("点击删除最后一个历史记录项时，应该清空历史记录并从 localStorage 移除该键", async () => {
-		localStorage.setItem("animesh_search_history", JSON.stringify(["凡人"]));
+		localStorage.setItem("animesh_search_history", JSON.stringify(["xxx"]));
 		renderHome();
 
-		expect(screen.getByText("凡人")).toBeInTheDocument();
+		expect(screen.getByText("xxx")).toBeInTheDocument();
 
-		const deleteBtn = screen.getByTestId("delete-history-凡人");
+		const deleteBtn = screen.getByTestId("delete-history-xxx");
 		fireEvent.click(deleteBtn);
 
-		expect(screen.queryByText("凡人")).not.toBeInTheDocument();
+		expect(screen.queryByText("xxx")).not.toBeInTheDocument();
 		expect(localStorage.getItem("animesh_search_history")).toBeNull();
 	});
 

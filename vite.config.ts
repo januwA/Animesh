@@ -13,10 +13,9 @@ export default defineConfig((config) => {
 	console.log(config, process.env);
 
 	return {
-		plugins: [
-			react(),
-			process.env.VITEST !== "true" && tailwindcss(),
-		].filter(Boolean),
+		plugins: [react(), process.env.VITEST !== "true" && tailwindcss()].filter(
+			Boolean,
+		),
 		envPrefix: ["VITE_", "TAURI_ENV_*"],
 		resolve: {
 			alias: {
