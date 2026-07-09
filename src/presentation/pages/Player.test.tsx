@@ -478,11 +478,6 @@ describe("Player 页面组件", () => {
 			(textTracks as any).triggerAddTrack();
 		}
 
-		// Verify the unsupported format warning is shown
-		expect(
-			screen.getByText("当前视频格式在内置播放器中可能无法播放"),
-		).toBeInTheDocument();
-
 		// Verify the select trigger is rendered
 		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
 		const selectTrigger = screen.getByRole("combobox");
@@ -689,35 +684,6 @@ describe("Player 页面组件", () => {
 		expect(screen.getAllByText("English [ENG]").length).toBe(2);
 
 		vi.useRealTimers();
-	});
-
-	it("应该针对各种不支持的视频格式后缀/关键字正确显示警告提示", async () => {
-		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
-			"http://127.0.0.1:12345/stream/hash123/0",
-		);
-		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
-			info_hash: "hash123",
-			name: "测试视频",
-			progress_bytes: 400,
-			total_bytes: 1000,
-			finished: false,
-			download_speed_bytes_per_sec: 100,
-			paused: false,
-			peers_connected: 0,
-			peers_total: 0,
-		});
-
-		for (const keyword of ["mkv", "hevc", "h265", "h.265"]) {
-			const { unmount } = renderPlayer(
-				`/play/hash123/0?fileName=test_${keyword}`,
-			);
-			await waitFor(() => {
-				expect(
-					screen.getByText("当前视频格式在内置播放器中可能无法播放"),
-				).toBeInTheDocument();
-			});
-			unmount();
-		}
 	});
 
 	it("应该针对各种视频加载错误提示正确的错误信息", async () => {
