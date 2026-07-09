@@ -104,7 +104,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 			router.navigate("/play/1/1?title=Test");
 		});
 		await waitFor(() => {
-			expect(screen.getByText(/下载进度:|正在缓存/)).toBeInTheDocument();
+			expect(screen.getByText(/下载进度:/)).toBeInTheDocument();
 		});
 	});
 });
