@@ -1,4 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
 	Activity,
 	ArrowLeft,
@@ -6,7 +5,6 @@ import {
 	Download,
 	Info,
 	Loader2,
-	Play,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -284,19 +282,6 @@ export default function Player() {
 		}
 	};
 
-	const handleOpenLocalFile = async () => {
-		if (!infoHash || fileId === undefined) return;
-		try {
-			await invoke("torrent_open_file", {
-				infoHash,
-				fileId: parseInt(fileId, 10),
-			});
-			showToast("已请求系统播放器打开视频文件");
-		} catch (err: unknown) {
-			showToast(`播放器打开失败: ${formatError(err)}`);
-		}
-	};
-
 	const handleBack = () => {
 		navigate(-1);
 	};
@@ -328,15 +313,6 @@ export default function Player() {
 						</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={handleOpenLocalFile}
-							className="h-8 gap-1 text-muted-foreground hover:text-foreground"
-						>
-							<Play className="h-4 w-4" />
-							用系统播放器播放
-						</Button>
 						<Button
 							variant="ghost"
 							size="sm"
