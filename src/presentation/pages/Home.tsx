@@ -374,9 +374,9 @@ export default function Home() {
 	const handleCopyMagnet = async (magnet: string) => {
 		try {
 			await navigator.clipboard.writeText(magnet);
-			showToast("磁力链接已复制到剪贴板");
+			showToast("磁力链接已复制到剪贴板", "success");
 		} catch {
-			showToast("复制失败，请手动复制");
+			showToast("复制失败，请手动复制", "error");
 		}
 	};
 

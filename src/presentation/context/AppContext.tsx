@@ -2,9 +2,12 @@ import { createContext, use, useCallback, useState } from "react";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 
+export type ToastType = "info" | "success" | "warning" | "error";
+
 export interface ToastMessage {
 	id: number;
 	text: string;
+	type: ToastType;
 }
 
 interface AppContextType {
@@ -19,7 +22,11 @@ interface AppContextType {
 	hasSearched: boolean;
 	setHasSearched: (val: boolean) => void;
 	toasts: ToastMessage[];
-	showToast: (text: string, duration?: number) => void;
+	showToast: (
+		text: string,
+		typeOrDuration?: ToastType | number,
+		duration?: number,
+	) => void;
 	removeToast: (id: number) => void;
 	searchEngine: string;
 	setSearchEngine: (val: string) => void;
@@ -48,13 +55,25 @@ export function AppContextProvider({
 		null,
 	);
 
-	const showToast = useCallback((text: string, duration = 3000) => {
-		const id = Date.now() + Math.random();
-		setToasts((prev) => [...prev, { id, text }]);
-		setTimeout(() => {
-			setToasts((prev) => prev.filter((toast) => toast.id !== id));
-		}, duration);
-	}, []);
+	const showToast = useCallback(
+		(text: string, typeOrDuration?: ToastType | number, duration = 3000) => {
+			const id = Date.now() + Math.random();
+			let toastType: ToastType = "info";
+			let toastDuration = duration;
+
+			if (typeof typeOrDuration === "number") {
+				toastDuration = typeOrDuration;
+			} else if (typeOrDuration) {
+				toastType = typeOrDuration;
+			}
+
+			setToasts((prev) => [...prev, { id, text, type: toastType }]);
+			setTimeout(() => {
+				setToasts((prev) => prev.filter((toast) => toast.id !== id));
+			}, toastDuration);
+		},
+		[],
+	);
 
 	const removeToast = useCallback((id: number) => {
 		setToasts((prev) => prev.filter((toast) => toast.id !== id));

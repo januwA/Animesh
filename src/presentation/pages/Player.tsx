@@ -90,7 +90,7 @@ export default function Player() {
 				});
 				setSelectedTrackId(trackId);
 			} catch (err: unknown) {
-				showToast(`加载字幕失败: ${formatError(err)}`);
+				showToast(`加载字幕失败: ${formatError(err)}`, "error");
 			} finally {
 				setSubloading(false);
 			}
@@ -157,7 +157,7 @@ export default function Player() {
 
 	useEffect(() => {
 		if (!infoHash || fileId === undefined) {
-			showToast("无效的视频播放参数");
+			showToast("无效的视频播放参数", "error");
 			setLoading(false);
 			return;
 		}
@@ -236,7 +236,7 @@ export default function Player() {
 				}
 			} catch (err: unknown) {
 				if (active) {
-					showToast(`无法获取视频流: ${formatError(err)}`, 10000);
+					showToast(`无法获取视频流: ${formatError(err)}`, "error", 10000);
 					setLoading(false);
 				}
 			}
@@ -264,9 +264,9 @@ export default function Player() {
 		if (!streamUrl) return;
 		try {
 			await navigator.clipboard.writeText(streamUrl);
-			showToast("视频流地址已复制到剪贴板，可在外部播放器中播放");
+			showToast("视频流地址已复制到剪贴板，可在外部播放器中播放", "success");
 		} catch {
-			showToast("复制失败，请手动复制");
+			showToast("复制失败，请手动复制", "error");
 		}
 	};
 
@@ -346,7 +346,7 @@ export default function Player() {
 										errorMsg = "视频加载超时或网络断开。";
 									}
 								}
-								showToast(errorMsg, 8000);
+								showToast(errorMsg, "error", 8000);
 							}}
 						>
 							{subtracks.map((track) => (

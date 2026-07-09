@@ -65,7 +65,7 @@ export default function Settings() {
 
 	const handleSync = async (mode: "replace" | "append") => {
 		if (sourceType === "custom" && !customUrl) {
-			showToast("请输入自定义 Tracker 列表 URL");
+			showToast("请输入自定义 Tracker 列表 URL", "warning");
 			return;
 		}
 
@@ -75,7 +75,7 @@ export default function Settings() {
 			const fetched = await syncTrackersUseCase.execute(url);
 
 			if (fetched.length === 0) {
-				showToast("未获取到有效的 Tracker 地址");
+				showToast("未获取到有效的 Tracker 地址", "warning");
 				return;
 			}
 
@@ -83,6 +83,7 @@ export default function Settings() {
 				setTrackersText(fetched.join("\n"));
 				showToast(
 					`同步成功：已替换为最新的 ${fetched.length} 个 Tracker，请保存设置`,
+					"success",
 				);
 			} else {
 				const currentTrackers = trackersText
@@ -94,13 +95,14 @@ export default function Settings() {
 				const addedCount = merged.length - currentTrackers.length;
 				showToast(
 					`同步成功：已追加 ${addedCount} 个新 Tracker (共计 ${merged.length} 个)，请保存设置`,
+					"success",
 				);
 			}
 
 			const now = Date.now();
 			setLastUpdateTime(now);
 		} catch (err: unknown) {
-			showToast(`同步 Tracker 失败: ${formatError(err)}`);
+			showToast(`同步 Tracker 失败: ${formatError(err)}`, "error");
 		} finally {
 			setSyncing(false);
 		}
@@ -127,7 +129,7 @@ export default function Settings() {
 				setAutoUpdate(settings.tracker_auto_update === true);
 				setLastUpdateTime(settings.tracker_last_update_time || 0);
 			} catch (err: unknown) {
-				showToast(`加载设置失败: ${formatError(err)}`);
+				showToast(`加载设置失败: ${formatError(err)}`, "error");
 			} finally {
 				setLoading(false);
 			}
@@ -151,12 +153,12 @@ export default function Settings() {
 			const result = await checkUpdateUseCase.execute();
 			setUpdateResult(result);
 			if (result.hasUpdate) {
-				showToast(`发现新版本 v${result.latestVersion}`);
+				showToast(`发现新版本 v${result.latestVersion}`, "info");
 			} else {
-				showToast("当前已是最新版本");
+				showToast("当前已是最新版本", "success");
 			}
 		} catch (err: unknown) {
-			showToast(`检查更新失败: ${formatError(err)}`);
+			showToast(`检查更新失败: ${formatError(err)}`, "error");
 		} finally {
 			setCheckingUpdate(false);
 		}
@@ -168,10 +170,10 @@ export default function Settings() {
 			const selected = await selectDirectoryUseCase.execute();
 			if (selected) {
 				setDownloadDir(selected);
-				showToast("已选择目录，点击保存以生效");
+				showToast("已选择目录，点击保存以生效", "success");
 			}
 		} catch (err: unknown) {
-			showToast(`选择文件夹失败: ${formatError(err)}`);
+			showToast(`选择文件夹失败: ${formatError(err)}`, "error");
 		}
 	};
 
@@ -197,7 +199,7 @@ export default function Settings() {
 
 		if (!validation.success) {
 			const firstError = validation.error.issues[0].message;
-			showToast(firstError);
+			showToast(firstError, "error");
 			return;
 		}
 
@@ -215,9 +217,9 @@ export default function Settings() {
 				trackerAutoUpdate: validatedData.trackerAutoUpdate,
 				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
 			});
-			showToast("设置已保存，后续下载任务将使用新路径");
+			showToast("设置已保存，后续下载任务将使用新路径", "success");
 		} catch (err: unknown) {
-			showToast(`保存路径失败: ${formatError(err)}`, 5000);
+			showToast(`保存路径失败: ${formatError(err)}`, "error", 5000);
 		} finally {
 			setSaving(false);
 		}
@@ -393,7 +395,10 @@ export default function Settings() {
 																updateResult.htmlUrl,
 															);
 														} catch (err: unknown) {
-															showToast(`无法打开链接: ${formatError(err)}`);
+															showToast(
+																`无法打开链接: ${formatError(err)}`,
+																"error",
+															);
 														}
 													}
 												}}
@@ -612,7 +617,10 @@ export default function Settings() {
 												"http://tracker.openbittorrent.com:80/announce",
 											].join("\n"),
 										);
-										showToast("已重置为默认 Tracker 列表，点击保存生效");
+										showToast(
+											"已重置为默认 Tracker 列表，点击保存生效",
+											"success",
+										);
 									}}
 									className="text-[11px] text-primary hover:underline font-medium"
 								>

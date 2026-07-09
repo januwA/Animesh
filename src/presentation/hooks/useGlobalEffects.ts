@@ -44,7 +44,10 @@ export function useGlobalEffects() {
 			.execute()
 			.then((count) => {
 				if (count !== null && count > 0) {
-					showToast(`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`);
+					showToast(
+						`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`,
+						"success",
+					);
 				}
 			})
 			.catch(() => {});

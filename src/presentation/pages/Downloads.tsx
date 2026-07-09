@@ -75,7 +75,7 @@ export default function Downloads() {
 				unsubscribe = unsub;
 			})
 			.catch((err: unknown) => {
-				showToast(`获取下载列表失败: ${formatError(err)}`);
+				showToast(`获取下载列表失败: ${formatError(err)}`, "error");
 				setLoading(false);
 			});
 
@@ -92,10 +92,10 @@ export default function Downloads() {
 		(async () => {
 			try {
 				await pauseTorrentUseCase.execute(infoHash);
-				showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
+				showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`, "info");
 				await refreshTorrents();
 			} catch (err: unknown) {
-				showToast(`暂停失败: ${formatError(err)}`);
+				showToast(`暂停失败: ${formatError(err)}`, "error");
 			} finally {
 				setIsActionPending(false);
 			}
@@ -108,10 +108,10 @@ export default function Downloads() {
 		(async () => {
 			try {
 				await resumeTorrentUseCase.execute(infoHash);
-				showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
+				showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`, "success");
 				await refreshTorrents();
 			} catch (err: unknown) {
-				showToast(`启动失败: ${formatError(err)}`);
+				showToast(`启动失败: ${formatError(err)}`, "error");
 			} finally {
 				setIsActionPending(false);
 			}
@@ -126,11 +126,11 @@ export default function Downloads() {
 		(async () => {
 			try {
 				await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
-				showToast(`已删除任务`);
+				showToast(`已删除任务`, "success");
 				setDeleteTarget(null);
 				await refreshTorrents();
 			} catch (err: unknown) {
-				showToast(`删除任务失败: ${formatError(err)}`);
+				showToast(`删除任务失败: ${formatError(err)}`, "error");
 			} finally {
 				setIsActionPending(false);
 			}

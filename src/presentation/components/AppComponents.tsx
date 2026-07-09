@@ -1,16 +1,20 @@
 import {
-	Bell,
+	AlertTriangle,
 	Calendar,
+	CheckCircle2,
 	Download,
+	Info,
 	Loader2,
 	Search,
 	Settings as SettingsIcon,
 	X,
+	XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type { ToastMessage } from "@/presentation/context/AppContext";
+import { cn } from "@/presentation/lib/utils";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -145,6 +149,37 @@ export function ErrorBanner({ message }: { message: string }) {
 	);
 }
 
+const toastConfigs = {
+	info: {
+		Icon: Info,
+		iconClass: "text-sky-400",
+		borderClass:
+			"border-sky-500/30 border-l-4 border-l-sky-500 bg-sky-950/40 backdrop-blur-md",
+		glowClass: "shadow-[0_4px_20px_rgba(56,189,248,0.15)]",
+	},
+	success: {
+		Icon: CheckCircle2,
+		iconClass: "text-emerald-400",
+		borderClass:
+			"border-emerald-500/30 border-l-4 border-l-emerald-500 bg-emerald-950/40 backdrop-blur-md",
+		glowClass: "shadow-[0_4px_20px_rgba(52,211,153,0.15)]",
+	},
+	warning: {
+		Icon: AlertTriangle,
+		iconClass: "text-amber-400",
+		borderClass:
+			"border-amber-500/30 border-l-4 border-l-amber-500 bg-amber-950/40 backdrop-blur-md",
+		glowClass: "shadow-[0_4px_20px_rgba(251,191,36,0.15)]",
+	},
+	error: {
+		Icon: XCircle,
+		iconClass: "text-rose-400",
+		borderClass:
+			"border-rose-500/30 border-l-4 border-l-rose-500 bg-rose-950/40 backdrop-blur-md",
+		glowClass: "shadow-[0_4px_20px_rgba(251,113,133,0.15)]",
+	},
+};
+
 // 提示消息列表容器
 interface ToastContainerProps {
 	toasts: ToastMessage[];
@@ -153,28 +188,38 @@ interface ToastContainerProps {
 export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
 	return (
 		<div className="toast-container fixed top-4 left-4 right-4 mx-auto md:top-auto md:bottom-4 md:right-4 md:left-auto md:mx-0 max-w-sm w-[calc(100vw-2rem)] md:w-full z-[999] flex flex-col gap-2 pointer-events-none">
-			{toasts.map((toast) => (
-				<Alert
-					key={toast.id.toString()}
-					className="toast pointer-events-auto bg-zinc-950 border border-white/10 text-card-foreground p-4 pr-10 rounded-lg shadow-2xl flex items-center gap-3 animate-in slide-in-from-top md:slide-in-from-bottom duration-300"
-				>
-					<Bell className="h-4 w-4 text-primary flex-shrink-0" />
-					<AlertDescription className="text-sm font-medium leading-relaxed">
-						{toast.text}
-					</AlertDescription>
-					<AlertAction className="absolute top-1/2 -translate-y-1/2 right-3">
-						<Button
-							variant="ghost"
-							size="icon"
-							className="h-6 w-6 hover:bg-white/5 text-muted-foreground hover:text-foreground rounded-full flex-shrink-0 flex items-center justify-center p-0"
-							aria-label="关闭提示"
-							onClick={() => onClose(toast.id)}
-						>
-							<X className="h-3.5 w-3.5" />
-						</Button>
-					</AlertAction>
-				</Alert>
-			))}
+			{toasts.map((toast) => {
+				const config = toastConfigs[toast.type || "info"] || toastConfigs.info;
+				const ToastIcon = config.Icon;
+				return (
+					<Alert
+						key={toast.id.toString()}
+						className={cn(
+							"toast pointer-events-auto border text-card-foreground p-4 pr-10 rounded-lg shadow-2xl flex items-center gap-3 animate-in slide-in-from-top md:slide-in-from-bottom duration-300",
+							config.borderClass,
+							config.glowClass,
+						)}
+					>
+						<ToastIcon
+							className={cn("h-4.5 w-4.5 flex-shrink-0", config.iconClass)}
+						/>
+						<AlertDescription className="text-sm font-medium leading-relaxed">
+							{toast.text}
+						</AlertDescription>
+						<AlertAction className="absolute top-1/2 -translate-y-1/2 right-3">
+							<Button
+								variant="ghost"
+								size="icon"
+								className="h-6 w-6 hover:bg-white/5 text-muted-foreground hover:text-foreground rounded-full flex-shrink-0 flex items-center justify-center p-0"
+								aria-label="关闭提示"
+								onClick={() => onClose(toast.id)}
+							>
+								<X className="h-3.5 w-3.5" />
+							</Button>
+						</AlertAction>
+					</Alert>
+				);
+			})}
 		</div>
 	);
 }
