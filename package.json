@@ -3,6 +3,7 @@
 	"private": true,
 	"license": "GPL-3.0-only",
 	"version": "0.3.6",
+	"description": "A high-performance desktop anime streaming and downloading client built with Tauri v2, featuring magnet link aggregation search, BitTorrent stream playback, and embedded MKV subtitle extraction and rendering.",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
