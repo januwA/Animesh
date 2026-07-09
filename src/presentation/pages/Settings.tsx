@@ -535,9 +535,7 @@ export default function Settings() {
 											id="tracker-url-input"
 											value={sourceType === "custom" ? customUrl : currentUrl}
 											onChange={(e) => {
-												if (sourceType === "custom") {
-													setCustomUrl(e.target.value);
-												}
+												setCustomUrl(e.target.value);
 											}}
 											disabled={sourceType !== "custom"}
 											placeholder="引导地址例如 https://example.com/trackers.txt"

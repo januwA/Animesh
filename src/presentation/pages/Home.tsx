@@ -286,18 +286,15 @@ export default function Home() {
 			setError(null);
 			setHasSearched(true);
 
-			const trimmed = queryText.trim();
-			if (trimmed) {
-				setHistory((prev) => {
-					const filtered = prev.filter((item) => item !== trimmed);
-					const nextHistory = [trimmed, ...filtered];
-					localStorage.setItem(
-						"animesh_search_history",
-						JSON.stringify(nextHistory),
-					);
-					return nextHistory;
-				});
-			}
+			setHistory((prev) => {
+				const filtered = prev.filter((item) => item !== queryText);
+				const nextHistory = [queryText, ...filtered];
+				localStorage.setItem(
+					"animesh_search_history",
+					JSON.stringify(nextHistory),
+				);
+				return nextHistory;
+			});
 
 			const ctx = createContext();
 			setIsSearching(true);

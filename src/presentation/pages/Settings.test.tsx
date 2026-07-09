@@ -671,4 +671,70 @@ describe("Settings 页面组件", () => {
 			).toBeInTheDocument();
 		});
 	});
+
+	it("在没有提供 htmlUrl 时，点击前往 GitHub 下载不应该执行任何操作", async () => {
+		const mockCheckUpdateSuccess = {
+			execute: vi.fn().mockResolvedValue({
+				hasUpdate: true,
+				latestVersion: "0.3.2",
+				currentVersion: "0.3.1",
+				notes: "修复了一些已知问题",
+				url: "https://example.com/download",
+				htmlUrl: undefined,
+			}),
+		};
+		const mockOpenUrl = {
+			execute: vi.fn(),
+		};
+		const mockGetVersion = {
+			execute: vi.fn().mockResolvedValue("0.3.1"),
+		};
+
+		mockContainer = createDIContainerForTest({
+			settingsRepository: mockSettingsRepository,
+			checkUpdateUseCase: mockCheckUpdateSuccess as any,
+			openUpdateUrlUseCase: mockOpenUrl as any,
+			getCurrentVersionUseCase: mockGetVersion as any,
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			const checkBtn = screen.getByRole("button", { name: /检查更新/ });
+			fireEvent.click(checkBtn);
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("发现新版本 v0.3.2")).toBeInTheDocument();
+		});
+
+		const downloadBtn = screen.getByRole("button", {
+			name: /前往 GitHub 下载/,
+		});
+		fireEvent.click(downloadBtn);
+
+		expect(mockOpenUrl.execute).not.toHaveBeenCalled();
+	});
+
+	it("在移动端（如 Android/iOS）下，应该禁用目录修改并展示提示", async () => {
+		const userAgentSpy = vi
+			.spyOn(navigator, "userAgent", "get")
+			.mockReturnValue("Android");
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByPlaceholderText("应用沙盒内部路径")).toBeDisabled();
+			expect(
+				screen.getByText(
+					"移动端（Android/iOS）已自动选用应用沙盒内部路径，无需且不支持手动更改。",
+				),
+			).toBeInTheDocument();
+			expect(
+				screen.queryByRole("button", { name: "选择目录" }),
+			).not.toBeInTheDocument();
+		});
+
+		userAgentSpy.mockRestore();
+	});
 });

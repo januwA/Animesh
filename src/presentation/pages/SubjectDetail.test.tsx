@@ -695,4 +695,88 @@ describe("SubjectDetail 页面组件", () => {
 		spyScrollHeight.mockRestore();
 		spyClientHeight.mockRestore();
 	});
+
+	it("应该能在缺少部分字段（如 platform、rating.total、ep.name_cn、ep.airdate）时正常降级渲染", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime Title",
+			name_cn: "测试动漫标题",
+			summary: "这是一个测试动漫的简介内容。",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: {
+				score: 8.5,
+				rank: 42,
+				total: undefined as any, // test line 276 total fallback to 0
+			},
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: undefined as any, // test line 218 missing platform
+		};
+
+		const mockEpisodes: BangumiEpisode[] = [
+			{
+				id: 1001,
+				type: 0,
+				sort: 1,
+				name: "First Episode Jp Only",
+				name_cn: undefined as any, // test line 442 fallback to ep.name
+				duration: "24:00",
+				airdate: undefined as any, // test line 407 airdate falsy
+				desc: "第一集的简介内容",
+			},
+			{
+				id: 1002,
+				type: 0,
+				sort: 2,
+				name: "Future Episode",
+				name_cn: "未来的一集",
+				duration: "24:00",
+				airdate: "2099-12-31", // test line 407 airdate in future
+				desc: "第二集的简介内容",
+			},
+		];
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve(mockEpisodes)),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
+		});
+
+		// 1. Check platform Badge is not present
+		expect(screen.queryByText("TV")).not.toBeInTheDocument();
+
+		// 2. Check rating total fallback to 0
+		expect(screen.getByText("0 人评分")).toBeInTheDocument();
+
+		// 3. Check ep.name fallback for First Episode
+		expect(screen.getByText("First Episode Jp Only")).toBeInTheDocument();
+
+		// 4. Check future and undefined airdate styles / rendered classes
+		expect(screen.getByText("未来的一集")).toBeInTheDocument();
+	});
 });

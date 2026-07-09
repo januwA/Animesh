@@ -719,4 +719,71 @@ describe("Player 页面组件", () => {
 			unmount();
 		}
 	});
+
+	it("应该针对各种视频加载错误提示正确的错误信息", async () => {
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		});
+
+		const { container } = renderPlayer("/play/hash123/0?fileName=test.mp4");
+
+		let video: HTMLVideoElement | null = null;
+		await waitFor(() => {
+			video = container.querySelector("video");
+			expect(video).toBeInTheDocument();
+		});
+
+		// 1. Test error code 4 (格式不支持)
+		Object.defineProperty(video!, "error", {
+			value: { code: 4 },
+			configurable: true,
+			writable: true,
+		});
+		fireEvent.error(video!);
+		expect(
+			screen.getByText(
+				"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。",
+			),
+		).toBeInTheDocument();
+
+		// 2. Test error code 3 (解码失败)
+		Object.defineProperty(video!, "error", {
+			value: { code: 3 },
+			configurable: true,
+			writable: true,
+		});
+		fireEvent.error(video!);
+		expect(
+			screen.getByText("视频解码失败，可能数据已损坏或编码不支持。"),
+		).toBeInTheDocument();
+
+		// 3. Test error code 2 (网络断开)
+		Object.defineProperty(video!, "error", {
+			value: { code: 2 },
+			configurable: true,
+			writable: true,
+		});
+		fireEvent.error(video!);
+		expect(screen.getByText("视频加载超时或网络断开。")).toBeInTheDocument();
+
+		// 4. Test generic error (code is null/other)
+		Object.defineProperty(video!, "error", {
+			value: null,
+			configurable: true,
+			writable: true,
+		});
+		fireEvent.error(video!);
+		expect(screen.getByText("视频加载失败")).toBeInTheDocument();
+	});
 });

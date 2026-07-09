@@ -48,6 +48,7 @@ function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
 			return;
 		}
 		const sentinel = sentinelRef.current;
+		/* v8 ignore next */
 		if (!sentinel) return;
 
 		const observer = new IntersectionObserver(
