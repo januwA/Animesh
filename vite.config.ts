@@ -70,8 +70,8 @@ export default defineConfig(({ mode }) => {
 				thresholds: {
 					lines: 100,
 					functions: 100,
-					branches: 95,
-					statements: 95,
+					branches: 100,
+					statements: 100,
 				},
 			},
 		},
