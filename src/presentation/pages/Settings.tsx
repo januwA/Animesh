@@ -108,6 +108,8 @@ export default function Settings() {
 		}
 	};
 
+	const isTauri = import.meta.env.MODE !== "web";
+
 	const isMobile =
 		["android", "ios"].includes(import.meta.env.TAURI_ENV_PLATFORM || "") ||
 		(typeof navigator !== "undefined" &&
@@ -240,179 +242,187 @@ export default function Settings() {
 		<div className="space-y-6">
 			{/* Settings Form */}
 			<form onSubmit={handleSave}>
-				<Card className="bg-card/40 border-white/5">
-					<CardHeader className="p-5">
-						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
-							<HardDrive className="h-4 w-4 text-primary" />
-							存储设置 (BT 下载及缓存目录)
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
-						<div className="space-y-2">
-							<label
-								htmlFor="download-dir-input"
-								className="text-muted-foreground font-medium"
-							>
-								默认下载及播放缓存目录
-							</label>
-							<div className="flex gap-2">
-								<Input
-									id="download-dir-input"
-									value={downloadDir}
-									disabled={isMobile}
-									onChange={(e) => setDownloadDir(e.target.value)}
-									placeholder={
-										isMobile
-											? "应用沙盒内部路径"
-											: "选择或输入下载路径，例如 D:\\AnimeshDownloads"
-									}
-									className="flex-1 bg-black/20 border-white/10 text-foreground py-5 text-xs disabled:opacity-80"
-								/>
-								{!isMobile && (
-									<Button
-										type="button"
-										variant="secondary"
-										onClick={handleSelectDir}
-										className="gap-1.5 h-10.5 font-medium px-4 text-xs"
-									>
-										<Folder className="h-4 w-4" />
-										选择目录
-									</Button>
-								)}
-							</div>
-							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex flex-col gap-1.5">
-								{isMobile ? (
-									<span className="flex items-center gap-1">
-										<Info className="h-3.5 w-3.5 text-primary shrink-0" />
-										移动端（Android/iOS）已自动选用应用沙盒内部路径，无需且不支持手动更改。
-									</span>
-								) : (
-									<span className="flex items-start gap-1">
-										<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
-										<span>
-											提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
-										</span>
-									</span>
-								)}
-							</p>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="bg-card/40 border-white/5">
-					<CardHeader className="p-5">
-						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
-							<Globe className="h-4 w-4 text-primary" />
-							网络设置
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
-						<div className="space-y-2">
-							<label
-								htmlFor="proxy-input"
-								className="text-muted-foreground font-medium"
-							>
-								代理服务器地址
-							</label>
-							<Input
-								id="proxy-input"
-								value={proxy}
-								onChange={(e) => setProxy(e.target.value)}
-								placeholder="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:7890 (留空则不使用代理)"
-								className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
-							/>
-							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
-								<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
-								<span>
-									提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
-									HTTP、HTTPS 或 SOCKS5 代理。
-								</span>
-							</p>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="bg-card/40 border-white/5">
-					<CardHeader className="p-5">
-						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
-							<Info className="h-4 w-4 text-primary" />
-							检查更新
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
-						<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-white/5 bg-black/10 rounded-lg p-4">
-							<div className="space-y-1">
-								<p className="font-semibold text-foreground">Animesh 客户端</p>
-								<p className="text-muted-foreground">
-									当前版本：{currentVersion || "加载中..."}
-								</p>
-							</div>
-							<div className="flex gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									disabled={checkingUpdate}
-									onClick={handleCheckUpdate}
-									className="text-xs h-8.5 font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+				{isTauri && (
+					<Card className="bg-card/40 border-white/5">
+						<CardHeader className="p-5">
+							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+								<HardDrive className="h-4 w-4 text-primary" />
+								存储设置 (BT 下载及缓存目录)
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="px-5 pb-6 space-y-4 text-xs">
+							<div className="space-y-2">
+								<label
+									htmlFor="download-dir-input"
+									className="text-muted-foreground font-medium"
 								>
-									{checkingUpdate ? (
-										<Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-									) : (
-										<RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-									)}
-									检查更新
-								</Button>
-							</div>
-						</div>
-
-						{updateResult && (
-							<div className="border border-white/5 bg-black/20 rounded-lg p-4 space-y-3">
-								<div className="flex items-center justify-between">
-									<h4 className="text-xs font-semibold text-foreground">
-										{updateResult.hasUpdate
-											? "发现新版本！"
-											: "当前已是最新版本"}
-									</h4>
-									{updateResult.hasUpdate && (
-										<span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-medium">
-											v{updateResult.latestVersion}
-										</span>
+									默认下载及播放缓存目录
+								</label>
+								<div className="flex gap-2">
+									<Input
+										id="download-dir-input"
+										value={downloadDir}
+										disabled={isMobile}
+										onChange={(e) => setDownloadDir(e.target.value)}
+										placeholder={
+											isMobile
+												? "应用沙盒内部路径"
+												: "选择或输入下载路径，例如 D:\\AnimeshDownloads"
+										}
+										className="flex-1 bg-black/20 border-white/10 text-foreground py-5 text-xs disabled:opacity-80"
+									/>
+									{!isMobile && isTauri && (
+										<Button
+											type="button"
+											variant="secondary"
+											onClick={handleSelectDir}
+											className="gap-1.5 h-10.5 font-medium px-4 text-xs"
+										>
+											<Folder className="h-4 w-4" />
+											选择目录
+										</Button>
 									)}
 								</div>
-
-								{updateResult.hasUpdate && (
-									<>
-										<p className="text-muted-foreground/90 whitespace-pre-wrap leading-relaxed">
-											{updateResult.notes}
-										</p>
-										<div className="flex gap-2 pt-1">
-											<Button
-												type="button"
-												onClick={async () => {
-													if (updateResult.htmlUrl) {
-														try {
-															await openUpdateUrlUseCase.execute(
-																updateResult.htmlUrl,
-															);
-														} catch (err: unknown) {
-															showToast(
-																`无法打开链接: ${formatError(err)}`,
-																"error",
-															);
-														}
-													}
-												}}
-												className="text-xs h-8 font-medium px-3 bg-primary text-primary-foreground"
-											>
-												前往 GitHub 下载
-											</Button>
-										</div>
-									</>
-								)}
+								<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex flex-col gap-1.5">
+									{isMobile ? (
+										<span className="flex items-center gap-1">
+											<Info className="h-3.5 w-3.5 text-primary shrink-0" />
+											移动端（Android/iOS）已自动选用应用沙盒内部路径，无需且不支持手动更改。
+										</span>
+									) : (
+										<span className="flex items-start gap-1">
+											<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+											<span>
+												提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
+											</span>
+										</span>
+									)}
+								</p>
 							</div>
-						)}
-					</CardContent>
-				</Card>
+						</CardContent>
+					</Card>
+				)}
+
+				{isTauri && (
+					<Card className="bg-card/40 border-white/5">
+						<CardHeader className="p-5">
+							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+								<Globe className="h-4 w-4 text-primary" />
+								网络设置
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="px-5 pb-6 space-y-4 text-xs">
+							<div className="space-y-2">
+								<label
+									htmlFor="proxy-input"
+									className="text-muted-foreground font-medium"
+								>
+									代理服务器地址
+								</label>
+								<Input
+									id="proxy-input"
+									value={proxy}
+									onChange={(e) => setProxy(e.target.value)}
+									placeholder="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:7890 (留空则不使用代理)"
+									className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+								/>
+								<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
+									<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+									<span>
+										提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
+										HTTP、HTTPS 或 SOCKS5 代理。
+									</span>
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				{isTauri && (
+					<Card className="bg-card/40 border-white/5">
+						<CardHeader className="p-5">
+							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+								<Info className="h-4 w-4 text-primary" />
+								检查更新
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="px-5 pb-6 space-y-4 text-xs">
+							<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-white/5 bg-black/10 rounded-lg p-4">
+								<div className="space-y-1">
+									<p className="font-semibold text-foreground">
+										Animesh 客户端
+									</p>
+									<p className="text-muted-foreground">
+										当前版本：{currentVersion || "加载中..."}
+									</p>
+								</div>
+								<div className="flex gap-2">
+									<Button
+										type="button"
+										variant="outline"
+										disabled={checkingUpdate}
+										onClick={handleCheckUpdate}
+										className="text-xs h-8.5 font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+									>
+										{checkingUpdate ? (
+											<Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+										) : (
+											<RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+										)}
+										检查更新
+									</Button>
+								</div>
+							</div>
+
+							{updateResult && (
+								<div className="border border-white/5 bg-black/20 rounded-lg p-4 space-y-3">
+									<div className="flex items-center justify-between">
+										<h4 className="text-xs font-semibold text-foreground">
+											{updateResult.hasUpdate
+												? "发现新版本！"
+												: "当前已是最新版本"}
+										</h4>
+										{updateResult.hasUpdate && (
+											<span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-medium">
+												v{updateResult.latestVersion}
+											</span>
+										)}
+									</div>
+
+									{updateResult.hasUpdate && (
+										<>
+											<p className="text-muted-foreground/90 whitespace-pre-wrap leading-relaxed">
+												{updateResult.notes}
+											</p>
+											<div className="flex gap-2 pt-1">
+												<Button
+													type="button"
+													onClick={async () => {
+														if (updateResult.htmlUrl) {
+															try {
+																await openUpdateUrlUseCase.execute(
+																	updateResult.htmlUrl,
+																);
+															} catch (err: unknown) {
+																showToast(
+																	`无法打开链接: ${formatError(err)}`,
+																	"error",
+																);
+															}
+														}
+													}}
+													className="text-xs h-8 font-medium px-3 bg-primary text-primary-foreground"
+												>
+													前往 GitHub 下载
+												</Button>
+											</div>
+										</>
+									)}
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				)}
 
 				<Card className="bg-card/40 border-white/5">
 					<CardHeader className="p-5">

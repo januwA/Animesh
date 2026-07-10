@@ -144,6 +144,47 @@ To avoid generating unsigned packages (`-unsigned.apk`) on every release build (
      org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
      ```
 
+## Web Mode & Server Deployment
+
+Animesh supports a fully decoupled **Web Mode** enabling server-side deployment (e.g., on NAS, VPS, or Docker hosts). 
+
+In Web Mode:
+- The backend replaces the Tauri layer with a high-performance **Axum HTTP REST API** and **Server-Sent Events (SSE)** for real-time torrent updates.
+- The frontend features **compile-time condition compilation**. When building for Web, all Tauri native modules (updater, directory picker, custom menus) are completely Tree-Shaken.
+- The server automatically serves the frontend static SPA client (`dist/`) under the root route with SPA route fallback, providing a single-container deployment experience.
+
+### 1. Local Web Development & Debugging
+
+You can develop the Web frontend locally with Hot Module Replacement (HMR) while communicating with a backend running locally or in Docker.
+
+1. Ensure the backend server is running (e.g. via Docker at `http://localhost:8080`).
+2. Start the Vite development server in web mode:
+   ```bash
+   pnpm run dev:web
+   ```
+   *This automatically loads [.env.web](file:///D:/ajanuw/Animesh/.env.web) and proxies API requests to your local backend.*
+
+### 2. Docker & Docker Compose Deployment (Recommended)
+
+The easiest way to deploy Animesh on your server is using [docker-compose.yml](file:///D:/ajanuw/Animesh/docker-compose.yml).
+
+1. **Start the Service**:
+   ```bash
+   docker compose up --build -d
+   ```
+2. **Accessing the Client**:
+   - Web GUI & API: **`http://localhost:8080`**
+   - Streaming Server: **`http://localhost:3000`**
+   - Persistence Data: Saved in `./data` relative to your compose file.
+
+#### Environment Variables
+
+Configure the following variables in [docker-compose.yml](file:///D:/ajanuw/Animesh/docker-compose.yml):
+- `ANIMESH_SERVER_PORT`: REST API and Web client static server port (Default: `8080`).
+- `ANIMESH_STREAM_PORT`: AXUM streaming server port (Default: `3000`).
+- `ANIMESH_DATA_DIR`: Configuration and download storage directory (Default: `/app/data`).
+- `ANIMESH_EXTERNAL_URL`: Custom base URL for external video streams (e.g., `http://your-server-ip:3000`).
+- 
 ## Versioning & Release
 
 To update the application version number and keep all version configurations (frontend and Rust backend) in sync, run:

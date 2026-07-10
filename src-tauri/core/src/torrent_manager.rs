@@ -124,8 +124,17 @@ impl TorrentManager {
             ),
         );
 
-        // 启动 Axum 服务器并监听随机空闲端口
-        let listener = TcpListener::bind("0.0.0.0:0").await?;
+        // 启动 Axum 服务器并监听端口。如果配置了 ANIMESH_STREAM_PORT 环境变量，则使用该固定端口，否则监听随机空闲端口。
+        let stream_addr = if let Ok(port_str) = std::env::var("ANIMESH_STREAM_PORT") {
+            if let Ok(p) = port_str.parse::<u16>() {
+                format!("0.0.0.0:{}", p)
+            } else {
+                "0.0.0.0:0".to_string()
+            }
+        } else {
+            "0.0.0.0:0".to_string()
+        };
+        let listener = TcpListener::bind(&stream_addr).await?;
         let port = listener.local_addr()?.port();
 
         // 配置 CORS 允许 Webview/本地网络访问流地址

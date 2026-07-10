@@ -9,8 +9,10 @@ import { defineConfig } from "vite";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
-export default defineConfig((config) => {
-	console.log(config, process.env);
+export default defineConfig(({ mode }) => {
+	console.log(mode, process.env);
+
+	const isWeb = mode === "web";
 
 	return {
 		plugins: [react(), process.env.VITEST !== "true" && tailwindcss()].filter(
@@ -19,6 +21,9 @@ export default defineConfig((config) => {
 		envPrefix: ["VITE_", "TAURI_ENV_*"],
 		resolve: {
 			alias: {
+				"@/di/repositories": isWeb
+					? path.resolve(__dirname, "./src/di/repositories.web.ts")
+					: path.resolve(__dirname, "./src/di/repositories.ts"),
 				"@": path.resolve(__dirname, "./src"),
 			},
 		},

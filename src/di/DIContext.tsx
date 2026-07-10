@@ -1,4 +1,11 @@
 import { createContext, use } from "react";
+import {
+	NotificationRepositoryImpl,
+	OpenerRepositoryImpl,
+	SettingsRepositoryImpl,
+	TorrentRepositoryImpl,
+	UpdateRepositoryImpl,
+} from "@/di/repositories";
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
@@ -30,11 +37,6 @@ import type { NotificationRepository } from "../domain/notification/Notification
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpClient } from "../infrastructure/http/HttpClient";
 import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
-import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
-import { TauriOpenerRepository } from "../infrastructure/opener/TauriOpenerRepository";
-import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
-import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
-import { GithubUpdateRepository } from "../infrastructure/update/GithubUpdateRepository";
 
 export interface DIContainer {
 	notificationRepository: NotificationRepository;
@@ -72,13 +74,13 @@ export interface DIContainer {
 }
 
 export function createDefaultDIContainer(): DIContainer {
-	const torrentRepository = new TauriTorrentRepository();
-	const settingsRepository = new TauriSettingsRepository();
+	const torrentRepository = new TorrentRepositoryImpl();
+	const settingsRepository = new SettingsRepositoryImpl();
 	const httpClient = new HttpClient();
 	const bangumiRepository = new HttpBangumiRepository(httpClient);
-	const notificationRepository = new TauriNotificationRepository();
-	const openerRepository = new TauriOpenerRepository();
-	const updateRepository = new GithubUpdateRepository(openerRepository);
+	const notificationRepository = new NotificationRepositoryImpl();
+	const openerRepository = new OpenerRepositoryImpl();
+	const updateRepository = new UpdateRepositoryImpl(openerRepository);
 
 	const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
 		torrentRepository,

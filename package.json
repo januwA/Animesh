@@ -7,7 +7,9 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
+		"dev:web": "vite --mode web",
 		"build": "tsc && vite build",
+		"build:web": "tsc && vite build --mode web",
 		"preview": "vite preview",
 		"tauri": "tauri",
 		"tauri:android:apk": "tauri android build --apk --target aarch64",

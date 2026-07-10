@@ -1,16 +1,22 @@
 [workspace]
 members = [
     ".",
-    "core"
+    "core",
+    "server"
 ]
+
+[workspace.package]
+version = "0.3.6"
+edition = "2021"
+license = "GPL-3.0-only"
 
 [package]
 name = "animesh"
-version = "0.3.6"
+version.workspace = true
 description = "A Tauri App"
 authors = ["you"]
-edition = "2021"
-license = "GPL-3.0-only"
+edition.workspace = true
+license.workspace = true
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary

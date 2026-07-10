@@ -1,0 +1,20 @@
+# Ignore local Rust compilation artifacts
+src-tauri/target/
+target/
+
+# Ignore frontend dependencies and build outputs
+node_modules/
+dist/
+
+# Ignore local runtime data and logs
+data/
+*.log
+.pnpm-store/
+
+# Ignore version control and IDE configs
+.git/
+.github/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

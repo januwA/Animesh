@@ -1,0 +1,18 @@
+[package]
+name = "animesh_server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.7", features = ["ws"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.7.0", features = ["cors", "trace", "fs"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+env_logger = "0.11"
+animesh_core = { path = "../core" }
+futures-util = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
