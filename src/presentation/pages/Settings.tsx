@@ -138,9 +138,9 @@ export default function Settings() {
 		};
 		loadSettings();
 	}, [showToast, getSettingsUseCase]);
-
 	// Load version
 	useEffect(() => {
+		if (!isTauri) return;
 		const loadVersion = async () => {
 			const version = await getCurrentVersionUseCase.execute();
 			setCurrentVersion(version);
