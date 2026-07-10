@@ -65,6 +65,7 @@ export default function Downloads() {
 	// Subscribe to downloads list status stream
 	useEffect(() => {
 		let unsubscribe: (() => void) | null = null;
+		let isCleanedUp = false;
 
 		subscribeTorrentsUseCase
 			.execute((list) => {
@@ -72,7 +73,11 @@ export default function Downloads() {
 				setLoading(false);
 			})
 			.then((unsub) => {
-				unsubscribe = unsub;
+				if (isCleanedUp) {
+					unsub();
+				} else {
+					unsubscribe = unsub;
+				}
 			})
 			.catch((err: unknown) => {
 				showToast(`获取下载列表失败: ${formatError(err)}`, "error");
@@ -80,6 +85,7 @@ export default function Downloads() {
 			});
 
 		return () => {
+			isCleanedUp = true;
 			if (unsubscribe) {
 				unsubscribe();
 			}

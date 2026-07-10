@@ -27,6 +27,7 @@ export function AppHeader() {
 
 	useEffect(() => {
 		let unsubscribe: (() => void) | null = null;
+		let isCleanedUp = false;
 
 		subscribeTorrentsUseCase
 			.execute((list) => {
@@ -34,11 +35,16 @@ export function AppHeader() {
 				setActiveCount(count);
 			})
 			.then((unsub) => {
-				unsubscribe = unsub;
+				if (isCleanedUp) {
+					unsub();
+				} else {
+					unsubscribe = unsub;
+				}
 			})
 			.catch(() => {});
 
 		return () => {
+			isCleanedUp = true;
 			if (unsubscribe) {
 				unsubscribe();
 			}

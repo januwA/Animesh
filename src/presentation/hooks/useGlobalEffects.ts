@@ -19,6 +19,7 @@ export function useGlobalEffects() {
 	// 下载完成监听
 	useEffect(() => {
 		let unsubscribe: (() => void) | null = null;
+		let isCleanedUp = false;
 
 		subscribeTorrentsUseCase
 			.execute(async (list) => {
@@ -27,11 +28,16 @@ export function useGlobalEffects() {
 				} catch {}
 			})
 			.then((unsub) => {
-				unsubscribe = unsub;
+				if (isCleanedUp) {
+					unsub();
+				} else {
+					unsubscribe = unsub;
+				}
 			})
 			.catch(() => {});
 
 		return () => {
+			isCleanedUp = true;
 			if (unsubscribe) {
 				unsubscribe();
 			}
