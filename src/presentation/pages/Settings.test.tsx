@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -736,5 +742,58 @@ describe("Settings 页面组件", () => {
 		});
 
 		userAgentSpy.mockRestore();
+	});
+
+	it("在 Web 模式下，应该不渲染 Tauri 特有配置（如更新卡片、下载路径修改等）", async () => {
+		vi.stubEnv("MODE", "web");
+		renderSettings();
+		await waitFor(() => {
+			expect(screen.queryByText("正在加载设置面版...")).not.toBeInTheDocument();
+		});
+		expect(screen.queryByText("检查更新")).not.toBeInTheDocument();
+		vi.unstubAllEnvs();
+	});
+
+	it("在版本加载中时，应该渲染加载中提示", async () => {
+		let resolveVersion: any;
+		const promise = new Promise<string>((resolve) => {
+			resolveVersion = resolve;
+		});
+
+		mockContainer = createDIContainerForTest({
+			settingsRepository: mockSettingsRepository,
+			updateRepository: {
+				getCurrentVersion: vi.fn().mockReturnValue(promise),
+			} as any,
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/settings"]}>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="settings" element={<Settings />} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.queryByText("正在加载设置面版...")).not.toBeInTheDocument();
+		});
+
+		expect(screen.getByText("当前版本：加载中...")).toBeInTheDocument();
+
+		await act(async () => {
+			resolveVersion("1.0.0");
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("当前版本：1.0.0")).toBeInTheDocument();
+		});
 	});
 });

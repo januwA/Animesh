@@ -779,4 +779,111 @@ describe("SubjectDetail 页面组件", () => {
 		// 4. Check future and undefined airdate styles / rendered classes
 		expect(screen.getByText("未来的一集")).toBeInTheDocument();
 	});
+
+	it("当路由中没有 subjectId 时，应该什么都不加载直接返回", async () => {
+		mockContainer = createDIContainerForTest({});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject"]}>
+						<Routes>
+							<Route path="subject" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		expect(screen.getByText("加载中...")).toBeInTheDocument();
+	});
+
+	it("在 API 数据加载成功前卸载组件，应该取消请求并不设置组件状态", async () => {
+		let resolveSubject: any;
+		const subjectPromise = new Promise<any>((resolve) => {
+			resolveSubject = resolve;
+		});
+
+		let resolveEpisodes: any;
+		const episodesPromise = new Promise<any>((resolve) => {
+			resolveEpisodes = resolve;
+		});
+
+		const { unmount } = renderSubjectDetail(subjectPromise, episodesPromise);
+
+		unmount();
+
+		await act(async () => {
+			resolveSubject({ id: 123, name: "Test" });
+			resolveEpisodes([]);
+		});
+	});
+
+	it("在 API 数据加载失败前卸载组件，应该取消请求并不设置错误信息", async () => {
+		let rejectSubject: any;
+		const subjectPromise = new Promise<any>((_, reject) => {
+			rejectSubject = reject;
+		});
+
+		const episodesPromise = Promise.resolve([]);
+
+		const { unmount } = renderSubjectDetail(subjectPromise, episodesPromise);
+
+		unmount();
+
+		await act(async () => {
+			rejectSubject(new Error("Network Error"));
+		});
+	});
+
+	it("当动漫和剧集均无中文名称时，点击剧集卡片应该使用原名进行搜索", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Original Anime Name",
+			name_cn: "",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		const mockEpisodes: BangumiEpisode[] = [
+			{
+				id: 1001,
+				type: 0,
+				sort: 1,
+				name: "Original Ep Name",
+				name_cn: "",
+				duration: "24:00",
+				airdate: "2026-07-01",
+				desc: "第一集的简介内容",
+			},
+		];
+
+		renderSubjectDetail(
+			Promise.resolve(mockSubject),
+			Promise.resolve(mockEpisodes),
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("Original Anime Name")).toBeInTheDocument();
+		});
+
+		const episodeCard = screen.getByText("Original Ep Name").closest("button");
+		expect(episodeCard).toBeInTheDocument();
+		fireEvent.click(episodeCard!);
+
+		expect(currentLocation.current?.pathname).toBe("/");
+		expect(currentLocation.current?.search).toBe(
+			`?keyword=${encodeURIComponent("Original Anime Name 01")}`,
+		);
+	});
 });

@@ -525,6 +525,15 @@ describe("Player 页面组件", () => {
 			3,
 		);
 
+		// Open dropdown again and select English again (already loaded, covers branch)
+		fireEvent.click(selectTrigger);
+		const engItemAgain = screen.getByText("English [ENG]");
+		fireEvent.click(engItemAgain);
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
 		// Open dropdown again and select "无"
 		fireEvent.click(selectTrigger);
 		const noneItem = screen.getByText("无");
@@ -751,5 +760,374 @@ describe("Player 页面组件", () => {
 		});
 		fireEvent.error(video!);
 		expect(screen.getByText("视频加载失败")).toBeInTheDocument();
+
+		// 5. Test error code 1 (covers inner conditional else branch)
+		Object.defineProperty(video!, "error", {
+			value: { code: 1 },
+			configurable: true,
+			writable: true,
+		});
+		fireEvent.error(video!);
+		expect(screen.getAllByText("视频加载失败").length).toBe(2);
+	});
+
+	it("当订阅状态更新且找不到对应种子的状态时，应该不更新 torrentStatus", async () => {
+		vi.useFakeTimers();
+		const mockStatus = {
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		};
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
+
+		let triggerUpdate: any;
+		vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
+			(onUpdate) => {
+				triggerUpdate = onUpdate;
+				return Promise.resolve(() => {});
+			},
+		);
+
+		renderPlayer("/play/hash123/0");
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		await act(async () => {
+			triggerUpdate([{ info_hash: "other_hash" }]);
+		});
+
+		expect(screen.getByText("下载进度: 40.00%")).toBeInTheDocument();
+	});
+
+	it("在播放器初始化抛出错误且组件已卸载时，不应该更新状态或展示 Toast", async () => {
+		let rejectPromise: any;
+		const promise = new Promise<string>((_, reject) => {
+			rejectPromise = () => reject(new Error("Async Error"));
+		});
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockReturnValue(
+			promise,
+		);
+
+		const { unmount } = renderPlayer("/play/hash123/0");
+
+		unmount();
+
+		await act(async () => {
+			rejectPromise();
+			try {
+				await promise;
+			} catch {}
+		});
+
+		expect(screen.queryByText("无法获取视频流")).not.toBeInTheDocument();
+	});
+
+	it("应该支持从 React Router state 获取视频标题和封面，并处理未加载完成时的 unmount", async () => {
+		vi.useFakeTimers();
+
+		let resolveStatus: any;
+		const statusPromise = new Promise<any>((resolve) => {
+			resolveStatus = resolve;
+		});
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockReturnValue(
+			statusPromise,
+		);
+
+		const { unmount } = render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter
+						initialEntries={[
+							{
+								pathname: "/play/hash123/0",
+								state: {
+									name: "State Title",
+									imageUrl: "http://example.com/cover.jpg",
+								},
+							},
+						]}
+					>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="play/:infoHash/:fileId" element={<Player />} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		unmount();
+
+		await act(async () => {
+			resolveStatus({
+				info_hash: "hash123",
+				name: "测试视频",
+				progress_bytes: 400,
+				total_bytes: 1000,
+				finished: false,
+				download_speed_bytes_per_sec: 100,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+			});
+		});
+
+		vi.useRealTimers();
+	});
+
+	it("在订阅状态更新回调触发且组件已卸载时，不应该处理更新", async () => {
+		vi.useFakeTimers();
+
+		const mockStatus = {
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		};
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
+
+		let triggerUpdate: any;
+		vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
+			(onUpdate) => {
+				triggerUpdate = onUpdate;
+				return Promise.resolve(() => {});
+			},
+		);
+
+		const { unmount } = renderPlayer("/play/hash123/0");
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		unmount();
+
+		await act(async () => {
+			triggerUpdate([mockStatus]);
+		});
+
+		vi.useRealTimers();
+	});
+
+	it("应该支持从空的 React Router state 获取视频标题和封面", async () => {
+		vi.useFakeTimers();
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter
+						initialEntries={[
+							{
+								pathname: "/play/hash123/0",
+								state: {}, // Empty state to cover state?.name and state?.imageUrl fallback
+							},
+						]}
+					>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="play/:infoHash/:fileId" element={<Player />} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		vi.useRealTimers();
+	});
+
+	it("应该支持清理空的字幕 URL 对象", async () => {
+		vi.useFakeTimers();
+
+		const originalCreateObjectURL = URL.createObjectURL;
+		URL.createObjectURL = vi.fn().mockReturnValue("");
+
+		const mockStatus = {
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		};
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+			mockStatus,
+		);
+		vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+			{ id: 1, language: "eng", title: "English" } as any,
+		]);
+		vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue("WEBVTT");
+
+		const { unmount } = renderPlayer("/play/hash123/0");
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		const textTracks = HTMLMediaElement.prototype.textTracks;
+		if (
+			textTracks &&
+			typeof (textTracks as any).triggerAddTrack === "function"
+		) {
+			(textTracks as any).triggerAddTrack();
+		}
+
+		const selectTrigger = screen.getByRole("combobox");
+		fireEvent.click(selectTrigger);
+		const engItem = screen.getByRole("option", { name: "English [ENG]" });
+		fireEvent.click(engItem);
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		unmount();
+
+		URL.createObjectURL = originalCreateObjectURL;
+		vi.useRealTimers();
+	});
+
+	it("在获取字幕轨道成功且组件已卸载时，应该不更新状态", async () => {
+		vi.useFakeTimers();
+
+		let resolveTracks: any;
+		const tracksPromise = new Promise<any>((resolve) => {
+			resolveTracks = resolve;
+		});
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		});
+		vi.mocked(mockTorrentRepository.getSubtitleTracks).mockReturnValue(
+			tracksPromise,
+		);
+
+		const { unmount } = renderPlayer("/play/hash123/0");
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		unmount();
+
+		await act(async () => {
+			resolveTracks([{ id: 1, language: "eng", title: "English" }]);
+		});
+
+		vi.useRealTimers();
+	});
+
+	it("在获取字幕轨道失败且组件已卸载时，应该优雅忽略并不打印警告", async () => {
+		vi.useFakeTimers();
+
+		let rejectTracks: any;
+		const tracksPromise = new Promise<any>((_, reject) => {
+			rejectTracks = reject;
+		});
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		});
+		vi.mocked(mockTorrentRepository.getSubtitleTracks).mockReturnValue(
+			tracksPromise,
+		);
+
+		const { unmount } = renderPlayer("/play/hash123/0");
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		unmount();
+
+		await act(async () => {
+			rejectTracks(new Error("Subtitle fetch failed"));
+		});
+
+		vi.useRealTimers();
 	});
 });

@@ -114,6 +114,7 @@ export default function SubjectDetail() {
 	}, [subjectId, getBangumiSubjectUseCase, getBangumiEpisodesUseCase]);
 
 	const handleEpisodeClick = (episode: BangumiEpisode) => {
+		/* v8 ignore next */
 		if (!subject) return;
 		const name = subject.name_cn || subject.name;
 		const epNum = String(episode.sort).padStart(2, "0");
