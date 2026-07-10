@@ -184,19 +184,17 @@ export class HttpTorrentRepository implements TorrentRepository {
 				const data = JSON.parse(event.data);
 				const result = z.array(TorrentStatusInfoSchema).safeParse(data);
 				if (!result.success) {
-					console.error(
-						"torrent_subscribe API structure mismatch",
-						result.error,
-					);
-					return;
+					throw new Error("torrent_subscribe API structure mismatch", {
+						cause: result.error,
+					});
 				}
 				onUpdate(result.data);
 			} catch (e) {
-				console.error("Failed to parse SSE data", e);
+				throw new Error("Failed to parse SSE data", { cause: e });
 			}
 		};
 		eventSource.onerror = (err) => {
-			console.error("EventSource failed:", err);
+			throw new Error("EventSource failed", { cause: err });
 		};
 		return () => {
 			eventSource.close();
