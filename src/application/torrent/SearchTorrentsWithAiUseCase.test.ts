@@ -33,7 +33,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 			link: "http://example.com/3",
 			pub_date: "2026-07-10",
 			magnet: "magnet:?xt=urn:btih:3",
-			size: undefined,
+			size: null,
 		},
 	];
 
