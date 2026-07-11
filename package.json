@@ -21,6 +21,7 @@
 		"check:application-params": "tsx scripts/check-application-params.ts",
 		"check:interface-methods": "tsx scripts/check-interface-methods.ts",
 		"check:presentation-tauri-imports": "tsx scripts/check-presentation-tauri-imports.ts",
+		"check:function-length": "tsx scripts/check-function-length.ts",
 		"typecheck": "tsc --noEmit",
 		"test:coverage": "vitest run --coverage",
 		"bump-version": "tsx scripts/bump-version.ts"

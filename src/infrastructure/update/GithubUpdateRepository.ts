@@ -8,46 +8,46 @@ export class GithubUpdateRepository implements UpdateRepository {
 	private readonly githubApiUrl =
 		"https://api.github.com/repos/januwA/Animesh/releases/latest";
 
+	private async fetchLatestReleaseData(): Promise<any> {
+		const response = await fetch(this.githubApiUrl, {
+			headers: {
+				Accept: "application/vnd.github.v3+json",
+				"User-Agent": "Animesh-App",
+			},
+		});
+
+		if (!response.ok) {
+			throw new Error(
+				`GitHub API 请求失败: HTTP ${response.status} ${response.statusText}`,
+			);
+		}
+
+		return response.json();
+	}
+
+	private findInstallerUrl(
+		assets: Array<{ name: string; browser_download_url: string }>,
+	): string | undefined {
+		const asset = assets.find(
+			(a) =>
+				a.name.endsWith(".msi") ||
+				a.name.endsWith(".exe") ||
+				a.name.endsWith(".dmg") ||
+				a.name.endsWith(".deb") ||
+				a.name.endsWith(".apk"),
+		);
+		return asset?.browser_download_url;
+	}
+
 	async getLatestRelease(): Promise<UpdateInfo> {
 		try {
-			const response = await fetch(this.githubApiUrl, {
-				headers: {
-					Accept: "application/vnd.github.v3+json",
-					"User-Agent": "Animesh-App",
-				},
-			});
-
-			if (!response.ok) {
-				throw new Error(
-					`GitHub API 请求失败: HTTP ${response.status} ${response.statusText}`,
-				);
-			}
-
-			const data = (await response.json()) as {
-				tag_name: string;
-				body: string;
-				published_at: string;
-				html_url: string;
-				assets: Array<{
-					name: string;
-					browser_download_url: string;
-				}>;
-			};
-
-			const installerAsset = data.assets.find(
-				(asset) =>
-					asset.name.endsWith(".msi") ||
-					asset.name.endsWith(".exe") ||
-					asset.name.endsWith(".dmg") ||
-					asset.name.endsWith(".deb") ||
-					asset.name.endsWith(".apk"),
-			);
+			const data = await this.fetchLatestReleaseData();
 
 			return {
 				version: data.tag_name,
 				notes: data.body,
 				pubDate: data.published_at,
-				url: installerAsset?.browser_download_url,
+				url: this.findInstallerUrl(data.assets || []),
 				htmlUrl: data.html_url,
 			};
 		} catch (err: unknown) {

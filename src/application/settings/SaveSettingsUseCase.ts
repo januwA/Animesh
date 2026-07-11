@@ -1,22 +1,24 @@
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 
+export interface SaveSettingsDto {
+	downloadDir: string;
+	proxy: string | null;
+	trackers: string[];
+	trackerSourceType?: string | null;
+	trackerCdn?: string | null;
+	trackerCustomUrl?: string | null;
+	trackerAutoUpdate?: boolean | null;
+	trackerLastUpdateTime?: number | null;
+	aiEnabled?: boolean | null;
+	aiApiKey?: string | null;
+	aiApiEndpoint?: string | null;
+	aiModel?: string | null;
+}
+
 export class SaveSettingsUseCase {
 	constructor(private settingsRepository: SettingsRepository) {}
 
-	async execute(dto: {
-		downloadDir: string;
-		proxy: string | null;
-		trackers: string[];
-		trackerSourceType?: string | null;
-		trackerCdn?: string | null;
-		trackerCustomUrl?: string | null;
-		trackerAutoUpdate?: boolean | null;
-		trackerLastUpdateTime?: number | null;
-		aiEnabled?: boolean | null;
-		aiApiKey?: string | null;
-		aiApiEndpoint?: string | null;
-		aiModel?: string | null;
-	}): Promise<void> {
+	async execute(dto: SaveSettingsDto): Promise<void> {
 		await this.settingsRepository.setDownloadDir(dto.downloadDir);
 		await this.settingsRepository.setProxy(dto.proxy);
 		await this.settingsRepository.setTrackers(dto.trackers);

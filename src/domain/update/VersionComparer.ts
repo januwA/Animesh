@@ -4,16 +4,10 @@
  * @param v2 第二个版本号
  * @returns 如果 v1 > v2 返回 1，如果 v1 < v2 返回 -1，如果 v1 === v2 返回 0
  */
-export function compareVersions(v1: string, v2: string): number {
-	const cleanV1 = v1.replace(/^v/, "").trim();
-	const cleanV2 = v2.replace(/^v/, "").trim();
-
-	// 分割正式发布版本与预发布版本（例如 "1.0.0-alpha" -> ["1.0.0", "alpha"]）
-	const [rel1, pre1] = cleanV1.split("-");
-	const [rel2, pre2] = cleanV2.split("-");
-
-	const segments1 = rel1.split(".");
-	const segments2 = rel2.split(".");
+function compareReleaseSegments(
+	segments1: string[],
+	segments2: string[],
+): number {
 	const maxLength = Math.max(segments1.length, segments2.length);
 
 	for (let i = 0; i < maxLength; i++) {
@@ -31,8 +25,10 @@ export function compareVersions(v1: string, v2: string): number {
 			if (num1 < num2) return -1;
 		}
 	}
+	return 0;
+}
 
-	// 如果发布版本部分相同，比较预发布版本部分
+function comparePreRelease(pre1?: string, pre2?: string): number {
 	if (pre1 && !pre2) {
 		// 预发布版本（如 1.0.0-alpha）的优先级低于正式版本（如 1.0.0）
 		return -1;
@@ -44,6 +40,19 @@ export function compareVersions(v1: string, v2: string): number {
 		if (pre1 > pre2) return 1;
 		if (pre1 < pre2) return -1;
 	}
-
 	return 0;
+}
+
+export function compareVersions(v1: string, v2: string): number {
+	const cleanV1 = v1.replace(/^v/, "").trim();
+	const cleanV2 = v2.replace(/^v/, "").trim();
+
+	// 分割正式发布版本与预发布版本（例如 "1.0.0-alpha" -> ["1.0.0", "alpha"]）
+	const [rel1, pre1] = cleanV1.split("-");
+	const [rel2, pre2] = cleanV2.split("-");
+
+	const relResult = compareReleaseSegments(rel1.split("."), rel2.split("."));
+	if (relResult !== 0) return relResult;
+
+	return comparePreRelease(pre1, pre2);
 }

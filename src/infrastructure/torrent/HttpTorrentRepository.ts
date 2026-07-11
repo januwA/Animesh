@@ -26,16 +26,13 @@ export class HttpTorrentRepository implements TorrentRepository {
 		this.httpClient = new HttpClient();
 	}
 
-	async search(
+	private registerSearchCancellation(
 		ctx: Context,
-		keyword: string,
-		engine: string,
-	): Promise<SearchResultItem[]> {
-		const traceId = ctx.value<string>("traceId") || "";
-		let isFinished = false;
+		traceId: string,
+		status: { isFinished: boolean },
+	): void {
 		ctx.done().then(() => {
-			if (!isFinished) {
-				// 取消搜索
+			if (!status.isFinished) {
 				this.httpClient
 					.request(`${baseUrl}/torrents/search/${traceId}`, {
 						method: "DELETE",
@@ -43,6 +40,16 @@ export class HttpTorrentRepository implements TorrentRepository {
 					.catch(() => {});
 			}
 		});
+	}
+
+	async search(
+		ctx: Context,
+		keyword: string,
+		engine: string,
+	): Promise<SearchResultItem[]> {
+		const traceId = ctx.value<string>("traceId") || "";
+		const status = { isFinished: false };
+		this.registerSearchCancellation(ctx, traceId, status);
 
 		try {
 			const query = new URLSearchParams({ trace_id: traceId, keyword, engine });
@@ -58,7 +65,7 @@ export class HttpTorrentRepository implements TorrentRepository {
 			}
 			return result.data;
 		} finally {
-			isFinished = true;
+			status.isFinished = true;
 		}
 	}
 

@@ -28,6 +28,9 @@ pre-push:
     "前端_接口可空设计检查":
       glob: "src/**/*.{ts,tsx}"
       run: pnpm check:interface-methods {push_files}
+    "前端_函数方法长度检查":
+      glob: "src/**/*.{ts,tsx}"
+      run: pnpm check:function-length {push_files}
     "前端_表现层Tauri导入检查":
       glob: "src/presentation/**/*.{ts,tsx}"
       run: pnpm check:presentation-tauri-imports {push_files}

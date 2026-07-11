@@ -8,18 +8,37 @@ import {
 export class AutoUpdateTrackersUseCase {
 	constructor(private settingsRepository: SettingsRepository) {}
 
+	private shouldUpdate(settings: any, now: number): boolean {
+		const autoUpdate = settings.tracker_auto_update === true;
+		if (!autoUpdate) return false;
+
+		const lastUpdate = settings.tracker_last_update_time || 0;
+		return now - lastUpdate >= 24 * 60 * 60 * 1000;
+	}
+
+	private async performTrackerUpdate(
+		fetched: string[],
+		sourceType: string,
+		cdn: string,
+		customUrl: string,
+		now: number,
+	): Promise<void> {
+		await this.settingsRepository.setTrackers(fetched);
+		await this.settingsRepository.setTrackerOptions({
+			sourceType,
+			cdn,
+			customUrl,
+			autoUpdate: true,
+			lastUpdateTime: now,
+		});
+	}
+
 	async execute(): Promise<number | null> {
 		const settings = await this.settingsRepository.getSettings();
 		if (!settings) return null;
 
-		const autoUpdate = settings.tracker_auto_update === true;
-		if (!autoUpdate) return null;
-
-		const lastUpdate = settings.tracker_last_update_time || 0;
 		const now = Date.now();
-
-		// Check if 24 hours (86400000 ms) have passed since last update
-		if (now - lastUpdate < 24 * 60 * 60 * 1000) {
+		if (!this.shouldUpdate(settings, now)) {
 			return null;
 		}
 
@@ -37,15 +56,7 @@ export class AutoUpdateTrackersUseCase {
 		const fetched = await this.settingsRepository.fetchTrackers(url);
 		if (fetched.length === 0) return null;
 
-		await this.settingsRepository.setTrackers(fetched);
-		await this.settingsRepository.setTrackerOptions({
-			sourceType,
-			cdn,
-			customUrl,
-			autoUpdate: true,
-			lastUpdateTime: now,
-		});
-
+		await this.performTrackerUpdate(fetched, sourceType, cdn, customUrl, now);
 		return fetched.length;
 	}
 }
