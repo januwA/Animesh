@@ -259,7 +259,7 @@ function main() {
 		);
 		process.exit(1);
 	} else {
-		console.log("✨ 恭喜！所有目标目录中的函数和方法长度均在 30 行以内。");
+		console.log("✨ 所有目标目录中的函数和方法长度均在 30 行以内。");
 		process.exit(0);
 	}
 }

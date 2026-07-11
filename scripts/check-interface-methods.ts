@@ -218,11 +218,11 @@ function main() {
 
 	if (totalErrors > 0) {
 		console.error(
-			`\n🛑 校验未通过：在 src/domain、src/infrastructure 或 src/application 中发现了 ${totalErrors} 处接口设计错误（包含可为空/可选的方法设计）。请重构为非可选的方法设计。`,
+			`\n🛑 校验未通过：发现了 ${totalErrors} 处接口设计错误（包含可为空/可选的方法设计）。请重构为非可选的方法设计。`,
 		);
 		process.exit(1);
 	} else {
-		console.log("✨ 恭喜！未在目标目录中发现任何接口方法设计违规。");
+		console.log("✨ 未在目标目录中发现任何接口方法设计违规。");
 		process.exit(0);
 	}
 }
