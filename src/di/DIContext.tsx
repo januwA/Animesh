@@ -6,6 +6,8 @@ import {
 	TorrentRepositoryImpl,
 	UpdateRepositoryImpl,
 } from "@/di/repositories";
+import { FetchAiClient } from "@/infrastructure/ai/FetchAiClient";
+import { TauriAiClient } from "@/infrastructure/ai/TauriAiClient";
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
@@ -16,6 +18,7 @@ import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase";
+import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleTracksUseCase } from "../application/torrent/GetSubtitleTracksUseCase";
@@ -28,10 +31,12 @@ import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase"
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
+import { SearchTorrentsWithAiUseCase } from "../application/torrent/SearchTorrentsWithAiUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
+import type { AiClient } from "../domain/ai/AiClient";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
@@ -45,6 +50,7 @@ export interface DIContainer {
 	// UseCases
 	notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
 	searchTorrentsUseCase: SearchTorrentsUseCase;
+	searchTorrentsWithAiUseCase: SearchTorrentsWithAiUseCase;
 	listTorrentsUseCase: ListTorrentsUseCase;
 	subscribeTorrentsUseCase: SubscribeTorrentsUseCase;
 	pauseTorrentUseCase: PauseTorrentUseCase;
@@ -63,6 +69,8 @@ export interface DIContainer {
 	selectDirectoryUseCase: SelectDirectoryUseCase;
 	syncTrackersUseCase: SyncTrackersUseCase;
 	autoUpdateTrackersUseCase: AutoUpdateTrackersUseCase;
+	verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
+	aiClient: AiClient;
 
 	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
 	getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
@@ -74,6 +82,8 @@ export interface DIContainer {
 }
 
 export function createDefaultDIContainer(): DIContainer {
+	const isTauri = import.meta.env.MODE !== "web";
+	const logger = new ConsoleLogger("App");
 	const torrentRepository = new TorrentRepositoryImpl();
 	const settingsRepository = new SettingsRepositoryImpl();
 	const httpClient = new HttpClient();
@@ -87,6 +97,17 @@ export function createDefaultDIContainer(): DIContainer {
 		notificationRepository,
 	);
 	const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
+
+	const aiClient: AiClient = isTauri
+		? new TauriAiClient()
+		: new FetchAiClient(httpClient);
+
+	const searchTorrentsWithAiUseCase = new SearchTorrentsWithAiUseCase(
+		torrentRepository,
+		settingsRepository,
+		aiClient,
+		logger.withCategory("SearchTorrentsWithAiUseCase"),
+	);
 	const listTorrentsUseCase = new ListTorrentsUseCase(torrentRepository);
 	const subscribeTorrentsUseCase = new SubscribeTorrentsUseCase(
 		torrentRepository,
@@ -117,6 +138,7 @@ export function createDefaultDIContainer(): DIContainer {
 	const autoUpdateTrackersUseCase = new AutoUpdateTrackersUseCase(
 		settingsRepository,
 	);
+	const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
 
 	const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
 		bangumiRepository,
@@ -134,14 +156,13 @@ export function createDefaultDIContainer(): DIContainer {
 	const openUpdateUrlUseCase = new OpenUpdateUrlUseCase(updateRepository);
 	const openUrlUseCase = new OpenUrlUseCase(openerRepository);
 
-	const logger = new ConsoleLogger("App");
-
 	return {
 		notificationRepository,
 		logger,
 
 		notifyDownloadCompletionUseCase,
 		searchTorrentsUseCase,
+		searchTorrentsWithAiUseCase,
 		listTorrentsUseCase,
 		subscribeTorrentsUseCase,
 		pauseTorrentUseCase,
@@ -160,6 +181,8 @@ export function createDefaultDIContainer(): DIContainer {
 		selectDirectoryUseCase,
 		syncTrackersUseCase,
 		autoUpdateTrackersUseCase,
+		verifyAiConnectionUseCase,
+		aiClient,
 
 		getBangumiCalendarUseCase,
 		getBangumiSubjectUseCase,

@@ -1,6 +1,6 @@
 import { createContext, use, useCallback, useState } from "react";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
-import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 
 export type ToastType = "info" | "success" | "warning" | "error";
 
@@ -13,8 +13,8 @@ export interface ToastMessage {
 interface AppContextType {
 	keyword: string;
 	setKeyword: (val: string) => void;
-	results: SearchResultItem[];
-	setResults: (val: SearchResultItem[]) => void;
+	results: AiSearchResultItem[];
+	setResults: (val: AiSearchResultItem[]) => void;
 	loading: boolean;
 	setLoading: (val: boolean) => void;
 	error: string | null;
@@ -44,7 +44,7 @@ export function AppContextProvider({
 	children: React.ReactNode;
 }) {
 	const [keyword, setKeyword] = useState("");
-	const [results, setResults] = useState<SearchResultItem[]>([]);
+	const [results, setResults] = useState<AiSearchResultItem[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [hasSearched, setHasSearched] = useState(false);

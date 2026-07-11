@@ -12,6 +12,12 @@ export interface SettingsRepository {
 		autoUpdate: boolean | null;
 		lastUpdateTime: number | null;
 	}): Promise<void>;
+	setAiOptions(options: {
+		enabled: boolean | null;
+		apiKey: string | null;
+		apiEndpoint: string | null;
+		model: string | null;
+	}): Promise<void>;
 	fetchTrackers(url: string): Promise<string[]>;
 	selectDirectory(): Promise<string | null>;
 }

@@ -21,6 +21,7 @@ export class HttpSettingsRepository implements SettingsRepository {
 		const rawSettings = await this.httpClient.getJson<unknown>(
 			`${baseUrl}/settings`,
 		);
+
 		const result = SettingsSchema.safeParse(rawSettings);
 		if (!result.success) {
 			throw new Error("Settings backend structure mismatch", {
@@ -78,6 +79,26 @@ export class HttpSettingsRepository implements SettingsRepository {
 				custom_url: options.customUrl,
 				auto_update: options.autoUpdate,
 				last_update_time: options.lastUpdateTime,
+			}),
+		});
+	}
+
+	async setAiOptions(options: {
+		enabled: boolean | null;
+		apiKey: string | null;
+		apiEndpoint: string | null;
+		model: string | null;
+	}): Promise<void> {
+		await this.httpClient.request(`${baseUrl}/settings/ai-options`, {
+			method: "PUT",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				enabled: options.enabled,
+				api_key: options.apiKey,
+				api_endpoint: options.apiEndpoint,
+				model: options.model,
 			}),
 		});
 	}

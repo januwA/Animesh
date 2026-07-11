@@ -14,7 +14,7 @@ import type { SubmitEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
-import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import {
@@ -180,10 +180,11 @@ function WelcomeGuide() {
 
 // 搜索结果卡片组件
 interface SearchResultCardProps {
-	item: SearchResultItem;
+	item: AiSearchResultItem;
 	index: number;
 	onCopyMagnet: (magnet: string) => void;
 	onPlay: (magnet: string, title: string) => void;
+	isBestAi?: boolean;
 }
 
 function SearchResultCard({
@@ -191,25 +192,60 @@ function SearchResultCard({
 	index,
 	onCopyMagnet,
 	onPlay,
+	isBestAi = false,
 }: SearchResultCardProps) {
 	return (
 		<Card
 			id={`torrent-item-${index}`}
-			className="bg-card/50 hover:bg-card-hover border-white/5 hover:border-white/10 transition-all duration-300 group"
+			className={
+				isBestAi
+					? "bg-gradient-to-br from-cyan-950/15 via-card/50 to-indigo-950/15 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:border-cyan-500/40 transition-all duration-300 group"
+					: "bg-card/50 hover:bg-card-hover border-white/5 hover:border-white/10 transition-all duration-300 group"
+			}
 		>
 			<CardHeader className="p-5 pb-3">
+				{item.ai_score !== undefined && (
+					<div className="flex items-center gap-2 mb-2 flex-wrap text-[10px]">
+						{isBestAi ? (
+							<span className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
+								✨ AI 智能精选推荐
+							</span>
+						) : (
+							<span className="bg-secondary/80 text-muted-foreground border border-white/5 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+								🤖 AI 评分过滤
+							</span>
+						)}
+						<span
+							className={`px-2.5 py-0.5 rounded-full font-mono font-bold ${
+								item.ai_score >= 80
+									? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+									: "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+							}`}
+						>
+							匹配度: {item.ai_score}分
+						</span>
+					</div>
+				)}
 				<CardTitle className="text-base font-semibold leading-relaxed group-hover:text-primary transition-colors">
 					{item.title}
 				</CardTitle>
 			</CardHeader>
-			<CardContent className="px-5 pb-4 pt-0 flex flex-wrap gap-4 text-xs text-muted-foreground items-center">
-				<div className="flex items-center gap-1.5">
-					<Clock className="h-3.5 w-3.5" />
-					<span>{formatLocalDate(item.pub_date)}</span>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<HardDrive className="h-3.5 w-3.5" />
-					<span>{formatBytes(item.size)}</span>
+			<CardContent className="px-5 pb-4 pt-0 flex flex-col gap-3">
+				{item.ai_reason && (
+					<div className="px-3 py-2 bg-cyan-950/20 border border-cyan-500/10 rounded-lg text-xs text-cyan-300/90 leading-relaxed font-medium">
+						<span className="font-semibold text-cyan-400">推荐理由：</span>
+						{item.ai_reason}
+					</div>
+				)}
+				<div className="flex flex-wrap gap-4 text-xs text-muted-foreground items-center">
+					<div className="flex items-center gap-1.5">
+						<Clock className="h-3.5 w-3.5" />
+						<span>{formatLocalDate(item.pub_date)}</span>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<HardDrive className="h-3.5 w-3.5" />
+						<span>{formatBytes(item.size)}</span>
+					</div>
 				</div>
 			</CardContent>
 			<CardFooter className="px-5 py-3.5 bg-muted/10 border-t border-white/5 flex items-center justify-between gap-4">
@@ -252,7 +288,11 @@ function SearchResultCard({
 export default function Home() {
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
-	const { searchTorrentsUseCase } = useDI();
+	const {
+		searchTorrentsUseCase,
+		searchTorrentsWithAiUseCase,
+		getSettingsUseCase,
+	} = useDI();
 	const {
 		keyword,
 		setKeyword,
@@ -268,6 +308,8 @@ export default function Home() {
 	} = useAppContext();
 
 	const [isSearching, setIsSearching] = useState(false);
+	const [isAiMode, setIsAiMode] = useState(false);
+	const [aiConfigured, setAiConfigured] = useState(false);
 	const { createContext, cancel: cancelSearch } = useRequestContext();
 
 	const [history, setHistory] = useState<string[]>(() => {
@@ -278,6 +320,25 @@ export default function Home() {
 			return [];
 		}
 	});
+
+	// 检测本地 AI 配置
+	useEffect(() => {
+		const checkAi = async () => {
+			try {
+				const settings = await getSettingsUseCase.execute();
+				if (
+					settings.ai_enabled &&
+					settings.ai_api_endpoint &&
+					settings.ai_api_key
+				) {
+					setAiConfigured(true);
+				}
+			} catch {
+				// 静默退化
+			}
+		};
+		checkAi();
+	}, [getSettingsUseCase]);
 
 	const keywordParam = searchParams.get("keyword");
 
@@ -301,10 +362,15 @@ export default function Home() {
 
 			(async () => {
 				try {
-					const data = await searchTorrentsUseCase.execute(ctx, {
-						keyword: queryText,
-						engine: searchEngine,
-					});
+					const data = isAiMode
+						? await searchTorrentsWithAiUseCase.execute(ctx, {
+								keyword: queryText,
+								engine: searchEngine,
+							})
+						: await searchTorrentsUseCase.execute(ctx, {
+								keyword: queryText,
+								engine: searchEngine,
+							});
 					setResults(data);
 				} catch (err: unknown) {
 					if (ctx.err() === Canceled) {
@@ -319,7 +385,9 @@ export default function Home() {
 		},
 		[
 			searchTorrentsUseCase,
+			searchTorrentsWithAiUseCase,
 			searchEngine,
+			isAiMode,
 			setError,
 			setHasSearched,
 			setResults,
@@ -398,6 +466,27 @@ export default function Home() {
 				setSearchEngine={setSearchEngine}
 			/>
 
+			{/* AI 智能过滤开关 */}
+			{aiConfigured && (
+				<div className="max-w-2xl mx-auto w-full mb-6 mt-[-1rem] flex items-center justify-end animate-in fade-in duration-200">
+					<div className="flex items-center gap-2 bg-card/20 border border-white/5 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm hover:border-white/10 transition-all duration-300">
+						<input
+							id="ai-mode-checkbox"
+							type="checkbox"
+							checked={isAiMode}
+							onChange={(e) => setIsAiMode(e.target.checked)}
+							className="h-3.5 w-3.5 rounded border-white/10 bg-black/20 text-cyan-400 focus:ring-cyan-400 focus:ring-offset-0 accent-cyan-400 cursor-pointer"
+						/>
+						<label
+							htmlFor="ai-mode-checkbox"
+							className="text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer select-none flex items-center gap-1.5"
+						>
+							✨ AI 智能过滤
+						</label>
+					</div>
+				</div>
+			)}
+
 			{/* 搜索历史记录 */}
 			{history.length > 0 && (
 				<div className="max-w-2xl mx-auto w-full mb-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
@@ -438,7 +527,33 @@ export default function Home() {
 			)}
 
 			{/* 加载提示 */}
-			{isSearching && <SearchLoading onCancel={cancelSearch} />}
+			{isSearching &&
+				(isAiMode ? (
+					<div className="flex flex-col items-center justify-center py-20 space-y-4 animate-in fade-in duration-300">
+						<div className="relative flex items-center justify-center">
+							<Loader2 className="h-10 w-10 text-cyan-400 animate-spin" />
+							<div className="absolute inset-0 rounded-full bg-cyan-400/10 blur-xl animate-pulse" />
+						</div>
+						<p className="text-sm font-semibold bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-400 bg-clip-text text-transparent animate-pulse">
+							AI 正在搜索，可能需要数秒，请稍候...
+						</p>
+						<p className="text-xs text-muted-foreground max-w-xs text-center leading-relaxed">
+							正在分析意图，并根据需要在不同搜索引擎间自动检索 Fallback...
+						</p>
+						{cancelSearch && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={cancelSearch}
+								className="text-xs text-muted-foreground hover:text-foreground mt-2 border-white/5 bg-black/10"
+							>
+								取消搜索
+							</Button>
+						)}
+					</div>
+				) : (
+					<SearchLoading onCancel={cancelSearch} />
+				))}
 
 			{/* 错误显示 */}
 			{error && <ErrorBanner message={error} />}
@@ -470,15 +585,20 @@ export default function Home() {
 					</div>
 
 					<div className="grid gap-4">
-						{results.map((item, index) => (
-							<SearchResultCard
-								key={index.toString()}
-								item={item}
-								index={index}
-								onCopyMagnet={handleCopyMagnet}
-								onPlay={handlePlay}
-							/>
-						))}
+						{results.map((item, index) => {
+							const isBest =
+								isAiMode && index === 0 && item.ai_score !== undefined;
+							return (
+								<SearchResultCard
+									key={index.toString()}
+									item={item}
+									index={index}
+									onCopyMagnet={handleCopyMagnet}
+									onPlay={handlePlay}
+									isBestAi={isBest}
+								/>
+							);
+						})}
 					</div>
 				</section>
 			)}

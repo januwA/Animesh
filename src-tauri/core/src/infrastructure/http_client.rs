@@ -139,3 +139,37 @@ impl HttpClient for MockHttpClient {
         (self.post_handler)(url, body, content_type, proxy)
     }
 }
+
+/// 封装并代发 AI 聊天请求的公共辅助函数，隐藏 reqwest 细节。
+pub async fn send_ai_chat_request(
+    endpoint: &str,
+    api_key: &str,
+    body_json: &str,
+) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let mut req = client
+        .post(endpoint)
+        .header("Content-Type", "application/json");
+
+    if !api_key.is_empty() {
+        req = req.header("Authorization", format!("Bearer {}", api_key));
+    }
+
+    let res = req
+        .body(body_json.to_string())
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let status = res.status();
+    let text = res
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response body: {}", e))?;
+
+    if !status.is_success() {
+        return Err(format!("HTTP error status {}: {}", status, text));
+    }
+
+    Ok(text)
+}

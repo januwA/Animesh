@@ -705,4 +705,69 @@ describe("Home 页面组件", () => {
 		renderHome();
 		expect(screen.queryByText("最近搜索:")).not.toBeInTheDocument();
 	});
+
+	it("应该支持切换 AI 智能过滤模式，并调用 searchTorrentsWithAiUseCase 过滤并置顶高亮推荐结果", async () => {
+		// Mock getSettingsUseCase 返回配置好的 AI 选项，使 UI 中的 AI 开关得以显示
+		vi.spyOn(mockContainer.getSettingsUseCase, "execute").mockResolvedValue({
+			download_dir: "/mock",
+			ai_enabled: true,
+			ai_api_endpoint: "https://api.openai.com/v1",
+			ai_api_key: "test-key",
+			trackers: [],
+		});
+
+		const mockAiResults = [
+			{
+				title: "AI 推荐：昨日青空 1080p",
+				link: "http://example.com/1",
+				pub_date: "2026-07-10",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 1500000000,
+				ai_score: 95,
+				ai_reason: "匹配 1080p 清晰度与简中字幕",
+			},
+		];
+
+		// 劫持测试容器里的 searchTorrentsWithAiUseCase.execute
+		vi.spyOn(
+			mockContainer.searchTorrentsWithAiUseCase,
+			"execute",
+		).mockResolvedValue(mockAiResults);
+
+		renderHome();
+
+		// 等待加载设置并渲染 AI 开关
+		await waitFor(() => {
+			expect(screen.getByLabelText("✨ AI 智能过滤")).toBeInTheDocument();
+		});
+
+		const aiCheckbox = screen.getByLabelText(
+			"✨ AI 智能过滤",
+		) as HTMLInputElement;
+		expect(aiCheckbox.checked).toBe(false); // 默认应该关闭
+
+		// 开启 AI 模式开关
+		fireEvent.click(aiCheckbox);
+		expect(aiCheckbox.checked).toBe(true);
+
+		// 输入框输入并搜索
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "昨日青空" } });
+		fireEvent.submit(input.closest("form")!);
+
+		// 验证过渡状态
+		expect(screen.getByText(/AI 正在搜索/)).toBeInTheDocument();
+
+		// 等待渲染 AI 推荐结果
+		await waitFor(() => {
+			expect(screen.getByText("AI 推荐：昨日青空 1080p")).toBeInTheDocument();
+			expect(
+				screen.getByText("匹配 1080p 清晰度与简中字幕"),
+			).toBeInTheDocument();
+		});
+
+		expect(
+			mockContainer.searchTorrentsWithAiUseCase.execute,
+		).toHaveBeenCalled();
+	});
 });

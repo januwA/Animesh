@@ -12,6 +12,10 @@ export class SaveSettingsUseCase {
 		trackerCustomUrl?: string | null;
 		trackerAutoUpdate?: boolean | null;
 		trackerLastUpdateTime?: number | null;
+		aiEnabled?: boolean | null;
+		aiApiKey?: string | null;
+		aiApiEndpoint?: string | null;
+		aiModel?: string | null;
 	}): Promise<void> {
 		await this.settingsRepository.setDownloadDir(dto.downloadDir);
 		await this.settingsRepository.setProxy(dto.proxy);
@@ -22,6 +26,12 @@ export class SaveSettingsUseCase {
 			customUrl: dto.trackerCustomUrl ?? null,
 			autoUpdate: dto.trackerAutoUpdate ?? null,
 			lastUpdateTime: dto.trackerLastUpdateTime ?? null,
+		});
+		await this.settingsRepository.setAiOptions({
+			enabled: dto.aiEnabled ?? null,
+			apiKey: dto.aiApiKey ?? null,
+			apiEndpoint: dto.aiApiEndpoint ?? null,
+			model: dto.aiModel ?? null,
 		});
 	}
 }

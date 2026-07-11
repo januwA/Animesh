@@ -80,7 +80,9 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 			router.navigate("/settings");
 		});
 		await waitFor(() => {
-			expect(screen.getByText(/下载保存目录|正在加载/)).toBeInTheDocument();
+			expect(
+				screen.getByText(/默认下载及播放缓存目录|正在加载/),
+			).toBeInTheDocument();
 		});
 
 		// 5. 跳转到种子详情 /torrent 并等待载入 (Lazy)

@@ -12,6 +12,7 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		setProxy: vi.fn(),
 		setTrackers: vi.fn(),
 		setTrackerOptions: vi.fn(),
+		setAiOptions: vi.fn(),
 		fetchTrackers: vi.fn(),
 		selectDirectory: vi.fn(),
 	};
@@ -23,6 +24,10 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 			download_dir: "/mock/dir",
 			proxy: null,
 			trackers: ["udp://tracker1"],
+			ai_enabled: true,
+			ai_api_key: "test-key",
+			ai_api_endpoint: "https://api.openai.com/v1",
+			ai_model: "gpt-4o",
 		});
 		const result = await useCase.execute();
 		expect(rawMockRepo.getSettings).toHaveBeenCalled();
@@ -30,15 +35,20 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 			download_dir: "/mock/dir",
 			proxy: null,
 			trackers: ["udp://tracker1"],
+			ai_enabled: true,
+			ai_api_key: "test-key",
+			ai_api_endpoint: "https://api.openai.com/v1",
+			ai_model: "gpt-4o",
 		});
 	});
 
-	it("SaveSettingsUseCase 应该调用 repository 里的 setDownloadDir、setProxy、setTrackers 和 setTrackerOptions 方法", async () => {
+	it("SaveSettingsUseCase 应该调用 repository 里的 setDownloadDir、setProxy、setTrackers 和 setTrackerOptions 方法以及 setAiOptions 方法", async () => {
 		const useCase = new SaveSettingsUseCase(mockRepo);
 		vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
 		vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
 		vi.mocked(rawMockRepo.setTrackers).mockResolvedValueOnce(undefined);
 		vi.mocked(rawMockRepo.setTrackerOptions).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setAiOptions).mockResolvedValueOnce(undefined);
 		await useCase.execute({
 			downloadDir: "/mock/dir2",
 			proxy: "http://127.0.0.1:1080",
@@ -48,6 +58,10 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 			trackerCustomUrl: "",
 			trackerAutoUpdate: true,
 			trackerLastUpdateTime: 123456,
+			aiEnabled: true,
+			aiApiKey: "test-key",
+			aiApiEndpoint: "https://api.openai.com/v1",
+			aiModel: "gpt-4o",
 		});
 		expect(rawMockRepo.setDownloadDir).toHaveBeenCalledWith("/mock/dir2");
 		expect(rawMockRepo.setProxy).toHaveBeenCalledWith("http://127.0.0.1:1080");
@@ -58,6 +72,12 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 			customUrl: "",
 			autoUpdate: true,
 			lastUpdateTime: 123456,
+		});
+		expect(rawMockRepo.setAiOptions).toHaveBeenCalledWith({
+			enabled: true,
+			apiKey: "test-key",
+			apiEndpoint: "https://api.openai.com/v1",
+			model: "gpt-4o",
 		});
 	});
 
@@ -89,6 +109,7 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
 		vi.mocked(rawMockRepo.setTrackers).mockResolvedValueOnce(undefined);
 		vi.mocked(rawMockRepo.setTrackerOptions).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setAiOptions).mockResolvedValueOnce(undefined);
 		await useCase.execute({
 			downloadDir: "/mock/dir2",
 			proxy: null,
@@ -100,6 +121,12 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 			customUrl: null,
 			autoUpdate: null,
 			lastUpdateTime: null,
+		});
+		expect(rawMockRepo.setAiOptions).toHaveBeenCalledWith({
+			enabled: null,
+			apiKey: null,
+			apiEndpoint: null,
+			model: null,
 		});
 	});
 });

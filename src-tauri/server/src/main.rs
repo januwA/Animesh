@@ -77,6 +77,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,
+            ai_enabled: None,
+            ai_api_key: None,
+            ai_api_endpoint: None,
+            ai_model: None,
         };
         if let Ok(file) = std::fs::File::create(&settings_path) {
             let _ = serde_json::to_writer_pretty(file, &settings);
@@ -135,6 +139,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/settings/tracker-options",
             put(settings_set_tracker_options_handler),
         )
+        .route("/settings/ai-options", put(settings_set_ai_options_handler))
+        .route("/ai/chat-request", post(ai_chat_request_handler))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -526,4 +532,45 @@ async fn settings_set_tracker_options_handler(
         )
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
+}
+
+#[derive(serde::Deserialize)]
+struct SetAiOptionsInput {
+    enabled: Option<bool>,
+    api_key: Option<String>,
+    api_endpoint: Option<String>,
+    model: Option<String>,
+}
+
+async fn settings_set_ai_options_handler(
+    State(state): State<Arc<AppState>>,
+    axum::Json(payload): axum::Json<SetAiOptionsInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .manager
+        .set_ai_options(
+            payload.enabled,
+            payload.api_key,
+            payload.api_endpoint,
+            payload.model,
+        )
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
+#[derive(serde::Deserialize)]
+struct AiChatRequestInput {
+    endpoint: String,
+    api_key: String,
+    body_json: String,
+}
+
+async fn ai_chat_request_handler(
+    axum::Json(payload): axum::Json<AiChatRequestInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let resp =
+        animesh_core::send_ai_chat_request(&payload.endpoint, &payload.api_key, &payload.body_json)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(resp)
 }

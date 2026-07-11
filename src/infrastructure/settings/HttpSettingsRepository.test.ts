@@ -1,24 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TauriSettingsRepository } from "./TauriSettingsRepository";
+import { HttpSettingsRepository } from "./HttpSettingsRepository";
 
-const { mockInvoke } = vi.hoisted(() => ({
-	mockInvoke: vi.fn(),
-}));
-
-vi.mock("@tauri-apps/api/core", () => ({
-	invoke: mockInvoke,
-}));
-
-describe("基础设施层 TauriSettingsRepository", () => {
-	let repository: TauriSettingsRepository;
+describe("基础设施层 HttpSettingsRepository", () => {
+	let repository: HttpSettingsRepository;
 
 	beforeEach(() => {
-		repository = new TauriSettingsRepository();
+		repository = new HttpSettingsRepository();
 		vi.stubGlobal("fetch", vi.fn());
 	});
 
 	afterEach(() => {
-		vi.resetAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe("fetchTrackers 网络同步方法", () => {
@@ -66,34 +58,41 @@ describe("基础设施层 TauriSettingsRepository", () => {
 	});
 
 	describe("getSettings 方法", () => {
-		it("应该正确从后端获取并解析设置，包含 AI 配置选项", async () => {
+		it("应该从 API 获取设置，并且包含 AI 配置项且返回解析后的数据", async () => {
 			const mockRawSettings = {
-				download_dir: "/path/to/downloads",
-				proxy: "http://127.0.0.1:7890",
-				trackers: ["udp://tracker"],
+				download_dir: "/downloads",
+				proxy: "socks5://127.0.0.1:1080",
+				trackers: ["http://tracker1", "http://tracker2"],
 				tracker_source_type: "custom",
 				tracker_cdn: "none",
 				tracker_custom_url: "",
 				tracker_auto_update: true,
-				tracker_last_update_time: 123456,
+				tracker_last_update_time: 1718880000,
 				ai_enabled: true,
-				ai_api_key: "test-api-key",
+				ai_api_key: "ai-api-key",
 				ai_api_endpoint: "https://api.openai.com/v1",
 				ai_model: "gpt-4o",
 			};
-			mockInvoke.mockResolvedValueOnce(mockRawSettings);
 
-			const result = await repository.getSettings();
+			vi.mocked(fetch).mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockRawSettings,
+			} as Response);
 
-			expect(mockInvoke).toHaveBeenCalledWith("settings_get");
-			expect(result).toEqual(mockRawSettings);
+			const settings = await repository.getSettings();
+
+			expect(fetch).toHaveBeenCalledWith(
+				expect.stringContaining("/api/settings"),
+				expect.objectContaining({ method: "GET" }),
+			);
+			expect(settings).toEqual(mockRawSettings);
 		});
 
-		it("当后端返回的数据结构与 Schema 不匹配时，应该抛出错误", async () => {
-			const mockRawSettings = {
-				download_dir: 123, // 应该是 string
-			};
-			mockInvoke.mockResolvedValueOnce(mockRawSettings);
+		it("当接口返回的数据格式不匹配 Schema 时，应该抛出错误", async () => {
+			vi.mocked(fetch).mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ download_dir: 1234 }), // type mismatch
+			} as Response);
 
 			await expect(repository.getSettings()).rejects.toThrow(
 				"Settings backend structure mismatch",
@@ -102,24 +101,34 @@ describe("基础设施层 TauriSettingsRepository", () => {
 	});
 
 	describe("setAiOptions 方法", () => {
-		it("应该正确调用后端的 settings_set_ai_options 命令", async () => {
-			mockInvoke.mockResolvedValueOnce(undefined);
+		it("应该发送 PUT 请求至 /api/settings/ai-options 并携带正确的 JSON payload", async () => {
+			vi.mocked(fetch).mockResolvedValueOnce({
+				ok: true,
+				text: async () => "",
+			} as Response);
 
-			const options = {
+			await repository.setAiOptions({
 				enabled: true,
-				apiKey: "test-api-key",
-				apiEndpoint: "https://api.openai.com/v1",
-				model: "gpt-4o",
-			};
-
-			await repository.setAiOptions(options);
-
-			expect(mockInvoke).toHaveBeenCalledWith("settings_set_ai_options", {
-				enabled: true,
-				apiKey: "test-api-key",
-				apiEndpoint: "https://api.openai.com/v1",
-				model: "gpt-4o",
+				apiKey: "api-key-test",
+				apiEndpoint: "https://example.com",
+				model: "model-test",
 			});
+
+			expect(fetch).toHaveBeenCalledWith(
+				expect.stringContaining("/api/settings/ai-options"),
+				expect.objectContaining({
+					method: "PUT",
+					headers: expect.objectContaining({
+						"Content-Type": "application/json",
+					}),
+					body: JSON.stringify({
+						enabled: true,
+						api_key: "api-key-test",
+						api_endpoint: "https://example.com",
+						model: "model-test",
+					}),
+				}),
+			);
 		});
 	});
 });

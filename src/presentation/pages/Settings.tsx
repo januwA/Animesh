@@ -1,4 +1,5 @@
 import {
+	Bot,
 	Download,
 	Folder,
 	Globe,
@@ -41,6 +42,7 @@ export default function Settings() {
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
 		openUpdateUrlUseCase,
+		verifyAiConnectionUseCase,
 	} = useDI();
 	const { showToast } = useAppContext();
 	const [currentVersion, setCurrentVersion] = useState("");
@@ -60,6 +62,12 @@ export default function Settings() {
 	const [autoUpdate, setAutoUpdate] = useState(false);
 	const [lastUpdateTime, setLastUpdateTime] = useState(0);
 	const [syncing, setSyncing] = useState(false);
+
+	const [aiEnabled, setAiEnabled] = useState(false);
+	const [aiApiKey, setAiApiKey] = useState("");
+	const [aiApiEndpoint, setAiApiEndpoint] = useState("");
+	const [aiModel, setAiModel] = useState("");
+	const [testingAi, setTestingAi] = useState(false);
 
 	const currentUrl = getTrackerUrl(sourceType, cdn, customUrl);
 
@@ -108,6 +116,31 @@ export default function Settings() {
 		}
 	};
 
+	const handleTestAiConnection = async () => {
+		if (!aiApiEndpoint.trim()) {
+			showToast("请输入 AI 接口地址", "warning");
+			return;
+		}
+		if (!aiApiKey.trim()) {
+			showToast("请输入 API 密钥", "warning");
+			return;
+		}
+
+		setTestingAi(true);
+		try {
+			await verifyAiConnectionUseCase.execute({
+				apiEndpoint: aiApiEndpoint,
+				apiKey: aiApiKey,
+				model: aiModel,
+			});
+			showToast("AI 模型连接测试成功！", "success");
+		} catch (err: unknown) {
+			showToast(`AI 模型连接测试失败: ${formatError(err)}`, "error", 5000);
+		} finally {
+			setTestingAi(false);
+		}
+	};
+
 	const isTauri = import.meta.env.MODE !== "web";
 
 	const isMobile =
@@ -130,6 +163,10 @@ export default function Settings() {
 				setCustomUrl(settings.tracker_custom_url || "");
 				setAutoUpdate(settings.tracker_auto_update === true);
 				setLastUpdateTime(settings.tracker_last_update_time || 0);
+				setAiEnabled(settings.ai_enabled === true);
+				setAiApiKey(settings.ai_api_key || "");
+				setAiApiEndpoint(settings.ai_api_endpoint || "");
+				setAiModel(settings.ai_model || "");
 			} catch (err: unknown) {
 				showToast(`加载设置失败: ${formatError(err)}`, "error");
 			} finally {
@@ -197,6 +234,10 @@ export default function Settings() {
 			trackerCustomUrl: customUrl,
 			trackerAutoUpdate: autoUpdate,
 			trackerLastUpdateTime: lastUpdateTime,
+			aiEnabled,
+			aiApiKey,
+			aiApiEndpoint,
+			aiModel,
 		});
 
 		if (!validation.success) {
@@ -218,6 +259,10 @@ export default function Settings() {
 				trackerCustomUrl: validatedData.trackerCustomUrl,
 				trackerAutoUpdate: validatedData.trackerAutoUpdate,
 				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
+				aiEnabled: validatedData.aiEnabled,
+				aiApiKey: validatedData.aiApiKey,
+				aiApiEndpoint: validatedData.aiApiEndpoint,
+				aiModel: validatedData.aiModel,
 			});
 			showToast("设置已保存，后续下载任务将使用新路径", "success");
 		} catch (err: unknown) {
@@ -337,6 +382,103 @@ export default function Settings() {
 						</CardContent>
 					</Card>
 				)}
+
+				<Card className="bg-card/40 border-white/5">
+					<CardHeader className="p-5">
+						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+							<Bot className="h-4 w-4 text-primary" />
+							AI 智能搜索模型设置
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+						<div className="flex items-center gap-2 pt-1 pb-2">
+							<input
+								id="ai-enabled-checkbox"
+								type="checkbox"
+								checked={aiEnabled}
+								onChange={(e) => setAiEnabled(e.target.checked)}
+								className="h-3.5 w-3.5 rounded border-white/10 bg-black/20 text-primary focus:ring-primary focus:ring-offset-0 accent-primary"
+							/>
+							<label
+								htmlFor="ai-enabled-checkbox"
+								className="text-[11px] text-foreground font-medium cursor-pointer select-none"
+							>
+								启用 AI 智能过滤与搜索优化 (基于 LLM 重新评分与排序)
+							</label>
+						</div>
+
+						{aiEnabled && (
+							<div className="space-y-4 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-200">
+								<div className="space-y-2">
+									<label
+										htmlFor="ai-endpoint-input"
+										className="text-muted-foreground font-medium"
+									>
+										AI 接口地址 (Endpoint)
+									</label>
+									<Input
+										id="ai-endpoint-input"
+										value={aiApiEndpoint}
+										onChange={(e) => setAiApiEndpoint(e.target.value)}
+										placeholder="例如 https://ollama.com/v1/chat/completions"
+										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<label
+										htmlFor="ai-key-input"
+										className="text-muted-foreground font-medium"
+									>
+										API 密钥 (API Key)
+									</label>
+									<Input
+										id="ai-key-input"
+										type="password"
+										value={aiApiKey}
+										onChange={(e) => setAiApiKey(e.target.value)}
+										placeholder="输入您的 API Key"
+										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<label
+										htmlFor="ai-model-input"
+										className="text-muted-foreground font-medium"
+									>
+										模型名称 (Model)
+									</label>
+									<Input
+										id="ai-model-input"
+										value={aiModel}
+										onChange={(e) => setAiModel(e.target.value)}
+										placeholder="例如 gpt-oss:120b"
+										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+									/>
+								</div>
+
+								<div className="pt-2 flex justify-start">
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={handleTestAiConnection}
+										disabled={testingAi}
+										className="bg-black/20 border-white/10 text-foreground hover:bg-black/40 text-xs flex items-center gap-1.5"
+									>
+										{testingAi ? (
+											<Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+										) : (
+											<Bot className="h-3 w-3 text-primary" />
+										)}
+										{testingAi ? "正在测试连接..." : "测试模型连接"}
+									</Button>
+								</div>
+							</div>
+						)}
+					</CardContent>
+				</Card>
 
 				{isTauri && (
 					<Card className="bg-card/40 border-white/5">
