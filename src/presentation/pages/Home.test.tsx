@@ -726,6 +726,15 @@ describe("Home 页面组件", () => {
 				ai_score: 95,
 				ai_reason: "匹配 1080p 清晰度与简中字幕",
 			},
+			{
+				title: "AI 推荐：昨日青空 720p",
+				link: "http://example.com/2",
+				pub_date: "2026-07-10",
+				magnet: "magnet:?xt=urn:btih:TEST2",
+				size: 800000000,
+				ai_score: 75,
+				ai_reason: "匹配 720p 资源",
+			},
 		];
 
 		// 劫持测试容器里的 searchTorrentsWithAiUseCase.execute
@@ -764,6 +773,9 @@ describe("Home 页面组件", () => {
 			expect(
 				screen.getByText("匹配 1080p 清晰度与简中字幕"),
 			).toBeInTheDocument();
+			expect(screen.getByText("AI 推荐：昨日青空 720p")).toBeInTheDocument();
+			expect(screen.getByText("🤖 AI 评分过滤")).toBeInTheDocument();
+			expect(screen.getByText("匹配度: 75分")).toBeInTheDocument();
 		});
 
 		expect(

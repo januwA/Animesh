@@ -64,6 +64,7 @@ describe("Settings 页面组件", () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.unstubAllEnvs();
 	});
 
 	const renderSettings = () => {
@@ -807,10 +808,10 @@ describe("Settings 页面组件", () => {
 	it("应该支持加载和配置 AI Agent 相关的设置", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",
-			ai_enabled: true,
-			ai_api_key: "my-secret-key",
-			ai_api_endpoint: "https://api.openai.com/v1",
-			ai_model: "gpt-4o",
+			ai_enabled: false,
+			ai_api_key: "",
+			ai_api_endpoint: "",
+			ai_model: "",
 		});
 
 		renderSettings();
@@ -819,7 +820,14 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
 		});
 
-		// 检查输入框的值回显
+		// 启用 AI（触发 onChange）
+		const aiCheckbox = screen.getByLabelText(
+			"启用 AI 智能过滤与搜索优化 (基于 LLM 重新评分与排序)",
+		) as HTMLInputElement;
+		fireEvent.click(aiCheckbox);
+		expect(aiCheckbox.checked).toBe(true);
+
+		// 输入值（触发 onChange）
 		const endpointInput = screen.getByLabelText(
 			"AI 接口地址 (Endpoint)",
 		) as HTMLInputElement;
@@ -830,12 +838,15 @@ describe("Settings 页面组件", () => {
 			"模型名称 (Model)",
 		) as HTMLInputElement;
 
-		expect(endpointInput.value).toBe("https://api.openai.com/v1");
-		expect(keyInput.value).toBe("my-secret-key");
-		expect(modelInput.value).toBe("gpt-4o");
-
-		// 修改值
+		fireEvent.change(endpointInput, {
+			target: { value: "https://api.openai.com/v1" },
+		});
 		fireEvent.change(keyInput, { target: { value: "new-secret-key" } });
+		fireEvent.change(modelInput, { target: { value: "gpt-4o" } });
+
+		expect(endpointInput.value).toBe("https://api.openai.com/v1");
+		expect(keyInput.value).toBe("new-secret-key");
+		expect(modelInput.value).toBe("gpt-4o");
 
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);
@@ -847,6 +858,43 @@ describe("Settings 页面组件", () => {
 				apiEndpoint: "https://api.openai.com/v1",
 				model: "gpt-4o",
 			});
+		});
+	});
+
+	it("当测试 AI 连接时，如果地址或密钥为空，应该提示警告", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_enabled: true,
+			ai_api_key: "",
+			ai_api_endpoint: "",
+			ai_model: "",
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
+		});
+
+		const testBtn = screen.getByRole("button", { name: "测试模型连接" });
+
+		// 1. 地址为空
+		fireEvent.click(testBtn);
+		await waitFor(() => {
+			expect(screen.getByText("请输入 AI 接口地址")).toBeInTheDocument();
+		});
+
+		// 2. 密钥为空
+		const endpointInput = screen.getByLabelText(
+			"AI 接口地址 (Endpoint)",
+		) as HTMLInputElement;
+		fireEvent.change(endpointInput, {
+			target: { value: "https://api.openai.com/v1" },
+		});
+
+		fireEvent.click(testBtn);
+		await waitFor(() => {
+			expect(screen.getByText("请输入 API 密钥")).toBeInTheDocument();
 		});
 	});
 
