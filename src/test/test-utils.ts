@@ -7,6 +7,7 @@ import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTra
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
+import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
@@ -75,6 +76,7 @@ export interface CreateContainerParamsForTest {
 	syncTrackersUseCase?: SyncTrackersUseCase;
 	autoUpdateTrackersUseCase?: AutoUpdateTrackersUseCase;
 	verifyAiConnectionUseCase?: VerifyAiConnectionUseCase;
+	setThemeUseCase?: SetThemeUseCase;
 	aiClient?: AiClient;
 
 	getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
@@ -119,6 +121,7 @@ export function createDIContainerForTest(
 		setAiOptions: async () => {},
 		fetchTrackers: async () => [],
 		selectDirectory: async () => null,
+		setTheme: async () => {},
 		...params.settingsRepository,
 	} as SettingsRepository;
 
@@ -207,6 +210,8 @@ export function createDIContainerForTest(
 	const aiClient = params.aiClient || new FetchAiClient(new HttpClient());
 	const verifyAiConnectionUseCase =
 		params.verifyAiConnectionUseCase || new VerifyAiConnectionUseCase(aiClient);
+	const setThemeUseCase =
+		params.setThemeUseCase || new SetThemeUseCase(settingsRepo);
 
 	const getBangumiCalendarUseCase =
 		params.getBangumiCalendarUseCase ||
@@ -255,6 +260,7 @@ export function createDIContainerForTest(
 		syncTrackersUseCase,
 		autoUpdateTrackersUseCase,
 		verifyAiConnectionUseCase,
+		setThemeUseCase,
 		aiClient,
 
 		getBangumiCalendarUseCase,

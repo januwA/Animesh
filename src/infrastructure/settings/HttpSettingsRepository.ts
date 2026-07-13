@@ -114,4 +114,8 @@ export class HttpSettingsRepository implements SettingsRepository {
 		// Web version doesn't support directory selection dialog
 		return null;
 	}
+
+	async setTheme(theme: string): Promise<void> {
+		// Web version doesn't support native window theme sync
+	}
 }

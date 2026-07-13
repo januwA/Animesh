@@ -17,6 +17,7 @@ import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTra
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
+import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
@@ -70,6 +71,7 @@ export interface DIContainer {
 	syncTrackersUseCase: SyncTrackersUseCase;
 	autoUpdateTrackersUseCase: AutoUpdateTrackersUseCase;
 	verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
+	setThemeUseCase: SetThemeUseCase;
 	aiClient: AiClient;
 
 	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
@@ -139,6 +141,7 @@ export function createDefaultDIContainer(): DIContainer {
 		settingsRepository,
 	);
 	const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
+	const setThemeUseCase = new SetThemeUseCase(settingsRepository);
 
 	const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
 		bangumiRepository,
@@ -182,6 +185,7 @@ export function createDefaultDIContainer(): DIContainer {
 		syncTrackersUseCase,
 		autoUpdateTrackersUseCase,
 		verifyAiConnectionUseCase,
+		setThemeUseCase,
 		aiClient,
 
 		getBangumiCalendarUseCase,

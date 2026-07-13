@@ -1,12 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TauriSettingsRepository } from "./TauriSettingsRepository";
 
-const { mockInvoke } = vi.hoisted(() => ({
+const { mockInvoke, mockSetTheme } = vi.hoisted(() => ({
 	mockInvoke: vi.fn(),
+	mockSetTheme: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
 	invoke: mockInvoke,
+}));
+
+vi.mock("@tauri-apps/api/window", () => ({
+	getCurrentWindow: () => ({
+		setTheme: mockSetTheme,
+	}),
 }));
 
 describe("基础设施层 TauriSettingsRepository", () => {
@@ -123,6 +130,20 @@ describe("基础设施层 TauriSettingsRepository", () => {
 			expect(mockInvoke).toHaveBeenCalledWith("settings_set_ai_configs", {
 				configs,
 			});
+		});
+	});
+
+	describe("setTheme 方法", () => {
+		it("当传入 light 或 dark 时，应该正确加载 tauri window 并设置主题", async () => {
+			mockSetTheme.mockResolvedValueOnce(undefined);
+			await repository.setTheme("light");
+			expect(mockSetTheme).toHaveBeenCalledWith("light");
+		});
+
+		it("当传入非 light 或 dark 选项（如 system）时，应该忽略并不调用 tauri", async () => {
+			mockSetTheme.mockClear();
+			await repository.setTheme("system");
+			expect(mockSetTheme).not.toHaveBeenCalled();
 		});
 	});
 });

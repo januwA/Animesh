@@ -10,27 +10,21 @@ export function useGlobalEffects() {
 		notifyDownloadCompletionUseCase,
 		subscribeTorrentsUseCase,
 		autoUpdateTrackersUseCase,
+		setThemeUseCase,
 	} = useDI();
 	const { resolvedTheme } = useTheme();
 
 	// 同步主题到 Tauri 原生窗口标题栏
 	useEffect(() => {
-		const isTauri =
-			import.meta.env.MODE !== "web" &&
-			typeof window !== "undefined" &&
-			"__TAURI_INTERNALS__" in window;
-
-		if (!isTauri) return;
-
-		import("@tauri-apps/api/window")
-			.then(({ getCurrentWindow }) => {
-				const appWindow = getCurrentWindow();
-				if (resolvedTheme === "dark" || resolvedTheme === "light") {
-					appWindow.setTheme(resolvedTheme).catch(() => {});
-				}
-			})
-			.catch(() => {});
-	}, [resolvedTheme]);
+		const syncTheme = async () => {
+			if (resolvedTheme === "dark" || resolvedTheme === "light") {
+				try {
+					await setThemeUseCase.execute(resolvedTheme);
+				} catch {}
+			}
+		};
+		syncTheme();
+	}, [resolvedTheme, setThemeUseCase]);
 
 	// 请求系统通知权限
 	useEffect(() => {
@@ -42,20 +36,22 @@ export function useGlobalEffects() {
 		let unsubscribe: (() => void) | null = null;
 		let isCleanedUp = false;
 
-		subscribeTorrentsUseCase
-			.execute(async (list) => {
-				try {
-					await notifyDownloadCompletionUseCase.execute(list);
-				} catch {}
-			})
-			.then((unsub) => {
+		const initSubscription = async () => {
+			try {
+				const unsub = await subscribeTorrentsUseCase.execute(async (list) => {
+					try {
+						await notifyDownloadCompletionUseCase.execute(list);
+					} catch {}
+				});
 				if (isCleanedUp) {
 					unsub();
 				} else {
 					unsubscribe = unsub;
 				}
-			})
-			.catch(() => {});
+			} catch {}
+		};
+
+		initSubscription();
 
 		return () => {
 			isCleanedUp = true;
@@ -67,17 +63,18 @@ export function useGlobalEffects() {
 
 	// 自动更新 Tracker
 	useEffect(() => {
-		autoUpdateTrackersUseCase
-			.execute()
-			.then((count) => {
+		const updateTrackers = async () => {
+			try {
+				const count = await autoUpdateTrackersUseCase.execute();
 				if (count !== null && count > 0) {
 					showToast(
 						`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`,
 						"success",
 					);
 				}
-			})
-			.catch(() => {});
+			} catch {}
+		};
+		updateTrackers();
 	}, [autoUpdateTrackersUseCase, showToast]);
 
 	return { toasts, removeToast };

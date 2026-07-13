@@ -3,6 +3,7 @@ import type { SettingsRepository } from "../../domain/settings/SettingsRepositor
 import { GetSettingsUseCase } from "./GetSettingsUseCase";
 import { SaveSettingsUseCase } from "./SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "./SelectDirectoryUseCase";
+import { SetThemeUseCase } from "./SetThemeUseCase";
 import { SyncTrackersUseCase } from "./SyncTrackersUseCase";
 
 describe("Settings 相关的 UseCase 业务编排", () => {
@@ -15,6 +16,7 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		setAiConfigs: vi.fn(),
 		fetchTrackers: vi.fn(),
 		selectDirectory: vi.fn(),
+		setTheme: vi.fn(),
 	};
 	const mockRepo = rawMockRepo as unknown as SettingsRepository;
 
@@ -168,5 +170,12 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 			aiConfigs: null,
 		});
 		expect(rawMockRepo.setAiConfigs).toHaveBeenCalledWith(null);
+	});
+
+	it("SetThemeUseCase 应该调用 repository 里的 setTheme 方法", async () => {
+		const useCase = new SetThemeUseCase(mockRepo);
+		vi.mocked(rawMockRepo.setTheme).mockResolvedValueOnce(undefined);
+		await useCase.execute("dark");
+		expect(rawMockRepo.setTheme).toHaveBeenCalledWith("dark");
 	});
 });
