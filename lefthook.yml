@@ -6,20 +6,17 @@ glob_matcher: doublestar
 pre-commit:
   parallel: false # 关闭并行，保持流程清晰
   commands:
-    "前端_Biome代码自动格式化":
+    "前端_代码格式化":
       glob: "src/**/*.{ts,tsx,json,css}"
       run: pnpm check:apply {staged_files}
       stage_fixed: true
-    "后端_Rust代码格式化检查":
+    "后端_代码格式化":
       glob: "src-tauri/**/*.rs"
-      run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+      run: cargo fmt --manifest-path src-tauri/Cargo.toml --all
 
 pre-push:
   parallel: false
   commands:
-    "前端_Biome代码规范检查":
-      glob: "src/**/*.{ts,tsx,json,css}"
-      run: pnpm check {push_files}
     "前端_TypeScript类型检查":
       run: pnpm typecheck # 全量检查，确保类型安全
     "前端_错误处理规范检查":
@@ -31,6 +28,9 @@ pre-push:
     "前端_接口可空设计检查":
       glob: "src/**/*.{ts,tsx}"
       run: pnpm check:interface-methods {push_files}
+    "前端_函数方法长度检查":
+      glob: "src/**/*.{ts,tsx}"
+      run: pnpm check:function-length {push_files}
     "前端_表现层Tauri导入检查":
       glob: "src/presentation/**/*.{ts,tsx}"
       run: pnpm check:presentation-tauri-imports {push_files}

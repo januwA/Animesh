@@ -99,6 +99,7 @@ describe("App 组件", () => {
 			setProxy: vi.fn(),
 			setTrackers: vi.fn(),
 			setTrackerOptions: vi.fn(),
+			setAiOptions: vi.fn(),
 			fetchTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 		};
@@ -137,35 +138,35 @@ describe("App 组件", () => {
 	it("当输入关键词并搜索成功时，应该显示结果并可以点击操作", async () => {
 		const mockResults = [
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
 				size: 350000000, // ~333.79 MB
 			},
 			{
-				title: "凡人修仙传 第2集",
+				title: "xxx 第2集",
 				link: "http://example.com/2",
 				pub_date: "2026-06-24",
 				magnet: "magnet:?xt=urn:btih:TEST2",
 				size: 1500, // ~1.46 KB
 			},
 			{
-				title: "凡人修仙传 第3集",
+				title: "xxx 第3集",
 				link: "http://example.com/3",
 				pub_date: "2026-06-25",
 				magnet: "magnet:?xt=urn:btih:TEST3",
 				size: 0, // 未知大小
 			},
 			{
-				title: "凡人修仙传 第4集",
+				title: "xxx 第4集",
 				link: "http://example.com/4",
 				pub_date: "2026-06-26",
 				magnet: "magnet:?xt=urn:btih:TEST4",
 				size: null, // 未知大小
 			},
 			{
-				title: "凡人修仙传 第5集",
+				title: "xxx 第5集",
 				link: "http://example.com/5",
 				pub_date: "2026-06-27",
 				magnet: "magnet:?xt=urn:btih:TEST5",
@@ -175,7 +176,7 @@ describe("App 组件", () => {
 
 		const mockAddTorrentResult = {
 			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
-			name: "凡人修仙传 第1集",
+			name: "xxx 第1集",
 			files: [
 				{ id: 0, name: "video1.mp4", len: 1000000 },
 				{ id: 1, name: "subtitle.srt", len: 5000 },
@@ -193,7 +194,7 @@ describe("App 组件", () => {
 		const button = screen.getByRole("button", { name: "搜索" });
 
 		// 输入关键词并搜索
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.click(button);
 
 		// 应该进入 loading 状态
@@ -210,12 +211,12 @@ describe("App 组件", () => {
 
 		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 			expect.any(Object),
-			"凡人",
+			"xxx",
 			"dmhy",
 		);
 
 		// 检查资源渲染
-		expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+		expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		expect(screen.getByText("333.79 MB")).toBeInTheDocument();
 		expect(screen.getByText("1.46 KB")).toBeInTheDocument();
 		const unknownSizes = screen.getAllByText("未知大小");
@@ -261,7 +262,7 @@ describe("App 组件", () => {
 			await vi.advanceTimersByTimeAsync(3000);
 		});
 		expect(
-			screen.queryByText("正在启动下载流媒体引擎: 凡人修仙传 第1集..."),
+			screen.queryByText("正在启动下载流媒体引擎: xxx 第1集..."),
 		).not.toBeInTheDocument();
 
 		vi.useRealTimers();
@@ -273,7 +274,7 @@ describe("App 组件", () => {
 		render(<App />);
 
 		const input = screen.getByTestId("search-input");
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.submit(input.closest("form")!); // 可以直接回车提交
 
 		await waitFor(() => {
@@ -291,7 +292,7 @@ describe("App 组件", () => {
 		render(<App />);
 
 		const input = screen.getByTestId("search-input");
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
 		await waitFor(() => {
@@ -320,7 +321,7 @@ describe("App 组件", () => {
 	it("当复制磁力链接失败时，应该显示失败提示", async () => {
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -334,7 +335,7 @@ describe("App 组件", () => {
 		render(<App />);
 
 		const input = screen.getByTestId("search-input");
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
 		await waitFor(() => {
@@ -374,7 +375,7 @@ describe("App 组件", () => {
 	it("当点击边下边播成功解析磁力时，应该打开文件选择弹窗，并且能进入播放和控制界面", async () => {
 		const mockResults = [
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -384,7 +385,7 @@ describe("App 组件", () => {
 
 		const mockAddTorrentResult = {
 			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
-			name: "凡人修仙传 第1集",
+			name: "xxx 第1集",
 			files: [
 				{ id: 0, name: "video1.mp4", len: 1000000 },
 				{ id: 1, name: "subtitle.srt", len: 5000 },
@@ -393,7 +394,7 @@ describe("App 组件", () => {
 
 		const mockStatus = {
 			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
-			name: "凡人修仙传 第1集",
+			name: "xxx 第1集",
 			progress_bytes: 400000,
 			total_bytes: 1000000,
 			finished: false,
@@ -418,11 +419,11 @@ describe("App 组件", () => {
 
 		// 搜索
 		const input = screen.getByTestId("search-input");
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 
 		// 开启 fake timers 来支持轮询和 Toast
@@ -546,7 +547,7 @@ describe("App 组件", () => {
 	it("当播放获取流媒体 URL 失败时，应该显示错误提示", async () => {
 		const mockResults = [
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -556,7 +557,7 @@ describe("App 组件", () => {
 
 		const mockAddTorrentResult = {
 			info_hash: "3a2a3e0f438a2e1d74381395bb0e6840742fef8e",
-			name: "凡人修仙传 第1集",
+			name: "xxx 第1集",
 			files: [{ id: 0, name: "video1.mp4", len: 1000000 }],
 		};
 
@@ -571,11 +572,11 @@ describe("App 组件", () => {
 		render(<App />);
 
 		const input = screen.getByTestId("search-input");
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 
 		vi.useFakeTimers();
@@ -605,7 +606,7 @@ describe("App 组件", () => {
 	it("当解析种子失败时，应该显示解析失败的 Toast 提示", async () => {
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -619,11 +620,11 @@ describe("App 组件", () => {
 		render(<App />);
 
 		const input = screen.getByTestId("search-input");
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 
 		vi.useFakeTimers();
@@ -662,7 +663,7 @@ describe("App 组件", () => {
 	it("应该在组件卸载时清除轮询定时器，并展示未命名和已完成状态的覆盖", async () => {
 		const mockResults = [
 			{
-				title: "凡人1",
+				title: "xxx1",
 				link: "",
 				pub_date: "",
 				magnet: "mag1",
@@ -701,10 +702,10 @@ describe("App 组件", () => {
 
 		// 搜索并播放以启动定时器
 		fireEvent.change(screen.getByTestId("search-input"), {
-			target: { value: "凡人" },
+			target: { value: "xxx" },
 		});
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
-		await waitFor(() => expect(screen.getByText("凡人1")).toBeInTheDocument());
+		await waitFor(() => expect(screen.getByText("xxx1")).toBeInTheDocument());
 
 		vi.useFakeTimers();
 		fireEvent.click(screen.getByRole("button", { name: "边下边播" }));
@@ -735,7 +736,7 @@ describe("App 组件", () => {
 	it("当点击 Toast 提示的关闭按钮时，应该立即关闭 Toast 提示", async () => {
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
 			{
-				title: "凡人修仙传 第1集",
+				title: "xxx 第1集",
 				link: "http://example.com/1",
 				pub_date: "2026-06-23",
 				magnet: "magnet:?xt=urn:btih:TEST1",
@@ -746,11 +747,11 @@ describe("App 组件", () => {
 		render(<App />);
 
 		const input = screen.getByTestId("search-input");
-		fireEvent.change(input, { target: { value: "凡人" } });
+		fireEvent.change(input, { target: { value: "xxx" } });
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 
 		await waitFor(() => {
-			expect(screen.getByText("凡人修仙传 第1集")).toBeInTheDocument();
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
 		});
 
 		vi.useFakeTimers();
@@ -793,7 +794,7 @@ describe("App 组件", () => {
 	it("在 TorrentDetail 页面中点击返回和取消按钮时，应该触发导航", async () => {
 		const mockResults = [
 			{
-				title: "凡人1",
+				title: "xxx1",
 				link: "",
 				pub_date: "",
 				magnet: "mag1",
@@ -802,7 +803,7 @@ describe("App 组件", () => {
 		];
 		const mockAddTorrentResult = {
 			info_hash: "hash1",
-			name: "凡人1",
+			name: "xxx1",
 			files: [{ id: 0, name: "v.mp4", len: 100 }],
 		};
 
@@ -815,10 +816,10 @@ describe("App 组件", () => {
 
 		// Search and click play to go to detail
 		fireEvent.change(screen.getByTestId("search-input"), {
-			target: { value: "凡人" },
+			target: { value: "xxx" },
 		});
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
-		await waitFor(() => expect(screen.getByText("凡人1")).toBeInTheDocument());
+		await waitFor(() => expect(screen.getByText("xxx1")).toBeInTheDocument());
 
 		// Trigger fake timers for resolving magnet
 		vi.useFakeTimers();
@@ -848,7 +849,7 @@ describe("App 组件", () => {
 	it("在 TorrentDetail 页面加载中点击取消按钮，应该触发导航", async () => {
 		const mockResults = [
 			{
-				title: "凡人1",
+				title: "xxx1",
 				link: "",
 				pub_date: "",
 				magnet: "mag1",
@@ -863,7 +864,7 @@ describe("App 组件", () => {
 		render(<App />);
 
 		fireEvent.change(screen.getByTestId("search-input"), {
-			target: { value: "凡人" },
+			target: { value: "xxx" },
 		});
 		fireEvent.click(screen.getByRole("button", { name: "搜索" }));
 		await waitFor(() => {

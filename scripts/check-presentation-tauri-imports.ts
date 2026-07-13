@@ -172,7 +172,7 @@ function main() {
 		);
 		process.exit(1);
 	} else {
-		console.log("✨ 恭喜！未在 src/presentation 中发现任何非法的 Tauri 依赖导入。");
+		console.log("✨ 未在 src/presentation 中发现任何非法的 Tauri 依赖导入。");
 		process.exit(0);
 	}
 }

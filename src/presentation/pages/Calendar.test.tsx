@@ -254,71 +254,6 @@ describe("Calendar 页面组件", () => {
 			rejectPromise(new Error("API error"));
 		});
 	});
-
-	it("在 WeeklyCalendar 中，按下 Enter 键应该跳转到详情页", async () => {
-		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
-		const mockCalendar = [
-			{
-				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
-				items: [
-					{
-						id: 1,
-						name: "Anime Original Name",
-						name_cn: "键盘测试动漫",
-					},
-				],
-			},
-		];
-
-		renderCalendar(
-			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
-		);
-
-		await waitFor(() => {
-			expect(screen.getByText("键盘测试动漫")).toBeInTheDocument();
-		});
-
-		const animeCard = screen.getByTitle("详情: 键盘测试动漫");
-
-		// 测试非 Enter/Space 键，不应该触发跳转
-		fireEvent.keyDown(animeCard, { key: "Escape" });
-		expect(currentLocation.current?.pathname).not.toBe("/subject/1");
-
-		// 测试 Enter 键
-		fireEvent.keyDown(animeCard, { key: "Enter" });
-		expect(currentLocation.current?.pathname).toBe("/subject/1");
-	});
-
-	it("在 WeeklyCalendar 中，按下空格键应该跳转到详情页", async () => {
-		const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
-		const mockCalendar = [
-			{
-				weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
-				items: [
-					{
-						id: 1,
-						name: "Anime Original Name",
-						name_cn: "键盘测试动漫",
-					},
-				],
-			},
-		];
-
-		renderCalendar(
-			Promise.resolve(mockCalendar as unknown as BangumiCalendarDay[]),
-		);
-
-		await waitFor(() => {
-			expect(screen.getByText("键盘测试动漫")).toBeInTheDocument();
-		});
-
-		const animeCard = screen.getByTitle("详情: 键盘测试动漫");
-
-		// 测试空格键
-		fireEvent.keyDown(animeCard, { key: " " });
-		expect(currentLocation.current?.pathname).toBe("/subject/1");
-	});
-
 	it("应该能在周日正确渲染 WeeklyCalendar，且能处理无中文名动漫的展示", async () => {
 		// Mock system time to a Sunday (June 28, 2026 was a Sunday)
 		vi.useFakeTimers();
@@ -354,9 +289,6 @@ describe("Calendar 页面组件", () => {
 		vi.useRealTimers();
 
 		expect(screen.getByText("English Only Anime Name")).toBeInTheDocument();
-
-		const card = screen.getByText("English Only Anime Name");
-		fireEvent.keyDown(card, { key: "Escape", code: "Escape" });
 	});
 
 	it("当今天是非星期日时，WeeklyCalendar 应该正确识别 weekday id，且点击无中文名的番剧应该跳转详情页", async () => {

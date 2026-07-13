@@ -10,7 +10,6 @@ const ROOT_DIR = path.resolve(__dirname, "..");
 const PKG_PATH = path.join(ROOT_DIR, "package.json");
 const CARGO_PATHS = [
 	path.join(ROOT_DIR, "src-tauri/Cargo.toml"),
-	path.join(ROOT_DIR, "src-tauri/core/Cargo.toml"),
 ];
 
 export function parseSemver(version: string): { major: number; minor: number; patch: number; pre?: string } {
@@ -45,9 +44,9 @@ export function compareSemver(v1: string, v2: string): number {
 
 export function updateCargoToml(filePath: string, newVersion: string) {
 	const content = fs.readFileSync(filePath, "utf-8");
-	const regex = /(\[package\][\s\S]*?version\s*=\s*")[^"]+(")/;
+	const regex = /(\[(?:workspace\.)?package\][\s\S]*?version\s*=\s*")[^"]+(")/;
 	if (!regex.test(content)) {
-		throw new Error(`在 ${filePath} 中找不到 [package] 的 version 字段`);
+		throw new Error(`在 ${filePath} 中找不到 package.version 字段`);
 	}
 	const updatedContent = content.replace(regex, `$1${newVersion}$2`);
 	fs.writeFileSync(filePath, updatedContent, "utf-8");

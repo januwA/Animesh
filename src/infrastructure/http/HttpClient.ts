@@ -11,6 +11,19 @@ export class HttpClient {
 		this.defaultHeaders = defaults.headers || {};
 	}
 
+	private setupContextAbort(
+		ctx: Context | undefined,
+		controller: AbortController,
+	): void {
+		if (!ctx) return;
+		if (ctx.err()) {
+			throw ctx.err();
+		}
+		ctx.done().then(() => {
+			controller.abort(ctx.err() || undefined);
+		});
+	}
+
 	async request(
 		url: string | URL,
 		options: HttpClientOptions = {},
@@ -18,14 +31,7 @@ export class HttpClient {
 		const { ctx, headers, ...restOptions } = options;
 		const controller = new AbortController();
 
-		if (ctx) {
-			if (ctx.err()) {
-				throw ctx.err();
-			}
-			ctx.done().then(() => {
-				controller.abort(ctx.err() || undefined);
-			});
-		}
+		this.setupContextAbort(ctx, controller);
 
 		const response = await fetch(url, {
 			...restOptions,

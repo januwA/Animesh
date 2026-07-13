@@ -418,6 +418,19 @@ fn settings_set_trackers(
 }
 
 #[tauri::command]
+fn settings_set_ai_options(
+    enabled: Option<bool>,
+    api_key: Option<String>,
+    api_endpoint: Option<String>,
+    model: Option<String>,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<(), String> {
+    manager
+        .set_ai_options(enabled, api_key, api_endpoint, model)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, String> {
     #[cfg(mobile)]
     {
@@ -447,6 +460,15 @@ async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, Strin
         .map_err(|e| e.to_string())?;
         Ok(path)
     }
+}
+
+#[tauri::command]
+async fn ai_chat_request(
+    endpoint: String,
+    api_key: String,
+    body_json: String,
+) -> Result<String, String> {
+    animesh_core::send_ai_chat_request(&endpoint, &api_key, &body_json).await
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -528,6 +550,10 @@ pub fn run() {
                     tracker_custom_url: None,
                     tracker_auto_update: None,
                     tracker_last_update_time: None,
+                    ai_enabled: None,
+                    ai_api_key: None,
+                    ai_api_endpoint: None,
+                    ai_model: None,
                 };
                 if let Ok(file) = std::fs::File::create(&settings_path) {
                     let _ = serde_json::to_writer_pretty(file, &settings);
@@ -564,9 +590,11 @@ pub fn run() {
             settings_set_proxy,
             settings_set_trackers,
             settings_set_tracker_options,
+            settings_set_ai_options,
             select_directory,
             torrent_get_subtitle_tracks,
-            torrent_get_subtitle_vtt
+            torrent_get_subtitle_vtt,
+            ai_chat_request
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,4 +1,5 @@
 import {
+	Bot,
 	Download,
 	Folder,
 	Globe,
@@ -41,6 +42,7 @@ export default function Settings() {
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
 		openUpdateUrlUseCase,
+		verifyAiConnectionUseCase,
 	} = useDI();
 	const { showToast } = useAppContext();
 	const [currentVersion, setCurrentVersion] = useState("");
@@ -61,11 +63,17 @@ export default function Settings() {
 	const [lastUpdateTime, setLastUpdateTime] = useState(0);
 	const [syncing, setSyncing] = useState(false);
 
+	const [aiEnabled, setAiEnabled] = useState(false);
+	const [aiApiKey, setAiApiKey] = useState("");
+	const [aiApiEndpoint, setAiApiEndpoint] = useState("");
+	const [aiModel, setAiModel] = useState("");
+	const [testingAi, setTestingAi] = useState(false);
+
 	const currentUrl = getTrackerUrl(sourceType, cdn, customUrl);
 
 	const handleSync = async (mode: "replace" | "append") => {
 		if (sourceType === "custom" && !customUrl) {
-			showToast("请输入自定义 Tracker 列表 URL");
+			showToast("请输入自定义 Tracker 列表 URL", "warning");
 			return;
 		}
 
@@ -75,7 +83,7 @@ export default function Settings() {
 			const fetched = await syncTrackersUseCase.execute(url);
 
 			if (fetched.length === 0) {
-				showToast("未获取到有效的 Tracker 地址");
+				showToast("未获取到有效的 Tracker 地址", "warning");
 				return;
 			}
 
@@ -83,6 +91,7 @@ export default function Settings() {
 				setTrackersText(fetched.join("\n"));
 				showToast(
 					`同步成功：已替换为最新的 ${fetched.length} 个 Tracker，请保存设置`,
+					"success",
 				);
 			} else {
 				const currentTrackers = trackersText
@@ -94,17 +103,45 @@ export default function Settings() {
 				const addedCount = merged.length - currentTrackers.length;
 				showToast(
 					`同步成功：已追加 ${addedCount} 个新 Tracker (共计 ${merged.length} 个)，请保存设置`,
+					"success",
 				);
 			}
 
 			const now = Date.now();
 			setLastUpdateTime(now);
 		} catch (err: unknown) {
-			showToast(`同步 Tracker 失败: ${formatError(err)}`);
+			showToast(`同步 Tracker 失败: ${formatError(err)}`, "error");
 		} finally {
 			setSyncing(false);
 		}
 	};
+
+	const handleTestAiConnection = async () => {
+		if (!aiApiEndpoint.trim()) {
+			showToast("请输入 AI 接口地址", "warning");
+			return;
+		}
+		if (!aiApiKey.trim()) {
+			showToast("请输入 API 密钥", "warning");
+			return;
+		}
+
+		setTestingAi(true);
+		try {
+			await verifyAiConnectionUseCase.execute({
+				apiEndpoint: aiApiEndpoint,
+				apiKey: aiApiKey,
+				model: aiModel,
+			});
+			showToast("AI 模型连接测试成功！", "success");
+		} catch (err: unknown) {
+			showToast(`AI 模型连接测试失败: ${formatError(err)}`, "error", 5000);
+		} finally {
+			setTestingAi(false);
+		}
+	};
+
+	const isTauri = import.meta.env.MODE !== "web";
 
 	const isMobile =
 		["android", "ios"].includes(import.meta.env.TAURI_ENV_PLATFORM || "") ||
@@ -126,17 +163,21 @@ export default function Settings() {
 				setCustomUrl(settings.tracker_custom_url || "");
 				setAutoUpdate(settings.tracker_auto_update === true);
 				setLastUpdateTime(settings.tracker_last_update_time || 0);
+				setAiEnabled(settings.ai_enabled === true);
+				setAiApiKey(settings.ai_api_key || "");
+				setAiApiEndpoint(settings.ai_api_endpoint || "");
+				setAiModel(settings.ai_model || "");
 			} catch (err: unknown) {
-				showToast(`加载设置失败: ${formatError(err)}`);
+				showToast(`加载设置失败: ${formatError(err)}`, "error");
 			} finally {
 				setLoading(false);
 			}
 		};
 		loadSettings();
 	}, [showToast, getSettingsUseCase]);
-
 	// Load version
 	useEffect(() => {
+		if (!isTauri) return;
 		const loadVersion = async () => {
 			const version = await getCurrentVersionUseCase.execute();
 			setCurrentVersion(version);
@@ -151,12 +192,12 @@ export default function Settings() {
 			const result = await checkUpdateUseCase.execute();
 			setUpdateResult(result);
 			if (result.hasUpdate) {
-				showToast(`发现新版本 v${result.latestVersion}`);
+				showToast(`发现新版本 v${result.latestVersion}`, "info");
 			} else {
-				showToast("当前已是最新版本");
+				showToast("当前已是最新版本", "success");
 			}
 		} catch (err: unknown) {
-			showToast(`检查更新失败: ${formatError(err)}`);
+			showToast(`检查更新失败: ${formatError(err)}`, "error");
 		} finally {
 			setCheckingUpdate(false);
 		}
@@ -168,15 +209,15 @@ export default function Settings() {
 			const selected = await selectDirectoryUseCase.execute();
 			if (selected) {
 				setDownloadDir(selected);
-				showToast("已选择目录，点击保存以生效");
+				showToast("已选择目录，点击保存以生效", "success");
 			}
 		} catch (err: unknown) {
-			showToast(`选择文件夹失败: ${formatError(err)}`);
+			showToast(`选择文件夹失败: ${formatError(err)}`, "error");
 		}
 	};
 
 	// Save settings
-	const handleSave = async (e: React.FormEvent) => {
+	const handleSave = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 
 		const parsedTrackers = trackersText
@@ -193,11 +234,15 @@ export default function Settings() {
 			trackerCustomUrl: customUrl,
 			trackerAutoUpdate: autoUpdate,
 			trackerLastUpdateTime: lastUpdateTime,
+			aiEnabled,
+			aiApiKey,
+			aiApiEndpoint,
+			aiModel,
 		});
 
 		if (!validation.success) {
 			const firstError = validation.error.issues[0].message;
-			showToast(firstError);
+			showToast(firstError, "error");
 			return;
 		}
 
@@ -214,10 +259,14 @@ export default function Settings() {
 				trackerCustomUrl: validatedData.trackerCustomUrl,
 				trackerAutoUpdate: validatedData.trackerAutoUpdate,
 				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
+				aiEnabled: validatedData.aiEnabled,
+				aiApiKey: validatedData.aiApiKey,
+				aiApiEndpoint: validatedData.aiApiEndpoint,
+				aiModel: validatedData.aiModel,
 			});
-			showToast("设置已保存，后续下载任务将使用新路径");
+			showToast("设置已保存，后续下载任务将使用新路径", "success");
 		} catch (err: unknown) {
-			showToast(`保存路径失败: ${formatError(err)}`, 5000);
+			showToast(`保存路径失败: ${formatError(err)}`, "error", 5000);
 		} finally {
 			setSaving(false);
 		}
@@ -238,176 +287,284 @@ export default function Settings() {
 		<div className="space-y-6">
 			{/* Settings Form */}
 			<form onSubmit={handleSave}>
-				<Card className="bg-card/40 border-white/5">
-					<CardHeader className="p-5">
-						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
-							<HardDrive className="h-4 w-4 text-primary" />
-							存储设置 (BT 下载及缓存目录)
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
-						<div className="space-y-2">
-							<label
-								htmlFor="download-dir-input"
-								className="text-muted-foreground font-medium"
-							>
-								默认下载及播放缓存目录
-							</label>
-							<div className="flex gap-2">
-								<Input
-									id="download-dir-input"
-									value={downloadDir}
-									disabled={isMobile}
-									onChange={(e) => setDownloadDir(e.target.value)}
-									placeholder={
-										isMobile
-											? "应用沙盒内部路径"
-											: "选择或输入下载路径，例如 D:\\AnimeshDownloads"
-									}
-									className="flex-1 bg-black/20 border-white/10 text-foreground py-5 text-xs disabled:opacity-80"
-								/>
-								{!isMobile && (
-									<Button
-										type="button"
-										variant="secondary"
-										onClick={handleSelectDir}
-										className="gap-1.5 h-10.5 font-medium px-4 text-xs"
-									>
-										<Folder className="h-4 w-4" />
-										选择目录
-									</Button>
-								)}
-							</div>
-							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex flex-col gap-1.5">
-								{isMobile ? (
-									<span className="flex items-center gap-1">
-										<Info className="h-3.5 w-3.5 text-primary shrink-0" />
-										移动端（Android/iOS）已自动选用应用沙盒内部路径，无需且不支持手动更改。
-									</span>
-								) : (
-									<span className="flex items-start gap-1">
-										<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
-										<span>
-											提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
-										</span>
-									</span>
-								)}
-							</p>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="bg-card/40 border-white/5">
-					<CardHeader className="p-5">
-						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
-							<Globe className="h-4 w-4 text-primary" />
-							网络设置
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
-						<div className="space-y-2">
-							<label
-								htmlFor="proxy-input"
-								className="text-muted-foreground font-medium"
-							>
-								代理服务器地址
-							</label>
-							<Input
-								id="proxy-input"
-								value={proxy}
-								onChange={(e) => setProxy(e.target.value)}
-								placeholder="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:7890 (留空则不使用代理)"
-								className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
-							/>
-							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
-								<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
-								<span>
-									提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
-									HTTP、HTTPS 或 SOCKS5 代理。
-								</span>
-							</p>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card className="bg-card/40 border-white/5">
-					<CardHeader className="p-5">
-						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
-							<Info className="h-4 w-4 text-primary" />
-							检查更新
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
-						<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-white/5 bg-black/10 rounded-lg p-4">
-							<div className="space-y-1">
-								<p className="font-semibold text-foreground">Animesh 客户端</p>
-								<p className="text-muted-foreground">
-									当前版本：{currentVersion || "加载中..."}
-								</p>
-							</div>
-							<div className="flex gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									disabled={checkingUpdate}
-									onClick={handleCheckUpdate}
-									className="text-xs h-8.5 font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+				{isTauri && (
+					<Card className="bg-card/40 border-white/5">
+						<CardHeader className="p-5">
+							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+								<HardDrive className="h-4 w-4 text-primary" />
+								存储设置 (BT 下载及缓存目录)
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="px-5 pb-6 space-y-4 text-xs">
+							<div className="space-y-2">
+								<label
+									htmlFor="download-dir-input"
+									className="text-muted-foreground font-medium"
 								>
-									{checkingUpdate ? (
-										<Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-									) : (
-										<RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-									)}
-									检查更新
-								</Button>
-							</div>
-						</div>
-
-						{updateResult && (
-							<div className="border border-white/5 bg-black/20 rounded-lg p-4 space-y-3">
-								<div className="flex items-center justify-between">
-									<h4 className="text-xs font-semibold text-foreground">
-										{updateResult.hasUpdate
-											? "发现新版本！"
-											: "当前已是最新版本"}
-									</h4>
-									{updateResult.hasUpdate && (
-										<span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-medium">
-											v{updateResult.latestVersion}
-										</span>
+									默认下载及播放缓存目录
+								</label>
+								<div className="flex gap-2">
+									<Input
+										id="download-dir-input"
+										value={downloadDir}
+										disabled={isMobile}
+										onChange={(e) => setDownloadDir(e.target.value)}
+										placeholder={
+											isMobile
+												? "应用沙盒内部路径"
+												: "选择或输入下载路径，例如 D:\\AnimeshDownloads"
+										}
+										className="flex-1 bg-black/20 border-white/10 text-foreground py-5 text-xs disabled:opacity-80"
+									/>
+									{!isMobile && isTauri && (
+										<Button
+											type="button"
+											variant="secondary"
+											onClick={handleSelectDir}
+											className="gap-1.5 h-10.5 font-medium px-4 text-xs"
+										>
+											<Folder className="h-4 w-4" />
+											选择目录
+										</Button>
 									)}
 								</div>
+								<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex flex-col gap-1.5">
+									{isMobile ? (
+										<span className="flex items-center gap-1">
+											<Info className="h-3.5 w-3.5 text-primary shrink-0" />
+											移动端（Android/iOS）已自动选用应用沙盒内部路径，无需且不支持手动更改。
+										</span>
+									) : (
+										<span className="flex items-start gap-1">
+											<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+											<span>
+												提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
+											</span>
+										</span>
+									)}
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+				)}
 
-								{updateResult.hasUpdate && (
-									<>
-										<p className="text-muted-foreground/90 whitespace-pre-wrap leading-relaxed">
-											{updateResult.notes}
-										</p>
-										<div className="flex gap-2 pt-1">
-											<Button
-												type="button"
-												onClick={async () => {
-													if (updateResult.htmlUrl) {
-														try {
-															await openUpdateUrlUseCase.execute(
-																updateResult.htmlUrl,
-															);
-														} catch (err: unknown) {
-															showToast(`无法打开链接: ${formatError(err)}`);
-														}
-													}
-												}}
-												className="text-xs h-8 font-medium px-3 bg-primary text-primary-foreground"
-											>
-												前往 GitHub 下载
-											</Button>
-										</div>
-									</>
-								)}
+				{isTauri && (
+					<Card className="bg-card/40 border-white/5">
+						<CardHeader className="p-5">
+							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+								<Globe className="h-4 w-4 text-primary" />
+								网络设置
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="px-5 pb-6 space-y-4 text-xs">
+							<div className="space-y-2">
+								<label
+									htmlFor="proxy-input"
+									className="text-muted-foreground font-medium"
+								>
+									代理服务器地址
+								</label>
+								<Input
+									id="proxy-input"
+									value={proxy}
+									onChange={(e) => setProxy(e.target.value)}
+									placeholder="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:7890 (留空则不使用代理)"
+									className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+								/>
+								<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
+									<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+									<span>
+										提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
+										HTTP、HTTPS 或 SOCKS5 代理。
+									</span>
+								</p>
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
+				<Card className="bg-card/40 border-white/5">
+					<CardHeader className="p-5">
+						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+							<Bot className="h-4 w-4 text-primary" />
+							AI 智能搜索模型设置
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+						<div className="flex items-center gap-2 pt-1 pb-2">
+							<input
+								id="ai-enabled-checkbox"
+								type="checkbox"
+								checked={aiEnabled}
+								onChange={(e) => setAiEnabled(e.target.checked)}
+								className="h-3.5 w-3.5 rounded border-white/10 bg-black/20 text-primary focus:ring-primary focus:ring-offset-0 accent-primary"
+							/>
+							<label
+								htmlFor="ai-enabled-checkbox"
+								className="text-[11px] text-foreground font-medium cursor-pointer select-none"
+							>
+								启用 AI 智能过滤与搜索优化 (基于 LLM 重新评分与排序)
+							</label>
+						</div>
+
+						{aiEnabled && (
+							<div className="space-y-4 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-200">
+								<div className="space-y-2">
+									<label
+										htmlFor="ai-endpoint-input"
+										className="text-muted-foreground font-medium"
+									>
+										AI 接口地址 (Endpoint)
+									</label>
+									<Input
+										id="ai-endpoint-input"
+										value={aiApiEndpoint}
+										onChange={(e) => setAiApiEndpoint(e.target.value)}
+										placeholder="例如 https://ollama.com/v1/chat/completions"
+										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<label
+										htmlFor="ai-key-input"
+										className="text-muted-foreground font-medium"
+									>
+										API 密钥 (API Key)
+									</label>
+									<Input
+										id="ai-key-input"
+										type="password"
+										value={aiApiKey}
+										onChange={(e) => setAiApiKey(e.target.value)}
+										placeholder="输入您的 API Key"
+										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<label
+										htmlFor="ai-model-input"
+										className="text-muted-foreground font-medium"
+									>
+										模型名称 (Model)
+									</label>
+									<Input
+										id="ai-model-input"
+										value={aiModel}
+										onChange={(e) => setAiModel(e.target.value)}
+										placeholder="例如 gpt-oss:120b"
+										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+									/>
+								</div>
+
+								<div className="pt-2 flex justify-start">
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={handleTestAiConnection}
+										disabled={testingAi}
+										className="bg-black/20 border-white/10 text-foreground hover:bg-black/40 text-xs flex items-center gap-1.5"
+									>
+										{testingAi ? (
+											<Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+										) : (
+											<Bot className="h-3 w-3 text-primary" />
+										)}
+										{testingAi ? "正在测试连接..." : "测试模型连接"}
+									</Button>
+								</div>
 							</div>
 						)}
 					</CardContent>
 				</Card>
+
+				{isTauri && (
+					<Card className="bg-card/40 border-white/5">
+						<CardHeader className="p-5">
+							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+								<Info className="h-4 w-4 text-primary" />
+								检查更新
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="px-5 pb-6 space-y-4 text-xs">
+							<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-white/5 bg-black/10 rounded-lg p-4">
+								<div className="space-y-1">
+									<p className="font-semibold text-foreground">
+										Animesh 客户端
+									</p>
+									<p className="text-muted-foreground">
+										当前版本：{currentVersion || "加载中..."}
+									</p>
+								</div>
+								<div className="flex gap-2">
+									<Button
+										type="button"
+										variant="outline"
+										disabled={checkingUpdate}
+										onClick={handleCheckUpdate}
+										className="text-xs h-8.5 font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+									>
+										{checkingUpdate ? (
+											<Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+										) : (
+											<RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+										)}
+										检查更新
+									</Button>
+								</div>
+							</div>
+
+							{updateResult && (
+								<div className="border border-white/5 bg-black/20 rounded-lg p-4 space-y-3">
+									<div className="flex items-center justify-between">
+										<h4 className="text-xs font-semibold text-foreground">
+											{updateResult.hasUpdate
+												? "发现新版本！"
+												: "当前已是最新版本"}
+										</h4>
+										{updateResult.hasUpdate && (
+											<span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-medium">
+												v{updateResult.latestVersion}
+											</span>
+										)}
+									</div>
+
+									{updateResult.hasUpdate && (
+										<>
+											<p className="text-muted-foreground/90 whitespace-pre-wrap leading-relaxed">
+												{updateResult.notes}
+											</p>
+											<div className="flex gap-2 pt-1">
+												<Button
+													type="button"
+													onClick={async () => {
+														if (updateResult.htmlUrl) {
+															try {
+																await openUpdateUrlUseCase.execute(
+																	updateResult.htmlUrl,
+																);
+															} catch (err: unknown) {
+																showToast(
+																	`无法打开链接: ${formatError(err)}`,
+																	"error",
+																);
+															}
+														}
+													}}
+													className="text-xs h-8 font-medium px-3 bg-primary text-primary-foreground"
+												>
+													前往 GitHub 下载
+												</Button>
+											</div>
+										</>
+									)}
+								</div>
+							)}
+						</CardContent>
+					</Card>
+				)}
 
 				<Card className="bg-card/40 border-white/5">
 					<CardHeader className="p-5">
@@ -535,9 +692,7 @@ export default function Settings() {
 											id="tracker-url-input"
 											value={sourceType === "custom" ? customUrl : currentUrl}
 											onChange={(e) => {
-												if (sourceType === "custom") {
-													setCustomUrl(e.target.value);
-												}
+												setCustomUrl(e.target.value);
 											}}
 											disabled={sourceType !== "custom"}
 											placeholder="引导地址例如 https://example.com/trackers.txt"
@@ -614,7 +769,10 @@ export default function Settings() {
 												"http://tracker.openbittorrent.com:80/announce",
 											].join("\n"),
 										);
-										showToast("已重置为默认 Tracker 列表，点击保存生效");
+										showToast(
+											"已重置为默认 Tracker 列表，点击保存生效",
+											"success",
+										);
 									}}
 									className="text-[11px] text-primary hover:underline font-medium"
 								>

@@ -8,6 +8,7 @@ import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase";
+import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleTracksUseCase } from "../application/torrent/GetSubtitleTracksUseCase";
@@ -20,11 +21,13 @@ import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase"
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
+import { SearchTorrentsWithAiUseCase } from "../application/torrent/SearchTorrentsWithAiUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { DIContainer } from "../di/DIContext";
+import type { AiClient } from "../domain/ai/AiClient";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
@@ -32,6 +35,8 @@ import type { OpenerRepository } from "../domain/opener/OpenerRepository";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import type { UpdateRepository } from "../domain/update/UpdateRepository";
+import { FetchAiClient } from "../infrastructure/ai/FetchAiClient";
+import { HttpClient } from "../infrastructure/http/HttpClient";
 
 const dummyLogger: Logger = {
 	debug: () => {},
@@ -50,6 +55,7 @@ export interface CreateContainerParamsForTest {
 
 	notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
 	searchTorrentsUseCase?: SearchTorrentsUseCase;
+	searchTorrentsWithAiUseCase?: SearchTorrentsWithAiUseCase;
 	listTorrentsUseCase?: ListTorrentsUseCase;
 	subscribeTorrentsUseCase?: SubscribeTorrentsUseCase;
 	pauseTorrentUseCase?: PauseTorrentUseCase;
@@ -68,6 +74,8 @@ export interface CreateContainerParamsForTest {
 	selectDirectoryUseCase?: SelectDirectoryUseCase;
 	syncTrackersUseCase?: SyncTrackersUseCase;
 	autoUpdateTrackersUseCase?: AutoUpdateTrackersUseCase;
+	verifyAiConnectionUseCase?: VerifyAiConnectionUseCase;
+	aiClient?: AiClient;
 
 	getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
 	getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
@@ -108,6 +116,7 @@ export function createDIContainerForTest(
 		setProxy: async () => {},
 		setTrackers: async () => {},
 		setTrackerOptions: async () => {},
+		setAiOptions: async () => {},
 		fetchTrackers: async () => [],
 		selectDirectory: async () => null,
 		...params.settingsRepository,
@@ -148,6 +157,14 @@ export function createDIContainerForTest(
 
 	const searchTorrentsUseCase =
 		params.searchTorrentsUseCase || new SearchTorrentsUseCase(torrentRepo);
+	const searchTorrentsWithAiUseCase =
+		params.searchTorrentsWithAiUseCase ||
+		new SearchTorrentsWithAiUseCase(
+			torrentRepo,
+			settingsRepo,
+			new FetchAiClient(new HttpClient()),
+			dummyLogger,
+		);
 	const listTorrentsUseCase =
 		params.listTorrentsUseCase || new ListTorrentsUseCase(torrentRepo);
 	const subscribeTorrentsUseCase =
@@ -187,6 +204,9 @@ export function createDIContainerForTest(
 	const autoUpdateTrackersUseCase =
 		params.autoUpdateTrackersUseCase ||
 		new AutoUpdateTrackersUseCase(settingsRepo);
+	const aiClient = params.aiClient || new FetchAiClient(new HttpClient());
+	const verifyAiConnectionUseCase =
+		params.verifyAiConnectionUseCase || new VerifyAiConnectionUseCase(aiClient);
 
 	const getBangumiCalendarUseCase =
 		params.getBangumiCalendarUseCase ||
@@ -215,6 +235,7 @@ export function createDIContainerForTest(
 
 		notifyDownloadCompletionUseCase: notifyUseCase,
 		searchTorrentsUseCase,
+		searchTorrentsWithAiUseCase,
 		listTorrentsUseCase,
 		subscribeTorrentsUseCase,
 		pauseTorrentUseCase,
@@ -233,6 +254,8 @@ export function createDIContainerForTest(
 		selectDirectoryUseCase,
 		syncTrackersUseCase,
 		autoUpdateTrackersUseCase,
+		verifyAiConnectionUseCase,
+		aiClient,
 
 		getBangumiCalendarUseCase,
 		getBangumiSubjectUseCase,

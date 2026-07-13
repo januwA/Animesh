@@ -575,4 +575,22 @@ describe("Downloads 页面组件", () => {
 		// 检查创建时间是否渲染
 		expect(screen.getAllByText(/创建时间:/).length).toBe(2);
 	});
+
+	it("在订阅未完成时卸载组件，应该清理订阅", async () => {
+		let resolveUnsubscribe: any;
+		const unsubMock = vi.fn();
+		const promise = new Promise<any>((resolve) => {
+			resolveUnsubscribe = () => resolve(unsubMock);
+		});
+
+		vi.mocked(mockTorrentRepository.subscribeTorrents).mockReturnValue(promise);
+
+		const { unmount } = renderDownloads();
+		unmount();
+
+		resolveUnsubscribe();
+
+		await promise;
+		expect(unsubMock).toHaveBeenCalled();
+	});
 });

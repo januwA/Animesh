@@ -19,6 +19,7 @@ export function useGlobalEffects() {
 	// 下载完成监听
 	useEffect(() => {
 		let unsubscribe: (() => void) | null = null;
+		let isCleanedUp = false;
 
 		subscribeTorrentsUseCase
 			.execute(async (list) => {
@@ -27,11 +28,16 @@ export function useGlobalEffects() {
 				} catch {}
 			})
 			.then((unsub) => {
-				unsubscribe = unsub;
+				if (isCleanedUp) {
+					unsub();
+				} else {
+					unsubscribe = unsub;
+				}
 			})
 			.catch(() => {});
 
 		return () => {
+			isCleanedUp = true;
 			if (unsubscribe) {
 				unsubscribe();
 			}
@@ -44,7 +50,10 @@ export function useGlobalEffects() {
 			.execute()
 			.then((count) => {
 				if (count !== null && count > 0) {
-					showToast(`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`);
+					showToast(
+						`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`,
+						"success",
+					);
 				}
 			})
 			.catch(() => {});

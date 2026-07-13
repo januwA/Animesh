@@ -9,14 +9,21 @@ import { defineConfig } from "vite";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
-export default defineConfig((config) => {
-	console.log(config, process.env);
+export default defineConfig(({ mode }) => {
+	console.log(mode, process.env);
+
+	const isWeb = mode === "web";
 
 	return {
-		plugins: [react(), tailwindcss()],
+		plugins: [react(), process.env.VITEST !== "true" && tailwindcss()].filter(
+			Boolean,
+		),
 		envPrefix: ["VITE_", "TAURI_ENV_*"],
 		resolve: {
 			alias: {
+				"@/di/repositories": isWeb
+					? path.resolve(__dirname, "./src/di/repositories.web.ts")
+					: path.resolve(__dirname, "./src/di/repositories.ts"),
 				"@": path.resolve(__dirname, "./src"),
 			},
 		},
@@ -44,7 +51,7 @@ export default defineConfig((config) => {
 		},
 		test: {
 			globals: true,
-			environment: "jsdom",
+			environment: "happy-dom",
 			setupFiles: "./src/test/setup.ts",
 			coverage: {
 				provider: "v8",
@@ -63,8 +70,8 @@ export default defineConfig((config) => {
 				thresholds: {
 					lines: 100,
 					functions: 100,
-					branches: 95,
-					statements: 95,
+					branches: 100,
+					statements: 100,
 				},
 			},
 		},

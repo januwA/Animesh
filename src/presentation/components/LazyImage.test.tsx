@@ -160,4 +160,56 @@ describe("LazyImage 懒加载图片组件", () => {
 			value: originalIntersectionObserver,
 		});
 	});
+
+	it("当 isIntersecting 为 false 时，不应该开始加载图片", () => {
+		render(
+			<LazyImage
+				src="https://example.com/not-intersecting.jpg"
+				alt="非相交图片"
+				placeholder={<div data-testid="placeholder">加载中</div>}
+			/>,
+		);
+
+		act(() => {
+			observerCallback!(
+				[
+					{
+						isIntersecting: false,
+						target: document.createElement("div"),
+					} as unknown as IntersectionObserverEntry,
+				],
+				{} as IntersectionObserver,
+			);
+		});
+
+		expect(screen.queryByAltText("非相交图片")).not.toBeInTheDocument();
+	});
+
+	it("图片加载失败且未提供 fallback 时，应该展示默认错误占位符", () => {
+		render(
+			<LazyImage
+				src="https://example.com/image-error-default.jpg"
+				alt="测试错误"
+			/>,
+		);
+
+		act(() => {
+			observerCallback!(
+				[
+					{
+						isIntersecting: true,
+						target: document.createElement("div"),
+					} as unknown as IntersectionObserverEntry,
+				],
+				{} as IntersectionObserver,
+			);
+		});
+
+		const img = screen.getByAltText("测试错误");
+		act(() => {
+			fireEvent.error(img);
+		});
+
+		expect(screen.getByText("加载失败")).toBeInTheDocument();
+	});
 });

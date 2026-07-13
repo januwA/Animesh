@@ -291,7 +291,7 @@ function main() {
 
 	if (totalErrors > 0) {
 		console.error(
-			`\n🛑 校验未通过：在 src/application 或 src/infrastructure 中发现了 ${totalErrors} 处严重错误（及 ${totalWarnings} 处警告）。请务必遵循错误处理规范进行修正。`,
+			`\n🛑 校验未通过：发现了 ${totalErrors} 处严重错误（及 ${totalWarnings} 处警告）。请务必遵循错误处理规范进行修正。`,
 		);
 		process.exit(1);
 	} else if (totalWarnings > 0) {
@@ -301,7 +301,7 @@ function main() {
 		process.exit(0);
 	} else {
 		console.log(
-			"✨ 恭喜！未在 src/application 和 src/infrastructure 中发现任何违规。",
+			"✨ 未发现任何违规。",
 		);
 		process.exit(0);
 	}

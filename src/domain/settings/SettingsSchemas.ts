@@ -9,6 +9,10 @@ export const SettingsSchema = z.object({
 	tracker_custom_url: z.string().nullable().optional(),
 	tracker_auto_update: z.boolean().nullable().optional(),
 	tracker_last_update_time: z.number().nullable().optional(),
+	ai_enabled: z.boolean().nullable().optional(),
+	ai_api_key: z.string().nullable().optional(),
+	ai_api_endpoint: z.string().nullable().optional(),
+	ai_model: z.string().nullable().optional(),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -47,6 +51,10 @@ export const SettingsFormSchema = z.object({
 	trackerCustomUrl: z.string().nullable().optional(),
 	trackerAutoUpdate: z.boolean().nullable().optional(),
 	trackerLastUpdateTime: z.number().nullable().optional(),
+	aiEnabled: z.boolean().nullable().optional(),
+	aiApiKey: z.string().nullable().optional(),
+	aiApiEndpoint: z.string().nullable().optional(),
+	aiModel: z.string().nullable().optional(),
 });
 
 export type SettingsFormInput = z.infer<typeof SettingsFormSchema>;

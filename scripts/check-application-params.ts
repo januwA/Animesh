@@ -188,11 +188,11 @@ function main() {
 
 	if (totalErrors > 0) {
 		console.error(
-			`\n🛑 校验未通过：在 src/application 中发现了 ${totalErrors} 处接口设计错误（execute 参数超过 2 个）。请重构为 execute(ctx, dto) 形式。`,
+			`\n🛑 校验未通过：发现了 ${totalErrors} 处接口设计错误（execute 参数超过 2 个）。请重构为 execute(ctx, dto) 形式。`,
 		);
 		process.exit(1);
 	} else {
-		console.log("✨ 恭喜！未在 src/application 中发现任何接口设计违规。");
+		console.log("✨ 未发现任何接口设计违规。");
 		process.exit(0);
 	}
 }

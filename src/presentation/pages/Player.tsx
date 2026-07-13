@@ -3,7 +3,6 @@ import {
 	ArrowLeft,
 	Clipboard,
 	Download,
-	Info,
 	Loader2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,11 +12,6 @@ import type {
 	SubtitleTrackInfo,
 	TorrentStatusInfo,
 } from "@/domain/torrent/TorrentSchemas";
-import {
-	Alert,
-	AlertDescription,
-	AlertTitle,
-} from "@/presentation/components/ui/alert";
 import { Button } from "@/presentation/components/ui/button";
 import { Progress } from "@/presentation/components/ui/progress";
 import {
@@ -40,12 +34,6 @@ export default function Player() {
 	const [searchParams] = useSearchParams();
 	const title = searchParams.get("title") || "";
 	const fileName = searchParams.get("fileName") || "正在播放";
-	const isUnsupportedFormat =
-		fileName.toLowerCase().endsWith(".mkv") ||
-		fileName.toLowerCase().includes("mkv") ||
-		fileName.toLowerCase().includes("hevc") ||
-		fileName.toLowerCase().includes("h265") ||
-		fileName.toLowerCase().includes("h.265");
 
 	const {
 		getTorrentStreamUrlUseCase,
@@ -102,7 +90,7 @@ export default function Player() {
 				});
 				setSelectedTrackId(trackId);
 			} catch (err: unknown) {
-				showToast(`加载字幕失败: ${formatError(err)}`);
+				showToast(`加载字幕失败: ${formatError(err)}`, "error");
 			} finally {
 				setSubloading(false);
 			}
@@ -169,7 +157,7 @@ export default function Player() {
 
 	useEffect(() => {
 		if (!infoHash || fileId === undefined) {
-			showToast("无效的视频播放参数");
+			showToast("无效的视频播放参数", "error");
 			setLoading(false);
 			return;
 		}
@@ -248,7 +236,7 @@ export default function Player() {
 				}
 			} catch (err: unknown) {
 				if (active) {
-					showToast(`无法获取视频流: ${formatError(err)}`, 10000);
+					showToast(`无法获取视频流: ${formatError(err)}`, "error", 10000);
 					setLoading(false);
 				}
 			}
@@ -276,9 +264,9 @@ export default function Player() {
 		if (!streamUrl) return;
 		try {
 			await navigator.clipboard.writeText(streamUrl);
-			showToast("视频流地址已复制到剪贴板，可在外部播放器中播放");
+			showToast("视频流地址已复制到剪贴板，可在外部播放器中播放", "success");
 		} catch {
-			showToast("复制失败，请手动复制");
+			showToast("复制失败，请手动复制", "error");
 		}
 	};
 
@@ -325,22 +313,6 @@ export default function Player() {
 					</div>
 				</div>
 
-				{isUnsupportedFormat && (
-					<Alert className="bg-amber-500/5 border-amber-500/20 text-amber-200/90 py-3.5 flex items-start gap-3">
-						<Info className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
-						<div className="flex-1 min-w-0">
-							<AlertTitle className="text-sm font-semibold mb-1">
-								当前视频格式在内置播放器中可能无法播放
-							</AlertTitle>
-							<AlertDescription className="text-xs leading-relaxed text-amber-200/70">
-								当前播放的文件格式为 <strong>MKV / HEVC(H.265)</strong>。出于
-								WebView
-								内核安全和硬解码限制，内置播放器经常会出现黑屏、转圈或仅有声音。如果您无法播放，建议点击右侧按钮复制地址，使用外部播放器播放：
-							</AlertDescription>
-						</div>
-					</Alert>
-				)}
-
 				{/* Player Video aspect-ratio */}
 				<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black shadow-inner flex items-center justify-center">
 					{loading ||
@@ -358,6 +330,24 @@ export default function Player() {
 							playsInline
 							webkit-playsinline="true"
 							className="h-full w-full object-contain"
+							onError={(e) => {
+								const video = e.currentTarget;
+								const mediaError = video.error;
+								playerLogger.error("Video element error:", mediaError);
+
+								let errorMsg = "视频加载失败";
+								if (mediaError) {
+									if (mediaError.code === 4) {
+										errorMsg =
+											"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。";
+									} else if (mediaError.code === 3) {
+										errorMsg = "视频解码失败，可能数据已损坏或编码不支持。";
+									} else if (mediaError.code === 2) {
+										errorMsg = "视频加载超时或网络断开。";
+									}
+								}
+								showToast(errorMsg, "error", 8000);
+							}}
 						>
 							{subtracks.map((track) => (
 								<track

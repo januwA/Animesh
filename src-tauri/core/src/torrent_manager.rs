@@ -59,6 +59,14 @@ pub struct AppSettings {
     pub tracker_auto_update: Option<bool>,
     #[serde(default)]
     pub tracker_last_update_time: Option<i64>,
+    #[serde(default)]
+    pub ai_enabled: Option<bool>,
+    #[serde(default)]
+    pub ai_api_key: Option<String>,
+    #[serde(default)]
+    pub ai_api_endpoint: Option<String>,
+    #[serde(default)]
+    pub ai_model: Option<String>,
 }
 
 impl TorrentManager {
@@ -124,8 +132,17 @@ impl TorrentManager {
             ),
         );
 
-        // 启动 Axum 服务器并监听随机空闲端口
-        let listener = TcpListener::bind("0.0.0.0:0").await?;
+        // 启动 Axum 服务器并监听端口。如果配置了 ANIMESH_STREAM_PORT 环境变量，则使用该固定端口，否则监听随机空闲端口。
+        let stream_addr = if let Ok(port_str) = std::env::var("ANIMESH_STREAM_PORT") {
+            if let Ok(p) = port_str.parse::<u16>() {
+                format!("0.0.0.0:{}", p)
+            } else {
+                "0.0.0.0:0".to_string()
+            }
+        } else {
+            "0.0.0.0:0".to_string()
+        };
+        let listener = TcpListener::bind(&stream_addr).await?;
         let port = listener.local_addr()?.port();
 
         // 配置 CORS 允许 Webview/本地网络访问流地址
@@ -186,6 +203,10 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
+                ai_enabled: None,
+                ai_api_key: None,
+                ai_api_endpoint: None,
+                ai_model: None,
             })
         } else {
             AppSettings {
@@ -197,6 +218,10 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
+                ai_enabled: None,
+                ai_api_key: None,
+                ai_api_endpoint: None,
+                ai_model: None,
             }
         };
         settings.download_dir = dir;
@@ -231,6 +256,10 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
+                ai_enabled: None,
+                ai_api_key: None,
+                ai_api_endpoint: None,
+                ai_model: None,
             })
         } else {
             AppSettings {
@@ -242,6 +271,10 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
+                ai_enabled: None,
+                ai_api_key: None,
+                ai_api_endpoint: None,
+                ai_model: None,
             }
         };
         settings.proxy = proxy.clone();
@@ -276,6 +309,10 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
+                ai_enabled: None,
+                ai_api_key: None,
+                ai_api_endpoint: None,
+                ai_model: None,
             })
         } else {
             AppSettings {
@@ -287,6 +324,10 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
+                ai_enabled: None,
+                ai_api_key: None,
+                ai_api_endpoint: None,
+                ai_model: None,
             }
         };
         settings.trackers = Some(trackers.clone());
@@ -316,6 +357,10 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
+                ai_enabled: None,
+                ai_api_key: None,
+                ai_api_endpoint: None,
+                ai_model: None,
             })
         }
     }
@@ -341,6 +386,10 @@ impl TorrentManager {
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,
+            ai_enabled: None,
+            ai_api_key: None,
+            ai_api_endpoint: None,
+            ai_model: None,
         });
 
         settings.tracker_source_type = source_type;
@@ -348,6 +397,42 @@ impl TorrentManager {
         settings.tracker_custom_url = custom_url;
         settings.tracker_auto_update = auto_update;
         settings.tracker_last_update_time = last_update_time;
+
+        let file = std::fs::File::create(&self.settings_path)?;
+        serde_json::to_writer_pretty(file, &settings)?;
+        Ok(())
+    }
+
+    pub fn set_ai_options(
+        &self,
+        enabled: Option<bool>,
+        api_key: Option<String>,
+        api_endpoint: Option<String>,
+        model: Option<String>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(parent) = self.settings_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let mut settings = self.get_settings().unwrap_or_else(|_| AppSettings {
+            download_dir: self.get_download_dir(),
+            proxy: self.get_proxy(),
+            trackers: Some(self.get_trackers()),
+            tracker_source_type: None,
+            tracker_cdn: None,
+            tracker_custom_url: None,
+            tracker_auto_update: None,
+            tracker_last_update_time: None,
+            ai_enabled: None,
+            ai_api_key: None,
+            ai_api_endpoint: None,
+            ai_model: None,
+        });
+
+        settings.ai_enabled = enabled;
+        settings.ai_api_key = api_key;
+        settings.ai_api_endpoint = api_endpoint;
+        settings.ai_model = model;
 
         let file = std::fs::File::create(&self.settings_path)?;
         serde_json::to_writer_pretty(file, &settings)?;

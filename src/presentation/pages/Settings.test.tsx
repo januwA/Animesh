@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -19,6 +25,7 @@ const LocationTracker = () => {
 
 describe("Settings 页面组件", () => {
 	let mockSettingsRepository: SettingsRepository;
+	let mockAiClient: { post: any };
 	let mockContainer: DIContainer;
 
 	beforeEach(() => {
@@ -37,12 +44,18 @@ describe("Settings 页面组件", () => {
 			setProxy: vi.fn(),
 			setTrackers: vi.fn(),
 			setTrackerOptions: vi.fn(),
+			setAiOptions: vi.fn(),
 			fetchTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 		};
 
+		mockAiClient = {
+			post: vi.fn(),
+		};
+
 		mockContainer = createDIContainerForTest({
 			settingsRepository: mockSettingsRepository,
+			aiClient: mockAiClient as any,
 		});
 
 		currentLocation.current = null;
@@ -51,6 +64,7 @@ describe("Settings 页面组件", () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.unstubAllEnvs();
 	});
 
 	const renderSettings = () => {
@@ -668,6 +682,280 @@ describe("Settings 页面组件", () => {
 		await waitFor(() => {
 			expect(
 				screen.getByText("无法打开链接: 打不开系统默认浏览器"),
+			).toBeInTheDocument();
+		});
+	});
+
+	it("在没有提供 htmlUrl 时，点击前往 GitHub 下载不应该执行任何操作", async () => {
+		const mockCheckUpdateSuccess = {
+			execute: vi.fn().mockResolvedValue({
+				hasUpdate: true,
+				latestVersion: "0.3.2",
+				currentVersion: "0.3.1",
+				notes: "修复了一些已知问题",
+				url: "https://example.com/download",
+				htmlUrl: undefined,
+			}),
+		};
+		const mockOpenUrl = {
+			execute: vi.fn(),
+		};
+		const mockGetVersion = {
+			execute: vi.fn().mockResolvedValue("0.3.1"),
+		};
+
+		mockContainer = createDIContainerForTest({
+			settingsRepository: mockSettingsRepository,
+			checkUpdateUseCase: mockCheckUpdateSuccess as any,
+			openUpdateUrlUseCase: mockOpenUrl as any,
+			getCurrentVersionUseCase: mockGetVersion as any,
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			const checkBtn = screen.getByRole("button", { name: /检查更新/ });
+			fireEvent.click(checkBtn);
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("发现新版本 v0.3.2")).toBeInTheDocument();
+		});
+
+		const downloadBtn = screen.getByRole("button", {
+			name: /前往 GitHub 下载/,
+		});
+		fireEvent.click(downloadBtn);
+
+		expect(mockOpenUrl.execute).not.toHaveBeenCalled();
+	});
+
+	it("在移动端（如 Android/iOS）下，应该禁用目录修改并展示提示", async () => {
+		const userAgentSpy = vi
+			.spyOn(navigator, "userAgent", "get")
+			.mockReturnValue("Android");
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByPlaceholderText("应用沙盒内部路径")).toBeDisabled();
+			expect(
+				screen.getByText(
+					"移动端（Android/iOS）已自动选用应用沙盒内部路径，无需且不支持手动更改。",
+				),
+			).toBeInTheDocument();
+			expect(
+				screen.queryByRole("button", { name: "选择目录" }),
+			).not.toBeInTheDocument();
+		});
+
+		userAgentSpy.mockRestore();
+	});
+
+	it("在 Web 模式下，应该不渲染 Tauri 特有配置（如更新卡片、下载路径修改等）", async () => {
+		vi.stubEnv("MODE", "web");
+		renderSettings();
+		await waitFor(() => {
+			expect(screen.queryByText("正在加载设置面版...")).not.toBeInTheDocument();
+		});
+		expect(screen.queryByText("检查更新")).not.toBeInTheDocument();
+		vi.unstubAllEnvs();
+	});
+
+	it("在版本加载中时，应该渲染加载中提示", async () => {
+		let resolveVersion: any;
+		const promise = new Promise<string>((resolve) => {
+			resolveVersion = resolve;
+		});
+
+		mockContainer = createDIContainerForTest({
+			settingsRepository: mockSettingsRepository,
+			updateRepository: {
+				getCurrentVersion: vi.fn().mockReturnValue(promise),
+			} as any,
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/settings"]}>
+						<LocationTracker />
+						<Routes>
+							<Route path="/" element={<Layout />}>
+								<Route path="settings" element={<Settings />} />
+							</Route>
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.queryByText("正在加载设置面版...")).not.toBeInTheDocument();
+		});
+
+		expect(screen.getByText("当前版本：加载中...")).toBeInTheDocument();
+
+		await act(async () => {
+			resolveVersion("1.0.0");
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("当前版本：1.0.0")).toBeInTheDocument();
+		});
+	});
+
+	it("应该支持加载和配置 AI Agent 相关的设置", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_enabled: false,
+			ai_api_key: "",
+			ai_api_endpoint: "",
+			ai_model: "",
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
+		});
+
+		// 启用 AI（触发 onChange）
+		const aiCheckbox = screen.getByLabelText(
+			"启用 AI 智能过滤与搜索优化 (基于 LLM 重新评分与排序)",
+		) as HTMLInputElement;
+		fireEvent.click(aiCheckbox);
+		expect(aiCheckbox.checked).toBe(true);
+
+		// 输入值（触发 onChange）
+		const endpointInput = screen.getByLabelText(
+			"AI 接口地址 (Endpoint)",
+		) as HTMLInputElement;
+		const keyInput = screen.getByLabelText(
+			"API 密钥 (API Key)",
+		) as HTMLInputElement;
+		const modelInput = screen.getByLabelText(
+			"模型名称 (Model)",
+		) as HTMLInputElement;
+
+		fireEvent.change(endpointInput, {
+			target: { value: "https://api.openai.com/v1" },
+		});
+		fireEvent.change(keyInput, { target: { value: "new-secret-key" } });
+		fireEvent.change(modelInput, { target: { value: "gpt-4o" } });
+
+		expect(endpointInput.value).toBe("https://api.openai.com/v1");
+		expect(keyInput.value).toBe("new-secret-key");
+		expect(modelInput.value).toBe("gpt-4o");
+
+		const saveBtn = screen.getByRole("button", { name: "保存设置" });
+		fireEvent.click(saveBtn);
+
+		await waitFor(() => {
+			expect(mockSettingsRepository.setAiOptions).toHaveBeenCalledWith({
+				enabled: true,
+				apiKey: "new-secret-key",
+				apiEndpoint: "https://api.openai.com/v1",
+				model: "gpt-4o",
+			});
+		});
+	});
+
+	it("当测试 AI 连接时，如果地址或密钥为空，应该提示警告", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_enabled: true,
+			ai_api_key: "",
+			ai_api_endpoint: "",
+			ai_model: "",
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
+		});
+
+		const testBtn = screen.getByRole("button", { name: "测试模型连接" });
+
+		// 1. 地址为空
+		fireEvent.click(testBtn);
+		await waitFor(() => {
+			expect(screen.getByText("请输入 AI 接口地址")).toBeInTheDocument();
+		});
+
+		// 2. 密钥为空
+		const endpointInput = screen.getByLabelText(
+			"AI 接口地址 (Endpoint)",
+		) as HTMLInputElement;
+		fireEvent.change(endpointInput, {
+			target: { value: "https://api.openai.com/v1" },
+		});
+
+		fireEvent.click(testBtn);
+		await waitFor(() => {
+			expect(screen.getByText("请输入 API 密钥")).toBeInTheDocument();
+		});
+	});
+
+	it("应该支持在 AI 设置面板中测试模型连接并展示成功提示", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_enabled: true,
+			ai_api_key: "my-secret-key",
+			ai_api_endpoint: "https://api.openai.com/v1",
+			ai_model: "gpt-4o",
+		});
+
+		vi.mocked(mockAiClient.post).mockResolvedValueOnce({
+			choices: [{ message: { content: "hello" } }],
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
+		});
+
+		const testBtn = screen.getByRole("button", { name: "测试模型连接" });
+		fireEvent.click(testBtn);
+
+		await waitFor(() => {
+			expect(mockAiClient.post).toHaveBeenCalledWith(
+				"https://api.openai.com/v1",
+				"my-secret-key",
+				expect.objectContaining({
+					model: "gpt-4o",
+					messages: [{ role: "user", content: "Ping" }],
+				}),
+			);
+			expect(screen.getByText("AI 模型连接测试成功！")).toBeInTheDocument();
+		});
+	});
+
+	it("应该支持在 AI 设置面板中测试模型连接并展示失败提示", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_enabled: true,
+			ai_api_key: "my-secret-key",
+			ai_api_endpoint: "https://api.openai.com/v1",
+			ai_model: "gpt-4o",
+		});
+
+		vi.mocked(mockAiClient.post).mockRejectedValueOnce(new Error("API Error"));
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
+		});
+
+		const testBtn = screen.getByRole("button", { name: "测试模型连接" });
+		fireEvent.click(testBtn);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText(/AI 模型连接测试失败: API Error/),
 			).toBeInTheDocument();
 		});
 	});
