@@ -77,6 +77,11 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 					apiKey: "test-key",
 					model: "gpt-4o",
 				},
+				{
+					alias: "NoModel",
+					apiEndpoint: "https://api.nomodel.com/v1",
+					apiKey: "test-key-2",
+				},
 			],
 		});
 		expect(rawMockRepo.setDownloadDir).toHaveBeenCalledWith("/mock/dir2");
@@ -95,6 +100,12 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 				api_endpoint: "https://api.openai.com/v1",
 				api_key: "test-key",
 				ai_model: "gpt-4o",
+			},
+			{
+				alias: "NoModel",
+				api_endpoint: "https://api.nomodel.com/v1",
+				api_key: "test-key-2",
+				ai_model: null,
 			},
 		]);
 	});
@@ -141,5 +152,21 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 			lastUpdateTime: null,
 		});
 		expect(rawMockRepo.setAiConfigs).not.toHaveBeenCalled();
+	});
+
+	it("SaveSettingsUseCase 当 aiConfigs 为 null 时应该调用 setAiConfigs(null)", async () => {
+		const useCase = new SaveSettingsUseCase(mockRepo);
+		vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setTrackers).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setTrackerOptions).mockResolvedValueOnce(undefined);
+		vi.mocked(rawMockRepo.setAiConfigs).mockResolvedValueOnce(undefined);
+		await useCase.execute({
+			downloadDir: "/mock/dir2",
+			proxy: null,
+			trackers: ["udp://tracker1"],
+			aiConfigs: null,
+		});
+		expect(rawMockRepo.setAiConfigs).toHaveBeenCalledWith(null);
 	});
 });

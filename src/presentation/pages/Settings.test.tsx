@@ -974,4 +974,279 @@ describe("Settings 页面组件", () => {
 			).toBeInTheDocument();
 		});
 	});
+
+	it("在 AI 设置面板中，应该支持测试当前正在编辑的配置连接", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_configs: [],
+		});
+		vi.mocked(mockAiClient.post).mockResolvedValueOnce({
+			choices: [{ message: { content: "hello" } }],
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
+		});
+
+		const addBtn = screen.getByRole("button", { name: "+ 添加 AI 配置" });
+		fireEvent.click(addBtn);
+
+		const endpointInput = screen.getByLabelText(
+			"AI 接口地址 (Endpoint) *",
+		) as HTMLInputElement;
+		const keyInput = screen.getByLabelText(
+			"API 密钥 (API Key) *",
+		) as HTMLInputElement;
+
+		fireEvent.change(endpointInput, {
+			target: { value: "https://api.test-form.com" },
+		});
+		fireEvent.change(keyInput, { target: { value: "form-key" } });
+
+		const testBtn = screen.getByRole("button", { name: "测试模型连接" });
+		fireEvent.click(testBtn);
+
+		await waitFor(() => {
+			expect(mockAiClient.post).toHaveBeenCalledWith(
+				"https://api.test-form.com",
+				"form-key",
+				expect.any(Object),
+			);
+			expect(screen.getByText("AI 模型连接测试成功！")).toBeInTheDocument();
+		});
+	});
+
+	it("应该支持对已添加的 AI 配置进行编辑、取消编辑以及保存修改", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_configs: [
+				{
+					alias: "OpenAI",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "old-key",
+					ai_model: "gpt-4o",
+				},
+			],
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("OpenAI")).toBeInTheDocument();
+		});
+
+		// 1. 点击编辑
+		const editBtn = screen.getByRole("button", { name: "编辑" });
+		fireEvent.click(editBtn);
+
+		// 检查表单已被填充
+		const aliasInput = screen.getByLabelText(
+			"配置别名 (Alias) *",
+		) as HTMLInputElement;
+		const keyInput = screen.getByLabelText(
+			"API 密钥 (API Key) *",
+		) as HTMLInputElement;
+		expect(aliasInput.value).toBe("OpenAI");
+		expect(keyInput.value).toBe("old-key");
+
+		// 2. 取消编辑
+		const cancelBtn = screen.getByRole("button", { name: "取消" });
+		fireEvent.click(cancelBtn);
+		expect(
+			screen.queryByLabelText("配置别名 (Alias) *"),
+		).not.toBeInTheDocument();
+
+		// 3. 再次编辑并修改保存
+		fireEvent.click(screen.getByRole("button", { name: "编辑" }));
+		const aliasInput2 = screen.getByLabelText(
+			"配置别名 (Alias) *",
+		) as HTMLInputElement;
+		fireEvent.change(aliasInput2, { target: { value: "OpenAI-Updated" } });
+		fireEvent.click(screen.getByRole("button", { name: "保存配置" }));
+
+		// 保存全部设置
+		fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+		await waitFor(() => {
+			expect(mockSettingsRepository.setAiConfigs).toHaveBeenCalledWith([
+				{
+					alias: "OpenAI-Updated",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "old-key",
+					ai_model: "gpt-4o",
+				},
+			]);
+		});
+	});
+
+	it("应该支持删除已添加的 AI 配置，并正确重置或修正编辑索引", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_configs: [
+				{
+					alias: "Config1",
+					api_endpoint: "https://api1.com",
+					api_key: "key1",
+					ai_model: "model1",
+				},
+				{
+					alias: "Config2",
+					api_endpoint: "https://api2.com",
+					api_key: "key2",
+					ai_model: "model2",
+				},
+				{
+					alias: "Config3",
+					api_endpoint: "https://api3.com",
+					api_key: "key3",
+					ai_model: "model3",
+				},
+			],
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("Config1")).toBeInTheDocument();
+			expect(screen.getByText("Config2")).toBeInTheDocument();
+			expect(screen.getByText("Config3")).toBeInTheDocument();
+		});
+
+		// 1. 删除一个非编辑状态的配置
+		const deleteBtns = screen.getAllByRole("button", { name: "删除" });
+		fireEvent.click(deleteBtns[2]); // 删除 Config3 (index 2)
+		expect(screen.queryByText("Config3")).not.toBeInTheDocument();
+
+		// 2. 删除正在编辑的配置 (删除 Config2)
+		const editBtns = screen.getAllByRole("button", { name: "编辑" });
+		fireEvent.click(editBtns[1]); // 编辑 Config2
+		const deleteBtns2 = screen.getAllByRole("button", { name: "删除" });
+		fireEvent.click(deleteBtns2[1]); // 删除 Config2
+		// 验证编辑表单被关闭了
+		expect(
+			screen.queryByRole("button", { name: "取消" }),
+		).not.toBeInTheDocument();
+
+		// 此时列表里仅剩 Config1 (index 0)
+		// 我们再添加一个，构造两个配置，以测试编辑后面那个配置，删除前面那个配置的场景
+		const addBtn = screen.getByRole("button", { name: "+ 添加 AI 配置" });
+		fireEvent.click(addBtn);
+
+		const saveConfigBtn = screen.getByRole("button", { name: "保存配置" });
+		const aliasInput = screen.getByLabelText(
+			"配置别名 (Alias) *",
+		) as HTMLInputElement;
+		const endpointInput = screen.getByLabelText(
+			"AI 接口地址 (Endpoint) *",
+		) as HTMLInputElement;
+		const keyInput = screen.getByLabelText(
+			"API 密钥 (API Key) *",
+		) as HTMLInputElement;
+
+		fireEvent.change(aliasInput, { target: { value: "NewConfig" } });
+		fireEvent.change(endpointInput, {
+			target: { value: "https://apinew.com" },
+		});
+		fireEvent.change(keyInput, { target: { value: "keynew" } });
+		fireEvent.click(saveConfigBtn);
+
+		// 现在有两个配置：Config1 (index 0) 和 NewConfig (index 1)
+		// 编辑 NewConfig (index 1)
+		const editBtns3 = screen.getAllByRole("button", { name: "编辑" });
+		fireEvent.click(editBtns3[1]);
+
+		// 删除 Config1 (index 0)
+		const deleteBtns3 = screen.getAllByRole("button", { name: "删除" });
+		fireEvent.click(deleteBtns3[0]);
+
+		// 现在剩下 NewConfig，它移动到了 index 0
+		// 因为编辑索引被移动到了 index 0，修改它并保存配置，应该成功更新 NewConfig
+		const aliasInput2 = screen.getByLabelText(
+			"配置别名 (Alias) *",
+		) as HTMLInputElement;
+		fireEvent.change(aliasInput2, { target: { value: "NewConfig-Updated" } });
+		fireEvent.click(screen.getByRole("button", { name: "保存配置" }));
+
+		// 保存全部设置
+		fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+		await waitFor(() => {
+			expect(mockSettingsRepository.setAiConfigs).toHaveBeenCalledWith([
+				{
+					alias: "NewConfig-Updated",
+					api_endpoint: "https://apinew.com",
+					api_key: "keynew",
+					ai_model: null,
+				},
+			]);
+		});
+	});
+
+	it("添加/保存配置时应该有相应的表单字段及重复校验警告", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			ai_configs: [
+				{
+					alias: "OpenAI",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "my-key",
+					ai_model: "gpt-4o",
+				},
+			],
+		});
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("OpenAI")).toBeInTheDocument();
+		});
+
+		const addBtn = screen.getByRole("button", { name: "+ 添加 AI 配置" });
+		fireEvent.click(addBtn);
+
+		const saveBtn = screen.getByRole("button", { name: "保存配置" });
+		const aliasInput = screen.getByLabelText(
+			"配置别名 (Alias) *",
+		) as HTMLInputElement;
+		const endpointInput = screen.getByLabelText(
+			"AI 接口地址 (Endpoint) *",
+		) as HTMLInputElement;
+		const keyInput = screen.getByLabelText(
+			"API 密钥 (API Key) *",
+		) as HTMLInputElement;
+
+		// 1. 空别名
+		fireEvent.click(saveBtn);
+		await waitFor(() => {
+			expect(screen.getByText("请输入别名")).toBeInTheDocument();
+		});
+
+		// 2. 空接口
+		fireEvent.change(aliasInput, { target: { value: "NewAlias" } });
+		fireEvent.click(saveBtn);
+		await waitFor(() => {
+			expect(screen.getByText("请输入接口地址")).toBeInTheDocument();
+		});
+
+		// 3. 空密钥
+		fireEvent.change(endpointInput, {
+			target: { value: "https://api.new.com" },
+		});
+		fireEvent.click(saveBtn);
+		await waitFor(() => {
+			expect(screen.getByText("请输入 API 密钥")).toBeInTheDocument();
+		});
+
+		// 4. 重复别名
+		fireEvent.change(keyInput, { target: { value: "new-key" } });
+		fireEvent.change(aliasInput, { target: { value: "OpenAI" } }); // OpenAI is duplicate
+		fireEvent.click(saveBtn);
+		await waitFor(() => {
+			expect(
+				screen.getByText("该别名已存在，请使用其他别名"),
+			).toBeInTheDocument();
+		});
+	});
 });

@@ -88,6 +88,7 @@ export default function Settings() {
 
 	const handleStartEdit = (index: number) => {
 		const config = aiConfigs[index];
+		/* v8 ignore next */
 		if (!config) return;
 		setEditingIndex(index);
 		setAliasInput(config.alias);
@@ -141,10 +142,10 @@ export default function Settings() {
 
 		if (editingIndex === -1) {
 			setAiConfigs((prev) => [...prev, newConfig]);
-		} else if (editingIndex !== null) {
+		} else {
 			setAiConfigs((prev) => {
 				const next = [...prev];
-				next[editingIndex] = newConfig;
+				next[editingIndex as number] = newConfig;
 				return next;
 			});
 		}

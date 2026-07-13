@@ -988,4 +988,93 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
 		expect(result).toBeDefined();
 	});
+
+	it("当指定了 aiAlias 时，应该匹配对应的别名配置进行 AI 搜索和过滤", async () => {
+		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
+			download_dir: "/mock",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+				{
+					alias: "Custom",
+					api_endpoint: "https://api.custom.com/v1/chat/completions",
+					api_key: "custom-key",
+					ai_model: "custom-model",
+				},
+			],
+		});
+		vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
+
+		const mockResponseJson = [{ index: 0, score: 95, reason: "符合 1080p" }];
+
+		const mockResponseObj = {
+			choices: [
+				{
+					message: {
+						content: JSON.stringify(mockResponseJson),
+					},
+				},
+			],
+		};
+		const mockFetch = vi.fn().mockResolvedValueOnce({
+			ok: true,
+			json: async () => mockResponseObj,
+			text: async () => JSON.stringify(mockResponseObj),
+		});
+		vi.stubGlobal("fetch", mockFetch);
+
+		const useCase = new SearchTorrentsWithAiUseCase(
+			mockTorrentRepo,
+			mockSettingsRepo,
+			new FetchAiClient(new HttpClient()),
+			mockLogger,
+		);
+		const result = await useCase.execute(ctx, {
+			keyword: "昨日青空 1080p",
+			engine: "dmhy",
+			aiAlias: "Custom",
+		});
+
+		expect(result).toBeDefined();
+		expect(mockFetch).toHaveBeenCalledWith(
+			expect.stringContaining("/ai/chat-request"),
+			expect.objectContaining({
+				body: expect.stringContaining(
+					"https://api.custom.com/v1/chat/completions",
+				),
+			}),
+		);
+	});
+
+	it("当 AI 开启但配置信息不完整时，应该无缝退化为返回传统搜索结果", async () => {
+		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
+			download_dir: "/mock",
+			ai_configs: [
+				{
+					alias: "Incomplete",
+					api_endpoint: "",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
+		});
+		vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
+
+		const useCase = new SearchTorrentsWithAiUseCase(
+			mockTorrentRepo,
+			mockSettingsRepo,
+			new FetchAiClient(new HttpClient()),
+			mockLogger,
+		);
+		const result = await useCase.execute(ctx, {
+			keyword: "昨日青空 1080p",
+			engine: "dmhy",
+		});
+
+		expect(result).toEqual(mockTorrents);
+	});
 });
