@@ -39,6 +39,9 @@
 			"preset": "recommended",
 			"complexity": {
 				"useOptionalChain": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "error"
 			}
 		}
 	},
