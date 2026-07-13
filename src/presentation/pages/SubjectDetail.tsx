@@ -349,7 +349,13 @@ export default function SubjectDetail() {
 
 								{/* Gradient Mask for fade-out effect when collapsed and there's overflow */}
 								{!summaryExpanded && summaryHasMore && (
-									<div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#080a10]/95 via-[#080a10]/40 to-transparent pointer-events-none" />
+									<div
+										className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
+										style={{
+											background:
+												"linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0.6) 50%, transparent 100%)",
+										}}
+									/>
 								)}
 							</div>
 

@@ -81,9 +81,15 @@ export function checkCode(
 			const matches = value.match(FORBIDDEN_STYLE_REGEX);
 			if (matches && matches.length > 0) {
 				const loc = offsetToLoc(code, startOffset);
-				// Check if the line contains a "style-ignore" comment
-				const lineText = lines[loc.line - 1] || "";
-				if (!lineText.includes("style-ignore")) {
+				// Check if the line OR adjacent lines (±3) contain a "style-ignore" comment
+				// This is needed because biome may reformat JSX {/* style-ignore */} to a sibling line,
+				// sometimes inserting additional nodes (e.g. {" "}) in between.
+				const lineIndex = loc.line - 1;
+				const linesToCheck = lines.slice(
+					Math.max(0, lineIndex - 3),
+					lineIndex + 4,
+				);
+				if (!linesToCheck.some((l) => l.includes("style-ignore"))) {
 					errors.push({
 						...loc,
 						severity: "error",

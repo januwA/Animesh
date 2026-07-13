@@ -75,4 +75,34 @@ describe("表现层样式规范检查", () => {
 		const results = checkCode(code, "MyComponent.tsx");
 		expect(results).toHaveLength(0);
 	});
+
+	it("当 style-ignore 在违规样式的下一行时（biome 格式化场景），也应该通过检查", () => {
+		const code = `
+			export default function MyComponent() {
+				return (
+					<Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+						{/* style-ignore */}
+						已完成
+					</Badge>
+				);
+			}
+		`;
+		const results = checkCode(code, "MyComponent.tsx");
+		expect(results).toHaveLength(0);
+	});
+
+	it("当 style-ignore 在违规样式的上一行时，也应该通过检查", () => {
+		const code = `
+			export default function MyComponent() {
+				return (
+					<div>
+						{/* style-ignore */}
+						<div className="bg-black border-white/5 p-4">content</div>
+					</div>
+				);
+			}
+		`;
+		const results = checkCode(code, "MyComponent.tsx");
+		expect(results).toHaveLength(0);
+	});
 });
