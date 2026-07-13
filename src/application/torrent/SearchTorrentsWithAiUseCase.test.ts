@@ -318,6 +318,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 			"dmhy",
 		]);
 		expect(mockSearch.mock.calls[1]).toEqual([ctx, "昨日青空", "dmhy"]);
+
 		expect(mockSearch.mock.calls[2]).toEqual([ctx, "昨日青空", "bangumi_moe"]);
 
 		// 验证结果是重排过的，带有打分和原因
