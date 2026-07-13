@@ -115,7 +115,7 @@ export class HttpSettingsRepository implements SettingsRepository {
 		return null;
 	}
 
-	async setTheme(theme: string): Promise<void> {
+	async setTheme(_theme: string): Promise<void> {
 		// Web version doesn't support native window theme sync
 	}
 }

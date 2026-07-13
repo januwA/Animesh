@@ -48,6 +48,7 @@ describe("Settings 页面组件", () => {
 			setAiConfigs: vi.fn(),
 			fetchTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
+			setTheme: vi.fn(),
 		};
 
 		mockAiClient = {

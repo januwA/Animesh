@@ -10,7 +10,6 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import type { BangumiRepository } from "@/domain/bangumi/BangumiRepository";
 import type { NotificationRepository } from "@/domain/notification/NotificationRepository";
-import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import OriginalApp from "./App";
@@ -60,7 +59,6 @@ Object.defineProperty(navigator, "clipboard", {
 
 describe("App 组件", () => {
 	let mockTorrentRepository: TorrentRepository;
-	let mockSettingsRepository: SettingsRepository;
 	let mockBangumiRepository: Partial<BangumiRepository>;
 	let mockNotificationRepository: NotificationRepository;
 	let testDIContainer: DIContainer;
@@ -93,17 +91,6 @@ describe("App 组件", () => {
 			subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
 		};
 
-		mockSettingsRepository = {
-			getSettings: vi.fn().mockResolvedValue({ download_dir: "" }),
-			setDownloadDir: vi.fn(),
-			setProxy: vi.fn(),
-			setTrackers: vi.fn(),
-			setTrackerOptions: vi.fn(),
-			setAiConfigs: vi.fn(),
-			fetchTrackers: vi.fn(),
-			selectDirectory: vi.fn(),
-		};
-
 		mockBangumiRepository = {
 			getCalendar: vi.fn().mockReturnValue(new Promise(() => {})),
 		};
@@ -115,7 +102,6 @@ describe("App 组件", () => {
 
 		testDIContainer = createDIContainerForTest({
 			torrentRepository: mockTorrentRepository,
-			settingsRepository: mockSettingsRepository,
 			bangumiRepository: mockBangumiRepository,
 			notificationRepository: mockNotificationRepository,
 		});
