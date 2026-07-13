@@ -102,7 +102,7 @@ export function AppHeader() {
 			</div>
 
 			{/* 导航标签栏 - 桌面端为顶部居中，移动端固定在底部悬浮 */}
-			<nav className="flex bg-card/90 border border-white/10 md:bg-card/40 md:border-white/5 p-2 md:p-1 rounded-2xl md:rounded-xl shadow-2xl md:shadow-lg backdrop-blur-xl md:backdrop-blur-md fixed bottom-5 left-4 right-4 z-50 md:static md:bottom-auto md:left-auto md:right-auto md:z-auto justify-around md:justify-start">
+			<nav className="flex bg-card/90 border border-border md:bg-card/40 md:border-border p-2 md:p-1 rounded-2xl md:rounded-xl shadow-2xl md:shadow-lg backdrop-blur-xl md:backdrop-blur-md fixed bottom-5 left-4 right-4 z-50 md:static md:bottom-auto md:left-auto md:right-auto md:z-auto justify-around md:justify-start">
 				{navItems.map((item) => {
 					const isActive = location.pathname === item.path;
 					return (
@@ -112,7 +112,7 @@ export function AppHeader() {
 							className={`relative flex flex-col md:flex-row items-center gap-1 md:gap-1.5 px-3 md:px-4 py-1.5 md:py-2 rounded-xl md:rounded-lg text-[10px] md:text-xs font-medium md:font-semibold transition-all duration-300 ${
 								isActive
 									? "bg-primary/10 md:bg-primary text-foreground md:text-primary-foreground shadow-none md:shadow-md"
-									: "text-muted-foreground hover:text-foreground hover:bg-white/5"
+									: "text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:text-accent-foreground"
 							}`}
 						>
 							{/* 移动端激活态背景微光 */}

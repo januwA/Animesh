@@ -383,7 +383,7 @@ export default function Settings() {
 			{/* Settings Form */}
 			<form onSubmit={handleSave}>
 				{isTauri && (
-					<Card className="bg-card/40 border-white/5">
+					<Card className="bg-card border-border shadow-sm">
 						<CardHeader className="p-5">
 							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
 								<HardDrive className="h-4 w-4 text-primary" />
@@ -409,7 +409,7 @@ export default function Settings() {
 												? "应用沙盒内部路径"
 												: "选择或输入下载路径，例如 D:\\AnimeshDownloads"
 										}
-										className="flex-1 bg-black/20 border-white/10 text-foreground py-5 text-xs disabled:opacity-80"
+										className="flex-1 bg-secondary/30 border-border text-foreground py-5 text-xs disabled:opacity-80"
 									/>
 									{!isMobile && isTauri && (
 										<Button
@@ -444,7 +444,7 @@ export default function Settings() {
 				)}
 
 				{isTauri && (
-					<Card className="bg-card/40 border-white/5">
+					<Card className="bg-card border-border shadow-sm">
 						<CardHeader className="p-5">
 							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
 								<Globe className="h-4 w-4 text-primary" />
@@ -464,7 +464,7 @@ export default function Settings() {
 									value={proxy}
 									onChange={(e) => setProxy(e.target.value)}
 									placeholder="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:7890 (留空则不使用代理)"
-									className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+									className="bg-secondary/30 border-border text-foreground py-5 text-xs"
 								/>
 								<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
 									<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
@@ -478,7 +478,7 @@ export default function Settings() {
 					</Card>
 				)}
 
-				<Card className="bg-card/40 border-white/5">
+				<Card className="bg-card border-border shadow-sm">
 					<CardHeader className="p-5">
 						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
 							<Bot className="h-4 w-4 text-primary" />
@@ -491,7 +491,7 @@ export default function Settings() {
 							{aiConfigs.map((config, index) => (
 								<div
 									key={index.toString()}
-									className="flex items-center justify-between border border-white/5 bg-black/10 rounded-lg p-3"
+									className="flex items-center justify-between border border-border bg-secondary/30 rounded-lg p-3"
 								>
 									<div className="space-y-1 min-w-0 flex-1 mr-4">
 										<div className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
@@ -513,7 +513,7 @@ export default function Settings() {
 											size="sm"
 											onClick={() => handleTestConfigConnection(config)}
 											disabled={testingAi}
-											className="h-7 px-2.5 text-[10px] font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+											className="h-7 px-2.5 text-[10px] font-medium border-border bg-secondary/50 text-foreground hover:bg-secondary"
 										>
 											测试
 										</Button>
@@ -540,7 +540,7 @@ export default function Settings() {
 							))}
 
 							{aiConfigs.length === 0 && (
-								<div className="text-center py-6 text-muted-foreground text-[11px] border border-dashed border-white/5 rounded-lg bg-black/5">
+								<div className="text-center py-6 text-muted-foreground text-[11px] border border-dashed border-border rounded-lg bg-secondary/20">
 									暂无 AI 配置，点击下方按钮添加
 								</div>
 							)}
@@ -551,7 +551,7 @@ export default function Settings() {
 									variant="outline"
 									size="sm"
 									onClick={handleStartAdd}
-									className="w-full h-8.5 font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20 text-xs flex items-center justify-center gap-1.5 mt-2"
+									className="w-full h-8.5 font-medium border-border bg-secondary/50 text-foreground hover:bg-secondary text-xs flex items-center justify-center gap-1.5 mt-2"
 								>
 									+ 添加 AI 配置
 								</Button>
@@ -560,7 +560,7 @@ export default function Settings() {
 
 						{/* 编辑/添加表单 */}
 						{editingIndex !== null && (
-							<div className="space-y-4 pt-3 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-200">
+							<div className="space-y-4 pt-3 border-t border-border animate-in fade-in slide-in-from-top-1 duration-200">
 								<div className="font-semibold text-xs text-foreground mb-1">
 									{editingIndex === -1
 										? "添加 AI 配置"
@@ -580,7 +580,7 @@ export default function Settings() {
 											value={aliasInput}
 											onChange={(e) => setAliasInput(e.target.value)}
 											placeholder="例如: Ollama / DeepSeek"
-											className="bg-black/20 border-white/10 text-foreground py-4 text-xs"
+											className="bg-secondary/30 border-border text-foreground py-4 text-xs"
 										/>
 									</div>
 
@@ -596,7 +596,7 @@ export default function Settings() {
 											value={apiEndpointInput}
 											onChange={(e) => setApiEndpointInput(e.target.value)}
 											placeholder="例如: http://127.0.0.1:11434/v1"
-											className="bg-black/20 border-white/10 text-foreground py-4 text-xs"
+											className="bg-secondary/30 border-border text-foreground py-4 text-xs"
 										/>
 									</div>
 								</div>
@@ -615,7 +615,7 @@ export default function Settings() {
 											value={apiKeyInput}
 											onChange={(e) => setApiKeyInput(e.target.value)}
 											placeholder="输入您的 API Key"
-											className="bg-black/20 border-white/10 text-foreground py-4 text-xs"
+											className="bg-secondary/30 border-border text-foreground py-4 text-xs"
 										/>
 									</div>
 
@@ -631,7 +631,7 @@ export default function Settings() {
 											value={modelInput}
 											onChange={(e) => setModelInput(e.target.value)}
 											placeholder="例如: deepseek-chat"
-											className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+											className="bg-secondary/30 border-border text-foreground py-5 text-xs"
 										/>
 									</div>
 								</div>
@@ -643,7 +643,7 @@ export default function Settings() {
 										size="sm"
 										onClick={handleTestCurrentConnection}
 										disabled={testingAi}
-										className="bg-black/20 border-white/10 text-foreground hover:bg-black/40 text-xs flex items-center gap-1.5"
+										className="bg-secondary/50 border-border text-foreground hover:bg-secondary text-xs flex items-center gap-1.5"
 									>
 										{testingAi ? (
 											<Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
@@ -679,7 +679,7 @@ export default function Settings() {
 				</Card>
 
 				{isTauri && (
-					<Card className="bg-card/40 border-white/5">
+					<Card className="bg-card border-border shadow-sm">
 						<CardHeader className="p-5">
 							<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
 								<Info className="h-4 w-4 text-primary" />
@@ -687,7 +687,7 @@ export default function Settings() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="px-5 pb-6 space-y-4 text-xs">
-							<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-white/5 bg-black/10 rounded-lg p-4">
+							<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-border bg-secondary/30 rounded-lg p-4">
 								<div className="space-y-1">
 									<p className="font-semibold text-foreground">
 										Animesh 客户端
@@ -702,7 +702,7 @@ export default function Settings() {
 										variant="outline"
 										disabled={checkingUpdate}
 										onClick={handleCheckUpdate}
-										className="text-xs h-8.5 font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+										className="text-xs h-8.5 font-medium border-border bg-secondary/50 text-foreground hover:bg-secondary"
 									>
 										{checkingUpdate ? (
 											<Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
@@ -715,7 +715,7 @@ export default function Settings() {
 							</div>
 
 							{updateResult && (
-								<div className="border border-white/5 bg-black/20 rounded-lg p-4 space-y-3">
+								<div className="border border-border bg-secondary/30 rounded-lg p-4 space-y-3">
 									<div className="flex items-center justify-between">
 										<h4 className="text-xs font-semibold text-foreground">
 											{updateResult.hasUpdate
@@ -764,7 +764,7 @@ export default function Settings() {
 					</Card>
 				)}
 
-				<Card className="bg-card/40 border-white/5">
+				<Card className="bg-card border-border shadow-sm">
 					<CardHeader className="p-5">
 						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
 							<Palette className="h-4 w-4 text-primary" />
@@ -791,8 +791,8 @@ export default function Settings() {
 											onClick={() => setTheme(t)}
 											className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 cursor-pointer ${
 												isActive
-													? "bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.2)]"
-													: "bg-black/20 border-white/5 text-muted-foreground hover:bg-black/30 hover:text-foreground"
+													? "bg-primary border-primary text-primary-foreground shadow-primary/20 shadow-md"
+													: "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
 											}`}
 										>
 											{labels[t]}
@@ -804,7 +804,7 @@ export default function Settings() {
 					</CardContent>
 				</Card>
 
-				<Card className="bg-card/40 border-white/5">
+				<Card className="bg-card border-border shadow-sm">
 					<CardHeader className="p-5">
 						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
 							<Link2 className="h-4 w-4 text-primary" />
@@ -813,8 +813,8 @@ export default function Settings() {
 					</CardHeader>
 					<CardContent className="px-5 pb-6 space-y-4 text-xs">
 						{/* Tracker Online Sync & Enhancement Section */}
-						<div className="border border-white/5 bg-black/10 rounded-lg p-4 space-y-4 mb-6">
-							<div className="flex items-center justify-between border-b border-white/5 pb-2">
+						<div className="border border-border bg-secondary/30 rounded-lg p-4 space-y-4 mb-6">
+							<div className="flex items-center justify-between border-b border-border pb-2">
 								<h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
 									<Globe className="h-3.5 w-3.5 text-primary" />
 									在线同步与自动更新 (ngosang/trackerslist)
@@ -851,8 +851,8 @@ export default function Settings() {
 														onClick={() => setSourceType(type)}
 														className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 ${
 															isActive
-																? "bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.2)]"
-																: "bg-black/20 border-white/5 text-muted-foreground hover:bg-black/30 hover:text-foreground"
+																? "bg-primary border-primary text-primary-foreground shadow-primary/20 shadow-md"
+																: "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
 														}`}
 													>
 														{labels[type]}
@@ -884,8 +884,8 @@ export default function Settings() {
 																onClick={() => setCdn(cdnType)}
 																className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 ${
 																	isActive
-																		? "bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.2)]"
-																		: "bg-black/20 border-white/5 text-muted-foreground hover:bg-black/30 hover:text-foreground"
+																		? "bg-primary border-primary text-primary-foreground shadow-primary/20 shadow-md"
+																		: "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
 																}`}
 															>
 																{labels[cdnType]}
@@ -904,7 +904,7 @@ export default function Settings() {
 											type="checkbox"
 											checked={autoUpdate}
 											onChange={(e) => setAutoUpdate(e.target.checked)}
-											className="h-3.5 w-3.5 rounded border-white/10 bg-black/20 text-primary focus:ring-primary focus:ring-offset-0 accent-primary"
+											className="h-3.5 w-3.5 rounded border-border bg-secondary/30 text-primary focus:ring-primary focus:ring-offset-0 accent-primary"
 										/>
 										<label
 											htmlFor="auto-update-checkbox"
@@ -934,7 +934,7 @@ export default function Settings() {
 											}}
 											disabled={sourceType !== "custom"}
 											placeholder="引导地址例如 https://example.com/trackers.txt"
-											className="bg-black/20 border-white/10 text-foreground py-2 text-[11px] h-8"
+											className="bg-secondary/30 border-border text-foreground py-2 text-[11px] h-8"
 										/>
 									</div>
 
@@ -960,7 +960,7 @@ export default function Settings() {
 												variant="outline"
 												disabled={syncing}
 												onClick={() => handleSync("append")}
-												className="flex-1 text-[11px] h-8.5 font-medium gap-1.5 border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+												className="flex-1 text-[11px] h-8.5 font-medium gap-1.5 border-border bg-secondary/50 text-foreground hover:bg-secondary"
 											>
 												<Download className="h-3.5 w-3.5" />
 												追加同步
@@ -1023,7 +1023,7 @@ export default function Settings() {
 								onChange={(e) => setTrackersText(e.target.value)}
 								placeholder="请输入 Tracker 地址，每行输入一个"
 								rows={8}
-								className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+								className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 							/>
 							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
 								<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
@@ -1036,7 +1036,7 @@ export default function Settings() {
 						</div>
 
 						{/* Action buttons */}
-						<div className="flex justify-end gap-3 pt-4 border-t border-white/5">
+						<div className="flex justify-end gap-3 pt-4 border-t border-border">
 							<Button
 								type="button"
 								variant="ghost"

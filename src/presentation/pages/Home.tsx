@@ -60,7 +60,7 @@ function SearchForm({
 		<section className="max-w-2xl mx-auto w-full mb-8">
 			<form
 				onSubmit={onSubmit}
-				className="relative flex items-center bg-card/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg p-1 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"
+				className="relative flex items-center bg-card/40 backdrop-blur-md rounded-xl border border-border shadow-lg p-1 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"
 			>
 				<div className="flex items-center pl-1.5 md:pl-3 gap-0.5 md:gap-1">
 					<Search className="h-5 w-5 text-muted-foreground shrink-0 hidden md:block" />
@@ -80,7 +80,7 @@ function SearchForm({
 						</SelectContent>
 					</Select>
 				</div>
-				<div className="h-5 w-[1px] bg-white/10 self-center shrink-0" />
+				<div className="h-5 w-[1px] bg-border self-center shrink-0" />
 				<Input
 					id="search-input"
 					data-testid="search-input"
@@ -142,10 +142,10 @@ function SearchLoading({ onCancel }: SearchLoadingProps) {
 function WelcomeGuide() {
 	return (
 		<div className="max-w-2xl mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 opacity-75">
-			<Card className="bg-card/25 border-white/5">
+			<Card className="bg-card/25 border-border">
 				<CardHeader className="pb-2">
 					<CardTitle className="text-sm font-semibold flex items-center gap-2">
-						<Search className="h-4 w-4 text-cyan-400" />
+						<Search className="h-4 w-4 text-primary" />
 						聚合搜索
 					</CardTitle>
 				</CardHeader>
@@ -153,10 +153,10 @@ function WelcomeGuide() {
 					一键检索动漫花园资源列表，快速检索并汇总磁力资源。
 				</CardContent>
 			</Card>
-			<Card className="bg-card/25 border-white/5">
+			<Card className="bg-card/25 border-border">
 				<CardHeader className="pb-2">
 					<CardTitle className="text-sm font-semibold flex items-center gap-2">
-						<Play className="h-4 w-4 text-cyan-400 fill-current" />
+						<Play className="h-4 w-4 text-primary fill-current" />
 						边下边播
 					</CardTitle>
 				</CardHeader>
@@ -164,10 +164,10 @@ function WelcomeGuide() {
 					内置高性能 BT 流媒体播放引擎，无须等待下载完毕，边下边放。
 				</CardContent>
 			</Card>
-			<Card className="bg-card/25 border-white/5">
+			<Card className="bg-card/25 border-border">
 				<CardHeader className="pb-2">
 					<CardTitle className="text-sm font-semibold flex items-center gap-2">
-						<ExternalLink className="h-4 w-4 text-cyan-400" />
+						<ExternalLink className="h-4 w-4 text-primary" />
 						外部播放
 					</CardTitle>
 				</CardHeader>
@@ -200,27 +200,27 @@ function SearchResultCard({
 			id={`torrent-item-${index}`}
 			className={
 				isBestAi
-					? "bg-gradient-to-br from-cyan-950/15 via-card/50 to-indigo-950/15 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] hover:border-cyan-500/40 transition-all duration-300 group"
-					: "bg-card/50 hover:bg-card-hover border-white/5 hover:border-white/10 transition-all duration-300 group"
+					? "bg-gradient-to-br from-cyan-950/10 via-card/50 to-indigo-950/10 border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.1)] hover:border-primary/40 transition-all duration-300 group"
+					: "bg-card/50 hover:bg-accent/10 border-border hover:border-muted-foreground/30 transition-all duration-300 group"
 			}
 		>
 			<CardHeader className="p-5 pb-3">
 				{item.ai_score !== undefined && (
 					<div className="flex items-center gap-2 mb-2 flex-wrap text-[10px]">
 						{isBestAi ? (
-							<span className="bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
+							<span className="bg-primary/20 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
 								✨ AI 智能精选推荐
 							</span>
 						) : (
-							<span className="bg-secondary/80 text-muted-foreground border border-white/5 px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
+							<span className="bg-secondary text-muted-foreground border border-border px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
 								🤖 AI 评分过滤
 							</span>
 						)}
 						<span
 							className={`px-2.5 py-0.5 rounded-full font-mono font-bold ${
 								item.ai_score >= 80
-									? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-									: "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+									? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30"
+									: "bg-amber-500/15 text-amber-500 border border-amber-500/30"
 							}`}
 						>
 							匹配度: {item.ai_score}分
@@ -233,8 +233,10 @@ function SearchResultCard({
 			</CardHeader>
 			<CardContent className="px-5 pb-4 pt-0 flex flex-col gap-3">
 				{item.ai_reason && (
-					<div className="px-3 py-2 bg-cyan-950/20 border border-cyan-500/10 rounded-lg text-xs text-cyan-300/90 leading-relaxed font-medium">
-						<span className="font-semibold text-cyan-400">推荐理由：</span>
+					<div className="px-3 py-2 bg-cyan-500/10 dark:bg-cyan-950/20 border border-cyan-500/20 dark:border-cyan-500/10 rounded-lg text-xs text-cyan-800 dark:text-cyan-300/90 leading-relaxed font-medium">
+						<span className="font-semibold text-cyan-600 dark:text-cyan-400">
+							推荐理由：
+						</span>
 						{item.ai_reason}
 					</div>
 				)}
@@ -249,7 +251,7 @@ function SearchResultCard({
 					</div>
 				</div>
 			</CardContent>
-			<CardFooter className="px-5 py-3.5 bg-muted/10 border-t border-white/5 flex items-center justify-between gap-4">
+			<CardFooter className="px-5 py-3.5 bg-muted/30 border-t border-border flex items-center justify-between gap-4">
 				<a
 					href={String(item.link)}
 					target="_blank"
@@ -469,7 +471,7 @@ export default function Home() {
 			{/* AI 智能过滤开关 */}
 			{aiConfigs.length > 0 && (
 				<div className="max-w-2xl mx-auto w-full mb-6 mt-[-1rem] flex items-center justify-end animate-in fade-in duration-200">
-					<div className="flex items-center gap-2 bg-card/20 border border-white/5 backdrop-blur-md px-3 py-1 rounded-lg shadow-sm hover:border-white/10 transition-all duration-300">
+					<div className="flex items-center gap-2 bg-card border border-border backdrop-blur-md px-3 py-1 rounded-lg shadow-sm hover:border-muted-foreground/30 transition-all duration-300">
 						<span className="text-[11px] font-medium text-muted-foreground select-none pl-1 flex items-center gap-1">
 							✨ AI 智能过滤:
 						</span>
@@ -519,7 +521,7 @@ export default function Home() {
 									e.stopPropagation();
 									handleDeleteHistory(item);
 								}}
-								className="text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-white/10 transition-colors"
+								className="text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-accent transition-colors"
 							>
 								<X className="h-3 w-3" />
 							</button>
@@ -555,7 +557,7 @@ export default function Home() {
 								variant="outline"
 								size="sm"
 								onClick={cancelSearch}
-								className="text-xs text-muted-foreground hover:text-foreground mt-2 border-white/5 bg-black/10"
+								className="text-xs text-muted-foreground hover:text-foreground mt-2 border-border bg-secondary/50"
 							>
 								取消搜索
 							</Button>
