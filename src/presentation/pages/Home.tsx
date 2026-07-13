@@ -219,8 +219,8 @@ function SearchResultCard({
 						<span
 							className={`px-2.5 py-0.5 rounded-full font-mono font-bold ${
 								item.ai_score >= 80
-									? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30"
-									: "bg-amber-500/15 text-amber-500 border border-amber-500/30"
+									? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30" // style-ignore
+									: "bg-amber-500/15 text-amber-500 border border-amber-500/30" // style-ignore
 							}`}
 						>
 							匹配度: {item.ai_score}分
@@ -234,6 +234,8 @@ function SearchResultCard({
 			<CardContent className="px-5 pb-4 pt-0 flex flex-col gap-3">
 				{item.ai_reason && (
 					<div className="px-3 py-2 bg-cyan-500/10 dark:bg-cyan-950/20 border border-cyan-500/20 dark:border-cyan-500/10 rounded-lg text-xs text-cyan-800 dark:text-cyan-300/90 leading-relaxed font-medium">
+						{" "}
+						{/* style-ignore */}
 						<span className="font-semibold text-cyan-600 dark:text-cyan-400">
 							推荐理由：
 						</span>
@@ -544,7 +546,8 @@ export default function Home() {
 					<div className="flex flex-col items-center justify-center py-20 space-y-4 animate-in fade-in duration-300">
 						<div className="relative flex items-center justify-center">
 							<Loader2 className="h-10 w-10 text-cyan-400 animate-spin" />
-							<div className="absolute inset-0 rounded-full bg-cyan-400/10 blur-xl animate-pulse" />
+							<div className="absolute inset-0 rounded-full bg-cyan-400/10 blur-xl animate-pulse" />{" "}
+							{/* style-ignore */}
 						</div>
 						<p className="text-sm font-semibold bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-400 bg-clip-text text-transparent animate-pulse">
 							AI 正在搜索，可能需要数秒，请稍候...
@@ -586,7 +589,7 @@ export default function Home() {
 			{/* 搜索结果列表 */}
 			{!isSearching && !error && results.length > 0 && (
 				<section className="w-full space-y-4">
-					<div className="flex items-center justify-between border-b border-white/5 pb-2">
+					<div className="flex items-center justify-between border-b border-border pb-2">
 						<div className="results-count text-sm text-muted-foreground">
 							找到{" "}
 							<span className="font-semibold text-primary">

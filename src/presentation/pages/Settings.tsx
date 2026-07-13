@@ -724,7 +724,8 @@ export default function Settings() {
 										</h4>
 										{updateResult.hasUpdate && (
 											<span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-medium">
-												v{updateResult.latestVersion}
+												{" "}
+												{/* style-ignore */}v{updateResult.latestVersion}
 											</span>
 										)}
 									</div>

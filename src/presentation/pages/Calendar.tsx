@@ -82,7 +82,7 @@ function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
 						: "0.5rem",
 				}}
 			>
-				<div className="flex gap-1 p-1 bg-card/30 border border-white/5 rounded-xl">
+				<div className="flex gap-1 p-1 bg-card border border-border rounded-xl">
 					{WEEKDAY_LABELS.map((label, index) => {
 						const dayId = index + 1;
 						const isActive = dayId === activeDay;
@@ -96,7 +96,7 @@ function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
 								className={`flex-1 text-xs font-medium relative ${
 									isActive
 										? "bg-primary text-primary-foreground shadow-sm"
-										: "text-muted-foreground hover:text-foreground hover:bg-white/5"
+										: "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 								}`}
 								onClick={() => setActiveDay(dayId)}
 							>
@@ -142,7 +142,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 	const displayName = item.name_cn || item.name;
 
 	return (
-		<div className="group flex flex-col bg-card/40 border border-white/5 rounded-lg overflow-hidden hover:border-primary/30 hover:bg-card/60 transition-all duration-200 text-left relative">
+		<div className="group flex flex-col bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-all duration-200 text-left relative">
 			<button
 				type="button"
 				onClick={onClick}
@@ -151,7 +151,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 			>
 				{/* Cover Image */}
 				{item.images?.large ? (
-					<div className="aspect-3/4 w-full overflow-hidden bg-black/20">
+					<div className="aspect-3/4 w-full overflow-hidden bg-muted">
 						<LazyImage
 							src={item.images.large}
 							alt={displayName}

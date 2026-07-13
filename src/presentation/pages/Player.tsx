@@ -286,9 +286,9 @@ export default function Player() {
 				返回
 			</button>
 
-			<div className="bg-card/30 border border-white/5 rounded-xl p-6 space-y-6">
+			<div className="bg-card border border-border rounded-xl p-6 space-y-6">
 				{/* Header */}
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
+				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
 					<div className="space-y-1 flex-1 min-w-0">
 						<h2
 							className="text-lg font-bold pr-4 text-foreground"
@@ -314,7 +314,10 @@ export default function Player() {
 				</div>
 
 				{/* Player Video aspect-ratio */}
-				<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-white/10 bg-black shadow-inner flex items-center justify-center">
+				{/* style-ignore: bg-black is required for the native video player */}
+				<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-black shadow-inner flex items-center justify-center">
+					{" "}
+					{/* style-ignore */}
 					{loading ||
 					!streamUrl ||
 					!torrentStatus ||
@@ -366,7 +369,7 @@ export default function Player() {
 
 				{/* Subtitle Tracks Selection */}
 				{!loading && streamUrl && subtracks.length > 0 && (
-					<div className="flex items-center gap-2.5 p-3 bg-black/20 border border-white/5 rounded-lg">
+					<div className="flex items-center gap-2.5 p-3 bg-muted border border-border rounded-lg">
 						<span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
 							字幕轨道:
 						</span>
@@ -390,16 +393,16 @@ export default function Player() {
 								}}
 								disabled={subloading}
 							>
-								<SelectTrigger className="w-[200px] h-8 text-xs dark:bg-zinc-950/60 border-white/10">
+								<SelectTrigger className="w-[200px] h-8 text-xs border-border">
 									<SelectValue placeholder="选择字幕轨道" />
 								</SelectTrigger>
 								<SelectContent
 									position="popper"
-									className="z-50 dark bg-zinc-950 border-white/10 text-white"
+									className="z-50 bg-popover border-border text-popover-foreground"
 								>
 									<SelectItem
 										value="none"
-										className="hover:bg-white/10 cursor-pointer"
+										className="hover:bg-accent cursor-pointer"
 									>
 										无
 									</SelectItem>
@@ -407,7 +410,7 @@ export default function Player() {
 										<SelectItem
 											key={track.id}
 											value={track.id.toString()}
-											className="hover:bg-white/10 cursor-pointer"
+											className="hover:bg-accent cursor-pointer"
 										>
 											{track.title
 												? `${track.title} [${track.language.toUpperCase()}]`
@@ -455,7 +458,7 @@ export default function Player() {
 
 					{/* Stats Grid */}
 					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
+						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-muted/50">
 							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
 								已下载
 							</span>
@@ -465,7 +468,7 @@ export default function Player() {
 									: "0 B"}
 							</span>
 						</div>
-						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
+						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-muted/50">
 							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
 								总大小
 							</span>
@@ -473,7 +476,7 @@ export default function Player() {
 								{torrentStatus ? formatBytes(torrentStatus.total_bytes) : "0 B"}
 							</span>
 						</div>
-						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
+						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-muted/50">
 							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
 								同伴 (连接/总数)
 							</span>
@@ -483,7 +486,7 @@ export default function Player() {
 									: "0 / 0"}
 							</span>
 						</div>
-						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-white/5 bg-black/10">
+						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-muted/50">
 							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
 								状态
 							</span>

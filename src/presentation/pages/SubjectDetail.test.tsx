@@ -361,8 +361,8 @@ describe("SubjectDetail 页面组件", () => {
 		expect(airedCard!.className).toContain("bg-primary/5");
 		expect(airedCard!.className).toContain("border-primary/20");
 
-		expect(unairedCard!.className).toContain("bg-card/30");
-		expect(unairedCard!.className).toContain("border-white/5");
+		expect(unairedCard!.className).toContain("bg-card");
+		expect(unairedCard!.className).toContain("border-border");
 	});
 
 	it("点击返回日历按钮时，应该返回上一页", async () => {

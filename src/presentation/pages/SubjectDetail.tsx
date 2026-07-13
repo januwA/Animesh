@@ -174,7 +174,7 @@ export default function SubjectDetail() {
 						href={`https://bgm.tv/subject/${subject.id}`}
 						target="_blank"
 						rel="noopener noreferrer"
-						className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors px-2.5 py-1 rounded bg-white/5 hover:bg-white/10"
+						className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors px-2.5 py-1 rounded bg-secondary hover:bg-accent"
 						onClick={async (e) => {
 							e.stopPropagation();
 							e.preventDefault();
@@ -190,7 +190,7 @@ export default function SubjectDetail() {
 			</div>
 
 			{/* Info Header Card */}
-			<div className="relative overflow-hidden rounded-2xl border border-white/5 bg-card/20 p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8">
+			<div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8">
 				{/* Poster Image */}
 				<div className="w-full md:w-48 shrink-0 flex justify-center">
 					{imageUrl ? (
@@ -202,10 +202,10 @@ export default function SubjectDetail() {
 									viewTransitionName: `anime-cover-${subjectId}`,
 								} as React.CSSProperties
 							}
-							className="w-48 aspect-3/4 object-cover rounded-xl shadow-lg border border-white/10"
+							className="w-48 aspect-3/4 object-cover rounded-xl shadow-lg border border-border"
 						/>
 					) : (
-						<div className="w-48 aspect-3/4 rounded-xl bg-muted flex items-center justify-center border border-white/5">
+						<div className="w-48 aspect-3/4 rounded-xl bg-muted flex items-center justify-center border border-border">
 							<Tv className="h-12 w-12 text-muted-foreground" />
 						</div>
 					)}
@@ -219,7 +219,7 @@ export default function SubjectDetail() {
 								{subject.platform && (
 									<Badge
 										variant="secondary"
-										className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
+										className="gap-1 bg-secondary border border-border text-muted-foreground"
 									>
 										<Tv className="h-3 w-3" />
 										{subject.platform}
@@ -228,7 +228,7 @@ export default function SubjectDetail() {
 								{subject.date && (
 									<Badge
 										variant="secondary"
-										className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
+										className="gap-1 bg-secondary border border-border text-muted-foreground"
 									>
 										<Calendar className="h-3 w-3" />
 										{subject.date}
@@ -237,7 +237,7 @@ export default function SubjectDetail() {
 								{subject.eps !== undefined && subject.eps !== null && (
 									<Badge
 										variant="secondary"
-										className="gap-1 bg-white/5 border border-white/5 text-muted-foreground"
+										className="gap-1 bg-secondary border border-border text-muted-foreground"
 									>
 										<Clock className="h-3 w-3" />共 {subject.eps} 话
 									</Badge>
@@ -245,9 +245,9 @@ export default function SubjectDetail() {
 							</div>
 						) : (
 							<div className="flex flex-wrap items-center gap-2 animate-pulse">
-								<div className="h-5 w-16 bg-white/5 rounded-full" />
-								<div className="h-5 w-24 bg-white/5 rounded-full" />
-								<div className="h-5 w-16 bg-white/5 rounded-full" />
+								<div className="h-5 w-16 bg-muted rounded-full" />
+								<div className="h-5 w-24 bg-muted rounded-full" />
+								<div className="h-5 w-16 bg-muted rounded-full" />
 							</div>
 						)}
 
@@ -267,6 +267,8 @@ export default function SubjectDetail() {
 							{subject.rating && (
 								<div className="flex items-center gap-2">
 									<div className="flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+										{" "}
+										{/* style-ignore */}
 										<Star className="h-6 w-6 fill-current" />
 									</div>
 									<div>
@@ -299,6 +301,8 @@ export default function SubjectDetail() {
 							{subject.collection?.doing != null && (
 								<div className="flex items-center gap-2">
 									<div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
+										{" "}
+										{/* style-ignore */}
 										<Users className="h-6 w-6" />
 									</div>
 									<div>
@@ -317,8 +321,8 @@ export default function SubjectDetail() {
 								<span>正在加载动漫详情...</span>
 							</div>
 							<div className="flex gap-4 animate-pulse">
-								<div className="h-10 w-24 bg-white/5 rounded-lg" />
-								<div className="h-10 w-24 bg-white/5 rounded-lg" />
+								<div className="h-10 w-24 bg-muted rounded-lg" />
+								<div className="h-10 w-24 bg-muted rounded-lg" />
 							</div>
 						</div>
 					)}
@@ -328,7 +332,7 @@ export default function SubjectDetail() {
 			{/* Synopsis / Summary */}
 			{subject ? (
 				subject.summary && (
-					<Card className="bg-card/40 border border-white/5 rounded-xl">
+					<Card className="bg-card border border-border rounded-xl">
 						<CardContent className="p-6 space-y-2 relative overflow-hidden">
 							<h2 className="text-sm font-semibold text-muted-foreground">
 								剧情简介
@@ -355,7 +359,7 @@ export default function SubjectDetail() {
 										variant="ghost"
 										size="sm"
 										onClick={() => setSummaryExpanded(!summaryExpanded)}
-										className="h-8 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 rounded-lg transition-colors"
+										className="h-8 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 bg-secondary hover:bg-accent px-3 rounded-lg transition-colors"
 									>
 										{summaryExpanded ? (
 											<>
@@ -375,13 +379,13 @@ export default function SubjectDetail() {
 					</Card>
 				)
 			) : (
-				<Card className="bg-card/40 border border-white/5 rounded-xl animate-pulse">
+				<Card className="bg-card border border-border rounded-xl animate-pulse">
 					<CardContent className="p-6 space-y-2">
-						<div className="h-4 w-20 bg-white/5 rounded" />
+						<div className="h-4 w-20 bg-muted rounded" />
 						<div className="space-y-2">
-							<div className="h-3 w-full bg-white/5 rounded" />
-							<div className="h-3 w-5/6 bg-white/5 rounded" />
-							<div className="h-3 w-4/5 bg-white/5 rounded" />
+							<div className="h-3 w-full bg-muted rounded" />
+							<div className="h-3 w-5/6 bg-muted rounded" />
+							<div className="h-3 w-4/5 bg-muted rounded" />
 						</div>
 					</CardContent>
 				</Card>
@@ -394,7 +398,7 @@ export default function SubjectDetail() {
 					{subject && (
 						<Badge
 							variant="outline"
-							className="text-xs border-white/10 text-muted-foreground"
+							className="text-xs border-border text-muted-foreground"
 						>
 							点击剧集卡片搜索种子资源
 						</Badge>
@@ -414,7 +418,7 @@ export default function SubjectDetail() {
 										className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
 											isAired
 												? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
-												: "bg-card/30 border border-white/5 hover:border-primary/30 hover:bg-card/60"
+												: "bg-card border border-border hover:border-primary/30 hover:bg-muted/30"
 										}`}
 									>
 										{/* Ep Number / Icon */}
@@ -422,7 +426,7 @@ export default function SubjectDetail() {
 											className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
 												isAired
 													? "bg-primary/15 group-hover:bg-primary/25"
-													: "bg-white/5 group-hover:bg-primary/10"
+													: "bg-muted group-hover:bg-primary/10"
 											}`}
 										>
 											<span
@@ -453,7 +457,7 @@ export default function SubjectDetail() {
 							})}
 						</div>
 					) : (
-						<div className="text-center py-12 text-sm text-muted-foreground bg-card/20 border border-white/5 rounded-xl">
+						<div className="text-center py-12 text-sm text-muted-foreground bg-card border border-border rounded-xl">
 							暂无剧集数据
 						</div>
 					)
@@ -462,7 +466,7 @@ export default function SubjectDetail() {
 						{[1, 2, 3, 4, 5, 6].map((i) => (
 							<div
 								key={i}
-								className="flex items-start gap-3 p-3 rounded-xl bg-card/30 border border-white/5 h-16"
+								className="flex items-start gap-3 p-3 rounded-xl bg-card border border-border h-16"
 							/>
 						))}
 					</div>

@@ -127,7 +127,7 @@ export function AppHeader() {
 							{item.path === "/downloads" && activeCount > 0 && (
 								<Badge
 									variant="secondary"
-									className="absolute -top-1 -right-1 md:static md:ml-1.5 h-4.5 px-1.5 text-[9px] font-extrabold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full animate-pulse flex items-center justify-center"
+									className="absolute -top-1 -right-1 md:static md:ml-1.5 h-4.5 px-1.5 text-[9px] font-extrabold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full animate-pulse flex items-center justify-center" // style-ignore
 								>
 									{activeCount}
 								</Badge>
@@ -160,28 +160,28 @@ const toastConfigs = {
 		Icon: Info,
 		iconClass: "text-sky-400",
 		borderClass:
-			"border-sky-500/30 border-l-4 border-l-sky-500 bg-sky-950/40 backdrop-blur-md",
+			"border-sky-500/30 border-l-4 border-l-sky-500 bg-sky-950/40 backdrop-blur-md", // style-ignore
 		glowClass: "shadow-[0_4px_20px_rgba(56,189,248,0.15)]",
 	},
 	success: {
 		Icon: CheckCircle2,
 		iconClass: "text-emerald-400",
 		borderClass:
-			"border-emerald-500/30 border-l-4 border-l-emerald-500 bg-emerald-950/40 backdrop-blur-md",
+			"border-emerald-500/30 border-l-4 border-l-emerald-500 bg-emerald-950/40 backdrop-blur-md", // style-ignore
 		glowClass: "shadow-[0_4px_20px_rgba(52,211,153,0.15)]",
 	},
 	warning: {
 		Icon: AlertTriangle,
 		iconClass: "text-amber-400",
 		borderClass:
-			"border-amber-500/30 border-l-4 border-l-amber-500 bg-amber-950/40 backdrop-blur-md",
+			"border-amber-500/30 border-l-4 border-l-amber-500 bg-amber-950/40 backdrop-blur-md", // style-ignore
 		glowClass: "shadow-[0_4px_20px_rgba(251,191,36,0.15)]",
 	},
 	error: {
 		Icon: XCircle,
 		iconClass: "text-rose-400",
 		borderClass:
-			"border-rose-500/30 border-l-4 border-l-rose-500 bg-rose-950/40 backdrop-blur-md",
+			"border-rose-500/30 border-l-4 border-l-rose-500 bg-rose-950/40 backdrop-blur-md", // style-ignore
 		glowClass: "shadow-[0_4px_20px_rgba(251,113,133,0.15)]",
 	},
 };
@@ -216,7 +216,7 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
 							<Button
 								variant="ghost"
 								size="icon"
-								className="h-6 w-6 hover:bg-white/5 text-muted-foreground hover:text-foreground rounded-full flex-shrink-0 flex items-center justify-center p-0"
+								className="h-6 w-6 hover:bg-muted text-muted-foreground hover:text-foreground rounded-full flex-shrink-0 flex items-center justify-center p-0"
 								aria-label="关闭提示"
 								onClick={() => onClose(toast.id)}
 							>

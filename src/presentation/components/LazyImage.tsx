@@ -63,14 +63,14 @@ export function LazyImage({
 
 	// 默认的占位/骨架屏
 	const defaultPlaceholder = (
-		<div className="absolute inset-0 bg-white/5 animate-pulse rounded-lg flex items-center justify-center">
+		<div className="absolute inset-0 bg-muted animate-pulse rounded-lg flex items-center justify-center">
 			<div className="h-5 w-5 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
 		</div>
 	);
 
 	// 默认的加载失败占位
 	const defaultFallback = (
-		<div className="absolute inset-0 bg-white/5 rounded-lg flex flex-col items-center justify-center text-muted-foreground p-2 border border-dashed border-white/10">
+		<div className="absolute inset-0 bg-muted rounded-lg flex flex-col items-center justify-center text-muted-foreground p-2 border border-dashed border-border">
 			<span className="text-[10px] text-red-400 font-medium">加载失败</span>
 		</div>
 	);

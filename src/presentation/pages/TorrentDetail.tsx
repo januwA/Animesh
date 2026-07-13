@@ -111,10 +111,10 @@ export default function TorrentDetail() {
 
 			<div
 				role="dialog"
-				className="bg-card/30 border border-white/5 rounded-xl p-4 sm:p-6 space-y-4 sm:space-y-6"
+				className="bg-card border border-border rounded-xl p-4 sm:p-6 space-y-4 sm:space-y-6"
 			>
 				{/* Header info */}
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
+				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
 					<div className="space-y-1 flex-1 min-w-0">
 						<h2
 							className="text-lg sm:text-xl font-bold break-all text-foreground"
@@ -139,12 +139,12 @@ export default function TorrentDetail() {
 							共 {torrent.files.length} 个文件
 						</Badge>
 					</div>
-					<ScrollArea className="border border-white/5 rounded-lg bg-black/25 p-3">
+					<ScrollArea className="border border-border rounded-lg bg-muted/30 p-3">
 						<div className="space-y-2">
 							{torrent.files.map((file) => (
 								<div
 									key={file.id}
-									className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/5 transition-all group gap-3"
+									className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg hover:bg-accent border border-transparent hover:border-border transition-all group gap-3"
 								>
 									<div className="flex items-start gap-3 flex-1 min-w-0">
 										<FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
