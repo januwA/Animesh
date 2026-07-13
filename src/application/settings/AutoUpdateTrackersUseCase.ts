@@ -1,4 +1,5 @@
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
+import type { Settings } from "../../domain/settings/SettingsSchemas";
 import {
 	getTrackerUrl,
 	type TrackerCdnType,
@@ -8,7 +9,7 @@ import {
 export class AutoUpdateTrackersUseCase {
 	constructor(private settingsRepository: SettingsRepository) {}
 
-	private shouldUpdate(settings: any, now: number): boolean {
+	private shouldUpdate(settings: Settings, now: number): boolean {
 		const autoUpdate = settings.tracker_auto_update === true;
 		if (!autoUpdate) return false;
 
