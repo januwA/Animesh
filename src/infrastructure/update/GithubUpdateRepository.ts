@@ -1,35 +1,11 @@
 import { getVersion } from "@tauri-apps/api/app";
-import { z } from "zod";
 import type { OpenerRepository } from "../../domain/opener/OpenerRepository";
 import type { UpdateInfo } from "../../domain/update/UpdateInfo";
 import type { UpdateRepository } from "../../domain/update/UpdateRepository";
-
-const GithubAssetSchema = z.object({
-	name: z.string(),
-	browser_download_url: z.string().url(),
-});
-
-const GithubReleaseSchema = z.object({
-	tag_name: z.string().min(1),
-	body: z
-		.string()
-		.nullable()
-		.optional()
-		.transform((val) => val ?? ""),
-	published_at: z
-		.string()
-		.nullable()
-		.optional()
-		.transform((val) => val ?? ""),
-	assets: z
-		.array(GithubAssetSchema)
-		.nullable()
-		.optional()
-		.transform((val) => val ?? []),
-	html_url: z.string().url(),
-});
-
-type GithubRelease = z.infer<typeof GithubReleaseSchema>;
+import {
+	type GithubRelease,
+	GithubReleaseSchema,
+} from "../../domain/update/UpdateSchemas";
 
 export class GithubUpdateRepository implements UpdateRepository {
 	constructor(private readonly openerRepository: OpenerRepository) {}
