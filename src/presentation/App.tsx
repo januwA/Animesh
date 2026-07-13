@@ -1,3 +1,4 @@
+import { ThemeProvider } from "next-themes";
 import type { createHashRouter } from "react-router-dom";
 import { RouterProvider } from "react-router-dom";
 import { type DIContainer, DIProvider } from "@/di/DIContext";
@@ -15,7 +16,9 @@ export default function App({ router, diContainer }: AppProps) {
 		<ErrorBoundary>
 			<DIProvider value={diContainer}>
 				<AppContextProvider>
-					<RouterProvider router={router} />
+					<ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+						<RouterProvider router={router} />
+					</ThemeProvider>
 				</AppContextProvider>
 			</DIProvider>
 		</ErrorBoundary>

@@ -5,6 +5,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
+import { ThemeProvider } from "next-themes";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -71,15 +72,17 @@ describe("Settings 页面组件", () => {
 		return render(
 			<DIProvider value={mockContainer}>
 				<AppContextProvider>
-					<MemoryRouter initialEntries={["/settings"]}>
-						<LocationTracker />
-						<Routes>
-							<Route path="/" element={<Layout />}>
-								<Route path="settings" element={<Settings />} />
-							</Route>
-							<Route path="/" element={<div>Home Page</div>} />
-						</Routes>
-					</MemoryRouter>
+					<ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+						<MemoryRouter initialEntries={["/settings"]}>
+							<LocationTracker />
+							<Routes>
+								<Route path="/" element={<Layout />}>
+									<Route path="settings" element={<Settings />} />
+								</Route>
+								<Route path="/" element={<div>Home Page</div>} />
+							</Routes>
+						</MemoryRouter>
+					</ThemeProvider>
 				</AppContextProvider>
 			</DIProvider>,
 		);
@@ -1247,6 +1250,32 @@ describe("Settings 页面组件", () => {
 			expect(
 				screen.getByText("该别名已存在，请使用其他别名"),
 			).toBeInTheDocument();
+		});
+	});
+
+	it("应该支持选择不同的界面主题并应用", async () => {
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("外观设置")).toBeInTheDocument();
+		});
+
+		const systemBtn = screen.getByRole("button", { name: "跟随系统" });
+		const lightBtn = screen.getByRole("button", { name: "浅色模式" });
+		const darkBtn = screen.getByRole("button", { name: "深色模式" });
+
+		expect(systemBtn).toBeInTheDocument();
+		expect(lightBtn).toBeInTheDocument();
+		expect(darkBtn).toBeInTheDocument();
+
+		fireEvent.click(lightBtn);
+		await waitFor(() => {
+			expect(localStorage.getItem("theme")).toBe("light");
+		});
+
+		fireEvent.click(darkBtn);
+		await waitFor(() => {
+			expect(localStorage.getItem("theme")).toBe("dark");
 		});
 	});
 });

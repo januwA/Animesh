@@ -8,9 +8,11 @@ import {
 	Lightbulb,
 	Link2,
 	Loader2,
+	Palette,
 	RefreshCw,
 	Save,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
@@ -34,6 +36,7 @@ import { useAppContext } from "../context/AppContext";
 
 export default function Settings() {
 	const navigate = useNavigate();
+	const { theme, setTheme } = useTheme();
 	const {
 		getSettingsUseCase,
 		saveSettingsUseCase,
@@ -760,6 +763,46 @@ export default function Settings() {
 						</CardContent>
 					</Card>
 				)}
+
+				<Card className="bg-card/40 border-white/5">
+					<CardHeader className="p-5">
+						<CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+							<Palette className="h-4 w-4 text-primary" />
+							外观设置
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+						<div className="space-y-1.5">
+							<span className="text-[11px] text-muted-foreground font-medium">
+								选择界面主题
+							</span>
+							<div className="flex flex-wrap gap-1">
+								{(["system", "light", "dark"] as const).map((t) => {
+									const labels: Record<string, string> = {
+										system: "跟随系统",
+										light: "浅色模式",
+										dark: "深色模式",
+									};
+									const isActive = theme === t;
+									return (
+										<button
+											key={t}
+											type="button"
+											onClick={() => setTheme(t)}
+											className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 cursor-pointer ${
+												isActive
+													? "bg-primary border-primary text-primary-foreground shadow-[0_0_10px_rgba(var(--primary),0.2)]"
+													: "bg-black/20 border-white/5 text-muted-foreground hover:bg-black/30 hover:text-foreground"
+											}`}
+										>
+											{labels[t]}
+										</button>
+									);
+								})}
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 
 				<Card className="bg-card/40 border-white/5">
 					<CardHeader className="p-5">
