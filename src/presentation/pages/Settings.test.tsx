@@ -44,7 +44,7 @@ describe("Settings 页面组件", () => {
 			setProxy: vi.fn(),
 			setTrackers: vi.fn(),
 			setTrackerOptions: vi.fn(),
-			setAiOptions: vi.fn(),
+			setAiConfigs: vi.fn(),
 			fetchTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 		};
@@ -808,10 +808,7 @@ describe("Settings 页面组件", () => {
 	it("应该支持加载和配置 AI Agent 相关的设置", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",
-			ai_enabled: false,
-			ai_api_key: "",
-			ai_api_endpoint: "",
-			ai_model: "",
+			ai_configs: [],
 		});
 
 		renderSettings();
@@ -820,54 +817,60 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
 		});
 
-		// 启用 AI（触发 onChange）
-		const aiCheckbox = screen.getByLabelText(
-			"启用 AI 智能过滤与搜索优化 (基于 LLM 重新评分与排序)",
-		) as HTMLInputElement;
-		fireEvent.click(aiCheckbox);
-		expect(aiCheckbox.checked).toBe(true);
+		// 点击添加 AI 配置按钮
+		const addBtn = screen.getByRole("button", { name: "+ 添加 AI 配置" });
+		fireEvent.click(addBtn);
 
-		// 输入值（触发 onChange）
+		// 输入值
+		const aliasInput = screen.getByLabelText(
+			"配置别名 (Alias) *",
+		) as HTMLInputElement;
 		const endpointInput = screen.getByLabelText(
-			"AI 接口地址 (Endpoint)",
+			"AI 接口地址 (Endpoint) *",
 		) as HTMLInputElement;
 		const keyInput = screen.getByLabelText(
-			"API 密钥 (API Key)",
+			"API 密钥 (API Key) *",
 		) as HTMLInputElement;
 		const modelInput = screen.getByLabelText(
 			"模型名称 (Model)",
 		) as HTMLInputElement;
 
+		fireEvent.change(aliasInput, { target: { value: "OpenAI" } });
 		fireEvent.change(endpointInput, {
 			target: { value: "https://api.openai.com/v1" },
 		});
 		fireEvent.change(keyInput, { target: { value: "new-secret-key" } });
 		fireEvent.change(modelInput, { target: { value: "gpt-4o" } });
 
+		expect(aliasInput.value).toBe("OpenAI");
 		expect(endpointInput.value).toBe("https://api.openai.com/v1");
 		expect(keyInput.value).toBe("new-secret-key");
 		expect(modelInput.value).toBe("gpt-4o");
 
+		// 保存单项配置
+		const saveConfigBtn = screen.getByRole("button", { name: "保存配置" });
+		fireEvent.click(saveConfigBtn);
+
+		// 保存所有设置
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);
 
 		await waitFor(() => {
-			expect(mockSettingsRepository.setAiOptions).toHaveBeenCalledWith({
-				enabled: true,
-				apiKey: "new-secret-key",
-				apiEndpoint: "https://api.openai.com/v1",
-				model: "gpt-4o",
-			});
+			expect(mockSettingsRepository.setAiConfigs).toHaveBeenCalledWith([
+				{
+					alias: "OpenAI",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "new-secret-key",
+					ai_model: "gpt-4o",
+				},
+			]);
 		});
 	});
 
 	it("当测试 AI 连接时，如果地址或密钥为空，应该提示警告", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",
-			ai_enabled: true,
-			ai_api_key: "",
-			ai_api_endpoint: "",
-			ai_model: "",
+			ai_configs: [],
 		});
 
 		renderSettings();
@@ -875,6 +878,10 @@ describe("Settings 页面组件", () => {
 		await waitFor(() => {
 			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
 		});
+
+		// 点击添加 AI 配置按钮
+		const addBtn = screen.getByRole("button", { name: "+ 添加 AI 配置" });
+		fireEvent.click(addBtn);
 
 		const testBtn = screen.getByRole("button", { name: "测试模型连接" });
 
@@ -886,7 +893,7 @@ describe("Settings 页面组件", () => {
 
 		// 2. 密钥为空
 		const endpointInput = screen.getByLabelText(
-			"AI 接口地址 (Endpoint)",
+			"AI 接口地址 (Endpoint) *",
 		) as HTMLInputElement;
 		fireEvent.change(endpointInput, {
 			target: { value: "https://api.openai.com/v1" },
@@ -901,10 +908,14 @@ describe("Settings 页面组件", () => {
 	it("应该支持在 AI 设置面板中测试模型连接并展示成功提示", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",
-			ai_enabled: true,
-			ai_api_key: "my-secret-key",
-			ai_api_endpoint: "https://api.openai.com/v1",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "OpenAI",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "my-secret-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 
 		vi.mocked(mockAiClient.post).mockResolvedValueOnce({
@@ -917,7 +928,7 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
 		});
 
-		const testBtn = screen.getByRole("button", { name: "测试模型连接" });
+		const testBtn = screen.getByRole("button", { name: "测试" });
 		fireEvent.click(testBtn);
 
 		await waitFor(() => {
@@ -936,10 +947,14 @@ describe("Settings 页面组件", () => {
 	it("应该支持在 AI 设置面板中测试模型连接并展示失败提示", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",
-			ai_enabled: true,
-			ai_api_key: "my-secret-key",
-			ai_api_endpoint: "https://api.openai.com/v1",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "OpenAI",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "my-secret-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 
 		vi.mocked(mockAiClient.post).mockRejectedValueOnce(new Error("API Error"));
@@ -950,7 +965,7 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByText("AI 智能搜索模型设置")).toBeInTheDocument();
 		});
 
-		const testBtn = screen.getByRole("button", { name: "测试模型连接" });
+		const testBtn = screen.getByRole("button", { name: "测试" });
 		fireEvent.click(testBtn);
 
 		await waitFor(() => {

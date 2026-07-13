@@ -9,10 +9,14 @@ export interface SaveSettingsDto {
 	trackerCustomUrl?: string | null;
 	trackerAutoUpdate?: boolean | null;
 	trackerLastUpdateTime?: number | null;
-	aiEnabled?: boolean | null;
-	aiApiKey?: string | null;
-	aiApiEndpoint?: string | null;
-	aiModel?: string | null;
+	aiConfigs?:
+		| {
+				alias: string;
+				apiEndpoint: string;
+				apiKey: string;
+				model?: string | null;
+		  }[]
+		| null;
 }
 
 export class SaveSettingsUseCase {
@@ -29,11 +33,16 @@ export class SaveSettingsUseCase {
 			autoUpdate: dto.trackerAutoUpdate ?? null,
 			lastUpdateTime: dto.trackerLastUpdateTime ?? null,
 		});
-		await this.settingsRepository.setAiOptions({
-			enabled: dto.aiEnabled ?? null,
-			apiKey: dto.aiApiKey ?? null,
-			apiEndpoint: dto.aiApiEndpoint ?? null,
-			model: dto.aiModel ?? null,
-		});
+		if (dto.aiConfigs !== undefined) {
+			const configs = dto.aiConfigs
+				? dto.aiConfigs.map((c) => ({
+						alias: c.alias,
+						api_endpoint: c.apiEndpoint,
+						api_key: c.apiKey,
+						ai_model: c.model ?? null,
+					}))
+				: null;
+			await this.settingsRepository.setAiConfigs(configs);
+		}
 	}
 }

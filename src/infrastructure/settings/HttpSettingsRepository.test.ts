@@ -68,10 +68,14 @@ describe("基础设施层 HttpSettingsRepository", () => {
 				tracker_custom_url: "",
 				tracker_auto_update: true,
 				tracker_last_update_time: 1718880000,
-				ai_enabled: true,
-				ai_api_key: "ai-api-key",
-				ai_api_endpoint: "https://api.openai.com/v1",
-				ai_model: "gpt-4o",
+				ai_configs: [
+					{
+						alias: "OpenAI",
+						api_endpoint: "https://api.openai.com/v1",
+						api_key: "ai-api-key",
+						ai_model: "gpt-4o",
+					},
+				],
 			};
 
 			vi.mocked(fetch).mockResolvedValueOnce({
@@ -100,32 +104,38 @@ describe("基础设施层 HttpSettingsRepository", () => {
 		});
 	});
 
-	describe("setAiOptions 方法", () => {
-		it("应该发送 PUT 请求至 /api/settings/ai-options 并携带正确的 JSON payload", async () => {
+	describe("setAiConfigs 方法", () => {
+		it("应该发送 PUT 请求至 /api/settings/ai-configs 并携带正确的 JSON payload", async () => {
 			vi.mocked(fetch).mockResolvedValueOnce({
 				ok: true,
 				text: async () => "",
 			} as Response);
 
-			await repository.setAiOptions({
-				enabled: true,
-				apiKey: "api-key-test",
-				apiEndpoint: "https://example.com",
-				model: "model-test",
-			});
+			await repository.setAiConfigs([
+				{
+					alias: "OpenAI",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "ai-api-key",
+					ai_model: "gpt-4o",
+				},
+			]);
 
 			expect(fetch).toHaveBeenCalledWith(
-				expect.stringContaining("/api/settings/ai-options"),
+				expect.stringContaining("/api/settings/ai-configs"),
 				expect.objectContaining({
 					method: "PUT",
 					headers: expect.objectContaining({
 						"Content-Type": "application/json",
 					}),
 					body: JSON.stringify({
-						enabled: true,
-						api_key: "api-key-test",
-						api_endpoint: "https://example.com",
-						model: "model-test",
+						configs: [
+							{
+								alias: "OpenAI",
+								api_endpoint: "https://api.openai.com/v1",
+								api_key: "ai-api-key",
+								ai_model: "gpt-4o",
+							},
+						],
 					}),
 				}),
 			);

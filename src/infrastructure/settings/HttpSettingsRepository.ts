@@ -1,5 +1,6 @@
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import {
+	type AiConfig,
 	type Settings,
 	SettingsSchema,
 } from "../../domain/settings/SettingsSchemas";
@@ -83,23 +84,13 @@ export class HttpSettingsRepository implements SettingsRepository {
 		});
 	}
 
-	async setAiOptions(options: {
-		enabled: boolean | null;
-		apiKey: string | null;
-		apiEndpoint: string | null;
-		model: string | null;
-	}): Promise<void> {
-		await this.httpClient.request(`${baseUrl}/settings/ai-options`, {
+	async setAiConfigs(configs: AiConfig[] | null): Promise<void> {
+		await this.httpClient.request(`${baseUrl}/settings/ai-configs`, {
 			method: "PUT",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({
-				enabled: options.enabled,
-				api_key: options.apiKey,
-				api_endpoint: options.apiEndpoint,
-				model: options.model,
-			}),
+			body: JSON.stringify({ configs }),
 		});
 	}
 

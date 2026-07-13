@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import {
+	type AiConfig,
 	type Settings,
 	SettingsSchema,
 } from "../../domain/settings/SettingsSchemas";
@@ -46,18 +47,8 @@ export class TauriSettingsRepository implements SettingsRepository {
 		});
 	}
 
-	async setAiOptions(options: {
-		enabled: boolean | null;
-		apiKey: string | null;
-		apiEndpoint: string | null;
-		model: string | null;
-	}): Promise<void> {
-		return invoke<void>("settings_set_ai_options", {
-			enabled: options.enabled,
-			apiKey: options.apiKey,
-			apiEndpoint: options.apiEndpoint,
-			model: options.model,
-		});
+	async setAiConfigs(configs: AiConfig[] | null): Promise<void> {
+		return invoke<void>("settings_set_ai_configs", { configs });
 	}
 
 	async fetchTrackers(url: string): Promise<string[]> {

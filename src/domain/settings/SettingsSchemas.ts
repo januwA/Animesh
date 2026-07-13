@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const AiConfigSchema = z.object({
+	alias: z.string(),
+	api_endpoint: z.string(),
+	api_key: z.string(),
+	ai_model: z.string().nullable().optional(),
+});
+
+export type AiConfig = z.infer<typeof AiConfigSchema>;
+
 export const SettingsSchema = z.object({
 	download_dir: z.string(),
 	proxy: z.string().nullable().optional(),
@@ -9,10 +18,7 @@ export const SettingsSchema = z.object({
 	tracker_custom_url: z.string().nullable().optional(),
 	tracker_auto_update: z.boolean().nullable().optional(),
 	tracker_last_update_time: z.number().nullable().optional(),
-	ai_enabled: z.boolean().nullable().optional(),
-	ai_api_key: z.string().nullable().optional(),
-	ai_api_endpoint: z.string().nullable().optional(),
-	ai_model: z.string().nullable().optional(),
+	ai_configs: z.array(AiConfigSchema).nullable().optional(),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -51,10 +57,17 @@ export const SettingsFormSchema = z.object({
 	trackerCustomUrl: z.string().nullable().optional(),
 	trackerAutoUpdate: z.boolean().nullable().optional(),
 	trackerLastUpdateTime: z.number().nullable().optional(),
-	aiEnabled: z.boolean().nullable().optional(),
-	aiApiKey: z.string().nullable().optional(),
-	aiApiEndpoint: z.string().nullable().optional(),
-	aiModel: z.string().nullable().optional(),
+	aiConfigs: z
+		.array(
+			z.object({
+				alias: z.string().trim().min(1, "别名不能为空"),
+				apiEndpoint: z.string().trim().min(1, "接口地址不能为空"),
+				apiKey: z.string().trim().min(1, "API 密钥不能为空"),
+				model: z.string().trim().nullable().optional(),
+			}),
+		)
+		.nullable()
+		.optional(),
 });
 
 export type SettingsFormInput = z.infer<typeof SettingsFormSchema>;

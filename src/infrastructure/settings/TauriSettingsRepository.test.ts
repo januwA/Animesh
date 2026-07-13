@@ -76,10 +76,14 @@ describe("基础设施层 TauriSettingsRepository", () => {
 				tracker_custom_url: "",
 				tracker_auto_update: true,
 				tracker_last_update_time: 123456,
-				ai_enabled: true,
-				ai_api_key: "test-api-key",
-				ai_api_endpoint: "https://api.openai.com/v1",
-				ai_model: "gpt-4o",
+				ai_configs: [
+					{
+						alias: "OpenAI",
+						api_endpoint: "https://api.openai.com/v1",
+						api_key: "test-api-key",
+						ai_model: "gpt-4o",
+					},
+				],
 			};
 			mockInvoke.mockResolvedValueOnce(mockRawSettings);
 
@@ -101,24 +105,23 @@ describe("基础设施层 TauriSettingsRepository", () => {
 		});
 	});
 
-	describe("setAiOptions 方法", () => {
-		it("应该正确调用后端的 settings_set_ai_options 命令", async () => {
+	describe("setAiConfigs 方法", () => {
+		it("应该正确调用后端的 settings_set_ai_configs 命令", async () => {
 			mockInvoke.mockResolvedValueOnce(undefined);
 
-			const options = {
-				enabled: true,
-				apiKey: "test-api-key",
-				apiEndpoint: "https://api.openai.com/v1",
-				model: "gpt-4o",
-			};
+			const configs = [
+				{
+					alias: "OpenAI",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "test-api-key",
+					ai_model: "gpt-4o",
+				},
+			];
 
-			await repository.setAiOptions(options);
+			await repository.setAiConfigs(configs);
 
-			expect(mockInvoke).toHaveBeenCalledWith("settings_set_ai_options", {
-				enabled: true,
-				apiKey: "test-api-key",
-				apiEndpoint: "https://api.openai.com/v1",
-				model: "gpt-4o",
+			expect(mockInvoke).toHaveBeenCalledWith("settings_set_ai_configs", {
+				configs,
 			});
 		});
 	});

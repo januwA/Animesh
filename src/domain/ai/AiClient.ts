@@ -10,5 +10,5 @@ export interface AiClient {
 	 * @param payload 请求的主体 payload，符合 OpenAI 接口规范
 	 * @returns 返回大模型响应反序列化后的 JSON 对象
 	 */
-	post(endpoint: string, apiKey: string, payload: any): Promise<any>;
+	post(endpoint: string, apiKey: string, payload: unknown): Promise<unknown>;
 }

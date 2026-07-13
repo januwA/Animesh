@@ -77,10 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,
-            ai_enabled: None,
-            ai_api_key: None,
-            ai_api_endpoint: None,
-            ai_model: None,
+            ai_configs: None,
         };
         if let Ok(file) = std::fs::File::create(&settings_path) {
             let _ = serde_json::to_writer_pretty(file, &settings);
@@ -139,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "/settings/tracker-options",
             put(settings_set_tracker_options_handler),
         )
-        .route("/settings/ai-options", put(settings_set_ai_options_handler))
+        .route("/settings/ai-configs", put(settings_set_ai_configs_handler))
         .route("/ai/chat-request", post(ai_chat_request_handler))
         .layer(
             CorsLayer::new()
@@ -535,25 +532,17 @@ async fn settings_set_tracker_options_handler(
 }
 
 #[derive(serde::Deserialize)]
-struct SetAiOptionsInput {
-    enabled: Option<bool>,
-    api_key: Option<String>,
-    api_endpoint: Option<String>,
-    model: Option<String>,
+struct SetAiConfigsInput {
+    configs: Option<Vec<animesh_core::torrent_manager::AiConfig>>,
 }
 
-async fn settings_set_ai_options_handler(
+async fn settings_set_ai_configs_handler(
     State(state): State<Arc<AppState>>,
-    axum::Json(payload): axum::Json<SetAiOptionsInput>,
+    axum::Json(payload): axum::Json<SetAiConfigsInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
         .manager
-        .set_ai_options(
-            payload.enabled,
-            payload.api_key,
-            payload.api_endpoint,
-            payload.model,
-        )
+        .set_ai_configs(payload.configs)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }

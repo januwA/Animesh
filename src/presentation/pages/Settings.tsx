@@ -63,11 +63,129 @@ export default function Settings() {
 	const [lastUpdateTime, setLastUpdateTime] = useState(0);
 	const [syncing, setSyncing] = useState(false);
 
-	const [aiEnabled, setAiEnabled] = useState(false);
-	const [aiApiKey, setAiApiKey] = useState("");
-	const [aiApiEndpoint, setAiApiEndpoint] = useState("");
-	const [aiModel, setAiModel] = useState("");
+	const [aiConfigs, setAiConfigs] = useState<
+		{
+			alias: string;
+			apiEndpoint: string;
+			apiKey: string;
+			model?: string | null;
+		}[]
+	>([]);
+	const [editingIndex, setEditingIndex] = useState<number | null>(null); // null: not editing, -1: adding, >=0: editing index
+	const [aliasInput, setAliasInput] = useState("");
+	const [apiEndpointInput, setApiEndpointInput] = useState("");
+	const [apiKeyInput, setApiKeyInput] = useState("");
+	const [modelInput, setModelInput] = useState("");
 	const [testingAi, setTestingAi] = useState(false);
+
+	const handleStartAdd = () => {
+		setEditingIndex(-1);
+		setAliasInput("");
+		setApiEndpointInput("");
+		setApiKeyInput("");
+		setModelInput("");
+	};
+
+	const handleStartEdit = (index: number) => {
+		const config = aiConfigs[index];
+		if (!config) return;
+		setEditingIndex(index);
+		setAliasInput(config.alias);
+		setApiEndpointInput(config.apiEndpoint);
+		setApiKeyInput(config.apiKey);
+		setModelInput(config.model || "");
+	};
+
+	const handleCancelEdit = () => {
+		setEditingIndex(null);
+	};
+
+	const handleDeleteConfig = (index: number) => {
+		setAiConfigs((prev) => prev.filter((_, i) => i !== index));
+		if (editingIndex === index) {
+			setEditingIndex(null);
+		} else if (editingIndex !== null && editingIndex > index) {
+			setEditingIndex(editingIndex - 1);
+		}
+	};
+
+	const handleSaveConfig = () => {
+		const alias = aliasInput.trim();
+		const apiEndpoint = apiEndpointInput.trim();
+		const apiKey = apiKeyInput.trim();
+		const model = modelInput.trim() || null;
+
+		if (!alias) {
+			showToast("请输入别名", "warning");
+			return;
+		}
+		if (!apiEndpoint) {
+			showToast("请输入接口地址", "warning");
+			return;
+		}
+		if (!apiKey) {
+			showToast("请输入 API 密钥", "warning");
+			return;
+		}
+
+		const duplicate = aiConfigs.some(
+			(c, i) =>
+				c.alias.toLowerCase() === alias.toLowerCase() && i !== editingIndex,
+		);
+		if (duplicate) {
+			showToast("该别名已存在，请使用其他别名", "warning");
+			return;
+		}
+
+		const newConfig = { alias, apiEndpoint, apiKey, model };
+
+		if (editingIndex === -1) {
+			setAiConfigs((prev) => [...prev, newConfig]);
+		} else if (editingIndex !== null) {
+			setAiConfigs((prev) => {
+				const next = [...prev];
+				next[editingIndex] = newConfig;
+				return next;
+			});
+		}
+		setEditingIndex(null);
+	};
+
+	const handleTestConfigConnection = async (config: {
+		apiEndpoint: string;
+		apiKey: string;
+		model?: string | null;
+	}) => {
+		setTestingAi(true);
+		try {
+			await verifyAiConnectionUseCase.execute({
+				apiEndpoint: config.apiEndpoint,
+				apiKey: config.apiKey,
+				model: config.model || undefined,
+			});
+			showToast("AI 模型连接测试成功！", "success");
+		} catch (err: unknown) {
+			showToast(`AI 模型连接测试失败: ${formatError(err)}`, "error", 5000);
+		} finally {
+			setTestingAi(false);
+		}
+	};
+
+	const handleTestCurrentConnection = async () => {
+		if (!apiEndpointInput.trim()) {
+			showToast("请输入 AI 接口地址", "warning");
+			return;
+		}
+		if (!apiKeyInput.trim()) {
+			showToast("请输入 API 密钥", "warning");
+			return;
+		}
+		await handleTestConfigConnection({
+			apiEndpoint: apiEndpointInput,
+			apiKey: apiKeyInput,
+			model: modelInput,
+		});
+	};
 
 	const currentUrl = getTrackerUrl(sourceType, cdn, customUrl);
 
@@ -116,31 +234,6 @@ export default function Settings() {
 		}
 	};
 
-	const handleTestAiConnection = async () => {
-		if (!aiApiEndpoint.trim()) {
-			showToast("请输入 AI 接口地址", "warning");
-			return;
-		}
-		if (!aiApiKey.trim()) {
-			showToast("请输入 API 密钥", "warning");
-			return;
-		}
-
-		setTestingAi(true);
-		try {
-			await verifyAiConnectionUseCase.execute({
-				apiEndpoint: aiApiEndpoint,
-				apiKey: aiApiKey,
-				model: aiModel,
-			});
-			showToast("AI 模型连接测试成功！", "success");
-		} catch (err: unknown) {
-			showToast(`AI 模型连接测试失败: ${formatError(err)}`, "error", 5000);
-		} finally {
-			setTestingAi(false);
-		}
-	};
-
 	const isTauri = import.meta.env.MODE !== "web";
 
 	const isMobile =
@@ -163,10 +256,14 @@ export default function Settings() {
 				setCustomUrl(settings.tracker_custom_url || "");
 				setAutoUpdate(settings.tracker_auto_update === true);
 				setLastUpdateTime(settings.tracker_last_update_time || 0);
-				setAiEnabled(settings.ai_enabled === true);
-				setAiApiKey(settings.ai_api_key || "");
-				setAiApiEndpoint(settings.ai_api_endpoint || "");
-				setAiModel(settings.ai_model || "");
+
+				const loadedConfigs = (settings.ai_configs || []).map((c) => ({
+					alias: c.alias,
+					apiEndpoint: c.api_endpoint,
+					apiKey: c.api_key,
+					model: c.ai_model,
+				}));
+				setAiConfigs(loadedConfigs);
 			} catch (err: unknown) {
 				showToast(`加载设置失败: ${formatError(err)}`, "error");
 			} finally {
@@ -234,10 +331,7 @@ export default function Settings() {
 			trackerCustomUrl: customUrl,
 			trackerAutoUpdate: autoUpdate,
 			trackerLastUpdateTime: lastUpdateTime,
-			aiEnabled,
-			aiApiKey,
-			aiApiEndpoint,
-			aiModel,
+			aiConfigs,
 		});
 
 		if (!validation.success) {
@@ -259,10 +353,7 @@ export default function Settings() {
 				trackerCustomUrl: validatedData.trackerCustomUrl,
 				trackerAutoUpdate: validatedData.trackerAutoUpdate,
 				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
-				aiEnabled: validatedData.aiEnabled,
-				aiApiKey: validatedData.aiApiKey,
-				aiApiEndpoint: validatedData.aiApiEndpoint,
-				aiModel: validatedData.aiModel,
+				aiConfigs: validatedData.aiConfigs,
 			});
 			showToast("设置已保存，后续下载任务将使用新路径", "success");
 		} catch (err: unknown) {
@@ -391,79 +482,162 @@ export default function Settings() {
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="px-5 pb-6 space-y-4 text-xs">
-						<div className="flex items-center gap-2 pt-1 pb-2">
-							<input
-								id="ai-enabled-checkbox"
-								type="checkbox"
-								checked={aiEnabled}
-								onChange={(e) => setAiEnabled(e.target.checked)}
-								className="h-3.5 w-3.5 rounded border-white/10 bg-black/20 text-primary focus:ring-primary focus:ring-offset-0 accent-primary"
-							/>
-							<label
-								htmlFor="ai-enabled-checkbox"
-								className="text-[11px] text-foreground font-medium cursor-pointer select-none"
-							>
-								启用 AI 智能过滤与搜索优化 (基于 LLM 重新评分与排序)
-							</label>
+						{/* AI 配置列表 */}
+						<div className="space-y-3">
+							{aiConfigs.map((config, index) => (
+								<div
+									key={index.toString()}
+									className="flex items-center justify-between border border-white/5 bg-black/10 rounded-lg p-3"
+								>
+									<div className="space-y-1 min-w-0 flex-1 mr-4">
+										<div className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
+											<span>{config.alias}</span>
+											{config.model && (
+												<span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+													{config.model}
+												</span>
+											)}
+										</div>
+										<div className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px] sm:max-w-xs md:max-w-md">
+											{config.apiEndpoint}
+										</div>
+									</div>
+									<div className="flex gap-1.5 shrink-0">
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={() => handleTestConfigConnection(config)}
+											disabled={testingAi}
+											className="h-7 px-2.5 text-[10px] font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20"
+										>
+											测试
+										</Button>
+										<Button
+											type="button"
+											variant="secondary"
+											size="sm"
+											onClick={() => handleStartEdit(index)}
+											className="h-7 px-2.5 text-[10px] font-medium"
+										>
+											编辑
+										</Button>
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											onClick={() => handleDeleteConfig(index)}
+											className="h-7 px-2.5 text-[10px] font-medium text-destructive hover:text-destructive hover:bg-destructive/10"
+										>
+											删除
+										</Button>
+									</div>
+								</div>
+							))}
+
+							{aiConfigs.length === 0 && (
+								<div className="text-center py-6 text-muted-foreground text-[11px] border border-dashed border-white/5 rounded-lg bg-black/5">
+									暂无 AI 配置，点击下方按钮添加
+								</div>
+							)}
+
+							{editingIndex === null && (
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={handleStartAdd}
+									className="w-full h-8.5 font-medium border-white/10 bg-black/10 text-foreground hover:bg-black/20 text-xs flex items-center justify-center gap-1.5 mt-2"
+								>
+									+ 添加 AI 配置
+								</Button>
+							)}
 						</div>
 
-						{aiEnabled && (
-							<div className="space-y-4 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-200">
-								<div className="space-y-2">
-									<label
-										htmlFor="ai-endpoint-input"
-										className="text-muted-foreground font-medium"
-									>
-										AI 接口地址 (Endpoint)
-									</label>
-									<Input
-										id="ai-endpoint-input"
-										value={aiApiEndpoint}
-										onChange={(e) => setAiApiEndpoint(e.target.value)}
-										placeholder="例如 https://ollama.com/v1/chat/completions"
-										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
-									/>
+						{/* 编辑/添加表单 */}
+						{editingIndex !== null && (
+							<div className="space-y-4 pt-3 border-t border-white/5 animate-in fade-in slide-in-from-top-1 duration-200">
+								<div className="font-semibold text-xs text-foreground mb-1">
+									{editingIndex === -1
+										? "添加 AI 配置"
+										: `编辑 AI 配置: ${aiConfigs[editingIndex]?.alias}`}
 								</div>
 
-								<div className="space-y-2">
-									<label
-										htmlFor="ai-key-input"
-										className="text-muted-foreground font-medium"
-									>
-										API 密钥 (API Key)
-									</label>
-									<Input
-										id="ai-key-input"
-										type="password"
-										value={aiApiKey}
-										onChange={(e) => setAiApiKey(e.target.value)}
-										placeholder="输入您的 API Key"
-										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
-									/>
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+									<div className="space-y-2">
+										<label
+											htmlFor="ai-alias-input"
+											className="text-muted-foreground font-medium"
+										>
+											配置别名 (Alias) *
+										</label>
+										<Input
+											id="ai-alias-input"
+											value={aliasInput}
+											onChange={(e) => setAliasInput(e.target.value)}
+											placeholder="例如: Ollama / DeepSeek"
+											className="bg-black/20 border-white/10 text-foreground py-4 text-xs"
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<label
+											htmlFor="ai-endpoint-input"
+											className="text-muted-foreground font-medium"
+										>
+											AI 接口地址 (Endpoint) *
+										</label>
+										<Input
+											id="ai-endpoint-input"
+											value={apiEndpointInput}
+											onChange={(e) => setApiEndpointInput(e.target.value)}
+											placeholder="例如: http://127.0.0.1:11434/v1"
+											className="bg-black/20 border-white/10 text-foreground py-4 text-xs"
+										/>
+									</div>
 								</div>
 
-								<div className="space-y-2">
-									<label
-										htmlFor="ai-model-input"
-										className="text-muted-foreground font-medium"
-									>
-										模型名称 (Model)
-									</label>
-									<Input
-										id="ai-model-input"
-										value={aiModel}
-										onChange={(e) => setAiModel(e.target.value)}
-										placeholder="例如 gpt-oss:120b"
-										className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
-									/>
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+									<div className="space-y-2">
+										<label
+											htmlFor="ai-key-input"
+											className="text-muted-foreground font-medium"
+										>
+											API 密钥 (API Key) *
+										</label>
+										<Input
+											id="ai-key-input"
+											type="password"
+											value={apiKeyInput}
+											onChange={(e) => setApiKeyInput(e.target.value)}
+											placeholder="输入您的 API Key"
+											className="bg-black/20 border-white/10 text-foreground py-4 text-xs"
+										/>
+									</div>
+
+									<div className="space-y-2">
+										<label
+											htmlFor="ai-model-input"
+											className="text-muted-foreground font-medium"
+										>
+											模型名称 (Model)
+										</label>
+										<Input
+											id="ai-model-input"
+											value={modelInput}
+											onChange={(e) => setModelInput(e.target.value)}
+											placeholder="例如: deepseek-chat"
+											className="bg-black/20 border-white/10 text-foreground py-5 text-xs"
+										/>
+									</div>
 								</div>
 
-								<div className="pt-2 flex justify-start">
+								<div className="pt-2 flex justify-between gap-3 flex-wrap">
 									<Button
 										type="button"
 										variant="outline"
 										size="sm"
-										onClick={handleTestAiConnection}
+										onClick={handleTestCurrentConnection}
 										disabled={testingAi}
 										className="bg-black/20 border-white/10 text-foreground hover:bg-black/40 text-xs flex items-center gap-1.5"
 									>
@@ -474,6 +648,26 @@ export default function Settings() {
 										)}
 										{testingAi ? "正在测试连接..." : "测试模型连接"}
 									</Button>
+									<div className="flex gap-2">
+										<Button
+											type="button"
+											variant="ghost"
+											size="sm"
+											onClick={handleCancelEdit}
+											className="h-8 text-xs font-medium"
+										>
+											取消
+										</Button>
+										<Button
+											type="button"
+											variant="default"
+											size="sm"
+											onClick={handleSaveConfig}
+											className="h-8 text-xs font-medium bg-primary text-primary-foreground"
+										>
+											保存配置
+										</Button>
+									</div>
 								</div>
 							</div>
 						)}

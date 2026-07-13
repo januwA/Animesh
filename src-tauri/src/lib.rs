@@ -418,16 +418,11 @@ fn settings_set_trackers(
 }
 
 #[tauri::command]
-fn settings_set_ai_options(
-    enabled: Option<bool>,
-    api_key: Option<String>,
-    api_endpoint: Option<String>,
-    model: Option<String>,
+fn settings_set_ai_configs(
+    configs: Option<Vec<animesh_core::torrent_manager::AiConfig>>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), String> {
-    manager
-        .set_ai_options(enabled, api_key, api_endpoint, model)
-        .map_err(|e| e.to_string())
+    manager.set_ai_configs(configs).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -550,10 +545,7 @@ pub fn run() {
                     tracker_custom_url: None,
                     tracker_auto_update: None,
                     tracker_last_update_time: None,
-                    ai_enabled: None,
-                    ai_api_key: None,
-                    ai_api_endpoint: None,
-                    ai_model: None,
+                    ai_configs: None,
                 };
                 if let Ok(file) = std::fs::File::create(&settings_path) {
                     let _ = serde_json::to_writer_pretty(file, &settings);
@@ -590,7 +582,7 @@ pub fn run() {
             settings_set_proxy,
             settings_set_trackers,
             settings_set_tracker_options,
-            settings_set_ai_options,
+            settings_set_ai_configs,
             select_directory,
             torrent_get_subtitle_tracks,
             torrent_get_subtitle_vtt,

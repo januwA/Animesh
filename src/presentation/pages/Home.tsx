@@ -14,6 +14,7 @@ import type { SubmitEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
+import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
@@ -308,8 +309,10 @@ export default function Home() {
 	} = useAppContext();
 
 	const [isSearching, setIsSearching] = useState(false);
-	const [isAiMode, setIsAiMode] = useState(false);
-	const [aiConfigured, setAiConfigured] = useState(false);
+	const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
+		() => localStorage.getItem("animesh_selected_ai_alias") || "none",
+	);
+	const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
 	const { createContext, cancel: cancelSearch } = useRequestContext();
 
 	const [history, setHistory] = useState<string[]>(() => {
@@ -326,13 +329,8 @@ export default function Home() {
 		const checkAi = async () => {
 			try {
 				const settings = await getSettingsUseCase.execute();
-				if (
-					settings.ai_enabled &&
-					settings.ai_api_endpoint &&
-					settings.ai_api_key
-				) {
-					setAiConfigured(true);
-				}
+				const configs = settings.ai_configs || [];
+				setAiConfigs(configs);
 			} catch {
 				// 静默退化
 			}
@@ -362,15 +360,17 @@ export default function Home() {
 
 			(async () => {
 				try {
-					const data = isAiMode
-						? await searchTorrentsWithAiUseCase.execute(ctx, {
-								keyword: queryText,
-								engine: searchEngine,
-							})
-						: await searchTorrentsUseCase.execute(ctx, {
-								keyword: queryText,
-								engine: searchEngine,
-							});
+					const data =
+						selectedAiAlias !== "none"
+							? await searchTorrentsWithAiUseCase.execute(ctx, {
+									keyword: queryText,
+									engine: searchEngine,
+									aiAlias: selectedAiAlias,
+								})
+							: await searchTorrentsUseCase.execute(ctx, {
+									keyword: queryText,
+									engine: searchEngine,
+								});
 					setResults(data);
 				} catch (err: unknown) {
 					if (ctx.err() === Canceled) {
@@ -387,7 +387,7 @@ export default function Home() {
 			searchTorrentsUseCase,
 			searchTorrentsWithAiUseCase,
 			searchEngine,
-			isAiMode,
+			selectedAiAlias,
 			setError,
 			setHasSearched,
 			setResults,
@@ -467,22 +467,32 @@ export default function Home() {
 			/>
 
 			{/* AI 智能过滤开关 */}
-			{aiConfigured && (
+			{aiConfigs.length > 0 && (
 				<div className="max-w-2xl mx-auto w-full mb-6 mt-[-1rem] flex items-center justify-end animate-in fade-in duration-200">
-					<div className="flex items-center gap-2 bg-card/20 border border-white/5 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm hover:border-white/10 transition-all duration-300">
-						<input
-							id="ai-mode-checkbox"
-							type="checkbox"
-							checked={isAiMode}
-							onChange={(e) => setIsAiMode(e.target.checked)}
-							className="h-3.5 w-3.5 rounded border-white/10 bg-black/20 text-cyan-400 focus:ring-cyan-400 focus:ring-offset-0 accent-cyan-400 cursor-pointer"
-						/>
-						<label
-							htmlFor="ai-mode-checkbox"
-							className="text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer select-none flex items-center gap-1.5"
+					<div className="flex items-center gap-2 bg-card/20 border border-white/5 backdrop-blur-md px-3 py-1 rounded-lg shadow-sm hover:border-white/10 transition-all duration-300">
+						<span className="text-[11px] font-medium text-muted-foreground select-none pl-1 flex items-center gap-1">
+							✨ AI 智能过滤:
+						</span>
+						<Select
+							value={selectedAiAlias}
+							onValueChange={(val) => {
+								setSelectedAiAlias(val);
+								localStorage.setItem("animesh_selected_ai_alias", val);
+							}}
+							disabled={isSearching}
 						>
-							✨ AI 智能过滤
-						</label>
+							<SelectTrigger className="h-7 border-0 bg-transparent py-0 px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-1">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="none">不使用 AI (传统搜索)</SelectItem>
+								{aiConfigs.map((config) => (
+									<SelectItem key={config.alias} value={config.alias}>
+										{config.alias}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
 					</div>
 				</div>
 			)}
@@ -528,7 +538,7 @@ export default function Home() {
 
 			{/* 加载提示 */}
 			{isSearching &&
-				(isAiMode ? (
+				(selectedAiAlias !== "none" ? (
 					<div className="flex flex-col items-center justify-center py-20 space-y-4 animate-in fade-in duration-300">
 						<div className="relative flex items-center justify-center">
 							<Loader2 className="h-10 w-10 text-cyan-400 animate-spin" />
@@ -587,7 +597,9 @@ export default function Home() {
 					<div className="grid gap-4">
 						{results.map((item, index) => {
 							const isBest =
-								isAiMode && index === 0 && item.ai_score !== undefined;
+								selectedAiAlias !== "none" &&
+								index === 0 &&
+								item.ai_score !== undefined;
 							return (
 								<SearchResultCard
 									key={index.toString()}

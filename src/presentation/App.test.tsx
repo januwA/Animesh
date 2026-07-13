@@ -99,7 +99,7 @@ describe("App 组件", () => {
 			setProxy: vi.fn(),
 			setTrackers: vi.fn(),
 			setTrackerOptions: vi.fn(),
-			setAiOptions: vi.fn(),
+			setAiConfigs: vi.fn(),
 			fetchTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 		};

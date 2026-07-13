@@ -65,7 +65,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当 AI 未开启时，应该直接调用 repository 搜索并返回原结果", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: false,
+			ai_configs: [],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -92,10 +92,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当 AI 开启时，应该进行搜索并调用大模型进行过滤、评分和排序", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -163,10 +167,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当大模型接口异常或返回无法解析时，应该优雅退化返回无打分的原搜索结果", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -193,10 +201,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("应该支持大模型通过 Tool Calling 多次调用搜索引擎工具，并在无结果时自动切换搜索引擎", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 
 		// 模拟 TorrentRepository 的多次调用：
@@ -330,10 +342,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当大模型返回的工具参数格式不正确时，应该忽略并继续流程", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -404,10 +420,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当大模型返回的评分内容不是有效的 JSON 数组时，应该返回未评分的原始结果", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -447,10 +467,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当部分种子没有获得大模型的评分时，应该保留未评分状态并放在排序末尾", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -541,10 +565,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当 AI 决策达到最大迭代次数且没有输出评分文本时，应该触发单轮兜底打分评估并成功返回评分结果", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			// ai_model is omitted to trigger default model fallback
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					// ai_model is omitted to trigger default model fallback
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -634,10 +662,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当 AI 决策达到最大迭代次数且兜底打分请求失败时，应该降级返回无评分结果", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -708,10 +740,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当 AI 决策达到最大迭代次数且兜底打分返回空内容时，应该直接返回无评分的原始结果", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -796,10 +832,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当大模型响应无返回 Choices 消息时，应该退出 ReAct 循环并优雅返回原始结果", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -833,10 +873,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当 AI 决定结束搜索决策过程但返回空内容时，应该直接返回无评分的原始结果", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -874,10 +918,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 	it("当大模型决定调用非 search_torrents 的其他工具时，应该忽略并继续流程", async () => {
 		vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_key: "test-key",
-			ai_api_endpoint: "https://api.example.com/v1/chat/completions",
-			ai_model: "gpt-4o",
+			ai_configs: [
+				{
+					alias: "Default",
+					api_endpoint: "https://api.example.com/v1/chat/completions",
+					api_key: "test-key",
+					ai_model: "gpt-4o",
+				},
+			],
 		});
 		vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 

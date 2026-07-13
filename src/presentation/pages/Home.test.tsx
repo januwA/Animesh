@@ -710,10 +710,15 @@ describe("Home 页面组件", () => {
 		// Mock getSettingsUseCase 返回配置好的 AI 选项，使 UI 中的 AI 开关得以显示
 		vi.spyOn(mockContainer.getSettingsUseCase, "execute").mockResolvedValue({
 			download_dir: "/mock",
-			ai_enabled: true,
-			ai_api_endpoint: "https://api.openai.com/v1",
-			ai_api_key: "test-key",
 			trackers: [],
+			ai_configs: [
+				{
+					alias: "Test AI",
+					api_endpoint: "https://api.openai.com/v1",
+					api_key: "test-key",
+					ai_model: "gpt-3.5-turbo",
+				},
+			],
 		});
 
 		const mockAiResults = [
@@ -747,17 +752,16 @@ describe("Home 页面组件", () => {
 
 		// 等待加载设置并渲染 AI 开关
 		await waitFor(() => {
-			expect(screen.getByLabelText("✨ AI 智能过滤")).toBeInTheDocument();
+			expect(
+				screen.getByDisplayValue("不使用 AI (传统搜索)"),
+			).toBeInTheDocument();
 		});
 
-		const aiCheckbox = screen.getByLabelText(
-			"✨ AI 智能过滤",
-		) as HTMLInputElement;
-		expect(aiCheckbox.checked).toBe(false); // 默认应该关闭
+		const aiSelect = screen.getByDisplayValue("不使用 AI (传统搜索)");
 
 		// 开启 AI 模式开关
-		fireEvent.click(aiCheckbox);
-		expect(aiCheckbox.checked).toBe(true);
+		fireEvent.change(aiSelect, { target: { value: "Test AI" } });
+		expect(aiSelect).toHaveValue("Test AI");
 
 		// 输入框输入并搜索
 		const input = screen.getByPlaceholderText("输入动漫名称");

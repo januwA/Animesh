@@ -43,6 +43,14 @@ pub struct TorrentManager {
     pub crawler_repo: Arc<dyn CrawlerRepository + Send + Sync>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AiConfig {
+    pub alias: String,
+    pub api_endpoint: String,
+    pub api_key: String,
+    pub ai_model: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppSettings {
     pub download_dir: String,
@@ -60,13 +68,7 @@ pub struct AppSettings {
     #[serde(default)]
     pub tracker_last_update_time: Option<i64>,
     #[serde(default)]
-    pub ai_enabled: Option<bool>,
-    #[serde(default)]
-    pub ai_api_key: Option<String>,
-    #[serde(default)]
-    pub ai_api_endpoint: Option<String>,
-    #[serde(default)]
-    pub ai_model: Option<String>,
+    pub ai_configs: Option<Vec<AiConfig>>,
 }
 
 impl TorrentManager {
@@ -203,10 +205,7 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
-                ai_enabled: None,
-                ai_api_key: None,
-                ai_api_endpoint: None,
-                ai_model: None,
+                ai_configs: None,
             })
         } else {
             AppSettings {
@@ -218,10 +217,7 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
-                ai_enabled: None,
-                ai_api_key: None,
-                ai_api_endpoint: None,
-                ai_model: None,
+                ai_configs: None,
             }
         };
         settings.download_dir = dir;
@@ -256,10 +252,7 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
-                ai_enabled: None,
-                ai_api_key: None,
-                ai_api_endpoint: None,
-                ai_model: None,
+                ai_configs: None,
             })
         } else {
             AppSettings {
@@ -271,10 +264,7 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
-                ai_enabled: None,
-                ai_api_key: None,
-                ai_api_endpoint: None,
-                ai_model: None,
+                ai_configs: None,
             }
         };
         settings.proxy = proxy.clone();
@@ -309,10 +299,7 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
-                ai_enabled: None,
-                ai_api_key: None,
-                ai_api_endpoint: None,
-                ai_model: None,
+                ai_configs: None,
             })
         } else {
             AppSettings {
@@ -324,10 +311,7 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
-                ai_enabled: None,
-                ai_api_key: None,
-                ai_api_endpoint: None,
-                ai_model: None,
+                ai_configs: None,
             }
         };
         settings.trackers = Some(trackers.clone());
@@ -357,10 +341,7 @@ impl TorrentManager {
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
-                ai_enabled: None,
-                ai_api_key: None,
-                ai_api_endpoint: None,
-                ai_model: None,
+                ai_configs: None,
             })
         }
     }
@@ -386,10 +367,7 @@ impl TorrentManager {
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,
-            ai_enabled: None,
-            ai_api_key: None,
-            ai_api_endpoint: None,
-            ai_model: None,
+            ai_configs: None,
         });
 
         settings.tracker_source_type = source_type;
@@ -403,12 +381,9 @@ impl TorrentManager {
         Ok(())
     }
 
-    pub fn set_ai_options(
+    pub fn set_ai_configs(
         &self,
-        enabled: Option<bool>,
-        api_key: Option<String>,
-        api_endpoint: Option<String>,
-        model: Option<String>,
+        configs: Option<Vec<AiConfig>>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(parent) = self.settings_path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -423,16 +398,10 @@ impl TorrentManager {
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,
-            ai_enabled: None,
-            ai_api_key: None,
-            ai_api_endpoint: None,
-            ai_model: None,
+            ai_configs: None,
         });
 
-        settings.ai_enabled = enabled;
-        settings.ai_api_key = api_key;
-        settings.ai_api_endpoint = api_endpoint;
-        settings.ai_model = model;
+        settings.ai_configs = configs;
 
         let file = std::fs::File::create(&self.settings_path)?;
         serde_json::to_writer_pretty(file, &settings)?;

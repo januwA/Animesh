@@ -8,6 +8,38 @@ import type {
 	SearchResultItem,
 } from "../../domain/torrent/TorrentSchemas";
 
+export interface ChatCompletionToolCall {
+	id: string;
+	type: "function";
+	function: {
+		name: string;
+		arguments: string;
+	};
+}
+
+export interface ChatCompletionMessage {
+	role: string;
+	content?: string | null;
+	tool_calls?: ChatCompletionToolCall[];
+	tool_call_id?: string;
+	name?: string;
+}
+
+export interface ChatCompletionTool {
+	type: "function";
+	function: {
+		name: string;
+		description: string;
+		parameters: Record<string, unknown>;
+	};
+}
+
+export interface ChatCompletionResponse {
+	choices?: {
+		message?: ChatCompletionMessage;
+	}[];
+}
+
 export class SearchTorrentsWithAiUseCase {
 	constructor(
 		private torrentRepository: TorrentRepository,
@@ -18,7 +50,7 @@ export class SearchTorrentsWithAiUseCase {
 
 	async execute(
 		ctx: Context,
-		dto: { keyword: string; engine: string },
+		dto: { keyword: string; engine: string; aiAlias?: string },
 	): Promise<AiSearchResultItem[]> {
 		this.logger.info("开始执行 AI Agent 智能搜索与推荐流程", dto);
 
@@ -30,7 +62,7 @@ export class SearchTorrentsWithAiUseCase {
 		this.logger.debug(`传统保底检索完成，找到资源数量: ${rawResults.length}`);
 
 		try {
-			const aiSettings = await this.getAiSettings();
+			const aiSettings = await this.getAiSettings(dto.aiAlias);
 			if (!aiSettings) {
 				this.logger.info(
 					"AI 智能搜索未启用或配置信息不完整，无缝退化为返回传统搜索结果",
@@ -39,30 +71,34 @@ export class SearchTorrentsWithAiUseCase {
 			}
 
 			return await this.runAiPipeline(ctx, dto, aiSettings, rawResults);
-		} catch (error: any) {
+		} catch (error: unknown) {
 			this.handleAiError(error);
 			return rawResults;
 		}
 	}
 
-	private async getAiSettings(): Promise<{
+	private async getAiSettings(aiAlias?: string): Promise<{
 		endpoint: string;
 		apiKey: string;
 		model: string;
 	} | null> {
 		const settings = await this.settingsRepository.getSettings();
-		if (
-			!settings?.ai_enabled ||
-			!settings?.ai_api_endpoint ||
-			!settings?.ai_api_key
-		) {
-			return null;
+
+		// If configs exist, look up by alias or use the first one
+		if (settings?.ai_configs && settings.ai_configs.length > 0) {
+			const config = aiAlias
+				? settings.ai_configs.find((c) => c.alias === aiAlias)
+				: settings.ai_configs[0];
+			if (config?.api_endpoint && config.api_key) {
+				return {
+					endpoint: config.api_endpoint,
+					apiKey: config.api_key,
+					model: config.ai_model || "gpt-3.5-turbo",
+				};
+			}
 		}
-		return {
-			endpoint: settings.ai_api_endpoint,
-			apiKey: settings.ai_api_key,
-			model: settings.ai_model || "gpt-3.5-turbo",
-		};
+
+		return null;
 	}
 
 	private async runAiPipeline(
@@ -105,7 +141,10 @@ export class SearchTorrentsWithAiUseCase {
 		return this.parseAndSortRatings(content, currentTorrents);
 	}
 
-	private initMessages(keyword: string, engine: string): any[] {
+	private initMessages(
+		keyword: string,
+		engine: string,
+	): ChatCompletionMessage[] {
 		return [
 			{ role: "system", content: this.getSystemPrompt() },
 			{
@@ -120,8 +159,8 @@ export class SearchTorrentsWithAiUseCase {
 		endpoint: string,
 		apiKey: string,
 		model: string,
-		messages: any[],
-		tools: any[],
+		messages: ChatCompletionMessage[],
+		tools: ChatCompletionTool[],
 		currentTorrents: SearchResultItem[],
 	): Promise<{
 		currentTorrents: SearchResultItem[];
@@ -186,8 +225,8 @@ export class SearchTorrentsWithAiUseCase {
 
 	private async processReActStep(
 		ctx: Context,
-		message: any,
-		messages: any[],
+		message: ChatCompletionMessage,
+		messages: ChatCompletionMessage[],
 		currentTorrents: SearchResultItem[],
 	): Promise<{
 		currentTorrents: SearchResultItem[];
@@ -217,16 +256,17 @@ export class SearchTorrentsWithAiUseCase {
 		endpoint: string,
 		apiKey: string,
 		model: string,
-		messages: any[],
-		tools: any[],
-	): Promise<any> {
+		messages: ChatCompletionMessage[],
+		tools: ChatCompletionTool[],
+	): Promise<ChatCompletionResponse | null> {
 		try {
-			return await this.aiClient.post(endpoint, apiKey, {
+			const res = await this.aiClient.post(endpoint, apiKey, {
 				model,
 				messages,
 				tools,
 				temperature: 0.1,
 			});
+			return res as ChatCompletionResponse;
 		} catch (err: unknown) {
 			this.logger.warn("AI 过滤网络请求失败，执行降级策略", err);
 			return null;
@@ -235,8 +275,8 @@ export class SearchTorrentsWithAiUseCase {
 
 	private async handleToolCalls(
 		ctx: Context,
-		toolCalls: any[],
-		messages: any[],
+		toolCalls: ChatCompletionToolCall[],
+		messages: ChatCompletionMessage[],
 		currentTorrents: SearchResultItem[],
 	): Promise<SearchResultItem[]> {
 		let updatedTorrents = currentTorrents;
@@ -260,7 +300,7 @@ export class SearchTorrentsWithAiUseCase {
 
 	private async executeSearchTool(
 		ctx: Context,
-		toolCall: any,
+		toolCall: ChatCompletionToolCall,
 	): Promise<{ searchResults: SearchResultItem[]; toolContent: string }> {
 		let args: { keyword: string; engine: string };
 		try {
@@ -288,7 +328,7 @@ export class SearchTorrentsWithAiUseCase {
 				? itemsToEvaluate
 						.map(
 							(r, idx) =>
-								`[索引: ${idx}] 标题: "${r.title}", 大小: ${r.size ? (r.size / 1024 / 1024).toFixed(1) + "MB" : "未知"}`,
+								`[索引: ${idx}] 标题: "${r.title}", 大小: ${r.size ? `${(r.size / 1024 / 1024).toFixed(1)}MB` : "未知"}`,
 						)
 						.join("\n")
 				: "没有搜到任何结果，列表为空";
@@ -296,7 +336,7 @@ export class SearchTorrentsWithAiUseCase {
 		return { searchResults, toolContent };
 	}
 
-	private getTools() {
+	private getTools(): ChatCompletionTool[] {
 		return [
 			{
 				type: "function",
@@ -372,7 +412,7 @@ export class SearchTorrentsWithAiUseCase {
 		const evalPrompt = this.buildEvalPrompt(keyword, torrents);
 
 		try {
-			const data = await this.aiClient.post(endpoint, apiKey, {
+			const data = (await this.aiClient.post(endpoint, apiKey, {
 				model,
 				messages: [
 					{
@@ -383,7 +423,7 @@ export class SearchTorrentsWithAiUseCase {
 					{ role: "user", content: evalPrompt },
 				],
 				temperature: 0.1,
-			});
+			})) as ChatCompletionResponse;
 			return data?.choices?.[0]?.message?.content || "";
 		} catch (err: unknown) {
 			this.logger.warn("AI 兜底打分请求失败", err);
@@ -433,7 +473,7 @@ export class SearchTorrentsWithAiUseCase {
 		return sortedResults;
 	}
 
-	private handleAiError(error: any): void {
+	private handleAiError(error: unknown): void {
 		const isFetchError =
 			error instanceof TypeError && error.message === "Failed to fetch";
 		if (isFetchError) {

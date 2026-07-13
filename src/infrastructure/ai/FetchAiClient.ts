@@ -8,7 +8,11 @@ const baseUrl = import.meta.env.PROD
 export class FetchAiClient implements AiClient {
 	constructor(private readonly httpClient: HttpClient) {}
 
-	async post(endpoint: string, apiKey: string, payload: any): Promise<any> {
+	async post(
+		endpoint: string,
+		apiKey: string,
+		payload: unknown,
+	): Promise<unknown> {
 		const response = await this.httpClient.request(
 			`${baseUrl}/ai/chat-request`,
 			{

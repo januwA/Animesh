@@ -22,7 +22,7 @@ export class VerifyAiConnectionUseCase {
 
 		const model = dto.model?.trim() || "gpt-3.5-turbo";
 
-		const response = await this.aiClient.post(endpoint, apiKey, {
+		const response = (await this.aiClient.post(endpoint, apiKey, {
 			model,
 			messages: [
 				{
@@ -32,7 +32,7 @@ export class VerifyAiConnectionUseCase {
 			],
 			temperature: 0.1,
 			max_tokens: 5,
-		});
+		})) as { choices?: unknown[] };
 
 		if (!response?.choices || response.choices.length === 0) {
 			throw new Error("模型服务未返回有效响应，请检查配置");

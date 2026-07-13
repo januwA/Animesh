@@ -1,4 +1,4 @@
-import type { Settings } from "./SettingsSchemas";
+import type { AiConfig, Settings } from "./SettingsSchemas";
 
 export interface SettingsRepository {
 	getSettings(): Promise<Settings>;
@@ -12,12 +12,7 @@ export interface SettingsRepository {
 		autoUpdate: boolean | null;
 		lastUpdateTime: number | null;
 	}): Promise<void>;
-	setAiOptions(options: {
-		enabled: boolean | null;
-		apiKey: string | null;
-		apiEndpoint: string | null;
-		model: string | null;
-	}): Promise<void>;
+	setAiConfigs(configs: AiConfig[] | null): Promise<void>;
 	fetchTrackers(url: string): Promise<string[]>;
 	selectDirectory(): Promise<string | null>;
 }
