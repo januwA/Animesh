@@ -68,8 +68,10 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
+      - name: Enable Corepack
+        run: |
+          npm install -g corepack@latest
+          corepack enable
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -135,8 +137,10 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
+      - name: Enable Corepack
+        run: |
+          npm install -g corepack@latest
+          corepack enable
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
