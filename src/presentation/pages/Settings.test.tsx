@@ -383,23 +383,6 @@ describe("Settings 页面组件", () => {
 		});
 	});
 
-	it("当点击返回首页按钮时，应该正常触发路由跳转", async () => {
-		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-			download_dir: "C:\\Downloads",
-		});
-
-		renderSettings();
-
-		await waitFor(() => {
-			expect(
-				screen.getByRole("button", { name: "返回首页" }),
-			).toBeInTheDocument();
-		});
-
-		fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
-		expect(currentLocation.current?.pathname).toBe("/");
-	});
-
 	it("应该支持切换不同的 Tracker 列表源与 CDN 加速节点，更改自动更新选项，更改自定义URL，并测试追加同步以及各类失败校验", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",

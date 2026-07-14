@@ -185,3 +185,14 @@ body {
 	animation-duration: 0.28s;
 	animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* 自定义吸顶/吸底安全区域辅助类 */
+.sticky-safe-top {
+	position: sticky;
+	top: env(safe-area-inset-top, 0px);
+}
+
+.sticky-safe-bottom {
+	position: sticky;
+	bottom: env(safe-area-inset-bottom, 0px);
+}

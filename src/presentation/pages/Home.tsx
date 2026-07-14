@@ -57,7 +57,7 @@ function SearchForm({
 	setSearchEngine,
 }: SearchFormProps) {
 	return (
-		<section className="max-w-2xl mx-auto w-full mb-8">
+		<section className="mx-auto w-full mb-8">
 			<form
 				onSubmit={onSubmit}
 				className="relative flex items-center bg-card/40 backdrop-blur-md rounded-xl border border-border shadow-lg p-1 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"
@@ -141,7 +141,7 @@ function SearchLoading({ onCancel }: SearchLoadingProps) {
 // 初始引导推荐组件
 function WelcomeGuide() {
 	return (
-		<div className="max-w-2xl mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 opacity-75">
+		<div className="mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 opacity-75">
 			<Card className="bg-card/25 border-border">
 				<CardHeader className="pb-2">
 					<CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -472,7 +472,7 @@ export default function Home() {
 
 			{/* AI 智能过滤开关 */}
 			{aiConfigs.length > 0 && (
-				<div className="max-w-2xl mx-auto w-full mb-6 mt-[-1rem] flex items-center justify-end animate-in fade-in duration-200">
+				<div className="mx-auto w-full mb-6 mt-[-1rem] flex items-center justify-end animate-in fade-in duration-200">
 					<div className="flex items-center gap-2 bg-card border border-border backdrop-blur-md px-3 py-1 rounded-lg shadow-sm hover:border-muted-foreground/30 transition-all duration-300">
 						<span className="text-[11px] font-medium text-muted-foreground select-none pl-1 flex items-center gap-1">
 							✨ AI 智能过滤:
@@ -503,7 +503,7 @@ export default function Home() {
 
 			{/* 搜索历史记录 */}
 			{history.length > 0 && (
-				<div className="max-w-2xl mx-auto w-full mb-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
+				<div className="mx-auto w-full mb-6 flex flex-wrap items-center gap-2 text-xs text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-200">
 					<span className="flex items-center gap-1 font-medium">
 						<Clock className="h-3.5 w-3.5" />
 						最近搜索:

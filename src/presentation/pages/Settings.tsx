@@ -11,10 +11,10 @@ import {
 	Palette,
 	RefreshCw,
 	Save,
+	Settings as SettingsIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import { SettingsFormSchema } from "@/domain/settings/SettingsSchemas";
 import {
@@ -35,7 +35,6 @@ import { formatError, formatLocalDate } from "@/utils";
 import { useAppContext } from "../context/AppContext";
 
 export default function Settings() {
-	const navigate = useNavigate();
 	const { theme, setTheme } = useTheme();
 	const {
 		getSettingsUseCase,
@@ -49,6 +48,7 @@ export default function Settings() {
 	} = useDI();
 	const { showToast } = useAppContext();
 	const [currentVersion, setCurrentVersion] = useState("");
+
 	const [checkingUpdate, setCheckingUpdate] = useState(false);
 	const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(
 		null,
@@ -381,7 +381,26 @@ export default function Settings() {
 	return (
 		<div className="space-y-6">
 			{/* Settings Form */}
-			<form onSubmit={handleSave}>
+			<form onSubmit={handleSave} className="space-y-6 flex flex-col">
+				{/* Sticky Action Header */}
+				<div className="sticky-safe-top z-20 bg-background/85 backdrop-blur-md py-3 -mx-4 px-4 flex items-center justify-between border-b border-border shadow-sm">
+					<div className="flex items-center gap-2">
+						<SettingsIcon className="h-4 w-4 text-primary" />
+						<span className="text-sm font-bold text-foreground">软件设置</span>
+					</div>
+					<Button
+						type="submit"
+						disabled={saving}
+						className="gap-1.5 text-xs font-semibold px-5 shadow-sm"
+					>
+						{saving ? (
+							<Loader2 className="h-3.5 w-3.5 animate-spin" />
+						) : (
+							<Save className="h-3.5 w-3.5" />
+						)}
+						保存设置
+					</Button>
+				</div>
 				{isTauri && (
 					<Card className="bg-card border-border shadow-sm">
 						<CardHeader className="p-5">
@@ -1034,30 +1053,6 @@ export default function Settings() {
 									Peers。
 								</span>
 							</p>
-						</div>
-
-						{/* Action buttons */}
-						<div className="flex justify-end gap-3 pt-4 border-t border-border">
-							<Button
-								type="button"
-								variant="ghost"
-								onClick={() => navigate("/")}
-								className="text-xs font-medium"
-							>
-								返回首页
-							</Button>
-							<Button
-								type="submit"
-								disabled={saving}
-								className="gap-1.5 text-xs font-medium px-5"
-							>
-								{saving ? (
-									<Loader2 className="h-3.5 w-3.5 animate-spin" />
-								) : (
-									<Save className="h-3.5 w-3.5" />
-								)}
-								保存设置
-							</Button>
 						</div>
 					</CardContent>
 				</Card>

@@ -1,6 +1,6 @@
 import { Background, WithCancel } from "ajanuw-context";
 import { Calendar as CalendarIcon, Loader2, Star, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type {
@@ -40,49 +40,11 @@ function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
 		return calendar.find((day) => day.weekday.id === activeDay)?.items ?? [];
 	}, [calendar, activeDay]);
 
-	const [isSticky, setIsSticky] = useState(false);
-	const sentinelRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		if (typeof IntersectionObserver === "undefined") {
-			return;
-		}
-		const sentinel = sentinelRef.current;
-		/* v8 ignore next */
-		if (!sentinel) return;
-
-		const observer = new IntersectionObserver(
-			([entry]) => {
-				setIsSticky(!entry.isIntersecting);
-			},
-			{
-				threshold: [0],
-				rootMargin: "-1px 0px 0px 0px",
-			},
-		);
-
-		observer.observe(sentinel);
-		return () => {
-			observer.unobserve(sentinel);
-		};
-	}, []);
-
 	return (
-		<section className="w-full relative">
-			<div
-				ref={sentinelRef}
-				className="absolute -top-px left-0 right-0 h-0 pointer-events-none"
-			/>
+		<section className="w-full">
 			{/* Weekday Tabs */}
-			<div
-				className="sticky top-0 z-10 bg-background/85 backdrop-blur-md pb-2 -mx-4 px-4"
-				style={{
-					paddingTop: isSticky
-						? "calc(env(safe-area-inset-top, 0px) + 0.5rem)"
-						: "0.5rem",
-				}}
-			>
-				<div className="flex gap-1 p-1 bg-card border border-border rounded-xl">
+			<div className="sticky-safe-top z-10 bg-background/85 backdrop-blur-md pt-2 pb-2 -mx-4 px-4">
+				<div className="flex gap-1 p-1 bg-muted/60 border border-border/80 rounded-xl shadow-inner">
 					{WEEKDAY_LABELS.map((label, index) => {
 						const dayId = index + 1;
 						const isActive = dayId === activeDay;
@@ -93,10 +55,10 @@ function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
 								key={dayId}
 								variant={isActive ? "default" : "ghost"}
 								size="sm"
-								className={`flex-1 text-xs font-medium relative ${
+								className={`flex-1 text-xs relative transition-all ${
 									isActive
-										? "bg-primary text-primary-foreground shadow-sm"
-										: "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+										? "bg-primary text-primary-foreground font-bold shadow-md"
+										: "text-muted-foreground/90 font-semibold hover:text-foreground hover:bg-background/50"
 								}`}
 								onClick={() => setActiveDay(dayId)}
 							>
