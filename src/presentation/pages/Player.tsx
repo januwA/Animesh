@@ -369,7 +369,7 @@ export default function Player() {
 
 				{/* Subtitle Tracks Selection */}
 				{!loading && streamUrl && subtracks.length > 0 && (
-					<div className="flex items-center gap-2.5 p-3 bg-muted border border-border rounded-lg">
+					<div className="flex items-center gap-2.5 p-3">
 						<span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
 							字幕轨道:
 						</span>

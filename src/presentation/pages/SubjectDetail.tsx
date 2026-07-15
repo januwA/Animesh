@@ -134,14 +134,15 @@ export default function SubjectDetail() {
 	if (error) {
 		return (
 			<div className="space-y-4">
-				<button
-					type="button"
+				<Button
+					variant="ghost"
+					size="sm"
 					onClick={handleBack}
-					className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+					className="gap-2 text-muted-foreground hover:text-foreground"
 				>
 					<ArrowLeft className="h-4 w-4" />
 					返回日历
-				</button>
+				</Button>
 				<ErrorBanner message={error} />
 			</div>
 		);
@@ -160,14 +161,15 @@ export default function SubjectDetail() {
 		<div className="w-full space-y-6 animate-in fade-in duration-300">
 			{/* Navigation Header */}
 			<div className="flex items-center justify-between">
-				<button
-					type="button"
+				<Button
+					variant="ghost"
+					size="sm"
 					onClick={handleBack}
-					className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+					className="gap-2 text-muted-foreground hover:text-foreground"
 				>
 					<ArrowLeft className="h-4 w-4" />
 					返回日历
-				</button>
+				</Button>
 
 				{subject && (
 					<a
