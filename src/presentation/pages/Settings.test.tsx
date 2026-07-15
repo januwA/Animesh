@@ -365,6 +365,33 @@ describe("Settings 页面组件", () => {
 		});
 	});
 
+	it("当点击“重置为默认值”按钮且获取默认 Tracker 列表失败时，应该妥善提示错误信息", async () => {
+		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+			download_dir: "C:\\Downloads",
+			trackers: ["udp://oldtracker"],
+		});
+		vi.mocked(mockSettingsRepository.getDefaultTrackers).mockRejectedValueOnce(
+			new Error("Backend error"),
+		);
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
+				"udp://oldtracker",
+			);
+		});
+
+		const resetBtn = screen.getByRole("button", { name: "重置为默认值" });
+		fireEvent.click(resetBtn);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText("获取默认 Tracker 列表失败", { exact: false }),
+			).toBeInTheDocument();
+		});
+	});
+
 	it("应该支持选择不同的 Tracker 列表源和 CDN 节点，并进行在线同步", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",
