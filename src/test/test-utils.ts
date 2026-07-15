@@ -29,6 +29,7 @@ import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersio
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { DIContainer } from "../di/DIContext";
 import type { AiClient } from "../domain/ai/AiClient";
+import type { BangumiCache } from "../domain/bangumi/BangumiCache";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
@@ -51,6 +52,7 @@ export interface CreateContainerParamsForTest {
 	torrentRepository?: Partial<TorrentRepository>;
 	settingsRepository?: Partial<SettingsRepository>;
 	bangumiRepository?: Partial<BangumiRepository>;
+	bangumiCache?: Partial<BangumiCache>;
 	notificationRepository?: Partial<NotificationRepository>;
 	logger?: Logger;
 
@@ -131,6 +133,12 @@ export function createDIContainerForTest(
 		getEpisodes: async () => [],
 		...params.bangumiRepository,
 	} as BangumiRepository;
+
+	const bangumiCache = {
+		getCalendar: async () => null,
+		setCalendar: async () => {},
+		...params.bangumiCache,
+	} as BangumiCache;
 
 	const notificationRepo = {
 		requestPermission: async () => false,
@@ -215,7 +223,7 @@ export function createDIContainerForTest(
 
 	const getBangumiCalendarUseCase =
 		params.getBangumiCalendarUseCase ||
-		new GetBangumiCalendarUseCase(bangumiRepo);
+		new GetBangumiCalendarUseCase(bangumiRepo, bangumiCache);
 
 	const getBangumiSubjectUseCase =
 		params.getBangumiSubjectUseCase ||

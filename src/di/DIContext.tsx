@@ -40,6 +40,7 @@ import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase
 import type { AiClient } from "../domain/ai/AiClient";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
+import { BrowserBangumiCache } from "../infrastructure/bangumi/BrowserBangumiCache";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpClient } from "../infrastructure/http/HttpClient";
 import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
@@ -143,8 +144,10 @@ export function createDefaultDIContainer(): DIContainer {
 	const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
 	const setThemeUseCase = new SetThemeUseCase(settingsRepository);
 
+	const bangumiCache = new BrowserBangumiCache();
 	const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
 		bangumiRepository,
+		bangumiCache,
 	);
 	const getBangumiSubjectUseCase = new GetBangumiSubjectUseCase(
 		bangumiRepository,
