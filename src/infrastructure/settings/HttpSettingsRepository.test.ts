@@ -104,6 +104,24 @@ describe("基础设施层 HttpSettingsRepository", () => {
 		});
 	});
 
+	describe("getDefaultTrackers 方法", () => {
+		it("应该从 API 获取默认 Tracker 列表", async () => {
+			const mockTrackers = ["udp://tracker1", "udp://tracker2"];
+			vi.mocked(fetch).mockResolvedValueOnce({
+				ok: true,
+				json: async () => mockTrackers,
+			} as Response);
+
+			const result = await repository.getDefaultTrackers();
+
+			expect(fetch).toHaveBeenCalledWith(
+				expect.stringContaining("/api/settings/default-trackers"),
+				expect.objectContaining({ method: "GET" }),
+			);
+			expect(result).toEqual(mockTrackers);
+		});
+	});
+
 	describe("setAiConfigs 方法", () => {
 		it("应该发送 PUT 请求至 /api/settings/ai-configs 并携带正确的 JSON payload", async () => {
 			vi.mocked(fetch).mockResolvedValueOnce({

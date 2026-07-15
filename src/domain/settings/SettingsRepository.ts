@@ -2,6 +2,7 @@ import type { AiConfig, Settings } from "./SettingsSchemas";
 
 export interface SettingsRepository {
 	getSettings(): Promise<Settings>;
+	getDefaultTrackers(): Promise<string[]>;
 	setDownloadDir(dir: string): Promise<void>;
 	setProxy(proxy: string | null): Promise<void>;
 	setTrackers(trackers: string[]): Promise<void>;

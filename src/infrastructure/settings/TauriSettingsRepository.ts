@@ -19,6 +19,10 @@ export class TauriSettingsRepository implements SettingsRepository {
 		return result.data;
 	}
 
+	async getDefaultTrackers(): Promise<string[]> {
+		return invoke<string[]>("settings_get_default_trackers");
+	}
+
 	async setDownloadDir(dir: string): Promise<void> {
 		return invoke<void>("settings_set_download_dir", { dir });
 	}

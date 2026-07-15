@@ -112,6 +112,18 @@ describe("基础设施层 TauriSettingsRepository", () => {
 		});
 	});
 
+	describe("getDefaultTrackers 方法", () => {
+		it("应该正确从后端获取默认 Tracker 列表", async () => {
+			const mockTrackers = ["udp://tracker1", "udp://tracker2"];
+			mockInvoke.mockResolvedValueOnce(mockTrackers);
+
+			const result = await repository.getDefaultTrackers();
+
+			expect(mockInvoke).toHaveBeenCalledWith("settings_get_default_trackers");
+			expect(result).toEqual(mockTrackers);
+		});
+	});
+
 	describe("setAiConfigs 方法", () => {
 		it("应该正确调用后端的 settings_set_ai_configs 命令", async () => {
 			mockInvoke.mockResolvedValueOnce(undefined);

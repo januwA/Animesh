@@ -41,6 +41,22 @@ describe("Settings 页面组件", () => {
 				tracker_auto_update: false,
 				tracker_last_update_time: 0,
 			}),
+			getDefaultTrackers: vi
+				.fn()
+				.mockResolvedValue([
+					"udp://tracker.opentrackr.org:1337/announce",
+					"http://tracker.gbitt.info:80/announce",
+					"udp://open.stealth.si:80/announce",
+					"udp://tracker.coppersurfer.tk:6969/announce",
+					"udp://exodus.desync.com:6969/announce",
+					"udp://tracker.leechers-paradise.org:6969/announce",
+					"udp://tracker.internetwarriors.net:1337/announce",
+					"udp://tracker.cyberia.is:6969/announce",
+					"udp://tracker.torrent.eu.org:451/announce",
+					"udp://tracker.moack.co.kr:80/announce",
+					"udp://explodie.org:6969/announce",
+					"http://tracker.openbittorrent.com:80/announce",
+				]),
 			setDownloadDir: vi.fn(),
 			setProxy: vi.fn(),
 			setTrackers: vi.fn(),
@@ -329,12 +345,14 @@ describe("Settings 页面组件", () => {
 		const trackersInput = screen.getByPlaceholderText(
 			/请输入 Tracker 地址/,
 		) as HTMLTextAreaElement;
-		expect(trackersInput.value).toContain(
-			"udp://tracker.opentrackr.org:1337/announce",
-		);
-		expect(trackersInput.value).toContain(
-			"http://tracker.openbittorrent.com:80/announce",
-		);
+		await waitFor(() => {
+			expect(trackersInput.value).toContain(
+				"udp://tracker.opentrackr.org:1337/announce",
+			);
+			expect(trackersInput.value).toContain(
+				"http://tracker.openbittorrent.com:80/announce",
+			);
+		});
 
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);

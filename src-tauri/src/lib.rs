@@ -378,6 +378,11 @@ fn settings_get(
 }
 
 #[tauri::command]
+fn settings_get_default_trackers() -> Vec<String> {
+    animesh_core::torrent_manager::get_default_trackers()
+}
+
+#[tauri::command]
 fn settings_set_tracker_options(
     source_type: Option<String>,
     cdn: Option<String>,
@@ -578,6 +583,7 @@ pub fn run() {
             torrent_subscribe,
             torrent_unsubscribe,
             settings_get,
+            settings_get_default_trackers,
             settings_set_download_dir,
             settings_set_proxy,
             settings_set_trackers,

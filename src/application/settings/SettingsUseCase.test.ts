@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
+import { GetDefaultTrackersUseCase } from "./GetDefaultTrackersUseCase";
 import { GetSettingsUseCase } from "./GetSettingsUseCase";
 import { SaveSettingsUseCase } from "./SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "./SelectDirectoryUseCase";
@@ -9,6 +10,7 @@ import { SyncTrackersUseCase } from "./SyncTrackersUseCase";
 describe("Settings 相关的 UseCase 业务编排", () => {
 	const rawMockRepo = {
 		getSettings: vi.fn(),
+		getDefaultTrackers: vi.fn(),
 		setDownloadDir: vi.fn(),
 		setProxy: vi.fn(),
 		setTrackers: vi.fn(),
@@ -54,6 +56,17 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 				},
 			],
 		});
+	});
+
+	it("GetDefaultTrackersUseCase 应该正确获取默认 Tracker 列表", async () => {
+		const useCase = new GetDefaultTrackersUseCase(mockRepo);
+		vi.mocked(rawMockRepo.getDefaultTrackers).mockResolvedValueOnce([
+			"udp://tracker1",
+			"udp://tracker2",
+		]);
+		const result = await useCase.execute();
+		expect(rawMockRepo.getDefaultTrackers).toHaveBeenCalled();
+		expect(result).toEqual(["udp://tracker1", "udp://tracker2"]);
 	});
 
 	it("SaveSettingsUseCase 应该调用 repository 里的 setDownloadDir、setProxy、setTrackers 和 setTrackerOptions 方法以及 setAiConfigs 方法", async () => {

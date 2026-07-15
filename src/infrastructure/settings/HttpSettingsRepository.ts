@@ -32,6 +32,12 @@ export class HttpSettingsRepository implements SettingsRepository {
 		return result.data;
 	}
 
+	async getDefaultTrackers(): Promise<string[]> {
+		return this.httpClient.getJson<string[]>(
+			`${baseUrl}/settings/default-trackers`,
+		);
+	}
+
 	async setDownloadDir(dir: string): Promise<void> {
 		await this.httpClient.request(`${baseUrl}/settings/download-dir`, {
 			method: "PUT",

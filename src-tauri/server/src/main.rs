@@ -127,6 +127,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route("/settings", get(settings_get_handler))
         .route(
+            "/settings/default-trackers",
+            get(settings_get_default_trackers_handler),
+        )
+        .route(
             "/settings/download-dir",
             put(settings_set_download_dir_handler),
         )
@@ -455,6 +459,13 @@ async fn settings_get_handler(
         .get_settings()
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(axum::Json(settings))
+}
+
+async fn settings_get_default_trackers_handler() -> Result<impl IntoResponse, (StatusCode, String)>
+{
+    Ok(axum::Json(
+        animesh_core::torrent_manager::get_default_trackers(),
+    ))
 }
 
 #[derive(serde::Deserialize)]

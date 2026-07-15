@@ -4,6 +4,7 @@ import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubje
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
+import { GetDefaultTrackersUseCase } from "../application/settings/GetDefaultTrackersUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
@@ -73,6 +74,7 @@ export interface CreateContainerParamsForTest {
 	getSubtitleVttUseCase?: GetSubtitleVttUseCase;
 
 	getSettingsUseCase?: GetSettingsUseCase;
+	getDefaultTrackersUseCase?: GetDefaultTrackersUseCase;
 	saveSettingsUseCase?: SaveSettingsUseCase;
 	selectDirectoryUseCase?: SelectDirectoryUseCase;
 	syncTrackersUseCase?: SyncTrackersUseCase;
@@ -206,6 +208,9 @@ export function createDIContainerForTest(
 
 	const getSettingsUseCase =
 		params.getSettingsUseCase || new GetSettingsUseCase(settingsRepo);
+	const getDefaultTrackersUseCase =
+		params.getDefaultTrackersUseCase ||
+		new GetDefaultTrackersUseCase(settingsRepo);
 	const saveSettingsUseCase =
 		params.saveSettingsUseCase || new SaveSettingsUseCase(settingsRepo);
 	const selectDirectoryUseCase =
@@ -263,6 +268,7 @@ export function createDIContainerForTest(
 		getSubtitleVttUseCase,
 
 		getSettingsUseCase,
+		getDefaultTrackersUseCase,
 		saveSettingsUseCase,
 		selectDirectoryUseCase,
 		syncTrackersUseCase,

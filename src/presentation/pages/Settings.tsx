@@ -38,6 +38,7 @@ export default function Settings() {
 	const { theme, setTheme } = useTheme();
 	const {
 		getSettingsUseCase,
+		getDefaultTrackersUseCase,
 		saveSettingsUseCase,
 		selectDirectoryUseCase,
 		syncTrackersUseCase,
@@ -1010,27 +1011,21 @@ export default function Settings() {
 								</label>
 								<button
 									type="button"
-									onClick={() => {
-										setTrackersText(
-											[
-												"udp://tracker.opentrackr.org:1337/announce",
-												"http://tracker.gbitt.info:80/announce",
-												"udp://open.stealth.si:80/announce",
-												"udp://tracker.coppersurfer.tk:6969/announce",
-												"udp://exodus.desync.com:6969/announce",
-												"udp://tracker.leechers-paradise.org:6969/announce",
-												"udp://tracker.internetwarriors.net:1337/announce",
-												"udp://tracker.cyberia.is:6969/announce",
-												"udp://tracker.torrent.eu.org:451/announce",
-												"udp://tracker.moack.co.kr:80/announce",
-												"udp://explodie.org:6969/announce",
-												"http://tracker.openbittorrent.com:80/announce",
-											].join("\n"),
-										);
-										showToast(
-											"已重置为默认 Tracker 列表，点击保存生效",
-											"success",
-										);
+									onClick={async () => {
+										try {
+											const defaults =
+												await getDefaultTrackersUseCase.execute();
+											setTrackersText(defaults.join("\n"));
+											showToast(
+												"已重置为默认 Tracker 列表，点击保存生效",
+												"success",
+											);
+										} catch (err: unknown) {
+											showToast(
+												`获取默认 Tracker 列表失败: ${formatError(err)}`,
+												"error",
+											);
+										}
 									}}
 									className="text-[11px] text-primary hover:underline font-medium"
 								>

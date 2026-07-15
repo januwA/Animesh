@@ -14,6 +14,7 @@ import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubje
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
+import { GetDefaultTrackersUseCase } from "../application/settings/GetDefaultTrackersUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
@@ -67,6 +68,7 @@ export interface DIContainer {
 	getSubtitleVttUseCase: GetSubtitleVttUseCase;
 
 	getSettingsUseCase: GetSettingsUseCase;
+	getDefaultTrackersUseCase: GetDefaultTrackersUseCase;
 	saveSettingsUseCase: SaveSettingsUseCase;
 	selectDirectoryUseCase: SelectDirectoryUseCase;
 	syncTrackersUseCase: SyncTrackersUseCase;
@@ -135,6 +137,9 @@ export function createDefaultDIContainer(): DIContainer {
 	const getSubtitleVttUseCase = new GetSubtitleVttUseCase(torrentRepository);
 
 	const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
+	const getDefaultTrackersUseCase = new GetDefaultTrackersUseCase(
+		settingsRepository,
+	);
 	const saveSettingsUseCase = new SaveSettingsUseCase(settingsRepository);
 	const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
 	const syncTrackersUseCase = new SyncTrackersUseCase(settingsRepository);
@@ -183,6 +188,7 @@ export function createDefaultDIContainer(): DIContainer {
 		getSubtitleVttUseCase,
 
 		getSettingsUseCase,
+		getDefaultTrackersUseCase,
 		saveSettingsUseCase,
 		selectDirectoryUseCase,
 		syncTrackersUseCase,
