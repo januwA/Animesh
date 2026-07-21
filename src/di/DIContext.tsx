@@ -9,7 +9,9 @@ import {
 import { FetchAiClient } from "@/infrastructure/ai/FetchAiClient";
 import { TauriAiClient } from "@/infrastructure/ai/TauriAiClient";
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
+import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCharactersUseCase";
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
+import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
@@ -80,6 +82,8 @@ export interface DIContainer {
 	getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
 	getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
 	getBangumiEpisodesUseCase: GetBangumiEpisodesUseCase;
+	getBangumiPersonsUseCase: GetBangumiPersonsUseCase;
+	getBangumiCharactersUseCase: GetBangumiCharactersUseCase;
 	checkUpdateUseCase: CheckUpdateUseCase;
 	getCurrentVersionUseCase: GetCurrentVersionUseCase;
 	openUpdateUrlUseCase: OpenUpdateUrlUseCase;
@@ -160,6 +164,12 @@ export function createDefaultDIContainer(): DIContainer {
 	const getBangumiEpisodesUseCase = new GetBangumiEpisodesUseCase(
 		bangumiRepository,
 	);
+	const getBangumiPersonsUseCase = new GetBangumiPersonsUseCase(
+		bangumiRepository,
+	);
+	const getBangumiCharactersUseCase = new GetBangumiCharactersUseCase(
+		bangumiRepository,
+	);
 	const checkUpdateUseCase = new CheckUpdateUseCase(updateRepository);
 	const getCurrentVersionUseCase = new GetCurrentVersionUseCase(
 		updateRepository,
@@ -200,6 +210,8 @@ export function createDefaultDIContainer(): DIContainer {
 		getBangumiCalendarUseCase,
 		getBangumiSubjectUseCase,
 		getBangumiEpisodesUseCase,
+		getBangumiPersonsUseCase,
+		getBangumiCharactersUseCase,
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
 		openUpdateUrlUseCase,

@@ -93,6 +93,68 @@ export type BangumiSubjectImages = z.infer<typeof BangumiSubjectImagesSchema>;
 export type BangumiCalendarItem = z.infer<typeof BangumiCalendarItemSchema>;
 export type BangumiCalendarDay = z.infer<typeof BangumiCalendarDaySchema>;
 export type BangumiSubject = z.infer<typeof BangumiSubjectSchema>;
+/**
+ * Person/Staff schema — represents a staff member or organization
+ * involved in the subject production.
+ * API: https://api.bgm.tv/v0/subjects/{subject_id}/persons
+ */
+export const BangumiPersonImageSchema = z.object({
+	small: z.string(),
+	grid: z.string(),
+	large: z.string(),
+	medium: z.string(),
+});
+
+export const BangumiPersonSchema = z.object({
+	id: z.number(),
+	name: z.string(),
+	relation: z.string(),
+	career: z.array(z.string()),
+	type: z.number(),
+	eps: z.string(),
+	images: BangumiPersonImageSchema,
+});
+
+/**
+ * Actor/Voice actor schema — nested inside character data.
+ */
+export const BangumiActorImageSchema = z.object({
+	small: z.string(),
+	grid: z.string(),
+	large: z.string(),
+	medium: z.string(),
+});
+
+export const BangumiActorSchema = z.object({
+	id: z.number(),
+	name: z.string(),
+	images: BangumiActorImageSchema,
+	short_summary: z.string(),
+	career: z.array(z.string()),
+	type: z.number(),
+	locked: z.boolean(),
+});
+
+/**
+ * Character schema — represents a character appearing in the subject.
+ * API: https://api.bgm.tv/v0/subjects/{subject_id}/characters
+ */
+export const BangumiCharacterSchema = z.object({
+	id: z.number(),
+	name: z.string(),
+	images: BangumiPersonImageSchema,
+	summary: z.string(),
+	relation: z.string(),
+	type: z.number(),
+	actors: z.array(BangumiActorSchema),
+});
+
+export const BangumiPersonsResponseSchema = z.array(BangumiPersonSchema);
+export const BangumiCharactersResponseSchema = z.array(BangumiCharacterSchema);
+
+export type BangumiPerson = z.infer<typeof BangumiPersonSchema>;
+export type BangumiActor = z.infer<typeof BangumiActorSchema>;
+export type BangumiCharacter = z.infer<typeof BangumiCharacterSchema>;
 export type BangumiEpisode = z.infer<typeof BangumiEpisodeSchema>;
 export type BangumiEpisodesResponse = z.infer<
 	typeof BangumiEpisodesResponseSchema

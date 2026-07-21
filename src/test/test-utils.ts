@@ -1,5 +1,7 @@
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
+import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCharactersUseCase";
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
+import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
@@ -86,6 +88,8 @@ export interface CreateContainerParamsForTest {
 	getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
 	getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
 	getBangumiEpisodesUseCase?: GetBangumiEpisodesUseCase;
+	getBangumiPersonsUseCase?: GetBangumiPersonsUseCase;
+	getBangumiCharactersUseCase?: GetBangumiCharactersUseCase;
 	updateRepository?: Partial<UpdateRepository>;
 	checkUpdateUseCase?: CheckUpdateUseCase;
 	getCurrentVersionUseCase?: GetCurrentVersionUseCase;
@@ -133,6 +137,8 @@ export function createDIContainerForTest(
 		getCalendar: async () => [],
 		getSubject: async () => ({}) as any,
 		getEpisodes: async () => [],
+		getSubjectPersons: async () => [],
+		getSubjectCharacters: async () => [],
 		...params.bangumiRepository,
 	} as BangumiRepository;
 
@@ -238,6 +244,14 @@ export function createDIContainerForTest(
 		params.getBangumiEpisodesUseCase ||
 		new GetBangumiEpisodesUseCase(bangumiRepo);
 
+	const getBangumiPersonsUseCase =
+		params.getBangumiPersonsUseCase ||
+		new GetBangumiPersonsUseCase(bangumiRepo);
+
+	const getBangumiCharactersUseCase =
+		params.getBangumiCharactersUseCase ||
+		new GetBangumiCharactersUseCase(bangumiRepo);
+
 	const checkUpdateUseCase =
 		params.checkUpdateUseCase || new CheckUpdateUseCase(updateRepo);
 	const getCurrentVersionUseCase =
@@ -280,6 +294,8 @@ export function createDIContainerForTest(
 		getBangumiCalendarUseCase,
 		getBangumiSubjectUseCase,
 		getBangumiEpisodesUseCase,
+		getBangumiPersonsUseCase,
+		getBangumiCharactersUseCase,
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
 		openUpdateUrlUseCase,

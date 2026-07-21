@@ -3,8 +3,12 @@ import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 import {
 	type BangumiCalendarDay,
 	BangumiCalendarResponseSchema,
+	type BangumiCharacter,
+	BangumiCharactersResponseSchema,
 	type BangumiEpisode,
 	BangumiEpisodesResponseSchema,
+	type BangumiPerson,
+	BangumiPersonsResponseSchema,
 	type BangumiSubject,
 	BangumiSubjectSchema,
 } from "../../domain/bangumi/BangumiSchemas";
@@ -82,5 +86,57 @@ export class HttpBangumiRepository implements BangumiRepository {
 			});
 		}
 		return result.data.data;
+	}
+
+	async getSubjectPersons(
+		ctx: Context,
+		subjectId: string,
+	): Promise<BangumiPerson[]> {
+		let data: unknown;
+		try {
+			data = await this.client.getJson<unknown>(
+				`https://api.bgm.tv/v0/subjects/${subjectId}/persons?subject_id=${subjectId}`,
+				{ ctx },
+			);
+		} catch (err: unknown) {
+			if (ctx.err() && err === ctx.err()) {
+				throw err;
+			}
+			throw new Error("Failed to fetch subject persons", { cause: err });
+		}
+
+		const result = BangumiPersonsResponseSchema.safeParse(data);
+		if (!result.success) {
+			throw new Error("Persons API response structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
+	}
+
+	async getSubjectCharacters(
+		ctx: Context,
+		subjectId: string,
+	): Promise<BangumiCharacter[]> {
+		let data: unknown;
+		try {
+			data = await this.client.getJson<unknown>(
+				`https://api.bgm.tv/v0/subjects/${subjectId}/characters?subject_id=${subjectId}`,
+				{ ctx },
+			);
+		} catch (err: unknown) {
+			if (ctx.err() && err === ctx.err()) {
+				throw err;
+			}
+			throw new Error("Failed to fetch subject characters", { cause: err });
+		}
+
+		const result = BangumiCharactersResponseSchema.safeParse(data);
+		if (!result.success) {
+			throw new Error("Characters API response structure mismatch", {
+				cause: result.error,
+			});
+		}
+		return result.data;
 	}
 }

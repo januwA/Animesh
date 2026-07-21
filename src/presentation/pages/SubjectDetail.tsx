@@ -15,14 +15,177 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type {
+	BangumiCharacter,
 	BangumiEpisode,
+	BangumiPerson,
 	BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
+import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
+
+/** Deduplicate staff by (id, relation), then group by person ID to collect all roles. */
+function consolidateStaff(persons: BangumiPerson[]) {
+	const seen = new Set<string>();
+	const personMap = new Map<
+		number,
+		{
+			id: number;
+			name: string;
+			image: string;
+			relations: string[];
+			eps: string;
+		}
+	>();
+
+	for (const p of persons) {
+		const key = `${p.id}|${p.relation}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+
+		const entry = personMap.get(p.id);
+		if (entry) {
+			entry.relations.push(p.relation);
+		} else {
+			const image =
+				p.images.large ||
+				p.images.medium ||
+				p.images.small ||
+				p.images.grid ||
+				"";
+			personMap.set(p.id, {
+				id: p.id,
+				name: p.name,
+				image,
+				relations: [p.relation],
+				eps: p.eps,
+			});
+		}
+	}
+	return Array.from(personMap.values());
+}
+
+function CharacterCard({ character }: { character: BangumiCharacter }) {
+	const [imgError, setImgError] = useState(false);
+	const imageUrl =
+		character.images.large ||
+		character.images.medium ||
+		character.images.small ||
+		character.images.grid;
+	const mainActor = character.actors[0];
+	const hasValidImage = !!imageUrl && !imgError;
+
+	return (
+		<div className="group flex flex-col rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-sm">
+			{/* Character portrait */}
+			<div className="relative aspect-3/4 bg-linear-to-b from-muted/50 to-muted overflow-hidden">
+				{hasValidImage ? (
+					<img
+						src={imageUrl}
+						alt={character.name}
+						className="w-full h-full object-contain p-1 transition-transform duration-300 group-hover:scale-105"
+						loading="lazy"
+						onError={() => setImgError(true)}
+					/>
+				) : (
+					<div className="w-full h-full flex items-center justify-center">
+						<Tv className="h-8 w-8 text-muted-foreground/40" />
+					</div>
+				)}
+				{/* Relation badge overlay */}
+				{character.relation && (
+					<span
+						className={`absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold rounded-full border ${character.relation === "主角" ? "bg-amber-500/90 text-white border-amber-400" : "bg-card/90 text-muted-foreground border-border"}`}
+					>
+						{character.relation}
+					</span>
+				)}
+			</div>
+
+			{/* Character info */}
+			<div className="p-3 space-y-2 flex-1 flex flex-col">
+				<h3 className="text-sm font-semibold leading-tight text-foreground line-clamp-1">
+					{character.name}
+				</h3>
+
+				{/* Voice actor */}
+				{mainActor && (
+					<div className="mt-auto pt-2 border-t border-border/50">
+						<p className="text-[11px] font-medium text-muted-foreground leading-tight truncate">
+							CV: {mainActor.name}
+						</p>
+					</div>
+				)}
+
+				{/* Extra actors count */}
+				{character.actors.length > 1 && (
+					<p className="text-[10px] text-muted-foreground">
+						+{character.actors.length - 1} 位声优
+					</p>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function StaffPersonBadge({
+	person,
+}: {
+	person: ReturnType<typeof consolidateStaff>[number];
+}) {
+	return (
+		<div className="px-3 py-1.5 rounded-lg bg-secondary/60 border border-border/50 text-sm transition-colors hover:bg-secondary">
+			<span className="text-xs font-medium text-foreground">{person.name}</span>
+			{person.eps && (
+				<span className="text-[10px] text-muted-foreground">
+					({person.eps})
+				</span>
+			)}
+		</div>
+	);
+}
+
+function CharactersSkeleton() {
+	return (
+		<div className="flex overflow-x-auto gap-3 pb-2">
+			{[0, 1, 2, 3, 4].map((n) => (
+				<div
+					key={n}
+					className="shrink-0 w-36 flex flex-col rounded-xl border border-border overflow-hidden"
+				>
+					<Skeleton className="aspect-3/4 rounded-none" />
+					<div className="p-3 space-y-2">
+						<Skeleton className="h-4 w-3/4" />
+						<div className="flex items-center gap-2 pt-2 border-t border-border/50">
+							<Skeleton className="h-6 w-6 rounded-full" />
+							<Skeleton className="h-3 w-2/3" />
+						</div>
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function StaffSkeleton() {
+	return (
+		<div className="space-y-4">
+			{[0, 1, 2, 3].map((n) => (
+				<div key={n} className="space-y-2">
+					<Skeleton className="h-4 w-24" />
+					<div className="flex flex-wrap gap-2">
+						{[0, 1, 2].map((n) => (
+							<Skeleton key={n} className="h-7 w-20 rounded-lg" />
+						))}
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
 
 export default function SubjectDetail() {
 	const { subjectId } = useParams<{ subjectId: string }>();
@@ -32,20 +195,26 @@ export default function SubjectDetail() {
 	const {
 		getBangumiSubjectUseCase,
 		getBangumiEpisodesUseCase,
+		getBangumiPersonsUseCase,
+		getBangumiCharactersUseCase,
 		openUrlUseCase,
 	} = useDI();
 
 	const [subject, setSubject] = useState<BangumiSubject | null>(null);
 	const [episodes, setEpisodes] = useState<BangumiEpisode[]>([]);
+	const [persons, setPersons] = useState<BangumiPerson[]>([]);
+	const [characters, setCharacters] = useState<BangumiCharacter[]>([]);
 	const [error, setError] = useState<string | null>(null);
 
 	const [summaryExpanded, setSummaryExpanded] = useState(false);
 	const [summaryHasMore, setSummaryHasMore] = useState(false);
 	const summaryRef = useRef<HTMLParagraphElement>(null);
 
+	const [charactersLoading, setCharactersLoading] = useState(true);
+	const [personsLoading, setPersonsLoading] = useState(true);
+
 	// Reset summary expansion state when subject changes
 	useEffect(() => {
-		// Use subject?.id to satisfy dependency check
 		if (subject?.id !== undefined) {
 			setSummaryExpanded(false);
 			setSummaryHasMore(false);
@@ -60,7 +229,6 @@ export default function SubjectDetail() {
 		const element = summaryRef.current;
 		if (!element) return;
 
-		// Use subject?.summary to satisfy dependency check
 		void subject?.summary;
 
 		if (!summaryExpanded) {
@@ -82,12 +250,15 @@ export default function SubjectDetail() {
 
 		setSubject(null);
 		setEpisodes([]);
+		setPersons([]);
+		setCharacters([]);
 		setError(null);
+		setCharactersLoading(true);
+		setPersonsLoading(true);
 		const [ctx, cancel] = WithCancel(Background);
 
 		const fetchData = async () => {
 			try {
-				// Fetch subject detail and episodes in parallel
 				const [subjectData, episodesData] = await Promise.all([
 					getBangumiSubjectUseCase.execute(ctx, subjectId),
 					getBangumiEpisodesUseCase.execute(ctx, subjectId),
@@ -95,7 +266,6 @@ export default function SubjectDetail() {
 
 				if (!ctx.err()) {
 					setSubject(subjectData);
-					// Sort episodes by sort order
 					const sortedEps = [...episodesData].sort((a, b) => a.sort - b.sort);
 					setEpisodes(sortedEps);
 				}
@@ -106,12 +276,50 @@ export default function SubjectDetail() {
 			}
 		};
 
+		const fetchCharacters = async () => {
+			try {
+				const data = await getBangumiCharactersUseCase.execute(ctx, subjectId);
+				if (!ctx.err()) {
+					setCharacters(data);
+				}
+			} catch {
+				// Characters are non-critical
+			} finally {
+				if (!ctx.err()) {
+					setCharactersLoading(false);
+				}
+			}
+		};
+
+		const fetchPersons = async () => {
+			try {
+				const data = await getBangumiPersonsUseCase.execute(ctx, subjectId);
+				if (!ctx.err()) {
+					setPersons(data);
+				}
+			} catch {
+				// Persons are non-critical
+			} finally {
+				if (!ctx.err()) {
+					setPersonsLoading(false);
+				}
+			}
+		};
+
 		fetchData();
+		fetchCharacters();
+		fetchPersons();
 
 		return () => {
 			cancel();
 		};
-	}, [subjectId, getBangumiSubjectUseCase, getBangumiEpisodesUseCase]);
+	}, [
+		subjectId,
+		getBangumiSubjectUseCase,
+		getBangumiEpisodesUseCase,
+		getBangumiPersonsUseCase,
+		getBangumiCharactersUseCase,
+	]);
 
 	const handleEpisodeClick = (episode: BangumiEpisode) => {
 		/* v8 ignore next */
@@ -130,6 +338,23 @@ export default function SubjectDetail() {
 			navigate(-1);
 		}
 	};
+
+	const consolidatedStaff = useMemo(
+		() => (persons.length > 0 ? consolidateStaff(persons) : []),
+		[persons],
+	);
+
+	const staffGroupedByRole = useMemo(() => {
+		const groups = new Map<string, typeof consolidatedStaff>();
+		for (const person of consolidatedStaff) {
+			for (const relation of person.relations) {
+				const list = groups.get(relation) || [];
+				list.push(person);
+				groups.set(relation, list);
+			}
+		}
+		return groups;
+	}, [consolidatedStaff]);
 
 	if (error) {
 		return (
@@ -246,10 +471,10 @@ export default function SubjectDetail() {
 								)}
 							</div>
 						) : (
-							<div className="flex flex-wrap items-center gap-2 animate-pulse">
-								<div className="h-5 w-16 bg-muted rounded-full" />
-								<div className="h-5 w-24 bg-muted rounded-full" />
-								<div className="h-5 w-16 bg-muted rounded-full" />
+							<div className="flex flex-wrap items-center gap-2">
+								<Skeleton className="h-5 w-16 rounded-full" />
+								<Skeleton className="h-5 w-24 rounded-full" />
+								<Skeleton className="h-5 w-16 rounded-full" />
 							</div>
 						)}
 
@@ -322,9 +547,9 @@ export default function SubjectDetail() {
 								<Loader2 className="h-4 w-4 text-primary animate-spin" />
 								<span>正在加载动漫详情...</span>
 							</div>
-							<div className="flex gap-4 animate-pulse">
-								<div className="h-10 w-24 bg-muted rounded-lg" />
-								<div className="h-10 w-24 bg-muted rounded-lg" />
+							<div className="flex gap-4">
+								<Skeleton className="h-20 w-28 rounded-lg" />
+								<Skeleton className="h-20 w-28 rounded-lg" />
 							</div>
 						</div>
 					)}
@@ -387,17 +612,48 @@ export default function SubjectDetail() {
 					</Card>
 				)
 			) : (
-				<Card className="bg-card border border-border rounded-xl animate-pulse">
+				<Card className="bg-card border border-border rounded-xl">
 					<CardContent className="p-6 space-y-2">
-						<div className="h-4 w-20 bg-muted rounded" />
+						<Skeleton className="h-4 w-20" />
 						<div className="space-y-2">
-							<div className="h-3 w-full bg-muted rounded" />
-							<div className="h-3 w-5/6 bg-muted rounded" />
-							<div className="h-3 w-4/5 bg-muted rounded" />
+							<Skeleton className="h-3 w-full" />
+							<Skeleton className="h-3 w-5/6" />
+							<Skeleton className="h-3 w-4/5" />
 						</div>
 					</CardContent>
 				</Card>
 			)}
+
+			{/* Characters Section */}
+			<div className="space-y-4">
+				<div className="flex items-center gap-2">
+					<h2 className="text-lg font-bold text-foreground">角色</h2>
+					{characters.length > 0 && (
+						<Badge
+							variant="secondary"
+							className="text-xs border-border text-muted-foreground"
+						>
+							{characters.length}
+						</Badge>
+					)}
+				</div>
+
+				{charactersLoading ? (
+					<CharactersSkeleton />
+				) : characters.length > 0 ? (
+					<div className="flex overflow-x-auto gap-3 pb-2 snap-x scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent -mx-1 px-1">
+						{characters.map((char) => (
+							<div key={char.id} className="snap-start shrink-0 w-36">
+								<CharacterCard character={char} />
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="text-center py-8 text-sm text-muted-foreground bg-card border border-border rounded-xl">
+						暂无角色数据
+					</div>
+				)}
+			</div>
 
 			{/* Episodes List */}
 			<div className="space-y-4">
@@ -470,13 +726,54 @@ export default function SubjectDetail() {
 						</div>
 					)
 				) : (
-					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 animate-pulse">
-						{[1, 2, 3, 4, 5, 6].map((i) => (
-							<div
-								key={i}
-								className="flex items-start gap-3 p-3 rounded-xl bg-card border border-border h-16"
-							/>
+					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+						{[1, 2, 3, 4, 5, 6].map((n) => (
+							<Skeleton key={n} className="h-16 rounded-xl" />
 						))}
+					</div>
+				)}
+			</div>
+
+			{/* Staff Section */}
+			<div className="space-y-4">
+				<div className="flex items-center gap-2">
+					<h2 className="text-lg font-bold text-foreground">制作人员</h2>
+					{persons.length > 0 && (
+						<Badge
+							variant="secondary"
+							className="text-xs border-border text-muted-foreground"
+						>
+							{consolidatedStaff.length}
+						</Badge>
+					)}
+				</div>
+
+				{personsLoading ? (
+					<StaffSkeleton />
+				) : staffGroupedByRole.size > 0 ? (
+					<div className="space-y-5">
+						{Array.from(staffGroupedByRole.entries()).map(([role, people]) => (
+							<div key={role} className="space-y-2">
+								<h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+									{role}
+									<span className="ml-1.5 text-[10px] font-normal text-muted-foreground/60">
+										{people.length}
+									</span>
+								</h3>
+								<div className="flex flex-wrap gap-1.5">
+									{people.map((person) => (
+										<StaffPersonBadge
+											key={`${person.id}-${role}`}
+											person={person}
+										/>
+									))}
+								</div>
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="text-center py-8 text-sm text-muted-foreground bg-card border border-border rounded-xl">
+						暂无制作人员数据
 					</div>
 				)}
 			</div>

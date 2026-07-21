@@ -79,3 +79,143 @@ describe("HttpBangumiRepository", () => {
 		await expect(repository.getCalendar(ctx)).rejects.toThrow(Canceled.message);
 	});
 });
+describe("getSubjectPersons", () => {
+	it("应该能够成功获取并解析制作人员数据", async () => {
+		const mockResponse = [
+			{
+				images: {
+					small: "https://example.com/small.jpg",
+					grid: "https://example.com/grid.jpg",
+					large: "https://example.com/large.jpg",
+					medium: "https://example.com/medium.jpg",
+				},
+				name: "木村拓",
+				relation: "导演",
+				career: ["producer"],
+				type: 1,
+				id: 44615,
+				eps: "",
+			},
+		];
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => mockResponse,
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		const result = await repository.getSubjectPersons(Background, "622206");
+
+		expect(result).toHaveLength(1);
+		expect(result[0].name).toBe("木村拓");
+		expect(result[0].relation).toBe("导演");
+	});
+
+	it("在 API 返回结构不匹配时应抛出错误", async () => {
+		const mockResponse = { invalid: "structure" };
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => mockResponse,
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		await expect(
+			repository.getSubjectPersons(Background, "622206"),
+		).rejects.toThrow("Persons API response structure mismatch");
+	});
+
+	it("在网络请求失败时应抛出带 cause 的错误", async () => {
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: false,
+			status: 500,
+			statusText: "Internal Server Error",
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		await expect(
+			repository.getSubjectPersons(Background, "622206"),
+		).rejects.toThrow("Failed to fetch subject persons");
+	});
+});
+
+describe("getSubjectCharacters", () => {
+	it("应该能够成功获取并解析角色数据（含声优）", async () => {
+		const mockResponse = [
+			{
+				images: {
+					small: "https://example.com/small.jpg",
+					grid: "https://example.com/grid.jpg",
+					large: "https://example.com/large.jpg",
+					medium: "https://example.com/medium.jpg",
+				},
+				name: "ヤニねこ",
+				summary: "主角猫",
+				relation: "主角",
+				type: 1,
+				id: 174916,
+				actors: [
+					{
+						images: {
+							small: "https://example.com/small.jpg",
+							grid: "https://example.com/grid.jpg",
+							large: "https://example.com/large.jpg",
+							medium: "https://example.com/medium.jpg",
+						},
+						name: "夏吉ゆうこ",
+						short_summary: "声优",
+						career: ["seiyu"],
+						id: 36024,
+						type: 1,
+						locked: false,
+					},
+				],
+			},
+		];
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => mockResponse,
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		const result = await repository.getSubjectCharacters(Background, "622206");
+
+		expect(result).toHaveLength(1);
+		expect(result[0].name).toBe("ヤニねこ");
+		expect(result[0].actors[0].name).toBe("夏吉ゆうこ");
+	});
+
+	it("在 API 返回结构不匹配时应抛出错误", async () => {
+		const mockResponse = { invalid: "structure" };
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => mockResponse,
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		await expect(
+			repository.getSubjectCharacters(Background, "622206"),
+		).rejects.toThrow("Characters API response structure mismatch");
+	});
+
+	it("在网络请求失败时应抛出带 cause 的错误", async () => {
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: false,
+			status: 500,
+			statusText: "Internal Server Error",
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		await expect(
+			repository.getSubjectCharacters(Background, "622206"),
+		).rejects.toThrow("Failed to fetch subject characters");
+	});
+});
