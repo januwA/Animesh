@@ -100,7 +100,7 @@ function CharacterCard({ character }: { character: BangumiCharacter }) {
 					<span
 						className={`absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold rounded-full border ${character.relation === "主角" ? "bg-amber-500/90 text-white border-amber-400" : "bg-card/90 text-muted-foreground border-border"}`}
 					>
-						{character.relation}
+						{character.relation}t {/* style-ignore */}
 					</span>
 				)}
 			</div>

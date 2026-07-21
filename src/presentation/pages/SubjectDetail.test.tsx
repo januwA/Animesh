@@ -1168,4 +1168,313 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			});
 		});
 	});
+
+	it("同一个人相同制作角色出现多次时应正确去重", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime",
+			name_cn: "测试动漫",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		const mockPersons = [
+			{
+				images: { small: "", grid: "", large: "", medium: "" },
+				name: "木村拓",
+				relation: "导演",
+				career: ["producer"],
+				type: 1,
+				id: 44615,
+				eps: "",
+			},
+			{
+				images: { small: "", grid: "", large: "", medium: "" },
+				name: "木村拓",
+				relation: "导演",
+				career: ["producer"],
+				type: 1,
+				id: 44615,
+				eps: "",
+			},
+			{
+				images: { small: "", grid: "", large: "", medium: "" },
+				name: "木村拓",
+				relation: "脚本",
+				career: ["producer"],
+				type: 1,
+				id: 44615,
+				eps: "1-3",
+			},
+		];
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getSubjectCharacters: vi.fn().mockReturnValue(Promise.resolve([])),
+				getSubjectPersons: vi
+					.fn()
+					.mockReturnValue(Promise.resolve(mockPersons)),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("测试动漫")).toBeInTheDocument();
+		});
+
+		expect(screen.getByText("导演")).toBeInTheDocument();
+		expect(screen.getByText("脚本")).toBeInTheDocument();
+	});
+
+	it("角色使用 medium 图片降级且有多名声优时应该正常显示", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime",
+			name_cn: "测试动漫",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		const mockCharacters = [
+			{
+				images: {
+					small: "",
+					grid: "",
+					large: "",
+					medium: "http://example.com/medium.jpg",
+				},
+				name: "ヤニねこ",
+				summary: "主角猫",
+				relation: "配角",
+				type: 1,
+				id: 174916,
+				actors: [
+					{
+						images: { small: "", grid: "", large: "", medium: "" },
+						name: "声優A",
+						short_summary: "",
+						career: ["seiyu"],
+						id: 1,
+						type: 1,
+						locked: false,
+					},
+					{
+						images: { small: "", grid: "", large: "", medium: "" },
+						name: "声優B",
+						short_summary: "",
+						career: ["seiyu"],
+						id: 2,
+						type: 1,
+						locked: false,
+					},
+				],
+			},
+		];
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getSubjectCharacters: vi
+					.fn()
+					.mockReturnValue(Promise.resolve(mockCharacters)),
+				getSubjectPersons: vi.fn().mockReturnValue(Promise.resolve([])),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("测试动漫")).toBeInTheDocument();
+		});
+
+		const img = screen.getByAltText("ヤニねこ");
+		expect(img).toHaveAttribute("src", "http://example.com/medium.jpg");
+
+		expect(screen.getByText("+1 位声优")).toBeInTheDocument();
+		expect(screen.getByText("CV: 声優A")).toBeInTheDocument();
+	});
+
+	it("角色图片加载失败时应降级显示占位符", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime",
+			name_cn: "测试动漫",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		const mockCharacters = [
+			{
+				images: {
+					small: "http://example.com/small.jpg",
+					grid: "",
+					large: "http://example.com/large.jpg",
+					medium: "",
+				},
+				name: "ヤニねこ",
+				summary: "主角猫",
+				relation: "主角",
+				type: 1,
+				id: 174916,
+				actors: [],
+			},
+		];
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getSubjectCharacters: vi
+					.fn()
+					.mockReturnValue(Promise.resolve(mockCharacters)),
+				getSubjectPersons: vi.fn().mockReturnValue(Promise.resolve([])),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("测试动漫")).toBeInTheDocument();
+		});
+
+		const charImg = screen.getByAltText("ヤニねこ");
+		fireEvent.error(charImg);
+
+		await waitFor(() => {
+			expect(screen.queryByAltText("ヤニねこ")).not.toBeInTheDocument();
+		});
+	});
+
+	it("角色图片完全为空时应正常显示占位符", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime",
+			name_cn: "测试动漫",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		const mockCharacters = [
+			{
+				images: { small: "", grid: "", large: "", medium: "" },
+				name: "ノーイメージ",
+				summary: "",
+				relation: "配角",
+				type: 1,
+				id: 99991,
+				actors: [],
+			},
+		];
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
+				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getSubjectCharacters: vi
+					.fn()
+					.mockReturnValue(Promise.resolve(mockCharacters)),
+				getSubjectPersons: vi.fn().mockReturnValue(Promise.resolve([])),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("测试动漫")).toBeInTheDocument();
+		});
+
+		expect(screen.getByText("ノーイメージ")).toBeInTheDocument();
+	});
 });
