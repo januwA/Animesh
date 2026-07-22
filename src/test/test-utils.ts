@@ -145,6 +145,14 @@ export function createDIContainerForTest(
 	const bangumiCache = {
 		getCalendar: async () => null,
 		setCalendar: async () => {},
+		getSubject: async () => null,
+		setSubject: async () => {},
+		getEpisodes: async () => null,
+		setEpisodes: async () => {},
+		getPersons: async () => null,
+		setPersons: async () => {},
+		getCharacters: async () => null,
+		setCharacters: async () => {},
 		...params.bangumiCache,
 	} as BangumiCache;
 
@@ -238,19 +246,19 @@ export function createDIContainerForTest(
 
 	const getBangumiSubjectUseCase =
 		params.getBangumiSubjectUseCase ||
-		new GetBangumiSubjectUseCase(bangumiRepo);
+		new GetBangumiSubjectUseCase(bangumiRepo, bangumiCache);
 
 	const getBangumiEpisodesUseCase =
 		params.getBangumiEpisodesUseCase ||
-		new GetBangumiEpisodesUseCase(bangumiRepo);
+		new GetBangumiEpisodesUseCase(bangumiRepo, bangumiCache);
 
 	const getBangumiPersonsUseCase =
 		params.getBangumiPersonsUseCase ||
-		new GetBangumiPersonsUseCase(bangumiRepo);
+		new GetBangumiPersonsUseCase(bangumiRepo, bangumiCache);
 
 	const getBangumiCharactersUseCase =
 		params.getBangumiCharactersUseCase ||
-		new GetBangumiCharactersUseCase(bangumiRepo);
+		new GetBangumiCharactersUseCase(bangumiRepo, bangumiCache);
 
 	const checkUpdateUseCase =
 		params.checkUpdateUseCase || new CheckUpdateUseCase(updateRepo);

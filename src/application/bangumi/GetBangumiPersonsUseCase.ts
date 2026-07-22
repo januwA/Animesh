@@ -1,11 +1,24 @@
 import type { Context } from "ajanuw-context";
+import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
 import type { BangumiPerson } from "@/domain/bangumi/BangumiSchemas";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 
 export class GetBangumiPersonsUseCase {
-	constructor(private bangumiRepository: BangumiRepository) {}
+	constructor(
+		private readonly bangumiRepository: BangumiRepository,
+		private readonly bangumiCache: BangumiCache,
+	) {}
 
-	execute(ctx: Context, subjectId: string): Promise<BangumiPerson[]> {
-		return this.bangumiRepository.getSubjectPersons(ctx, subjectId);
+	async execute(ctx: Context, subjectId: string): Promise<BangumiPerson[]> {
+		const cached = await this.bangumiCache.getPersons(ctx, subjectId);
+		if (cached) {
+			return cached;
+		}
+		const persons = await this.bangumiRepository.getSubjectPersons(
+			ctx,
+			subjectId,
+		);
+		await this.bangumiCache.setPersons(ctx, subjectId, persons);
+		return persons;
 	}
 }

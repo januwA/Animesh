@@ -160,15 +160,19 @@ export function createDefaultDIContainer(): DIContainer {
 	);
 	const getBangumiSubjectUseCase = new GetBangumiSubjectUseCase(
 		bangumiRepository,
+		bangumiCache,
 	);
 	const getBangumiEpisodesUseCase = new GetBangumiEpisodesUseCase(
 		bangumiRepository,
+		bangumiCache,
 	);
 	const getBangumiPersonsUseCase = new GetBangumiPersonsUseCase(
 		bangumiRepository,
+		bangumiCache,
 	);
 	const getBangumiCharactersUseCase = new GetBangumiCharactersUseCase(
 		bangumiRepository,
+		bangumiCache,
 	);
 	const checkUpdateUseCase = new CheckUpdateUseCase(updateRepository);
 	const getCurrentVersionUseCase = new GetCurrentVersionUseCase(
