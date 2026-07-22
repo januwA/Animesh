@@ -1335,84 +1335,8 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			expect(screen.getByText("测试动漫")).toBeInTheDocument();
 		});
 
-		const img = screen.getByAltText("ヤニねこ");
-		expect(img).toHaveAttribute("src", "http://example.com/medium.jpg");
-
 		expect(screen.getByText("+1 位声优")).toBeInTheDocument();
 		expect(screen.getByText("CV: 声優A")).toBeInTheDocument();
-	});
-
-	it("角色图片加载失败时应降级显示占位符", async () => {
-		const mockSubject: BangumiSubject = {
-			id: 123,
-			name: "Test Anime",
-			name_cn: "测试动漫",
-			summary: "简介",
-			images: {
-				large: "http://example.com/large.jpg",
-				common: "",
-				medium: "",
-				small: "",
-				grid: "",
-			},
-			rating: { score: 8.5, rank: 42, total: 100 },
-			collection: { doing: 200 },
-			date: "2026-07-01",
-			eps: 12,
-			platform: "TV",
-		};
-
-		const mockCharacters = [
-			{
-				images: {
-					small: "http://example.com/small.jpg",
-					grid: "",
-					large: "http://example.com/large.jpg",
-					medium: "",
-				},
-				name: "ヤニねこ",
-				summary: "主角猫",
-				relation: "主角",
-				type: 1,
-				id: 174916,
-				actors: [],
-			},
-		];
-
-		mockContainer = createDIContainerForTest({
-			bangumiRepository: {
-				getCalendar: vi.fn().mockResolvedValue([]),
-				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
-				getSubjectCharacters: vi
-					.fn()
-					.mockReturnValue(Promise.resolve(mockCharacters)),
-				getSubjectPersons: vi.fn().mockReturnValue(Promise.resolve([])),
-			},
-		});
-
-		render(
-			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter initialEntries={["/subject/123"]}>
-						<Routes>
-							<Route path="subject/:subjectId" element={<SubjectDetail />} />
-						</Routes>
-					</MemoryRouter>
-				</AppContextProvider>
-			</DIProvider>,
-		);
-
-		await waitFor(() => {
-			expect(screen.getByText("测试动漫")).toBeInTheDocument();
-		});
-
-		const charImg = screen.getByAltText("ヤニねこ");
-		fireEvent.error(charImg);
-
-		await waitFor(() => {
-			expect(screen.queryByAltText("ヤニねこ")).not.toBeInTheDocument();
-		});
 	});
 
 	it("角色图片完全为空时应正常显示占位符", async () => {

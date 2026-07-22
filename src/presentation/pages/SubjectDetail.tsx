@@ -20,6 +20,7 @@ import type {
 	BangumiPerson,
 	BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
+import { LazyImage } from "@/presentation/components/LazyImage";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
@@ -69,38 +70,30 @@ function consolidateStaff(persons: BangumiPerson[]) {
 }
 
 function CharacterCard({ character }: { character: BangumiCharacter }) {
-	const [imgError, setImgError] = useState(false);
-	const imageUrl =
-		character.images.large ||
-		character.images.medium ||
-		character.images.small ||
-		character.images.grid;
 	const mainActor = character.actors[0];
-	const hasValidImage = !!imageUrl && !imgError;
+
+	const tvFallback = (
+		<div className="w-full h-full flex items-center justify-center">
+			<Tv className="h-8 w-8 text-muted-foreground/40" />
+		</div>
+	);
 
 	return (
 		<div className="group flex flex-col rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-sm">
 			{/* Character portrait */}
 			<div className="relative aspect-3/4 bg-linear-to-b from-muted/50 to-muted overflow-hidden">
-				{hasValidImage ? (
-					<img
-						src={imageUrl}
-						alt={character.name}
-						className="w-full h-full object-contain p-1 transition-transform duration-300 group-hover:scale-105"
-						loading="lazy"
-						onError={() => setImgError(true)}
-					/>
-				) : (
-					<div className="w-full h-full flex items-center justify-center">
-						<Tv className="h-8 w-8 text-muted-foreground/40" />
-					</div>
-				)}
+				<LazyImage
+					src={character.images.large}
+					alt={character.name}
+					className="object-contain p-1 transition-transform duration-300 group-hover:scale-105"
+					fallback={tvFallback}
+				/>
 				{/* Relation badge overlay */}
 				{character.relation && (
 					<span
 						className={`absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold rounded-full border ${character.relation === "主角" ? "bg-amber-500/90 text-white border-amber-400" : "bg-card/90 text-muted-foreground border-border"}`}
 					>
-						{character.relation}t {/* style-ignore */}
+						{character.relation} {/* style-ignore */}
 					</span>
 				)}
 			</div>
