@@ -8,7 +8,7 @@ import {
 	Play,
 	Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
@@ -30,19 +30,14 @@ import {
 	DialogTitle,
 } from "@/presentation/components/ui/dialog";
 import { Progress } from "@/presentation/components/ui/progress";
+import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
 
 export default function Downloads() {
 	const navigate = useNavigate();
-	const {
-		listTorrentsUseCase,
-		subscribeTorrentsUseCase,
-		pauseTorrentUseCase,
-		resumeTorrentUseCase,
-		deleteTorrentUseCase,
-	} = useDI();
-	const [torrents, setTorrents] = useState<TorrentStatusInfo[]>([]);
-	const [loading, setLoading] = useState(true);
+	const { pauseTorrentUseCase, resumeTorrentUseCase, deleteTorrentUseCase } =
+		useDI();
+	const { torrents, isLoading } = useTorrentStatus();
 	const [isActionPending, setIsActionPending] = useState(false);
 
 	// Deletion target state
@@ -51,46 +46,6 @@ export default function Downloads() {
 	);
 	const [deleteFiles, setDeleteFiles] = useState(false);
 
-	// Refresh torrents function (called after mutations for immediate UI update)
-	const refreshTorrents = useCallback(async () => {
-		try {
-			const list = await listTorrentsUseCase.execute();
-			setTorrents(list);
-		} catch (_err: unknown) {
-			// Don't show toast for background refreshes
-		}
-	}, [listTorrentsUseCase]);
-
-	// Subscribe to downloads list status stream
-	useEffect(() => {
-		let unsubscribe: (() => void) | null = null;
-		let isCleanedUp = false;
-
-		subscribeTorrentsUseCase
-			.execute((list) => {
-				setTorrents(list);
-				setLoading(false);
-			})
-			.then((unsub) => {
-				if (isCleanedUp) {
-					unsub();
-				} else {
-					unsubscribe = unsub;
-				}
-			})
-			.catch((err: unknown) => {
-				toast.error(`获取下载列表失败: ${formatError(err)}`);
-				setLoading(false);
-			});
-
-		return () => {
-			isCleanedUp = true;
-			if (unsubscribe) {
-				unsubscribe();
-			}
-		};
-	}, [subscribeTorrentsUseCase]);
-
 	// Pause a download
 	const handlePause = (infoHash: string, name: string) => {
 		setIsActionPending(true);
@@ -98,7 +53,6 @@ export default function Downloads() {
 			try {
 				await pauseTorrentUseCase.execute(infoHash);
 				toast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
-				await refreshTorrents();
 			} catch (err: unknown) {
 				toast.error(`暂停失败: ${formatError(err)}`);
 			} finally {
@@ -114,7 +68,6 @@ export default function Downloads() {
 			try {
 				await resumeTorrentUseCase.execute(infoHash);
 				toast.success(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
-				await refreshTorrents();
 			} catch (err: unknown) {
 				toast.error(`启动失败: ${formatError(err)}`);
 			} finally {
@@ -133,7 +86,6 @@ export default function Downloads() {
 				await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
 				toast.success("已删除任务");
 				setDeleteTarget(null);
-				await refreshTorrents();
 			} catch (err: unknown) {
 				toast.error(`删除任务失败: ${formatError(err)}`);
 			} finally {
@@ -148,7 +100,7 @@ export default function Downloads() {
 		);
 	};
 
-	if (loading) {
+	if (isLoading) {
 		return (
 			<div className="flex flex-col items-center justify-center py-20 space-y-4">
 				<Loader2 className="h-10 w-10 text-primary animate-spin" />

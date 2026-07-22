@@ -14,6 +14,7 @@ import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import Layout from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
+import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import Downloads from "./Downloads";
 
 const currentLocation = {
@@ -77,18 +78,20 @@ describe("Downloads 页面组件", () => {
 	const renderDownloads = () => {
 		return render(
 			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter initialEntries={["/downloads"]}>
-						<LocationTracker />
-						<Routes>
-							<Route path="/" element={<Layout />}>
-								<Route path="downloads" element={<Downloads />} />
-							</Route>
-							<Route path="/" element={<div>Home Page</div>} />
-							<Route path="/torrent" element={<div>Torrent Page</div>} />
-						</Routes>
-					</MemoryRouter>
-				</AppContextProvider>
+				<TorrentStatusProvider>
+					<AppContextProvider>
+						<MemoryRouter initialEntries={["/downloads"]}>
+							<LocationTracker />
+							<Routes>
+								<Route path="/" element={<Layout />}>
+									<Route path="downloads" element={<Downloads />} />
+								</Route>
+								<Route path="/" element={<div>Home Page</div>} />
+								<Route path="/torrent" element={<div>Torrent Page</div>} />
+							</Routes>
+						</MemoryRouter>
+					</AppContextProvider>
+				</TorrentStatusProvider>
 			</DIProvider>,
 		);
 	};
@@ -581,21 +584,12 @@ describe("Downloads 页面组件", () => {
 		expect(screen.getAllByText(/创建时间:/).length).toBe(2);
 	});
 
-	it("在订阅未完成时卸载组件，应该清理订阅", async () => {
-		let resolveUnsubscribe: any;
-		const unsubMock = vi.fn();
-		const promise = new Promise<any>((resolve) => {
-			resolveUnsubscribe = () => resolve(unsubMock);
+	it("在无任务时应该正确显示空状态（通过上下文字段名称检测数据流）", async () => {
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue([]);
+		renderDownloads();
+
+		await waitFor(() => {
+			expect(screen.getByText("没有正在进行的下载任务")).toBeInTheDocument();
 		});
-
-		vi.mocked(mockTorrentRepository.subscribeTorrents).mockReturnValue(promise);
-
-		const { unmount } = renderDownloads();
-		unmount();
-
-		resolveUnsubscribe();
-
-		await promise;
-		expect(unsubMock).toHaveBeenCalled();
 	});
 });

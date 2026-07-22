@@ -2,16 +2,17 @@ import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
+import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 
 export function useGlobalEffects() {
 	const {
 		notificationRepository,
 		notifyDownloadCompletionUseCase,
-		subscribeTorrentsUseCase,
 		autoUpdateTrackersUseCase,
 		setThemeUseCase,
 	} = useDI();
 	const { resolvedTheme } = useTheme();
+	const { torrents, isLoading } = useTorrentStatus();
 
 	// 同步主题到 Tauri 原生窗口标题栏
 	useEffect(() => {
@@ -30,35 +31,11 @@ export function useGlobalEffects() {
 		notificationRepository.requestPermission();
 	}, [notificationRepository]);
 
-	// 下载完成监听
+	// 下载完成监听（通过全局 TorrentStatusContext 消费数据，无需独立订阅）
 	useEffect(() => {
-		let unsubscribe: (() => void) | null = null;
-		let isCleanedUp = false;
-
-		const initSubscription = async () => {
-			try {
-				const unsub = await subscribeTorrentsUseCase.execute(async (list) => {
-					try {
-						await notifyDownloadCompletionUseCase.execute(list);
-					} catch {}
-				});
-				if (isCleanedUp) {
-					unsub();
-				} else {
-					unsubscribe = unsub;
-				}
-			} catch {}
-		};
-
-		initSubscription();
-
-		return () => {
-			isCleanedUp = true;
-			if (unsubscribe) {
-				unsubscribe();
-			}
-		};
-	}, [subscribeTorrentsUseCase, notifyDownloadCompletionUseCase]);
+		if (isLoading) return;
+		notifyDownloadCompletionUseCase.execute(torrents);
+	}, [torrents, isLoading, notifyDownloadCompletionUseCase]);
 
 	// 自动更新 Tracker
 	useEffect(() => {

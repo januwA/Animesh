@@ -4,10 +4,11 @@ import { vi } from "vitest";
 import { DIProvider } from "@/di/DIContext";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { AppContextProvider } from "../context/AppContext";
+import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import { AppHeader } from "./AppComponents";
 
 describe("AppComponents 组件", () => {
-	it("AppHeader 应该在未完成订阅时卸载并正确清理", async () => {
+	it("AppHeader 应该在 TorrentStatusProvider 下正确渲染", async () => {
 		let resolveUnsubscribe: any;
 		const unsubMock = vi.fn();
 		const promise = new Promise<any>((resolve) => {
@@ -22,11 +23,13 @@ describe("AppComponents 组件", () => {
 
 		const { unmount } = render(
 			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter>
-						<AppHeader />
-					</MemoryRouter>
-				</AppContextProvider>
+				<TorrentStatusProvider>
+					<AppContextProvider>
+						<MemoryRouter>
+							<AppHeader />
+						</MemoryRouter>
+					</AppContextProvider>
+				</TorrentStatusProvider>
 			</DIProvider>,
 		);
 

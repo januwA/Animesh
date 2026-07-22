@@ -5,6 +5,7 @@ import { vi } from "vitest";
 import { DIProvider } from "@/di/DIContext";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { AppContextProvider } from "../context/AppContext";
+import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import Layout from "./Layout";
 
 describe("Layout 布局组件", () => {
@@ -39,15 +40,17 @@ describe("Layout 布局组件", () => {
 
 		return render(
 			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter initialEntries={["/"]}>
-						<Routes>
-							<Route path="/" element={<Layout />}>
-								<Route path="" element={<div>首页内容</div>} />
-							</Route>
-						</Routes>
-					</MemoryRouter>
-				</AppContextProvider>
+				<TorrentStatusProvider>
+					<AppContextProvider>
+						<MemoryRouter initialEntries={["/"]}>
+							<Routes>
+								<Route path="/" element={<Layout />}>
+									<Route path="" element={<div>首页内容</div>} />
+								</Route>
+							</Routes>
+						</MemoryRouter>
+					</AppContextProvider>
+				</TorrentStatusProvider>
 			</DIProvider>,
 		);
 	};
@@ -135,15 +138,17 @@ describe("Layout 布局组件", () => {
 
 		const { findByText } = render(
 			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter initialEntries={["/"]}>
-						<Routes>
-							<Route path="/" element={<Layout />}>
-								<Route path="" element={<div>首页内容</div>} />
-							</Route>
-						</Routes>
-					</MemoryRouter>
-				</AppContextProvider>
+				<TorrentStatusProvider>
+					<AppContextProvider>
+						<MemoryRouter initialEntries={["/"]}>
+							<Routes>
+								<Route path="/" element={<Layout />}>
+									<Route path="" element={<div>首页内容</div>} />
+								</Route>
+							</Routes>
+						</MemoryRouter>
+					</AppContextProvider>
+				</TorrentStatusProvider>
 			</DIProvider>,
 		);
 
@@ -192,15 +197,17 @@ describe("Layout 布局组件", () => {
 
 		render(
 			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter initialEntries={["/"]}>
-						<Routes>
-							<Route path="/" element={<Layout />}>
-								<Route path="" element={<div>首页内容</div>} />
-							</Route>
-						</Routes>
-					</MemoryRouter>
-				</AppContextProvider>
+				<TorrentStatusProvider>
+					<AppContextProvider>
+						<MemoryRouter initialEntries={["/"]}>
+							<Routes>
+								<Route path="/" element={<Layout />}>
+									<Route path="" element={<div>首页内容</div>} />
+								</Route>
+							</Routes>
+						</MemoryRouter>
+					</AppContextProvider>
+				</TorrentStatusProvider>
 			</DIProvider>,
 		);
 
@@ -226,15 +233,17 @@ describe("Layout 布局组件", () => {
 
 		render(
 			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter initialEntries={["/"]}>
-						<Routes>
-							<Route path="/" element={<Layout />}>
-								<Route path="" element={<div>首页内容</div>} />
-							</Route>
-						</Routes>
-					</MemoryRouter>
-				</AppContextProvider>
+				<TorrentStatusProvider>
+					<AppContextProvider>
+						<MemoryRouter initialEntries={["/"]}>
+							<Routes>
+								<Route path="/" element={<Layout />}>
+									<Route path="" element={<div>首页内容</div>} />
+								</Route>
+							</Routes>
+						</MemoryRouter>
+					</AppContextProvider>
+				</TorrentStatusProvider>
 			</DIProvider>,
 		);
 
@@ -264,15 +273,17 @@ describe("Layout 布局组件", () => {
 
 		render(
 			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter initialEntries={["/"]}>
-						<Routes>
-							<Route path="/" element={<Layout />}>
-								<Route path="" element={<div>首页内容</div>} />
-							</Route>
-						</Routes>
-					</MemoryRouter>
-				</AppContextProvider>
+				<TorrentStatusProvider>
+					<AppContextProvider>
+						<MemoryRouter initialEntries={["/"]}>
+							<Routes>
+								<Route path="/" element={<Layout />}>
+									<Route path="" element={<div>首页内容</div>} />
+								</Route>
+							</Routes>
+						</MemoryRouter>
+					</AppContextProvider>
+				</TorrentStatusProvider>
 			</DIProvider>,
 		);
 

@@ -5,43 +5,16 @@ import {
 	Search,
 	Settings as SettingsIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useDI } from "@/di/DIContext";
+import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Badge } from "./ui/badge";
 
 // 页面头部组件
 export function AppHeader() {
 	const location = useLocation();
-	const { subscribeTorrentsUseCase } = useDI();
-	const [activeCount, setActiveCount] = useState<number>(0);
-
-	useEffect(() => {
-		let unsubscribe: (() => void) | null = null;
-		let isCleanedUp = false;
-
-		subscribeTorrentsUseCase
-			.execute((list) => {
-				const count = list.filter((t) => !t.finished && !t.paused).length;
-				setActiveCount(count);
-			})
-			.then((unsub) => {
-				if (isCleanedUp) {
-					unsub();
-				} else {
-					unsubscribe = unsub;
-				}
-			})
-			.catch(() => {});
-
-		return () => {
-			isCleanedUp = true;
-			if (unsubscribe) {
-				unsubscribe();
-			}
-		};
-	}, [subscribeTorrentsUseCase]);
+	const { torrents } = useTorrentStatus();
+	const activeCount = torrents.filter((t) => !t.finished && !t.paused).length;
 
 	const navItems = [
 		{
