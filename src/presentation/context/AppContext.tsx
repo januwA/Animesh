@@ -1,6 +1,5 @@
 import { createContext, use, useCallback, useState } from "react";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 
 export type ToastType = "info" | "success" | "warning" | "error";
 
@@ -11,16 +10,6 @@ export interface ToastMessage {
 }
 
 interface AppContextType {
-	keyword: string;
-	setKeyword: (val: string) => void;
-	results: AiSearchResultItem[];
-	setResults: (val: AiSearchResultItem[]) => void;
-	loading: boolean;
-	setLoading: (val: boolean) => void;
-	error: string | null;
-	setError: (val: string | null) => void;
-	hasSearched: boolean;
-	setHasSearched: (val: boolean) => void;
 	toasts: ToastMessage[];
 	showToast: (
 		text: string,
@@ -28,8 +17,6 @@ interface AppContextType {
 		duration?: number,
 	) => void;
 	removeToast: (id: number) => void;
-	searchEngine: string;
-	setSearchEngine: (val: string) => void;
 	calendar: BangumiCalendarDay[];
 	setCalendar: (val: BangumiCalendarDay[]) => void;
 	calendarActiveDay: number | null;
@@ -43,13 +30,7 @@ export function AppContextProvider({
 }: {
 	children: React.ReactNode;
 }) {
-	const [keyword, setKeyword] = useState("");
-	const [results, setResults] = useState<AiSearchResultItem[]>([]);
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [hasSearched, setHasSearched] = useState(false);
 	const [toasts, setToasts] = useState<ToastMessage[]>([]);
-	const [searchEngine, setSearchEngine] = useState("dmhy");
 	const [calendar, setCalendar] = useState<BangumiCalendarDay[]>([]);
 	const [calendarActiveDay, setCalendarActiveDay] = useState<number | null>(
 		null,
@@ -82,21 +63,9 @@ export function AppContextProvider({
 	return (
 		<AppContext
 			value={{
-				keyword,
-				setKeyword,
-				results,
-				setResults,
-				loading,
-				setLoading,
-				error,
-				setError,
-				hasSearched,
-				setHasSearched,
 				toasts,
 				showToast,
 				removeToast,
-				searchEngine,
-				setSearchEngine,
 				calendar,
 				setCalendar,
 				calendarActiveDay,

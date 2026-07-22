@@ -298,26 +298,23 @@ export default function Home() {
 		searchTorrentsWithAiUseCase,
 		getSettingsUseCase,
 	} = useDI();
-	const {
-		keyword,
-		setKeyword,
-		results,
-		setResults,
-		error,
-		setError,
-		hasSearched,
-		setHasSearched,
-		showToast,
-		searchEngine,
-		setSearchEngine,
-	} = useAppContext();
+	const { showToast } = useAppContext();
 
+	const [keyword, setKeyword] = useState("");
+	const [results, setResults] = useState<AiSearchResultItem[]>([]);
+	const [error, setError] = useState<string | null>(null);
+	const [searchEngine, setSearchEngine] = useState("dmhy");
 	const [isSearching, setIsSearching] = useState(false);
+	const [hasSearched, setHasSearched] = useState(false);
 	const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
 		() => localStorage.getItem("animesh_selected_ai_alias") || "none",
 	);
 	const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
 	const { createContext, cancel: cancelSearch } = useRequestContext();
+	const handleCancelSearch = useCallback(() => {
+		cancelSearch();
+		setIsSearching(false);
+	}, [cancelSearch]);
 
 	const [history, setHistory] = useState<string[]>(() => {
 		try {
@@ -375,6 +372,8 @@ export default function Home() {
 									keyword: queryText,
 									engine: searchEngine,
 								});
+					/* v8 ignore next */
+					if (ctx.err()) return;
 					setResults(data);
 				} catch (err: unknown) {
 					if (ctx.err() === Canceled) {
@@ -383,7 +382,9 @@ export default function Home() {
 					setError(`搜索失败，请检查网络或重试: ${formatError(err)}`);
 					setResults([]);
 				} finally {
-					setIsSearching(false);
+					if (ctx.err() === null) {
+						setIsSearching(false);
+					}
 				}
 			})();
 		},
@@ -392,9 +393,6 @@ export default function Home() {
 			searchTorrentsWithAiUseCase,
 			searchEngine,
 			selectedAiAlias,
-			setError,
-			setHasSearched,
-			setResults,
 			createContext,
 		],
 	);
@@ -408,7 +406,7 @@ export default function Home() {
 				performSearch(query);
 			}
 		}
-	}, [keywordParam, setKeyword, setSearchParams, performSearch]);
+	}, [keywordParam, setSearchParams, performSearch]);
 
 	function handleSearch(e: SubmitEvent) {
 		e.preventDefault();
@@ -555,11 +553,11 @@ export default function Home() {
 						<p className="text-xs text-muted-foreground max-w-xs text-center leading-relaxed">
 							正在分析意图，并根据需要在不同搜索引擎间自动检索 Fallback...
 						</p>
-						{cancelSearch && (
+						{handleCancelSearch && (
 							<Button
 								variant="outline"
 								size="sm"
-								onClick={cancelSearch}
+								onClick={handleCancelSearch}
 								className="text-xs text-muted-foreground hover:text-foreground mt-2 border-border bg-secondary/50"
 							>
 								取消搜索
@@ -567,7 +565,7 @@ export default function Home() {
 						)}
 					</div>
 				) : (
-					<SearchLoading onCancel={cancelSearch} />
+					<SearchLoading onCancel={handleCancelSearch} />
 				))}
 
 			{/* 错误显示 */}
