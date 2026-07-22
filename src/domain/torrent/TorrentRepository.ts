@@ -17,7 +17,7 @@ export interface TorrentRepository {
 	pauseTorrent(infoHash: string): Promise<void>;
 	resumeTorrent(infoHash: string): Promise<void>;
 	deleteTorrent(infoHash: string, deleteFiles: boolean): Promise<void>;
-	addTorrentMagnet(magnet: string): Promise<AddTorrentResult>;
+	addTorrentMagnet(ctx: Context, magnet: string): Promise<AddTorrentResult>;
 	getTorrentFiles(infoHash: string): Promise<FileDetails[]>;
 	getTorrentStreamUrl(infoHash: string, fileId: number): Promise<string>;
 	getTorrentStatus(infoHash: string): Promise<TorrentStatusInfo>;

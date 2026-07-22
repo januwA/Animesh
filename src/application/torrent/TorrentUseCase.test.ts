@@ -79,12 +79,14 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 
 	it("AddTorrentMagnetUseCase 应该正确调用 repository 的 addTorrentMagnet 方法", async () => {
 		const useCase = new AddTorrentMagnetUseCase(mockRepo);
+		const ctx = WithValue(Background, "traceId", "test-trace");
 		vi.mocked(mockRepo.addTorrentMagnet).mockResolvedValueOnce({
 			info_hash: "123",
 			files: [],
 		} as any);
-		const result = await useCase.execute("magnet:?xt=urn:btih:123");
+		const result = await useCase.execute(ctx, "magnet:?xt=urn:btih:123");
 		expect(mockRepo.addTorrentMagnet).toHaveBeenCalledWith(
+			ctx,
 			"magnet:?xt=urn:btih:123",
 		);
 		expect(result).toEqual({ info_hash: "123", files: [] });
@@ -145,6 +147,7 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 
 	it("ResolveTorrentUseCase 应该在提供 magnet 时正确调用 repository 的 addTorrentMagnet 方法并返回结果", async () => {
 		const useCase = new ResolveTorrentUseCase(mockRepo);
+		const ctx = WithValue(Background, "traceId", "test-trace");
 		const mockResult = {
 			info_hash: "123",
 			name: "test magnet torrent",
@@ -152,8 +155,11 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 		};
 		vi.mocked(mockRepo.addTorrentMagnet).mockResolvedValueOnce(mockResult);
 
-		const result = await useCase.execute({ magnet: "magnet:?xt=urn:btih:123" });
+		const result = await useCase.execute(ctx, {
+			magnet: "magnet:?xt=urn:btih:123",
+		});
 		expect(mockRepo.addTorrentMagnet).toHaveBeenCalledWith(
+			ctx,
 			"magnet:?xt=urn:btih:123",
 		);
 		expect(result).toEqual(mockResult);
@@ -161,10 +167,11 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 
 	it("ResolveTorrentUseCase 应该在只提供 infoHash 时正确调用 repository 的 getTorrentFiles 方法并组合返回结果", async () => {
 		const useCase = new ResolveTorrentUseCase(mockRepo);
+		const ctx = WithValue(Background, "traceId", "test-trace");
 		const mockFiles = [{ id: 1, name: "file1.mp4", len: 100 }];
 		vi.mocked(mockRepo.getTorrentFiles).mockResolvedValueOnce(mockFiles);
 
-		const result = await useCase.execute({
+		const result = await useCase.execute(ctx, {
 			infoHash: "123",
 			title: "测试种子",
 		});
@@ -178,10 +185,11 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 
 	it("ResolveTorrentUseCase 在提供 infoHash 且未提供 title 时应该使用默认的已缓存种子名称", async () => {
 		const useCase = new ResolveTorrentUseCase(mockRepo);
+		const ctx = WithValue(Background, "traceId", "test-trace");
 		const mockFiles = [{ id: 1, name: "file1.mp4", len: 100 }];
 		vi.mocked(mockRepo.getTorrentFiles).mockResolvedValueOnce(mockFiles);
 
-		const result = await useCase.execute({ infoHash: "123" });
+		const result = await useCase.execute(ctx, { infoHash: "123" });
 		expect(result).toEqual({
 			info_hash: "123",
 			name: "已缓存种子",
@@ -191,7 +199,8 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
 
 	it("ResolveTorrentUseCase 在没有提供 magnet 和 infoHash 时应该抛出错误", async () => {
 		const useCase = new ResolveTorrentUseCase(mockRepo);
-		await expect(useCase.execute({})).rejects.toThrow(
+		const ctx = WithValue(Background, "traceId", "test-trace");
+		await expect(useCase.execute(ctx, {})).rejects.toThrow(
 			"未提供有效的磁力链接或种子 Hash",
 		);
 	});

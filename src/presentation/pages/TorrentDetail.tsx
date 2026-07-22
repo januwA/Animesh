@@ -6,6 +6,7 @@ import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { ScrollArea } from "@/presentation/components/ui/scroll-area";
+import { useRequestContext } from "@/presentation/hooks/useRequestContext";
 import { formatBytes, formatError } from "@/utils";
 
 export default function TorrentDetail() {
@@ -16,11 +17,13 @@ export default function TorrentDetail() {
 	const infoHash = searchParams.get("infoHash") || "";
 
 	const { resolveTorrentUseCase } = useDI();
+	const { createContext, cancel } = useRequestContext();
 	const [error, setError] = useState<string | null>(null);
 	const [torrent, setTorrent] = useState<AddTorrentResult | null>(null);
 	const [loading, setLoading] = useState(true);
 
 	const handleBack = () => {
+		cancel();
 		navigate(-1);
 	};
 
@@ -35,8 +38,10 @@ export default function TorrentDetail() {
 			setLoading(true);
 			setError(null);
 
+			const ctx = createContext();
+
 			try {
-				const result = await resolveTorrentUseCase.execute({
+				const result = await resolveTorrentUseCase.execute(ctx, {
 					magnet,
 					infoHash,
 					title,
@@ -50,7 +55,7 @@ export default function TorrentDetail() {
 		};
 
 		resolveTorrent();
-	}, [infoHash, title, magnet, resolveTorrentUseCase]);
+	}, [infoHash, title, magnet, resolveTorrentUseCase, createContext]);
 
 	const handleStartPlayback = (fileId: number, fileName: string) => {
 		// v8 ignore next

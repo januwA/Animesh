@@ -104,13 +104,23 @@ export class HttpTorrentRepository implements TorrentRepository {
 		);
 	}
 
-	async addTorrentMagnet(magnet: string): Promise<AddTorrentResult> {
+	async addTorrentMagnet(
+		ctx: Context,
+		magnet: string,
+	): Promise<AddTorrentResult> {
+		const traceId = ctx.value<string>("traceId") || "";
+		ctx.done().then(() => {
+			this.httpClient.request(`${baseUrl}/torrents/add-magnet/${traceId}`, {
+				method: "DELETE",
+			});
+		});
+
 		const response = await this.httpClient.request(`${baseUrl}/torrents`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 			},
-			body: JSON.stringify({ magnet }),
+			body: JSON.stringify({ magnet, trace_id: traceId }),
 		});
 		const raw = await response.json();
 		const result = AddTorrentResultSchema.safeParse(raw);

@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 
@@ -10,11 +11,14 @@ export interface ResolveTorrentParams {
 export class ResolveTorrentUseCase {
 	constructor(private torrentRepository: TorrentRepository) {}
 
-	async execute(params: ResolveTorrentParams): Promise<AddTorrentResult> {
+	async execute(
+		ctx: Context,
+		params: ResolveTorrentParams,
+	): Promise<AddTorrentResult> {
 		const { magnet, infoHash, title } = params;
 
 		if (magnet) {
-			return this.torrentRepository.addTorrentMagnet(magnet);
+			return this.torrentRepository.addTorrentMagnet(ctx, magnet);
 		}
 
 		if (infoHash) {

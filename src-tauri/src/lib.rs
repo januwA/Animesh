@@ -21,6 +21,18 @@ impl Default for SearchTracker {
     }
 }
 
+pub struct AddMagnetTracker {
+    pub handles: Mutex<HashMap<String, tokio::task::AbortHandle>>,
+}
+
+impl Default for AddMagnetTracker {
+    fn default() -> Self {
+        Self {
+            handles: Mutex::new(HashMap::new()),
+        }
+    }
+}
+
 pub struct SubscriptionTracker {
     // Maps subscription_id to (window_label, session_id)
     pub subscriptions: Arc<Mutex<HashMap<String, (String, String)>>>,
@@ -143,11 +155,14 @@ async fn search_torrents(
 
 #[tauri::command]
 async fn torrent_add_magnet(
+    trace_id: String,
     magnet: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
+    tracker: tauri::State<'_, AddMagnetTracker>,
 ) -> Result<AddTorrentResult, String> {
     trace_log(&format!(
-        "Entering torrent_add_magnet command, magnet length: {}",
+        "Entering torrent_add_magnet command, trace_id: {}, magnet length: {}",
+        trace_id,
         magnet.len()
     ));
     let clean_magnet = if magnet.len() > 60 {
@@ -157,16 +172,69 @@ async fn torrent_add_magnet(
     };
     trace_log(&format!("Processed magnet string: {}", clean_magnet));
 
-    let res = manager.add_magnet(magnet).await.map_err(|e| e.to_string());
-    match &res {
-        Ok(t) => trace_log(&format!(
-            "torrent_add_magnet succeeded, info_hash: {}, files count: {}",
-            t.info_hash,
-            t.files.len()
-        )),
-        Err(e) => trace_log(&format!("torrent_add_magnet failed with error: {}", e)),
+    let manager_clone = manager.inner().clone();
+    let magnet_string = magnet.to_string();
+
+    let task = tokio::spawn(async move { manager_clone.add_magnet(&magnet_string).await });
+
+    let abort_handle = task.abort_handle();
+    if let Ok(mut handles) = tracker.handles.lock() {
+        handles.insert(trace_id.clone(), abort_handle);
     }
-    res
+
+    let res = task.await;
+
+    if let Ok(mut handles) = tracker.handles.lock() {
+        handles.remove(&trace_id);
+    }
+
+    match res {
+        Ok(inner) => {
+            match &inner {
+                Ok(t) => trace_log(&format!(
+                    "torrent_add_magnet succeeded, info_hash: {}, files count: {}",
+                    t.info_hash,
+                    t.files.len()
+                )),
+                Err(e) => trace_log(&format!("torrent_add_magnet failed with error: {}", e)),
+            }
+            inner
+        }
+        Err(join_err) => {
+            if join_err.is_cancelled() {
+                trace_log(&format!(
+                    "torrent_add_magnet was cancelled, trace_id: {}",
+                    trace_id
+                ));
+                Err("添加磁力链接已取消".to_string())
+            } else {
+                trace_log(&format!("torrent_add_magnet task panicked: {:?}", join_err));
+                Err("添加磁力链接任务异常".to_string())
+            }
+        }
+    }
+}
+
+#[tauri::command]
+fn cancel_add_magnet(trace_id: String, tracker: tauri::State<'_, AddMagnetTracker>) {
+    trace_log(&format!(
+        "Entering cancel_add_magnet command, trace_id: {}",
+        trace_id
+    ));
+    if let Ok(mut handles) = tracker.handles.lock() {
+        if let Some(handle) = handles.remove(&trace_id) {
+            handle.abort();
+            trace_log(&format!(
+                "Successfully aborted add_magnet for trace_id: {}",
+                trace_id
+            ));
+        } else {
+            trace_log(&format!(
+                "No active add_magnet found to abort for trace_id: {}",
+                trace_id
+            ));
+        }
+    }
 }
 
 #[tauri::command]
@@ -566,6 +634,7 @@ pub fn run() {
 
             app.manage(Arc::new(manager));
             app.manage(SearchTracker::default());
+            app.manage(AddMagnetTracker::default());
             app.manage(SubscriptionTracker::default());
             Ok(())
         })
@@ -573,6 +642,7 @@ pub fn run() {
             search_torrents,
             cancel_search,
             torrent_add_magnet,
+            cancel_add_magnet,
             torrent_get_status,
             torrent_get_stream_url,
             torrent_get_files,

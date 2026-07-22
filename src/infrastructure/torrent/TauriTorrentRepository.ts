@@ -72,8 +72,19 @@ export class TauriTorrentRepository implements TorrentRepository {
 		return invoke<void>("torrent_delete", { infoHash, deleteFiles });
 	}
 
-	async addTorrentMagnet(magnet: string): Promise<AddTorrentResult> {
-		const raw = await invoke<unknown>("torrent_add_magnet", { magnet });
+	async addTorrentMagnet(
+		ctx: Context,
+		magnet: string,
+	): Promise<AddTorrentResult> {
+		const traceId = ctx.value<string>("traceId") || "";
+		ctx.done().then(() => {
+			invoke<void>("cancel_add_magnet", { traceId });
+		});
+
+		const raw = await invoke<unknown>("torrent_add_magnet", {
+			traceId,
+			magnet,
+		});
 		const result = AddTorrentResultSchema.safeParse(raw);
 		if (!result.success) {
 			throw new Error("torrent_add_magnet API structure mismatch", {
