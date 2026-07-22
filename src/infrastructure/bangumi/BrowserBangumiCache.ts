@@ -61,6 +61,7 @@ function setItem<T>(key: string, data: T, ttlMs: number): void {
 
 export class BrowserBangumiCache implements BangumiCache {
 	private readonly ttlMs = 12 * 60 * 60 * 1000; // 12 hours
+	private readonly ttl1MMs = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 	getCalendar(_ctx: Context): Promise<BangumiCalendarDay[] | null> {
 		return Promise.resolve(
@@ -84,7 +85,7 @@ export class BrowserBangumiCache implements BangumiCache {
 		subjectId: string,
 		subject: BangumiSubject,
 	): Promise<void> {
-		setItem(`bangumi:subject:${subjectId}`, subject, this.ttlMs);
+		setItem(`bangumi:subject:${subjectId}`, subject, this.ttl1MMs);
 		return Promise.resolve();
 	}
 
@@ -120,7 +121,7 @@ export class BrowserBangumiCache implements BangumiCache {
 		subjectId: string,
 		persons: BangumiPerson[],
 	): Promise<void> {
-		setItem(`bangumi:persons:${subjectId}`, persons, this.ttlMs);
+		setItem(`bangumi:persons:${subjectId}`, persons, this.ttl1MMs);
 		return Promise.resolve();
 	}
 
@@ -141,7 +142,7 @@ export class BrowserBangumiCache implements BangumiCache {
 		subjectId: string,
 		characters: BangumiCharacter[],
 	): Promise<void> {
-		setItem(`bangumi:characters:${subjectId}`, characters, this.ttlMs);
+		setItem(`bangumi:characters:${subjectId}`, characters, this.ttl1MMs);
 		return Promise.resolve();
 	}
 }

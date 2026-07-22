@@ -149,7 +149,7 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
 			vi.setSystemTime(now);
 
 			await cache.setSubject(Background, subjectId, mockSubject);
-			vi.setSystemTime(now + 12 * 60 * 60 * 1000 + 1);
+			vi.setSystemTime(now + 30 * 24 * 60 * 60 * 1000 + 1);
 
 			const result = await cache.getSubject(Background, subjectId);
 			expect(result).toBeNull();
@@ -264,7 +264,7 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
 		vi.setSystemTime(now);
 
 		await cache.setSubject(Background, "99", mockSubject);
-		vi.setSystemTime(now + 12 * 60 * 60 * 1000 + 1);
+		vi.setSystemTime(now + 30 * 24 * 60 * 60 * 1000 + 1);
 
 		const result = await cache.getSubject(Background, "99");
 		expect(result).toBeNull();
