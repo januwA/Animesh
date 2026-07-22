@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import { SettingsFormSchema } from "@/domain/settings/SettingsSchemas";
 import {
@@ -32,7 +33,6 @@ import {
 } from "@/presentation/components/ui/card";
 import { Input } from "@/presentation/components/ui/input";
 import { formatError, formatLocalDate } from "@/utils";
-import { useAppContext } from "../context/AppContext";
 
 export default function Settings() {
 	const { theme, setTheme } = useTheme();
@@ -47,7 +47,6 @@ export default function Settings() {
 		openUpdateUrlUseCase,
 		verifyAiConnectionUseCase,
 	} = useDI();
-	const { showToast } = useAppContext();
 	const [currentVersion, setCurrentVersion] = useState("");
 
 	const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -121,15 +120,15 @@ export default function Settings() {
 		const model = modelInput.trim() || null;
 
 		if (!alias) {
-			showToast("请输入别名", "warning");
+			toast.warning("请输入别名");
 			return;
 		}
 		if (!apiEndpoint) {
-			showToast("请输入接口地址", "warning");
+			toast.warning("请输入接口地址");
 			return;
 		}
 		if (!apiKey) {
-			showToast("请输入 API 密钥", "warning");
+			toast.warning("请输入 API 密钥");
 			return;
 		}
 
@@ -138,7 +137,7 @@ export default function Settings() {
 				c.alias.toLowerCase() === alias.toLowerCase() && i !== editingIndex,
 		);
 		if (duplicate) {
-			showToast("该别名已存在，请使用其他别名", "warning");
+			toast.warning("该别名已存在，请使用其他别名");
 			return;
 		}
 
@@ -168,9 +167,11 @@ export default function Settings() {
 				apiKey: config.apiKey,
 				model: config.model || undefined,
 			});
-			showToast("AI 模型连接测试成功！", "success");
+			toast.success("AI 模型连接测试成功！");
 		} catch (err: unknown) {
-			showToast(`AI 模型连接测试失败: ${formatError(err)}`, "error", 5000);
+			toast.error(`AI 模型连接测试失败: ${formatError(err)}`, {
+				duration: 5000,
+			});
 		} finally {
 			setTestingAi(false);
 		}
@@ -178,11 +179,11 @@ export default function Settings() {
 
 	const handleTestCurrentConnection = async () => {
 		if (!apiEndpointInput.trim()) {
-			showToast("请输入 AI 接口地址", "warning");
+			toast.warning("请输入 AI 接口地址");
 			return;
 		}
 		if (!apiKeyInput.trim()) {
-			showToast("请输入 API 密钥", "warning");
+			toast.warning("请输入 API 密钥");
 			return;
 		}
 		await handleTestConfigConnection({
@@ -196,7 +197,7 @@ export default function Settings() {
 
 	const handleSync = async (mode: "replace" | "append") => {
 		if (sourceType === "custom" && !customUrl) {
-			showToast("请输入自定义 Tracker 列表 URL", "warning");
+			toast.warning("请输入自定义 Tracker 列表 URL");
 			return;
 		}
 
@@ -206,15 +207,14 @@ export default function Settings() {
 			const fetched = await syncTrackersUseCase.execute(url);
 
 			if (fetched.length === 0) {
-				showToast("未获取到有效的 Tracker 地址", "warning");
+				toast.warning("未获取到有效的 Tracker 地址");
 				return;
 			}
 
 			if (mode === "replace") {
 				setTrackersText(fetched.join("\n"));
-				showToast(
+				toast.success(
 					`同步成功：已替换为最新的 ${fetched.length} 个 Tracker，请保存设置`,
-					"success",
 				);
 			} else {
 				const currentTrackers = trackersText
@@ -224,16 +224,15 @@ export default function Settings() {
 				const merged = Array.from(new Set([...currentTrackers, ...fetched]));
 				setTrackersText(merged.join("\n"));
 				const addedCount = merged.length - currentTrackers.length;
-				showToast(
+				toast.success(
 					`同步成功：已追加 ${addedCount} 个新 Tracker (共计 ${merged.length} 个)，请保存设置`,
-					"success",
 				);
 			}
 
 			const now = Date.now();
 			setLastUpdateTime(now);
 		} catch (err: unknown) {
-			showToast(`同步 Tracker 失败: ${formatError(err)}`, "error");
+			toast.error(`同步 Tracker 失败: ${formatError(err)}`);
 		} finally {
 			setSyncing(false);
 		}
@@ -270,13 +269,13 @@ export default function Settings() {
 				}));
 				setAiConfigs(loadedConfigs);
 			} catch (err: unknown) {
-				showToast(`加载设置失败: ${formatError(err)}`, "error");
+				toast.error(`加载设置失败: ${formatError(err)}`);
 			} finally {
 				setLoading(false);
 			}
 		};
 		loadSettings();
-	}, [showToast, getSettingsUseCase]);
+	}, [getSettingsUseCase]);
 	// Load version
 	useEffect(() => {
 		if (!isTauri) return;
@@ -294,12 +293,12 @@ export default function Settings() {
 			const result = await checkUpdateUseCase.execute();
 			setUpdateResult(result);
 			if (result.hasUpdate) {
-				showToast(`发现新版本 v${result.latestVersion}`, "info");
+				toast(`发现新版本 v${result.latestVersion}`);
 			} else {
-				showToast("当前已是最新版本", "success");
+				toast.success("当前已是最新版本");
 			}
 		} catch (err: unknown) {
-			showToast(`检查更新失败: ${formatError(err)}`, "error");
+			toast.error(`检查更新失败: ${formatError(err)}`);
 		} finally {
 			setCheckingUpdate(false);
 		}
@@ -311,10 +310,10 @@ export default function Settings() {
 			const selected = await selectDirectoryUseCase.execute();
 			if (selected) {
 				setDownloadDir(selected);
-				showToast("已选择目录，点击保存以生效", "success");
+				toast.success("已选择目录，点击保存以生效");
 			}
 		} catch (err: unknown) {
-			showToast(`选择文件夹失败: ${formatError(err)}`, "error");
+			toast.error(`选择文件夹失败: ${formatError(err)}`);
 		}
 	};
 
@@ -341,7 +340,7 @@ export default function Settings() {
 
 		if (!validation.success) {
 			const firstError = validation.error.issues[0].message;
-			showToast(firstError, "error");
+			toast.error(firstError);
 			return;
 		}
 
@@ -360,9 +359,9 @@ export default function Settings() {
 				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
 				aiConfigs: validatedData.aiConfigs,
 			});
-			showToast("设置已保存，后续下载任务将使用新路径", "success");
+			toast.success("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
-			showToast(`保存路径失败: ${formatError(err)}`, "error", 5000);
+			toast.error(`保存路径失败: ${formatError(err)}`, { duration: 5000 });
 		} finally {
 			setSaving(false);
 		}
@@ -765,9 +764,8 @@ export default function Settings() {
 																	updateResult.htmlUrl,
 																);
 															} catch (err: unknown) {
-																showToast(
+																toast.error(
 																	`无法打开链接: ${formatError(err)}`,
-																	"error",
 																);
 															}
 														}
@@ -1016,14 +1014,10 @@ export default function Settings() {
 											const defaults =
 												await getDefaultTrackersUseCase.execute();
 											setTrackersText(defaults.join("\n"));
-											showToast(
-												"已重置为默认 Tracker 列表，点击保存生效",
-												"success",
-											);
+											toast.success("已重置为默认 Tracker 列表，点击保存生效");
 										} catch (err: unknown) {
-											showToast(
+											toast.error(
 												`获取默认 Tracker 列表失败: ${formatError(err)}`,
-												"error",
 											);
 										}
 									}}

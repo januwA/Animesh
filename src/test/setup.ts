@@ -11,6 +11,16 @@ globalThis.fetch = vi.fn().mockImplementation(() =>
 	),
 );
 
+// Mock sonner (Sonner) toast globally for all tests
+vi.mock("sonner", () => ({
+	Toaster: () => null,
+	toast: Object.assign(vi.fn(), {
+		success: vi.fn(),
+		error: vi.fn(),
+		warning: vi.fn(),
+	}),
+}));
+
 // Mock ScrollRestoration to prevent useMatches error in tests using MemoryRouter
 vi.mock("react-router-dom", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("react-router-dom")>();

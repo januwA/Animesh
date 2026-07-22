@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
-import { PageLoader, ToastContainer } from "./AppComponents";
+import { PageLoader } from "./AppComponents";
 
 export default function SimpleLayout() {
-	const { toasts, removeToast } = useGlobalEffects();
+	useGlobalEffects();
 
 	return (
 		<main
@@ -17,9 +17,6 @@ export default function SimpleLayout() {
 			<Suspense fallback={<PageLoader />}>
 				<Outlet />
 			</Suspense>
-
-			{/* 提示消息 */}
-			<ToastContainer toasts={toasts} onClose={removeToast} />
 
 			{/* 滚动位置恢复 */}
 			<ScrollRestoration />

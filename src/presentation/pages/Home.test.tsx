@@ -6,6 +6,7 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
@@ -283,7 +284,7 @@ describe("Home 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("磁力链接已复制到剪贴板")).toBeInTheDocument();
+		expect(toast.success).toHaveBeenCalledWith("磁力链接已复制到剪贴板");
 	});
 
 	it("当复制磁力链接失败时，应该显示失败的Toast提示", async () => {
@@ -319,7 +320,7 @@ describe("Home 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith("复制失败，请手动复制");
 	});
 
 	it("当点击边下边播时，应该跳转", async () => {

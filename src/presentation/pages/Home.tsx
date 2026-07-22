@@ -13,6 +13,7 @@ import {
 import type { SubmitEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
@@ -36,7 +37,6 @@ import {
 import { useRequestContext } from "@/presentation/hooks/useRequestContext";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
-import { useAppContext } from "../context/AppContext";
 
 // 搜索栏组件
 interface SearchFormProps {
@@ -298,7 +298,6 @@ export default function Home() {
 		searchTorrentsWithAiUseCase,
 		getSettingsUseCase,
 	} = useDI();
-	const { showToast } = useAppContext();
 
 	const [keyword, setKeyword] = useState("");
 	const [results, setResults] = useState<AiSearchResultItem[]>([]);
@@ -444,9 +443,9 @@ export default function Home() {
 	const handleCopyMagnet = async (magnet: string) => {
 		try {
 			await navigator.clipboard.writeText(magnet);
-			showToast("磁力链接已复制到剪贴板", "success");
+			toast.success("磁力链接已复制到剪贴板");
 		} catch {
-			showToast("复制失败，请手动复制", "error");
+			toast.error("复制失败，请手动复制");
 		}
 	};
 

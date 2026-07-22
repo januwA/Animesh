@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { Badge } from "@/presentation/components/ui/badge";
@@ -30,7 +31,6 @@ import {
 } from "@/presentation/components/ui/dialog";
 import { Progress } from "@/presentation/components/ui/progress";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
-import { useAppContext } from "../context/AppContext";
 
 export default function Downloads() {
 	const navigate = useNavigate();
@@ -41,7 +41,6 @@ export default function Downloads() {
 		resumeTorrentUseCase,
 		deleteTorrentUseCase,
 	} = useDI();
-	const { showToast } = useAppContext();
 	const [torrents, setTorrents] = useState<TorrentStatusInfo[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [isActionPending, setIsActionPending] = useState(false);
@@ -80,7 +79,7 @@ export default function Downloads() {
 				}
 			})
 			.catch((err: unknown) => {
-				showToast(`获取下载列表失败: ${formatError(err)}`, "error");
+				toast.error(`获取下载列表失败: ${formatError(err)}`);
 				setLoading(false);
 			});
 
@@ -90,7 +89,7 @@ export default function Downloads() {
 				unsubscribe();
 			}
 		};
-	}, [subscribeTorrentsUseCase, showToast]);
+	}, [subscribeTorrentsUseCase]);
 
 	// Pause a download
 	const handlePause = (infoHash: string, name: string) => {
@@ -98,10 +97,10 @@ export default function Downloads() {
 		(async () => {
 			try {
 				await pauseTorrentUseCase.execute(infoHash);
-				showToast(`已暂停任务: ${name || infoHash.slice(0, 8)}`, "info");
+				toast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
 				await refreshTorrents();
 			} catch (err: unknown) {
-				showToast(`暂停失败: ${formatError(err)}`, "error");
+				toast.error(`暂停失败: ${formatError(err)}`);
 			} finally {
 				setIsActionPending(false);
 			}
@@ -114,10 +113,10 @@ export default function Downloads() {
 		(async () => {
 			try {
 				await resumeTorrentUseCase.execute(infoHash);
-				showToast(`已开始下载任务: ${name || infoHash.slice(0, 8)}`, "success");
+				toast.success(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
 				await refreshTorrents();
 			} catch (err: unknown) {
-				showToast(`启动失败: ${formatError(err)}`, "error");
+				toast.error(`启动失败: ${formatError(err)}`);
 			} finally {
 				setIsActionPending(false);
 			}
@@ -132,11 +131,11 @@ export default function Downloads() {
 		(async () => {
 			try {
 				await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
-				showToast(`已删除任务`, "success");
+				toast.success("已删除任务");
 				setDeleteTarget(null);
 				await refreshTorrents();
 			} catch (err: unknown) {
-				showToast(`删除任务失败: ${formatError(err)}`, "error");
+				toast.error(`删除任务失败: ${formatError(err)}`);
 			} finally {
 				setIsActionPending(false);
 			}

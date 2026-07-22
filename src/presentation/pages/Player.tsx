@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import type {
 	SubtitleTrackInfo,
@@ -22,7 +23,6 @@ import {
 	SelectValue,
 } from "@/presentation/components/ui/select";
 import { formatBytes, formatError } from "@/utils";
-import { useAppContext } from "../context/AppContext";
 
 export default function Player() {
 	const navigate = useNavigate();
@@ -44,7 +44,6 @@ export default function Player() {
 		logger,
 	} = useDI();
 	const playerLogger = useMemo(() => logger.withCategory("Player"), [logger]);
-	const { showToast } = useAppContext();
 	const [streamUrl, setStreamUrl] = useState<string | null>(null);
 	const [torrentStatus, setTorrentStatus] = useState<TorrentStatusInfo | null>(
 		null,
@@ -90,12 +89,12 @@ export default function Player() {
 				});
 				setSelectedTrackId(trackId);
 			} catch (err: unknown) {
-				showToast(`加载字幕失败: ${formatError(err)}`, "error");
+				toast.error(`加载字幕失败: ${formatError(err)}`);
 			} finally {
 				setSubloading(false);
 			}
 		},
-		[infoHash, fileId, getSubtitleVttUseCase, showToast],
+		[infoHash, fileId, getSubtitleVttUseCase],
 	);
 
 	// Synchronize subtitle track selection between Video.js and external state
@@ -157,7 +156,7 @@ export default function Player() {
 
 	useEffect(() => {
 		if (!infoHash || fileId === undefined) {
-			showToast("无效的视频播放参数", "error");
+			toast.error("无效的视频播放参数");
 			setLoading(false);
 			return;
 		}
@@ -236,7 +235,9 @@ export default function Player() {
 				}
 			} catch (err: unknown) {
 				if (active) {
-					showToast(`无法获取视频流: ${formatError(err)}`, "error", 10000);
+					toast.error(`无法获取视频流: ${formatError(err)}`, {
+						duration: 10000,
+					});
 					setLoading(false);
 				}
 			}
@@ -251,7 +252,6 @@ export default function Player() {
 	}, [
 		infoHash,
 		fileId,
-		showToast,
 		getTorrentStreamUrlUseCase,
 		getTorrentStatusUseCase,
 		getSubtitleTracksUseCase,
@@ -264,9 +264,9 @@ export default function Player() {
 		if (!streamUrl) return;
 		try {
 			await navigator.clipboard.writeText(streamUrl);
-			showToast("视频流地址已复制到剪贴板，可在外部播放器中播放", "success");
+			toast.success("视频流地址已复制到剪贴板，可在外部播放器中播放");
 		} catch {
-			showToast("复制失败，请手动复制", "error");
+			toast.error("复制失败，请手动复制");
 		}
 	};
 
@@ -349,7 +349,7 @@ export default function Player() {
 										errorMsg = "视频加载超时或网络断开。";
 									}
 								}
-								showToast(errorMsg, "error", 8000);
+								toast.error(errorMsg, { duration: 8000 });
 							}}
 						>
 							{subtracks.map((track) => (

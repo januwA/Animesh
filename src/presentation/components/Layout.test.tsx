@@ -1,5 +1,6 @@
 import { act, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { toast } from "sonner";
 import { vi } from "vitest";
 import { DIProvider } from "@/di/DIContext";
 import { createDIContainerForTest } from "@/test/test-utils";
@@ -223,7 +224,7 @@ describe("Layout 布局组件", () => {
 			} as any,
 		});
 
-		const { findByText } = render(
+		render(
 			<DIProvider value={mockContainer}>
 				<AppContextProvider>
 					<MemoryRouter initialEntries={["/"]}>
@@ -237,8 +238,11 @@ describe("Layout 布局组件", () => {
 			</DIProvider>,
 		);
 
-		const toastMessage = await findByText(/自动更新 Tracker 列表成功/);
-		expect(toastMessage).toBeInTheDocument();
+		await waitFor(() => {
+			expect(toast.success).toHaveBeenCalledWith(
+				expect.stringContaining("自动更新 Tracker 列表成功，已同步"),
+			);
+		});
 	});
 
 	it("当自动同步更新发生异常时，应该安全捕获不崩溃", async () => {

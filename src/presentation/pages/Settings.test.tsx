@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
@@ -126,10 +127,10 @@ describe("Settings 页面组件", () => {
 
 		await waitFor(() => {
 			expect(screen.queryByText("正在加载设置面版...")).not.toBeInTheDocument();
-			expect(
-				screen.getByText("加载设置失败", { exact: false }),
-			).toBeInTheDocument();
 		});
+		expect(toast.error).toHaveBeenCalledWith(
+			expect.stringContaining("加载设置失败"),
+		);
 	});
 
 	it("应该成功加载并显示当前下载目录与代理设置，且支持输入更改与保存（成功分支）", async () => {
@@ -207,10 +208,10 @@ describe("Settings 页面组件", () => {
 				"udp://tracker2",
 				"http://tracker3",
 			]);
-			expect(
-				screen.getByText("设置已保存，后续下载任务将使用新路径"),
-			).toBeInTheDocument();
 		});
+		expect(toast.success).toHaveBeenCalledWith(
+			"设置已保存，后续下载任务将使用新路径",
+		);
 	});
 
 	it("当保存下载目录为空时，应该拦截并提示不能为空", async () => {
@@ -232,7 +233,7 @@ describe("Settings 页面组件", () => {
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);
 
-		expect(screen.getByText("下载目录不能为空")).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith("下载目录不能为空");
 		expect(mockSettingsRepository.setDownloadDir).not.toHaveBeenCalled();
 	});
 
@@ -257,9 +258,10 @@ describe("Settings 页面组件", () => {
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);
 		await waitFor(() => {
-			expect(
-				screen.getByText("Path not writeable", { exact: false }),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringContaining("Path not writeable"),
+				{ duration: 5000 },
+			);
 		});
 
 		// 2. Non-string error (Error object)
@@ -269,9 +271,10 @@ describe("Settings 页面组件", () => {
 
 		fireEvent.click(saveBtn);
 		await waitFor(() => {
-			expect(
-				screen.getByText("Permission Denied", { exact: false }),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringContaining("Permission Denied"),
+				{ duration: 5000 },
+			);
 		});
 	});
 
@@ -298,10 +301,8 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByPlaceholderText(/选择或输入下载路径/)).toHaveValue(
 				"D:\\SelectedDir",
 			);
-			expect(
-				screen.getByText("已选择目录，点击保存以生效"),
-			).toBeInTheDocument();
 		});
+		expect(toast.success).toHaveBeenCalledWith("已选择目录，点击保存以生效");
 
 		// 2. Directory selection returns null (user cancelled)
 		vi.mocked(mockSettingsRepository.selectDirectory).mockResolvedValue(null);
@@ -318,9 +319,9 @@ describe("Settings 页面组件", () => {
 
 		fireEvent.click(selectBtn);
 		await waitFor(() => {
-			expect(
-				screen.getByText("选择文件夹失败", { exact: false }),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringContaining("选择文件夹失败"),
+			);
 		});
 	});
 
@@ -359,10 +360,10 @@ describe("Settings 页面组件", () => {
 
 		await waitFor(() => {
 			expect(mockSettingsRepository.setTrackers).toHaveBeenCalled();
-			expect(
-				screen.getByText("设置已保存，后续下载任务将使用新路径"),
-			).toBeInTheDocument();
 		});
+		expect(toast.success).toHaveBeenCalledWith(
+			"设置已保存，后续下载任务将使用新路径",
+		);
 	});
 
 	it("当点击“重置为默认值”按钮且获取默认 Tracker 列表失败时，应该妥善提示错误信息", async () => {
@@ -386,9 +387,9 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(resetBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("获取默认 Tracker 列表失败", { exact: false }),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringContaining("获取默认 Tracker 列表失败"),
+			);
 		});
 	});
 
@@ -422,10 +423,10 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
 				"udp://newtracker1\nhttp://newtracker2",
 			);
-			expect(
-				screen.getByText(/同步成功：已替换为最新的 2 个 Tracker/),
-			).toBeInTheDocument();
 		});
+		expect(toast.success).toHaveBeenCalledWith(
+			expect.stringMatching(/同步成功：已替换为最新的 2 个 Tracker/),
+		);
 	});
 
 	it("应该支持切换不同的 Tracker 列表源与 CDN 加速节点，更改自动更新选项，更改自定义URL，并测试追加同步以及各类失败校验", async () => {
@@ -481,8 +482,8 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
 				"udp://oldtracker\nudp://newtracker1\nhttp://newtracker2",
 			);
-			expect(screen.getByText(/已追加/)).toBeInTheDocument();
 		});
+		expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/已追加/));
 
 		// 5. 切换为自定义源，且自定义 URL 为空时点击同步，应该提示请输入 URL
 		const customBtn = screen.getByText("自定义");
@@ -494,11 +495,7 @@ describe("Settings 页面组件", () => {
 		const syncBtn = screen.getByRole("button", { name: /立即同步并替换/ });
 		fireEvent.click(syncBtn);
 
-		await waitFor(() => {
-			expect(
-				screen.getByText("请输入自定义 Tracker 列表 URL"),
-			).toBeInTheDocument();
-		});
+		expect(toast.warning).toHaveBeenCalledWith("请输入自定义 Tracker 列表 URL");
 
 		// 6. 输入自定义 URL
 		const customUrlInput = screen.getByLabelText("自定义 URL 地址");
@@ -514,9 +511,9 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(syncBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText(/同步 Tracker 失败: Fetch failed/),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringMatching(/同步 Tracker 失败: Fetch failed/),
+			);
 		});
 	});
 
@@ -543,9 +540,7 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(syncBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("未获取到有效的 Tracker 地址"),
-			).toBeInTheDocument();
+			expect(toast.warning).toHaveBeenCalledWith("未获取到有效的 Tracker 地址");
 		});
 	});
 
@@ -587,7 +582,9 @@ describe("Settings 页面组件", () => {
 
 		// 检查 toast 提示和新版本内容渲染
 		await waitFor(() => {
-			expect(screen.getByText("发现新版本 v0.3.2")).toBeInTheDocument();
+			expect(toast).toHaveBeenCalledWith("发现新版本 v0.3.2");
+		});
+		await waitFor(() => {
 			expect(screen.getByText("发现新版本！")).toBeInTheDocument();
 			expect(screen.getByText("修复了一些已知问题")).toBeInTheDocument();
 		});
@@ -635,7 +632,7 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(checkBtn);
 
 		await waitFor(() => {
-			expect(screen.getAllByText("当前已是最新版本").length).toBeGreaterThan(0);
+			expect(toast.success).toHaveBeenCalledWith("当前已是最新版本");
 		});
 	});
 
@@ -663,9 +660,7 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(checkBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("检查更新失败: 网络连接失败"),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith("检查更新失败: 网络连接失败");
 		});
 	});
 
@@ -703,7 +698,7 @@ describe("Settings 页面组件", () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getByText("发现新版本 v0.3.2")).toBeInTheDocument();
+			expect(toast).toHaveBeenCalledWith("发现新版本 v0.3.2");
 		});
 
 		const downloadBtn = screen.getByRole("button", {
@@ -712,9 +707,9 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(downloadBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("无法打开链接: 打不开系统默认浏览器"),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				"无法打开链接: 打不开系统默认浏览器",
+			);
 		});
 	});
 
@@ -751,7 +746,7 @@ describe("Settings 页面组件", () => {
 		});
 
 		await waitFor(() => {
-			expect(screen.getByText("发现新版本 v0.3.2")).toBeInTheDocument();
+			expect(toast).toHaveBeenCalledWith("发现新版本 v0.3.2");
 		});
 
 		const downloadBtn = screen.getByRole("button", {
@@ -919,9 +914,7 @@ describe("Settings 页面组件", () => {
 
 		// 1. 地址为空
 		fireEvent.click(testBtn);
-		await waitFor(() => {
-			expect(screen.getByText("请输入 AI 接口地址")).toBeInTheDocument();
-		});
+		expect(toast.warning).toHaveBeenCalledWith("请输入 AI 接口地址");
 
 		// 2. 密钥为空
 		const endpointInput = screen.getByLabelText(
@@ -932,9 +925,7 @@ describe("Settings 页面组件", () => {
 		});
 
 		fireEvent.click(testBtn);
-		await waitFor(() => {
-			expect(screen.getByText("请输入 API 密钥")).toBeInTheDocument();
-		});
+		expect(toast.warning).toHaveBeenCalledWith("请输入 API 密钥");
 	});
 
 	it("应该支持在 AI 设置面板中测试模型连接并展示成功提示", async () => {
@@ -972,8 +963,8 @@ describe("Settings 页面组件", () => {
 					messages: [{ role: "user", content: "Ping" }],
 				}),
 			);
-			expect(screen.getByText("AI 模型连接测试成功！")).toBeInTheDocument();
 		});
+		expect(toast.success).toHaveBeenCalledWith("AI 模型连接测试成功！");
 	});
 
 	it("应该支持在 AI 设置面板中测试模型连接并展示失败提示", async () => {
@@ -1001,9 +992,10 @@ describe("Settings 页面组件", () => {
 		fireEvent.click(testBtn);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText(/AI 模型连接测试失败: API Error/),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringMatching(/AI 模型连接测试失败: API Error/),
+				{ duration: 5000 },
+			);
 		});
 	});
 
@@ -1046,8 +1038,8 @@ describe("Settings 页面组件", () => {
 				"form-key",
 				expect.any(Object),
 			);
-			expect(screen.getByText("AI 模型连接测试成功！")).toBeInTheDocument();
 		});
+		expect(toast.success).toHaveBeenCalledWith("AI 模型连接测试成功！");
 	});
 
 	it("应该支持对已添加的 AI 配置进行编辑、取消编辑以及保存修改", async () => {
@@ -1251,35 +1243,25 @@ describe("Settings 页面组件", () => {
 
 		// 1. 空别名
 		fireEvent.click(saveBtn);
-		await waitFor(() => {
-			expect(screen.getByText("请输入别名")).toBeInTheDocument();
-		});
+		expect(toast.warning).toHaveBeenCalledWith("请输入别名");
 
 		// 2. 空接口
 		fireEvent.change(aliasInput, { target: { value: "NewAlias" } });
 		fireEvent.click(saveBtn);
-		await waitFor(() => {
-			expect(screen.getByText("请输入接口地址")).toBeInTheDocument();
-		});
+		expect(toast.warning).toHaveBeenCalledWith("请输入接口地址");
 
 		// 3. 空密钥
 		fireEvent.change(endpointInput, {
 			target: { value: "https://api.new.com" },
 		});
 		fireEvent.click(saveBtn);
-		await waitFor(() => {
-			expect(screen.getByText("请输入 API 密钥")).toBeInTheDocument();
-		});
+		expect(toast.warning).toHaveBeenCalledWith("请输入 API 密钥");
 
 		// 4. 重复别名
 		fireEvent.change(keyInput, { target: { value: "new-key" } });
 		fireEvent.change(aliasInput, { target: { value: "OpenAI" } }); // OpenAI is duplicate
 		fireEvent.click(saveBtn);
-		await waitFor(() => {
-			expect(
-				screen.getByText("该别名已存在，请使用其他别名"),
-			).toBeInTheDocument();
-		});
+		expect(toast.warning).toHaveBeenCalledWith("该别名已存在，请使用其他别名");
 	});
 
 	it("应该支持选择不同的界面主题并应用", async () => {

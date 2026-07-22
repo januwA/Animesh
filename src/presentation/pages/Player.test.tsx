@@ -6,6 +6,7 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
@@ -157,9 +158,7 @@ describe("Player 页面组件", () => {
 	it("当缺少播放参数时，应该渲染参数错误提示并Toast", async () => {
 		renderPlayer("/play/invalid");
 
-		await waitFor(() => {
-			expect(screen.getByText("无效的视频播放参数")).toBeInTheDocument();
-		});
+		expect(toast.error).toHaveBeenCalledWith("无效的视频播放参数");
 	});
 
 	it("应该成功初始化播放器并加载流地址与初始状态，并启动状态轮询", async () => {
@@ -247,9 +246,10 @@ describe("Player 页面组件", () => {
 		renderPlayer("/play/hash123/0");
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("无法获取视频流", { exact: false }),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringContaining("无法获取视频流"),
+				{ duration: 10000 },
+			);
 		});
 	});
 
@@ -303,9 +303,9 @@ describe("Player 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(
-			screen.getByText("视频流地址已复制到剪贴板，可在外部播放器中播放"),
-		).toBeInTheDocument();
+		expect(toast.success).toHaveBeenCalledWith(
+			"视频流地址已复制到剪贴板，可在外部播放器中播放",
+		);
 
 		// Failure path
 		vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(
@@ -315,7 +315,7 @@ describe("Player 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith("复制失败，请手动复制");
 	});
 
 	it("当点击返回按钮时，应该能够返回上一页", async () => {
@@ -621,9 +621,9 @@ describe("Player 页面组件", () => {
 		);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("加载字幕失败", { exact: false }),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringContaining("加载字幕失败"),
+			);
 		});
 	});
 
@@ -726,11 +726,10 @@ describe("Player 页面组件", () => {
 			writable: true,
 		});
 		fireEvent.error(video!);
-		expect(
-			screen.getByText(
-				"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。",
-			),
-		).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith(
+			"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。",
+			{ duration: 8000 },
+		);
 
 		// 2. Test error code 3 (解码失败)
 		Object.defineProperty(video!, "error", {
@@ -739,9 +738,10 @@ describe("Player 页面组件", () => {
 			writable: true,
 		});
 		fireEvent.error(video!);
-		expect(
-			screen.getByText("视频解码失败，可能数据已损坏或编码不支持。"),
-		).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith(
+			"视频解码失败，可能数据已损坏或编码不支持。",
+			{ duration: 8000 },
+		);
 
 		// 3. Test error code 2 (网络断开)
 		Object.defineProperty(video!, "error", {
@@ -750,7 +750,9 @@ describe("Player 页面组件", () => {
 			writable: true,
 		});
 		fireEvent.error(video!);
-		expect(screen.getByText("视频加载超时或网络断开。")).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith("视频加载超时或网络断开。", {
+			duration: 8000,
+		});
 
 		// 4. Test generic error (code is null/other)
 		Object.defineProperty(video!, "error", {
@@ -759,7 +761,9 @@ describe("Player 页面组件", () => {
 			writable: true,
 		});
 		fireEvent.error(video!);
-		expect(screen.getByText("视频加载失败")).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith("视频加载失败", {
+			duration: 8000,
+		});
 
 		// 5. Test error code 1 (covers inner conditional else branch)
 		Object.defineProperty(video!, "error", {
@@ -768,7 +772,9 @@ describe("Player 页面组件", () => {
 			writable: true,
 		});
 		fireEvent.error(video!);
-		expect(screen.getAllByText("视频加载失败").length).toBe(2);
+		expect(toast.error).toHaveBeenCalledWith("视频加载失败", {
+			duration: 8000,
+		});
 	});
 
 	it("当订阅状态更新且找不到对应种子的状态时，应该不更新 torrentStatus", async () => {
@@ -834,7 +840,9 @@ describe("Player 页面组件", () => {
 			} catch {}
 		});
 
-		expect(screen.queryByText("无法获取视频流")).not.toBeInTheDocument();
+		expect(toast.error).not.toHaveBeenCalledWith(
+			expect.stringContaining("无法获取视频流"),
+		);
 	});
 
 	it("应该支持从 React Router state 获取视频标题和封面，并处理未加载完成时的 unmount", async () => {

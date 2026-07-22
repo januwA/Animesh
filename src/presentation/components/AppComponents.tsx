@@ -4,16 +4,12 @@ import {
 	Loader2,
 	Search,
 	Settings as SettingsIcon,
-	X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
-import type { ToastMessage } from "@/presentation/context/AppContext";
-import { cn } from "@/presentation/lib/utils";
-import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
 
 // 页面头部组件
 export function AppHeader() {
@@ -147,73 +143,6 @@ export function ErrorBanner({ message }: { message: string }) {
 				<AlertTitle className="font-semibold">搜索失败</AlertTitle>
 				<AlertDescription className="text-sm">{message}</AlertDescription>
 			</Alert>
-		</div>
-	);
-}
-
-const toastConfigs = {
-	info: {
-		iconClass: "text-sky-400",
-		borderClass:
-			"border-sky-500/30 border-l-4 border-l-sky-500 backdrop-blur-md", // style-ignore
-		glowClass: "shadow-[0_4px_20px_rgba(56,189,248,0.15)]",
-	},
-	success: {
-		iconClass: "text-emerald-400",
-		borderClass:
-			"border-emerald-500/30 border-l-4 border-l-emerald-500 backdrop-blur-md", // style-ignore
-		glowClass: "shadow-[0_4px_20px_rgba(52,211,153,0.15)]",
-	},
-	warning: {
-		iconClass: "text-amber-400",
-		borderClass:
-			"border-amber-500/30 border-l-4 border-l-amber-500 backdrop-blur-md", // style-ignore
-		glowClass: "shadow-[0_4px_20px_rgba(251,191,36,0.15)]",
-	},
-	error: {
-		iconClass: "text-rose-400",
-		borderClass:
-			"border-rose-500/30 border-l-4 border-l-rose-500 backdrop-blur-md", // style-ignore
-		glowClass: "shadow-[0_4px_20px_rgba(251,113,133,0.15)]",
-	},
-};
-
-// 提示消息列表容器
-interface ToastContainerProps {
-	toasts: ToastMessage[];
-	onClose: (id: number) => void;
-}
-export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
-	return (
-		<div className="toast-container fixed top-4 left-4 right-4 mx-auto md:top-auto md:bottom-4 md:right-4 md:left-auto md:mx-0 max-w-sm w-[calc(100vw-2rem)] md:w-full z-999 flex flex-col gap-2 pointer-events-none">
-			{toasts.map((toast) => {
-				const config = toastConfigs[toast.type || "info"] || toastConfigs.info;
-				return (
-					<Alert
-						key={toast.id.toString()}
-						className={cn(
-							"toast pointer-events-auto border text-card-foreground p-4 pr-10 rounded-lg shadow-2xl flex items-center gap-3 animate-in slide-in-from-top md:slide-in-from-bottom duration-300",
-							config.borderClass,
-							config.glowClass,
-						)}
-					>
-						<AlertDescription className="text-sm font-medium leading-relaxed">
-							{toast.text}
-						</AlertDescription>
-						<AlertAction className="absolute top-1/2 -translate-y-1/2 right-3">
-							<Button
-								variant="ghost"
-								size="icon"
-								className="h-6 w-6 hover:bg-muted text-muted-foreground hover:text-foreground rounded-full shrink-0 flex items-center justify-center p-0"
-								aria-label="关闭提示"
-								onClick={() => onClose(toast.id)}
-							>
-								<X className="h-3.5 w-3.5" />
-							</Button>
-						</AlertAction>
-					</Alert>
-				);
-			})}
 		</div>
 	);
 }

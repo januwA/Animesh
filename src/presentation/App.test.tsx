@@ -6,6 +6,7 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { createMemoryRouter } from "react-router-dom";
+import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import type { BangumiRepository } from "@/domain/bangumi/BangumiRepository";
@@ -221,15 +222,7 @@ describe("App 组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("磁力链接已复制到剪贴板")).toBeInTheDocument();
-
-		// 推进 3000ms 让 Toast 消失
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(3000);
-		});
-		expect(
-			screen.queryByText("磁力链接已复制到剪贴板"),
-		).not.toBeInTheDocument();
+		expect(toast.success).toHaveBeenCalledWith("磁力链接已复制到剪贴板");
 
 		// 暂时切回 real timers 确保状态干净，然后切到 fake timers 触发播放
 		vi.useRealTimers();
@@ -238,18 +231,6 @@ describe("App 组件", () => {
 		// 点击边下边播按钮
 		const playButtons = screen.getAllByRole("button", { name: "边下边播" });
 		fireEvent.click(playButtons[0]);
-
-		// 应该展示“正在启动下载流媒体引擎”的 Toast
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
-
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(3000);
-		});
-		expect(
-			screen.queryByText("正在启动下载流媒体引擎: xxx 第1集..."),
-		).not.toBeInTheDocument();
 
 		vi.useRealTimers();
 	});
@@ -338,12 +319,7 @@ describe("App 组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
-
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(3000);
-		});
-		expect(screen.queryByText("复制失败，请手动复制")).not.toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith("复制失败，请手动复制");
 
 		vi.useRealTimers();
 	});
@@ -491,9 +467,9 @@ describe("App 组件", () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
 		}
-		expect(
-			screen.getByText("视频流地址已复制到剪贴板，可在外部播放器中播放"),
-		).toBeInTheDocument();
+		expect(toast.success).toHaveBeenCalledWith(
+			"视频流地址已复制到剪贴板，可在外部播放器中播放",
+		);
 
 		// 模拟复制流地址失败情况
 		vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(
@@ -505,7 +481,7 @@ describe("App 组件", () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
 		}
-		expect(screen.getByText("复制失败，请手动复制")).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith("复制失败，请手动复制");
 
 		// 测试返回文件列表
 		const backBtn = screen.getByRole("button", { name: "返回" });
@@ -582,9 +558,10 @@ describe("App 组件", () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
 		}
-		expect(
-			screen.getByText("无法获取视频流", { exact: false }),
-		).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith(
+			expect.stringContaining("无法获取视频流"),
+			{ duration: 10000 },
+		);
 
 		vi.useRealTimers();
 	});
@@ -719,7 +696,7 @@ describe("App 组件", () => {
 		vi.useRealTimers();
 	});
 
-	it("当点击 Toast 提示的关闭按钮时，应该立即关闭 Toast 提示", async () => {
+	it("当点击复制磁力时，应该调用 toast.success 提示", async () => {
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue([
 			{
 				title: "xxx 第1集",
@@ -749,18 +726,7 @@ describe("App 组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 
-		const toastText = "磁力链接已复制到剪贴板";
-		expect(screen.getByText(toastText)).toBeInTheDocument();
-
-		// 点击关闭提示按钮
-		const closeToastBtn = screen.getByLabelText("关闭提示");
-		fireEvent.click(closeToastBtn);
-
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
-
-		expect(screen.queryByText(toastText)).not.toBeInTheDocument();
+		expect(toast.success).toHaveBeenCalledWith("磁力链接已复制到剪贴板");
 
 		vi.useRealTimers();
 	});

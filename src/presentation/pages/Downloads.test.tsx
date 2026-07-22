@@ -6,6 +6,7 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
@@ -113,9 +114,9 @@ describe("Downloads 页面组件", () => {
 			expect(
 				screen.queryByText("正在加载下载管理器..."),
 			).not.toBeInTheDocument();
-			expect(
-				screen.getByText("获取下载列表失败", { exact: false }),
-			).toBeInTheDocument();
+			expect(toast.error).toHaveBeenCalledWith(
+				expect.stringContaining("获取下载列表失败"),
+			);
 		});
 	});
 
@@ -266,7 +267,7 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 		expect(mockTorrentRepository.pauseTorrent).toHaveBeenCalledWith("hash111");
-		expect(screen.getByText("已暂停任务: 动漫视频1")).toBeInTheDocument();
+		expect(toast).toHaveBeenCalledWith("已暂停任务: 动漫视频1");
 
 		// 2. Pause action (success, unnamed)
 		fireEvent.click(pauseBtns[1]);
@@ -274,7 +275,7 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 		expect(mockTorrentRepository.pauseTorrent).toHaveBeenCalledWith("hash333");
-		expect(screen.getByText("已暂停任务: hash333")).toBeInTheDocument();
+		expect(toast).toHaveBeenCalledWith("已暂停任务: hash333");
 
 		// 3. Pause action (failure)
 		vi.mocked(mockTorrentRepository.pauseTorrent).mockRejectedValueOnce(
@@ -284,7 +285,9 @@ describe("Downloads 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("暂停失败", { exact: false })).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith(
+			expect.stringContaining("暂停失败"),
+		);
 
 		// 4. Resume action (success, unnamed)
 		fireEvent.click(resumeBtns[0]);
@@ -292,7 +295,7 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 		expect(mockTorrentRepository.resumeTorrent).toHaveBeenCalledWith("hash222");
-		expect(screen.getByText("已开始下载任务: hash222")).toBeInTheDocument();
+		expect(toast.success).toHaveBeenCalledWith("已开始下载任务: hash222");
 
 		// 5. Resume action (success, named)
 		fireEvent.click(resumeBtns[1]);
@@ -300,7 +303,7 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 		expect(mockTorrentRepository.resumeTorrent).toHaveBeenCalledWith("hash444");
-		expect(screen.getByText("已开始下载任务: 动漫视频4")).toBeInTheDocument();
+		expect(toast.success).toHaveBeenCalledWith("已开始下载任务: 动漫视频4");
 
 		// 6. Resume action (failure)
 		vi.mocked(mockTorrentRepository.resumeTorrent).mockRejectedValueOnce(
@@ -310,7 +313,9 @@ describe("Downloads 页面组件", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(screen.getByText("启动失败", { exact: false })).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith(
+			expect.stringContaining("启动失败"),
+		);
 	});
 
 	it("应该支持查看文件操作，正确进行路由跳转 (有名字)", async () => {
@@ -469,7 +474,7 @@ describe("Downloads 页面组件", () => {
 			"hash222",
 			true,
 		);
-		expect(screen.getByText("已删除任务")).toBeInTheDocument();
+		expect(toast.success).toHaveBeenCalledWith("已删除任务");
 
 		// 3. Delete modal failure (using unnamed)
 		vi.mocked(mockTorrentRepository.deleteTorrent).mockRejectedValueOnce(
@@ -483,9 +488,9 @@ describe("Downloads 页面组件", () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 
-		expect(
-			screen.getByText("删除任务失败", { exact: false }),
-		).toBeInTheDocument();
+		expect(toast.error).toHaveBeenCalledWith(
+			expect.stringContaining("删除任务失败"),
+		);
 	});
 
 	it("应该能渲染已完成的下载任务", async () => {

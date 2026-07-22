@@ -1,10 +1,9 @@
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
+import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
-import { useAppContext } from "../context/AppContext";
 
 export function useGlobalEffects() {
-	const { toasts, removeToast, showToast } = useAppContext();
 	const {
 		notificationRepository,
 		notifyDownloadCompletionUseCase,
@@ -67,15 +66,10 @@ export function useGlobalEffects() {
 			try {
 				const count = await autoUpdateTrackersUseCase.execute();
 				if (count !== null && count > 0) {
-					showToast(
-						`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`,
-						"success",
-					);
+					toast.success(`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`);
 				}
 			} catch {}
 		};
 		updateTrackers();
-	}, [autoUpdateTrackersUseCase, showToast]);
-
-	return { toasts, removeToast };
+	}, [autoUpdateTrackersUseCase]);
 }
