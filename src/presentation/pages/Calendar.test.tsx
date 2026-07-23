@@ -50,6 +50,10 @@ describe("Calendar 页面组件", () => {
 							<Route path="/" element={<Layout />}>
 								<Route path="calendar" element={<CalendarPage />} />
 							</Route>
+							<Route
+								path="/subject/:subjectId"
+								element={<div>Subject Detail</div>}
+							/>
 						</Routes>
 					</MemoryRouter>
 				</AppContextProvider>
@@ -179,7 +183,9 @@ describe("Calendar 页面组件", () => {
 		});
 
 		const animeCard = screen.getByTitle("详情: 中文动漫名");
-		fireEvent.click(animeCard);
+		await act(async () => {
+			fireEvent.click(animeCard);
+		});
 
 		expect(currentLocation.current?.pathname).toBe("/subject/1");
 	});
@@ -221,7 +227,9 @@ describe("Calendar 页面组件", () => {
 
 		const { unmount } = renderCalendar(promise);
 
-		unmount();
+		await act(async () => {
+			unmount();
+		});
 		await act(async () => {
 			resolvePromise([]);
 		});
@@ -249,7 +257,9 @@ describe("Calendar 页面组件", () => {
 
 		const { unmount } = renderCalendar(promise);
 
-		unmount();
+		await act(async () => {
+			unmount();
+		});
 		await act(async () => {
 			rejectPromise(new Error("API error"));
 		});
@@ -321,7 +331,9 @@ describe("Calendar 页面组件", () => {
 
 		// Click the card with empty name_cn to cover the || item.name fallback
 		const animeCard = screen.getByTitle("详情: Monday Anime Original");
-		fireEvent.click(animeCard);
+		await act(async () => {
+			fireEvent.click(animeCard);
+		});
 
 		expect(currentLocation.current?.pathname).toBe("/subject/1");
 

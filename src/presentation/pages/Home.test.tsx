@@ -122,8 +122,9 @@ describe("Home 页面组件", () => {
 		);
 	};
 
-	it("应该正确渲染搜索表单和欢迎指南", () => {
+	it("应该正确渲染搜索表单和欢迎指南", async () => {
 		renderHome();
+		await act(async () => {});
 		expect(screen.getByTestId("search-input")).toBeInTheDocument();
 		expect(screen.getByText("聚合搜索")).toBeInTheDocument();
 	});
@@ -211,7 +212,9 @@ describe("Home 页面组件", () => {
 			button = screen.getByRole("button", { name: "搜索" });
 
 		fireEvent.change(input, { target: { value: "   " } });
-		fireEvent.click(button);
+		await act(async () => {
+			fireEvent.click(button);
+		});
 
 		expect(mockTorrentRepository.search).not.toHaveBeenCalled();
 	});
@@ -493,9 +496,9 @@ describe("Home 页面组件", () => {
 		});
 	});
 
-	it("当 URL keyword 参数为纯空白时，不应该触发搜索", () => {
+	it("当 URL keyword 参数为纯空白时，不应该触发搜索", async () => {
 		renderHome("/?keyword=%20%20");
-
+		await act(async () => {});
 		expect(mockTorrentRepository.search).not.toHaveBeenCalled();
 	});
 
@@ -565,12 +568,13 @@ describe("Home 页面组件", () => {
 		});
 	});
 
-	it("应该从 localStorage 初始化并渲染历史搜索记录", () => {
+	it("应该从 localStorage 初始化并渲染历史搜索记录", async () => {
 		localStorage.setItem(
 			"animesh_search_history",
 			JSON.stringify(["xxx", "柯南"]),
 		);
 		renderHome();
+		await act(async () => {});
 		expect(screen.getByText("最近搜索:")).toBeInTheDocument();
 		expect(screen.getByText("xxx")).toBeInTheDocument();
 		expect(screen.getByText("柯南")).toBeInTheDocument();
@@ -656,12 +660,15 @@ describe("Home 页面组件", () => {
 			JSON.stringify(["xxx", "柯南"]),
 		);
 		renderHome();
+		await act(async () => {});
 
 		expect(screen.getByText("xxx")).toBeInTheDocument();
 		expect(screen.getByText("柯南")).toBeInTheDocument();
 
 		const deleteBtn = screen.getByTestId("delete-history-xxx");
-		fireEvent.click(deleteBtn);
+		await act(async () => {
+			fireEvent.click(deleteBtn);
+		});
 
 		expect(screen.queryByText("xxx")).not.toBeInTheDocument();
 		expect(screen.getByText("柯南")).toBeInTheDocument();
@@ -676,11 +683,14 @@ describe("Home 页面组件", () => {
 			JSON.stringify(["xxx", "柯南"]),
 		);
 		renderHome();
+		await act(async () => {});
 
 		expect(screen.getByText("最近搜索:")).toBeInTheDocument();
 
 		const clearBtn = screen.getByText("清空");
-		fireEvent.click(clearBtn);
+		await act(async () => {
+			fireEvent.click(clearBtn);
+		});
 
 		expect(screen.queryByText("最近搜索:")).not.toBeInTheDocument();
 		expect(screen.queryByText("xxx")).not.toBeInTheDocument();
@@ -691,19 +701,23 @@ describe("Home 页面组件", () => {
 	it("点击删除最后一个历史记录项时，应该清空历史记录并从 localStorage 移除该键", async () => {
 		localStorage.setItem("animesh_search_history", JSON.stringify(["xxx"]));
 		renderHome();
+		await act(async () => {});
 
 		expect(screen.getByText("xxx")).toBeInTheDocument();
 
 		const deleteBtn = screen.getByTestId("delete-history-xxx");
-		fireEvent.click(deleteBtn);
+		await act(async () => {
+			fireEvent.click(deleteBtn);
+		});
 
 		expect(screen.queryByText("xxx")).not.toBeInTheDocument();
 		expect(localStorage.getItem("animesh_search_history")).toBeNull();
 	});
 
-	it("当 localStorage 中的历史记录数据格式不合法时，应该降级初始化为空数组", () => {
+	it("当 localStorage 中的历史记录数据格式不合法时，应该降级初始化为空数组", async () => {
 		localStorage.setItem("animesh_search_history", "invalid-json{");
 		renderHome();
+		await act(async () => {});
 		expect(screen.queryByText("最近搜索:")).not.toBeInTheDocument();
 	});
 

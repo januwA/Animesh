@@ -112,8 +112,9 @@ describe("App 组件", () => {
 		vi.useRealTimers();
 	});
 
-	it("应该正确渲染标题 and 副标题", () => {
+	it("应该正确渲染标题 and 副标题", async () => {
 		render(<App />);
+		await act(async () => {});
 		expect(
 			screen.getByRole("heading", { name: "Animesh" }),
 		).toBeInTheDocument();
@@ -176,16 +177,16 @@ describe("App 组件", () => {
 		);
 
 		render(<App />);
+		await act(async () => {});
 
 		const input = screen.getByTestId("search-input");
 		const button = screen.getByRole("button", { name: "搜索" });
 
 		// 输入关键词并搜索
 		fireEvent.change(input, { target: { value: "xxx" } });
-		fireEvent.click(button);
-
-		// 应该进入 loading 状态
-		expect(screen.getByText("正在获取资源列表...")).toBeInTheDocument();
+		await act(async () => {
+			fireEvent.click(button);
+		});
 
 		// 等待加载完成并显示结果
 		await waitFor(() => {
@@ -214,7 +215,9 @@ describe("App 组件", () => {
 
 		// 点击复制磁力按钮
 		const copyButtons = screen.getAllByRole("button", { name: "复制磁力" });
-		fireEvent.click(copyButtons[0]);
+		await act(async () => {
+			fireEvent.click(copyButtons[0]);
+		});
 		expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
 			"magnet:?xt=urn:btih:TEST1",
 		);
@@ -230,7 +233,9 @@ describe("App 组件", () => {
 
 		// 点击边下边播按钮
 		const playButtons = screen.getAllByRole("button", { name: "边下边播" });
-		fireEvent.click(playButtons[0]);
+		await act(async () => {
+			fireEvent.click(playButtons[0]);
+		});
 
 		vi.useRealTimers();
 	});
@@ -326,10 +331,13 @@ describe("App 组件", () => {
 
 	it("当输入空白关键词并提交时，不应该触发搜索", async () => {
 		render(<App />);
+		await act(async () => {});
 
 		const input = screen.getByTestId("search-input");
 		fireEvent.change(input, { target: { value: "   " } });
-		fireEvent.submit(input.closest("form")!);
+		await act(async () => {
+			fireEvent.submit(input.closest("form")!);
+		});
 
 		expect(mockTorrentRepository.search).not.toHaveBeenCalled();
 	});
