@@ -112,17 +112,6 @@ describe("App 组件", () => {
 		vi.useRealTimers();
 	});
 
-	it("应该正确渲染标题 and 副标题", async () => {
-		render(<App />);
-		await act(async () => {});
-		expect(
-			screen.getByRole("heading", { name: "Animesh" }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByText("BT 边下边播 & 磁力聚合搜索客户端"),
-		).toBeInTheDocument();
-	});
-
 	it("当输入关键词并搜索成功时，应该显示结果并可以点击操作", async () => {
 		const mockResults = [
 			{

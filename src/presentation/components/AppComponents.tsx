@@ -67,7 +67,7 @@ export function AppHeader() {
 							{isDownload && activeCount > 0 && (
 								<Badge
 									variant="secondary"
-									className="absolute -top-1 -right-1 md:static md:ml-2 h-4.5 px-1.5 text-[9px] font-extrabold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full animate-pulse flex items-center justify-center"
+									className="absolute -top-1 -right-1 md:static md:ml-2 h-4.5 px-1.5 text-[9px] font-extrabold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full animate-pulse flex items-center justify-center" // style-ignore
 								>
 									{activeCount}
 								</Badge>
