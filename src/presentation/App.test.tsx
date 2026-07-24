@@ -480,19 +480,9 @@ describe("App 组件", () => {
 		}
 		expect(toast.error).toHaveBeenCalledWith("复制失败，请手动复制");
 
-		// 测试返回文件列表
+		// 测试返回
 		const backBtn = screen.getByRole("button", { name: "返回" });
 		fireEvent.click(backBtn);
-		for (let i = 0; i < 2; i++) {
-			await act(async () => {
-				await vi.advanceTimersByTimeAsync(0);
-			});
-		}
-		expect(screen.getByText("选择要播放的文件：")).toBeInTheDocument();
-
-		// 测试返回
-		const backToHomeBtn = screen.getByRole("button", { name: "返回" });
-		fireEvent.click(backToHomeBtn);
 		for (let i = 0; i < 2; i++) {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);

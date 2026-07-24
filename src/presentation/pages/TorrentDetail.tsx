@@ -64,6 +64,9 @@ export default function TorrentDetail() {
 			`/play/${torrent.info_hash}/${fileId}?title=${encodeURIComponent(
 				title || torrent.name || /* v8 ignore next */ "",
 			)}&fileName=${encodeURIComponent(fileName)}`,
+			{
+				replace: true,
+			},
 		);
 	};
 
