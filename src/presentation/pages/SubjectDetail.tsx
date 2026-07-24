@@ -399,9 +399,6 @@ export default function SubjectDetail() {
 								nameCn: subject.name_cn,
 								imageUrl: subject.images?.large ?? null,
 								rating: subject.rating?.score ?? null,
-								platform: subject.platform ?? null,
-								date: subject.date ?? null,
-								summary: subject.summary ?? null,
 							}}
 							showLabel={false}
 						/>

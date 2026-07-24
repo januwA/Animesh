@@ -12,9 +12,6 @@ describe("FavoriteItemSchema 收藏条目 Schema", () => {
 			nameCn: "中文名称",
 			imageUrl: "https://example.com/image.jpg",
 			rating: 8.5,
-			platform: "TV",
-			date: "2026-07-01",
-			summary: "剧情简介",
 			addedAt: 1700000000000,
 		};
 
@@ -35,9 +32,6 @@ describe("FavoriteItemSchema 收藏条目 Schema", () => {
 			nameCn: "名称",
 			imageUrl: null,
 			rating: null,
-			platform: null,
-			date: null,
-			summary: null,
 			addedAt: 1700000000000,
 		};
 
@@ -56,9 +50,6 @@ describe("CollectionsStateSchema 收藏状态 Schema", () => {
 					nameCn: "名称",
 					imageUrl: null,
 					rating: null,
-					platform: null,
-					date: null,
-					summary: null,
 					addedAt: 1700000000000,
 				},
 			],

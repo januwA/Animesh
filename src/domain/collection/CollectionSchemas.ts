@@ -8,9 +8,6 @@ export const FavoriteItemSchema = z.object({
 	nameCn: z.string(),
 	imageUrl: z.string().nullable(),
 	rating: z.number().nullable(),
-	platform: z.string().nullable(),
-	date: z.string().nullable(),
-	summary: z.string().nullable(),
 	addedAt: z.number(),
 });
 

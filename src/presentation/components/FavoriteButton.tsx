@@ -9,9 +9,6 @@ export interface FavoriteButtonSubject {
 	nameCn: string;
 	imageUrl: string | null;
 	rating: number | null;
-	platform: string | null;
-	date: string | null;
-	summary: string | null;
 }
 
 interface FavoriteButtonProps {
@@ -38,9 +35,6 @@ export function FavoriteButton({
 				nameCn: subject.nameCn,
 				imageUrl: subject.imageUrl,
 				rating: subject.rating,
-				platform: subject.platform,
-				date: subject.date,
-				summary: subject.summary,
 			});
 		}
 		setFavorited(!favorited);
