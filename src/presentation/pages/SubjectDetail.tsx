@@ -20,6 +20,7 @@ import type {
 	BangumiPerson,
 	BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
+import { FavoriteButton } from "@/presentation/components/FavoriteButton";
 import { LazyImage } from "@/presentation/components/LazyImage";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
@@ -389,24 +390,41 @@ export default function SubjectDetail() {
 					返回日历
 				</Button>
 
-				{subject && (
-					<a
-						href={`https://bgm.tv/subject/${subject.id}`}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors px-2.5 py-1 rounded bg-secondary hover:bg-accent"
-						onClick={async (e) => {
-							e.stopPropagation();
-							e.preventDefault();
-							const url = `https://bgm.tv/subject/${subject.id}`;
-							await openUrlUseCase.execute(url);
-						}}
-						title={`在 Bangumi 打开: ${displayName}`}
-					>
-						<Globe className="h-3.5 w-3.5" />
-						<span>详情</span>
-					</a>
-				)}
+				<div className="flex items-center gap-1">
+					{subject && (
+						<FavoriteButton
+							subject={{
+								subjectId: subject.id,
+								name: subject.name,
+								nameCn: subject.name_cn,
+								imageUrl: subject.images?.large ?? null,
+								rating: subject.rating?.score ?? null,
+								platform: subject.platform ?? null,
+								date: subject.date ?? null,
+								summary: subject.summary ?? null,
+							}}
+							showLabel={false}
+						/>
+					)}
+					{subject && (
+						<a
+							href={`https://bgm.tv/subject/${subject.id}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors px-2.5 py-1 rounded bg-secondary hover:bg-accent"
+							onClick={async (e) => {
+								e.stopPropagation();
+								e.preventDefault();
+								const url = `https://bgm.tv/subject/${subject.id}`;
+								await openUrlUseCase.execute(url);
+							}}
+							title={`在 Bangumi 打开: ${displayName}`}
+						>
+							<Globe className="h-3.5 w-3.5" />
+							<span>详情</span>
+						</a>
+					)}
+				</div>
 			</div>
 
 			{/* Info Header Card */}

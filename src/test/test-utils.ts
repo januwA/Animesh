@@ -3,6 +3,10 @@ import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCh
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
+import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
+import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
+import { GetFavoriteStatusUseCase } from "../application/collection/GetFavoriteStatusUseCase";
+import { RemoveFavoriteUseCase } from "../application/collection/RemoveFavoriteUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
@@ -34,6 +38,7 @@ import type { DIContainer } from "../di/DIContext";
 import type { AiClient } from "../domain/ai/AiClient";
 import type { BangumiCache } from "../domain/bangumi/BangumiCache";
 import type { BangumiRepository } from "../domain/bangumi/BangumiRepository";
+import type { CollectionRepository } from "../domain/collection/CollectionRepository";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import type { OpenerRepository } from "../domain/opener/OpenerRepository";
@@ -54,6 +59,7 @@ const dummyLogger: Logger = {
 export interface CreateContainerParamsForTest {
 	torrentRepository?: Partial<TorrentRepository>;
 	settingsRepository?: Partial<SettingsRepository>;
+	collectionRepository?: Partial<CollectionRepository>;
 	bangumiRepository?: Partial<BangumiRepository>;
 	bangumiCache?: Partial<BangumiCache>;
 	notificationRepository?: Partial<NotificationRepository>;
@@ -91,6 +97,10 @@ export interface CreateContainerParamsForTest {
 	getBangumiPersonsUseCase?: GetBangumiPersonsUseCase;
 	getBangumiCharactersUseCase?: GetBangumiCharactersUseCase;
 	updateRepository?: Partial<UpdateRepository>;
+	getCollectionsUseCase?: GetCollectionsUseCase;
+	addFavoriteUseCase?: AddFavoriteUseCase;
+	removeFavoriteUseCase?: RemoveFavoriteUseCase;
+	getFavoriteStatusUseCase?: GetFavoriteStatusUseCase;
 	checkUpdateUseCase?: CheckUpdateUseCase;
 	getCurrentVersionUseCase?: GetCurrentVersionUseCase;
 	openUpdateUrlUseCase?: OpenUpdateUrlUseCase;
@@ -161,6 +171,14 @@ export function createDIContainerForTest(
 		sendNotification: async () => {},
 		...params.notificationRepository,
 	} as NotificationRepository;
+
+	const collectionRepo = {
+		getAll: () => [],
+		isFavorited: () => false,
+		add: () => {},
+		remove: () => {},
+		...params.collectionRepository,
+	} as CollectionRepository;
 
 	const updateRepo = {
 		getLatestRelease: async () => ({
@@ -269,10 +287,25 @@ export function createDIContainerForTest(
 	const openUrlUseCase =
 		params.openUrlUseCase || new OpenUrlUseCase(openerRepo);
 
+	const getCollectionsUseCase =
+		params.getCollectionsUseCase || new GetCollectionsUseCase(collectionRepo);
+	const addFavoriteUseCase =
+		params.addFavoriteUseCase || new AddFavoriteUseCase(collectionRepo);
+	const removeFavoriteUseCase =
+		params.removeFavoriteUseCase || new RemoveFavoriteUseCase(collectionRepo);
+	const getFavoriteStatusUseCase =
+		params.getFavoriteStatusUseCase ||
+		new GetFavoriteStatusUseCase(collectionRepo);
+
 	return {
+		collectionRepository: collectionRepo,
 		notificationRepository: notificationRepo,
 		logger: params.logger || dummyLogger,
 
+		getCollectionsUseCase,
+		addFavoriteUseCase,
+		removeFavoriteUseCase,
+		getFavoriteStatusUseCase,
 		notifyDownloadCompletionUseCase: notifyUseCase,
 		searchTorrentsUseCase,
 		searchTorrentsWithAiUseCase,

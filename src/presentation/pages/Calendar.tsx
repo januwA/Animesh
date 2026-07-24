@@ -9,6 +9,7 @@ import type {
 } from "@/domain/bangumi/BangumiSchemas";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
+import { FavoriteBadge } from "../components/FavoriteBadge";
 import { LazyImage } from "../components/LazyImage";
 import { Button } from "../components/ui/button";
 import { useAppContext } from "../context/AppContext";
@@ -105,6 +106,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 
 	return (
 		<div className="group flex flex-col bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-all duration-200 text-left relative">
+			<FavoriteBadge subjectId={item.id} />
 			<button
 				type="button"
 				onClick={onClick}

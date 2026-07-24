@@ -75,7 +75,15 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 			expect(screen.getByText(/暂无下载任务|正在加载/)).toBeInTheDocument();
 		});
 
-		// 4. 跳转到设置页 /settings 并等待载入 (Lazy)
+		// 4. 跳转到收藏页 /collections 并等待载入 (Lazy)
+		await act(async () => {
+			router.navigate("/collections");
+		});
+		await waitFor(() => {
+			expect(screen.getByText(/我的收藏/)).toBeInTheDocument();
+		});
+
+		// 5. 跳转到设置页 /settings 并等待载入 (Lazy)
 		await act(async () => {
 			router.navigate("/settings");
 		});
@@ -85,7 +93,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 			).toBeInTheDocument();
 		});
 
-		// 5. 跳转到种子详情 /torrent 并等待载入 (Lazy)
+		// 6. 跳转到种子详情 /torrent 并等待载入 (Lazy)
 		await act(async () => {
 			router.navigate("/torrent?infoHash=123");
 		});
@@ -93,7 +101,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 			expect(screen.getByText(/种子解析失败|正在启动/)).toBeInTheDocument();
 		});
 
-		// 6. 跳转到番剧详情 /subject/1 并等待载入 (Lazy)
+		// 7. 跳转到番剧详情 /subject/1 并等待载入 (Lazy)
 		await act(async () => {
 			router.navigate("/subject/1");
 		});
@@ -101,7 +109,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 			expect(screen.getByText(/返回日历|加载中/)).toBeInTheDocument();
 		});
 
-		// 7. 跳转到播放页 /play/1/1 并等待载入 (Lazy)
+		// 8. 跳转到播放页 /play/1/1 并等待载入 (Lazy)
 		await act(async () => {
 			router.navigate("/play/1/1?title=Test");
 		});

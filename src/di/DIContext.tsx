@@ -1,5 +1,6 @@
 import { createContext, use } from "react";
 import {
+	CollectionRepositoryImpl,
 	NotificationRepositoryImpl,
 	OpenerRepositoryImpl,
 	SettingsRepositoryImpl,
@@ -13,6 +14,10 @@ import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCh
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
+import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
+import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
+import { GetFavoriteStatusUseCase } from "../application/collection/GetFavoriteStatusUseCase";
+import { RemoveFavoriteUseCase } from "../application/collection/RemoveFavoriteUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
@@ -41,6 +46,7 @@ import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { AiClient } from "../domain/ai/AiClient";
+import type { CollectionRepository } from "../domain/collection/CollectionRepository";
 import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import { BrowserBangumiCache } from "../infrastructure/bangumi/BrowserBangumiCache";
@@ -51,9 +57,14 @@ import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 export interface DIContainer {
 	notificationRepository: NotificationRepository;
 	logger: Logger;
+	collectionRepository: CollectionRepository;
 
 	// UseCases
 	notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
+	getCollectionsUseCase: GetCollectionsUseCase;
+	addFavoriteUseCase: AddFavoriteUseCase;
+	removeFavoriteUseCase: RemoveFavoriteUseCase;
+	getFavoriteStatusUseCase: GetFavoriteStatusUseCase;
 	searchTorrentsUseCase: SearchTorrentsUseCase;
 	searchTorrentsWithAiUseCase: SearchTorrentsWithAiUseCase;
 	listTorrentsUseCase: ListTorrentsUseCase;
@@ -97,6 +108,7 @@ export function createDefaultDIContainer(): DIContainer {
 	const settingsRepository = new SettingsRepositoryImpl();
 	const httpClient = new HttpClient();
 	const bangumiRepository = new HttpBangumiRepository(httpClient);
+	const collectionRepository = new CollectionRepositoryImpl();
 	const notificationRepository = new NotificationRepositoryImpl();
 	const openerRepository = new OpenerRepositoryImpl();
 	const updateRepository = new UpdateRepositoryImpl(openerRepository);
@@ -179,9 +191,17 @@ export function createDefaultDIContainer(): DIContainer {
 		updateRepository,
 	);
 	const openUpdateUrlUseCase = new OpenUpdateUrlUseCase(updateRepository);
+	const getCollectionsUseCase = new GetCollectionsUseCase(collectionRepository);
+	const addFavoriteUseCase = new AddFavoriteUseCase(collectionRepository);
+	const removeFavoriteUseCase = new RemoveFavoriteUseCase(collectionRepository);
+	const getFavoriteStatusUseCase = new GetFavoriteStatusUseCase(
+		collectionRepository,
+	);
+
 	const openUrlUseCase = new OpenUrlUseCase(openerRepository);
 
 	return {
+		collectionRepository,
 		notificationRepository,
 		logger,
 
@@ -216,6 +236,11 @@ export function createDefaultDIContainer(): DIContainer {
 		getBangumiEpisodesUseCase,
 		getBangumiPersonsUseCase,
 		getBangumiCharactersUseCase,
+		getCollectionsUseCase,
+		addFavoriteUseCase,
+		removeFavoriteUseCase,
+		getFavoriteStatusUseCase,
+
 		checkUpdateUseCase,
 		getCurrentVersionUseCase,
 		openUpdateUrlUseCase,

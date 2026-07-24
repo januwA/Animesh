@@ -1,3 +1,4 @@
+import { LocalStorageCollectionRepository } from "../infrastructure/collection/LocalStorageCollectionRepository";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
 import { TauriOpenerRepository } from "../infrastructure/opener/TauriOpenerRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
@@ -9,3 +10,4 @@ export const SettingsRepositoryImpl = TauriSettingsRepository;
 export const NotificationRepositoryImpl = TauriNotificationRepository;
 export const OpenerRepositoryImpl = TauriOpenerRepository;
 export const UpdateRepositoryImpl = GithubUpdateRepository;
+export const CollectionRepositoryImpl = LocalStorageCollectionRepository;

@@ -1,3 +1,4 @@
+import { LocalStorageCollectionRepository } from "../infrastructure/collection/LocalStorageCollectionRepository";
 import { WebNotificationRepository } from "../infrastructure/notification/WebNotificationRepository";
 import { WebOpenerRepository } from "../infrastructure/opener/WebOpenerRepository";
 import { HttpSettingsRepository } from "../infrastructure/settings/HttpSettingsRepository";
@@ -9,3 +10,4 @@ export const SettingsRepositoryImpl = HttpSettingsRepository;
 export const NotificationRepositoryImpl = WebNotificationRepository;
 export const OpenerRepositoryImpl = WebOpenerRepository;
 export const UpdateRepositoryImpl = WebUpdateRepository;
+export const CollectionRepositoryImpl = LocalStorageCollectionRepository;

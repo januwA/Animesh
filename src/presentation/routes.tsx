@@ -5,6 +5,7 @@ import SimpleLayout from "./components/SimpleLayout";
 import Home from "./pages/Home";
 
 const Calendar = lazy(() => import("./pages/Calendar"));
+const Collections = lazy(() => import("./pages/Collections"));
 const Downloads = lazy(() => import("./pages/Downloads"));
 const Player = lazy(() => import("./pages/Player"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -25,6 +26,10 @@ export const routes: RouteObject[] = [
 					{
 						path: "calendar",
 						element: <Calendar />,
+					},
+					{
+						path: "collections",
+						element: <Collections />,
 					},
 					{
 						path: "downloads",
