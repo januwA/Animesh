@@ -12,7 +12,7 @@ import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { createDIContainerForTest } from "@/test/test-utils";
-import Layout from "../components/Layout";
+import { NavBarLayout } from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import TorrentDetail from "./TorrentDetail";
 
@@ -70,7 +70,7 @@ describe("TorrentDetail 页面组件", () => {
 					>
 						<LocationTracker />
 						<Routes>
-							<Route path="/" element={<Layout />}>
+							<Route path="/" element={<NavBarLayout />}>
 								<Route index element={<div>Home Page</div>} />
 								<Route path="torrent" element={<TorrentDetail />} />
 								<Route path="downloads" element={<div>Downloads Page</div>} />

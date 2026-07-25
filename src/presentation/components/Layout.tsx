@@ -3,7 +3,16 @@ import { Outlet, ScrollRestoration } from "react-router-dom";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
 import { AppHeader, PageLoader } from "./AppComponents";
 
-export default function Layout() {
+export function NavBarLayout() {
+	return (
+		<>
+			<AppHeader />
+			<Outlet />
+		</>
+	);
+}
+
+export function MainLayout() {
 	useGlobalEffects();
 
 	return (
@@ -13,9 +22,6 @@ export default function Layout() {
 				paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
 			}}
 		>
-			{/* 页面头部 */}
-			<AppHeader />
-
 			{/* 路由视图 */}
 			<Suspense fallback={<PageLoader />}>
 				<Outlet />

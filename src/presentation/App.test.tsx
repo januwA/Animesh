@@ -14,8 +14,7 @@ import type { NotificationRepository } from "@/domain/notification/NotificationR
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import OriginalApp from "./App";
-import Layout from "./components/Layout";
-import SimpleLayout from "./components/SimpleLayout";
+import { MainLayout, NavBarLayout } from "./components/Layout";
 import { useAppContext } from "./context/AppContext";
 import Calendar from "./pages/Calendar";
 import Downloads from "./pages/Downloads";
@@ -30,7 +29,7 @@ const testRoutes = [
 		path: "/",
 		children: [
 			{
-				element: <Layout />,
+				element: <NavBarLayout />,
 				children: [
 					{ path: "", element: <Home /> },
 					{ path: "calendar", element: <Calendar /> },
@@ -39,7 +38,7 @@ const testRoutes = [
 				],
 			},
 			{
-				element: <SimpleLayout />,
+				element: <MainLayout />,
 				children: [
 					{ path: "torrent", element: <TorrentDetail /> },
 					{ path: "subject/:subjectId", element: <SubjectDetail /> },

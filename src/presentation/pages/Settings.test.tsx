@@ -13,7 +13,7 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
-import Layout from "../components/Layout";
+import { NavBarLayout } from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import Settings from "./Settings";
 
@@ -94,7 +94,7 @@ describe("Settings 页面组件", () => {
 						<MemoryRouter initialEntries={["/settings"]}>
 							<LocationTracker />
 							<Routes>
-								<Route path="/" element={<Layout />}>
+								<Route path="/" element={<NavBarLayout />}>
 									<Route path="settings" element={<Settings />} />
 								</Route>
 								<Route path="/" element={<div>Home Page</div>} />
@@ -808,7 +808,7 @@ describe("Settings 页面组件", () => {
 					<MemoryRouter initialEntries={["/settings"]}>
 						<LocationTracker />
 						<Routes>
-							<Route path="/" element={<Layout />}>
+							<Route path="/" element={<NavBarLayout />}>
 								<Route path="settings" element={<Settings />} />
 							</Route>
 						</Routes>

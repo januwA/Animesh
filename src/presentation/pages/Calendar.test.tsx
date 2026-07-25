@@ -11,7 +11,7 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import { createDIContainerForTest } from "@/test/test-utils";
-import Layout from "../components/Layout";
+import { NavBarLayout } from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
 import CalendarPage from "./Calendar";
 
@@ -47,7 +47,7 @@ describe("Calendar 页面组件", () => {
 					<MemoryRouter initialEntries={["/calendar"]}>
 						<LocationTracker />
 						<Routes>
-							<Route path="/" element={<Layout />}>
+							<Route path="/" element={<NavBarLayout />}>
 								<Route path="calendar" element={<CalendarPage />} />
 							</Route>
 							<Route

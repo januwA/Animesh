@@ -1,7 +1,6 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
-import Layout from "./components/Layout";
-import SimpleLayout from "./components/SimpleLayout";
+import { MainLayout, NavBarLayout } from "./components/Layout";
 import Home from "./pages/Home";
 
 const Calendar = lazy(() => import("./pages/Calendar"));
@@ -14,10 +13,22 @@ const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
 
 export const routes: RouteObject[] = [
 	{
-		path: "/",
+		element: <MainLayout />,
 		children: [
 			{
-				element: <Layout />,
+				path: "torrent",
+				element: <TorrentDetail />,
+			},
+			{
+				path: "subject/:subjectId",
+				element: <SubjectDetail />,
+			},
+			{
+				path: "play/:infoHash/:fileId",
+				element: <Player />,
+			},
+			{
+				element: <NavBarLayout />,
 				children: [
 					{
 						path: "",
@@ -38,23 +49,6 @@ export const routes: RouteObject[] = [
 					{
 						path: "settings",
 						element: <Settings />,
-					},
-				],
-			},
-			{
-				element: <SimpleLayout />,
-				children: [
-					{
-						path: "torrent",
-						element: <TorrentDetail />,
-					},
-					{
-						path: "subject/:subjectId",
-						element: <SubjectDetail />,
-					},
-					{
-						path: "play/:infoHash/:fileId",
-						element: <Player />,
 					},
 				],
 			},
