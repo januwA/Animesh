@@ -204,6 +204,7 @@ export default function SubjectDetail() {
 	const [summaryHasMore, setSummaryHasMore] = useState(false);
 	const summaryRef = useRef<HTMLParagraphElement>(null);
 
+	const [episodesLoading, setEpisodesLoading] = useState(true);
 	const [charactersLoading, setCharactersLoading] = useState(true);
 	const [personsLoading, setPersonsLoading] = useState(true);
 
@@ -247,25 +248,36 @@ export default function SubjectDetail() {
 		setPersons([]);
 		setCharacters([]);
 		setError(null);
+		setEpisodesLoading(true);
 		setCharactersLoading(true);
 		setPersonsLoading(true);
 		const [ctx, cancel] = WithCancel(Background);
 
-		const fetchData = async () => {
+		const fetchSubject = async () => {
 			try {
-				const [subjectData, episodesData] = await Promise.all([
-					getBangumiSubjectUseCase.execute(ctx, subjectId),
-					getBangumiEpisodesUseCase.execute(ctx, subjectId),
-				]);
-
+				const data = await getBangumiSubjectUseCase.execute(ctx, subjectId);
 				if (!ctx.err()) {
-					setSubject(subjectData);
-					const sortedEps = [...episodesData].sort((a, b) => a.sort - b.sort);
-					setEpisodes(sortedEps);
+					setSubject(data);
 				}
 			} catch (err: unknown) {
 				if (!ctx.err()) {
 					setError(`获取动漫详情失败: ${formatError(err)}`);
+				}
+			}
+		};
+
+		const fetchEpisodes = async () => {
+			try {
+				const data = await getBangumiEpisodesUseCase.execute(ctx, subjectId);
+				if (!ctx.err()) {
+					const sorted = [...data].sort((a, b) => a.sort - b.sort);
+					setEpisodes(sorted);
+				}
+			} catch {
+				// Episodes are non-critical
+			} finally {
+				if (!ctx.err()) {
+					setEpisodesLoading(false);
 				}
 			}
 		};
@@ -300,7 +312,8 @@ export default function SubjectDetail() {
 			}
 		};
 
-		fetchData();
+		fetchSubject();
+		fetchEpisodes();
 		fetchCharacters();
 		fetchPersons();
 
@@ -449,7 +462,13 @@ export default function SubjectDetail() {
 				{/* Title and Metadata */}
 				<div className="flex-1 flex flex-col justify-between space-y-4">
 					<div className="space-y-2">
-						{subject ? (
+						{!subject ? (
+							<div className="flex flex-wrap items-center gap-2">
+								<Skeleton className="h-5 w-16 rounded-full" />
+								<Skeleton className="h-5 w-24 rounded-full" />
+								<Skeleton className="h-5 w-16 rounded-full" />
+							</div>
+						) : (
 							<div className="flex flex-wrap items-center gap-2">
 								{subject.platform && (
 									<Badge
@@ -478,12 +497,6 @@ export default function SubjectDetail() {
 									</Badge>
 								)}
 							</div>
-						) : (
-							<div className="flex flex-wrap items-center gap-2">
-								<Skeleton className="h-5 w-16 rounded-full" />
-								<Skeleton className="h-5 w-24 rounded-full" />
-								<Skeleton className="h-5 w-16 rounded-full" />
-							</div>
 						)}
 
 						<h1 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
@@ -497,7 +510,18 @@ export default function SubjectDetail() {
 					</div>
 
 					{/* Ratings / Stats / Loading Status */}
-					{subject ? (
+					{!subject ? (
+						<div className="space-y-3 pt-2">
+							<div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+								<Loader2 className="h-4 w-4 text-primary animate-spin" />
+								<span>正在加载动漫详情...</span>
+							</div>
+							<div className="flex gap-4">
+								<Skeleton className="h-20 w-28 rounded-lg" />
+								<Skeleton className="h-20 w-28 rounded-lg" />
+							</div>
+						</div>
+					) : (
 						<div className="flex flex-wrap gap-6 items-center pt-2">
 							{subject.rating && (
 								<div className="flex items-center gap-2">
@@ -549,23 +573,23 @@ export default function SubjectDetail() {
 								</div>
 							)}
 						</div>
-					) : (
-						<div className="space-y-3 pt-2">
-							<div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-								<Loader2 className="h-4 w-4 text-primary animate-spin" />
-								<span>正在加载动漫详情...</span>
-							</div>
-							<div className="flex gap-4">
-								<Skeleton className="h-20 w-28 rounded-lg" />
-								<Skeleton className="h-20 w-28 rounded-lg" />
-							</div>
-						</div>
 					)}
 				</div>
 			</div>
 
 			{/* Synopsis / Summary */}
-			{subject ? (
+			{!subject ? (
+				<Card className="bg-card border border-border rounded-xl">
+					<CardContent className="p-6 space-y-2">
+						<Skeleton className="h-4 w-20" />
+						<div className="space-y-2">
+							<Skeleton className="h-3 w-full" />
+							<Skeleton className="h-3 w-5/6" />
+							<Skeleton className="h-3 w-4/5" />
+						</div>
+					</CardContent>
+				</Card>
+			) : (
 				subject.summary && (
 					<Card className="bg-card border border-border rounded-xl">
 						<CardContent className="p-6 space-y-2 relative overflow-hidden">
@@ -619,17 +643,6 @@ export default function SubjectDetail() {
 						</CardContent>
 					</Card>
 				)
-			) : (
-				<Card className="bg-card border border-border rounded-xl">
-					<CardContent className="p-6 space-y-2">
-						<Skeleton className="h-4 w-20" />
-						<div className="space-y-2">
-							<Skeleton className="h-3 w-full" />
-							<Skeleton className="h-3 w-5/6" />
-							<Skeleton className="h-3 w-4/5" />
-						</div>
-					</CardContent>
-				</Card>
 			)}
 
 			{/* Characters Section */}
@@ -667,77 +680,67 @@ export default function SubjectDetail() {
 			<div className="space-y-4">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-bold text-foreground">剧集列表</h2>
-					{subject && (
-						<Badge
-							variant="outline"
-							className="text-xs border-border text-muted-foreground"
-						>
-							点击剧集卡片搜索种子资源
-						</Badge>
-					)}
 				</div>
 
-				{subject ? (
-					episodes.length > 0 ? (
-						<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-							{episodes.map((ep) => {
-								const isAired = ep.airdate ? todayStr >= ep.airdate : false;
-								return (
-									<button
-										key={ep.id}
-										type="button"
-										onClick={() => handleEpisodeClick(ep)}
-										className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
-											isAired
-												? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
-												: "bg-card border border-border hover:border-primary/30 hover:bg-muted/30"
-										}`}
-									>
-										{/* Ep Number / Icon */}
-										<div
-											className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
-												isAired
-													? "bg-primary/15 group-hover:bg-primary/25"
-													: "bg-muted group-hover:bg-primary/10"
-											}`}
-										>
-											<span
-												className={`text-sm font-bold transition-colors ${
-													isAired
-														? "text-primary"
-														: "text-muted-foreground group-hover:text-primary"
-												}`}
-											>
-												{String(ep.sort).padStart(2, "0")}
-											</span>
-										</div>
-
-										{/* Ep Details */}
-										<div className="flex-1 min-w-0 space-y-1">
-											<div className="flex items-center gap-1.5 justify-between">
-												<h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
-													{ep.name_cn || ep.name}
-												</h3>
-											</div>
-											<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-												{ep.duration && <span>时长 {ep.duration}</span>}
-												{ep.airdate && <span>首播 {ep.airdate}</span>}
-											</div>
-										</div>
-									</button>
-								);
-							})}
-						</div>
-					) : (
-						<div className="text-center py-12 text-sm text-muted-foreground bg-card border border-border rounded-xl">
-							暂无剧集数据
-						</div>
-					)
-				) : (
+				{episodesLoading ? (
 					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
 						{[1, 2, 3, 4, 5, 6].map((n) => (
 							<Skeleton key={n} className="h-16 rounded-xl" />
 						))}
+					</div>
+				) : episodes.length > 0 ? (
+					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+						{episodes.map((ep) => {
+							const isAired = ep.airdate ? todayStr >= ep.airdate : false;
+							return (
+								<button
+									key={ep.id}
+									type="button"
+									onClick={() => handleEpisodeClick(ep)}
+									className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
+										isAired
+											? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
+											: "bg-card border border-border hover:border-primary/30 hover:bg-muted/30"
+									}`}
+								>
+									{/* Ep Number / Icon */}
+									<div
+										className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
+											isAired
+												? "bg-primary/15 group-hover:bg-primary/25"
+												: "bg-muted group-hover:bg-primary/10"
+										}`}
+									>
+										<span
+											className={`text-sm font-bold transition-colors ${
+												isAired
+													? "text-primary"
+													: "text-muted-foreground group-hover:text-primary"
+											}`}
+										>
+											{String(ep.sort).padStart(2, "0")}
+										</span>
+									</div>
+
+									{/* Ep Details */}
+									<div className="flex-1 min-w-0 space-y-1">
+										<div className="flex items-center gap-1.5 justify-between">
+											<h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
+												{ep.name_cn || ep.name}
+											</h3>
+										</div>
+										<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+											{ep.duration && <span>时长 {ep.duration}</span>}
+											{ep.airdate && <span>首播 {ep.airdate}</span>}
+										</div>
+									</div>
+								</button>
+							);
+						})}
+					</div>
+				) : (
+					<div className="text-center py-12 text-sm text-muted-foreground bg-card border border-border rounded-xl">
+						暂无剧集数据
 					</div>
 				)}
 			</div>
