@@ -69,6 +69,8 @@ pub struct AppSettings {
     pub tracker_last_update_time: Option<i64>,
     #[serde(default)]
     pub ai_configs: Option<Vec<AiConfig>>,
+    #[serde(default)]
+    pub max_download_speed: Option<u32>,
 }
 
 impl TorrentManager {
@@ -76,6 +78,7 @@ impl TorrentManager {
         download_dir: PathBuf,
         settings_path: PathBuf,
         proxy: Option<String>,
+        max_download_speed: Option<u32>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let persistence_dir = settings_path
             .parent()
@@ -163,6 +166,14 @@ impl TorrentManager {
             axum::serve(listener, app).await.unwrap();
         });
 
+        // Apply download speed limit
+        if let Some(speed_kbps) = max_download_speed {
+            if speed_kbps > 0 {
+                let bytes_per_sec = speed_kbps.saturating_mul(1024);
+                torrent_repo.set_max_download_speed(Some(bytes_per_sec));
+            }
+        }
+
         let client = Arc::new(crate::infrastructure::http_client::ReqwestHttpClient);
         let crawler_repo =
             Arc::new(crate::infrastructure::http_crawler::HttpCrawlerRepository::new(client));
@@ -206,6 +217,7 @@ impl TorrentManager {
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
                 ai_configs: None,
+                max_download_speed: None,
             })
         } else {
             AppSettings {
@@ -218,6 +230,7 @@ impl TorrentManager {
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
                 ai_configs: None,
+                max_download_speed: None,
             }
         };
         settings.download_dir = dir;
@@ -253,6 +266,7 @@ impl TorrentManager {
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
                 ai_configs: None,
+                max_download_speed: None,
             })
         } else {
             AppSettings {
@@ -265,6 +279,7 @@ impl TorrentManager {
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
                 ai_configs: None,
+                max_download_speed: None,
             }
         };
         settings.proxy = proxy.clone();
@@ -300,6 +315,7 @@ impl TorrentManager {
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
                 ai_configs: None,
+                max_download_speed: None,
             })
         } else {
             AppSettings {
@@ -312,6 +328,7 @@ impl TorrentManager {
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
                 ai_configs: None,
+                max_download_speed: None,
             }
         };
         settings.trackers = Some(trackers.clone());
@@ -342,6 +359,7 @@ impl TorrentManager {
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
                 ai_configs: None,
+                max_download_speed: None,
             })
         }
     }
@@ -368,6 +386,7 @@ impl TorrentManager {
             tracker_auto_update: None,
             tracker_last_update_time: None,
             ai_configs: None,
+            max_download_speed: None,
         });
 
         settings.tracker_source_type = source_type;
@@ -399,9 +418,54 @@ impl TorrentManager {
             tracker_auto_update: None,
             tracker_last_update_time: None,
             ai_configs: None,
+            max_download_speed: None,
         });
 
         settings.ai_configs = configs;
+
+        let file = std::fs::File::create(&self.settings_path)?;
+        serde_json::to_writer_pretty(file, &settings)?;
+        Ok(())
+    }
+
+    pub fn get_max_download_speed(&self) -> Option<u32> {
+        self.get_settings().ok().and_then(|s| s.max_download_speed)
+    }
+
+    pub fn set_max_download_speed(
+        &self,
+        max_speed: Option<u32>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(parent) = self.settings_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // Convert KB/s to bytes/s (0/None = unlimited)
+        let bytes_per_sec = max_speed.and_then(|kbps| {
+            if kbps == 0 {
+                None
+            } else {
+                Some(kbps.saturating_mul(1024))
+            }
+        });
+
+        // Apply to session
+        self.torrent_repo.set_max_download_speed(bytes_per_sec);
+
+        // Persist to settings
+        let mut settings = self.get_settings().unwrap_or_else(|_| AppSettings {
+            download_dir: self.get_download_dir(),
+            proxy: self.get_proxy(),
+            trackers: Some(self.get_trackers()),
+            tracker_source_type: None,
+            tracker_cdn: None,
+            tracker_custom_url: None,
+            tracker_auto_update: None,
+            tracker_last_update_time: None,
+            ai_configs: None,
+            max_download_speed: None,
+        });
+        settings.max_download_speed = max_speed;
 
         let file = std::fs::File::create(&self.settings_path)?;
         serde_json::to_writer_pretty(file, &settings)?;
@@ -625,7 +689,7 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path, None).await;
+        let manager = TorrentManager::new(dir, settings_path, None, None).await;
         if let Err(e) = &manager {
             panic!("Manager initialization failed: {:?}", e);
         }
@@ -682,7 +746,7 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_settings_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None)
+        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None, None)
             .await
             .unwrap();
 
@@ -717,7 +781,9 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_control_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path, None).await.unwrap();
+        let manager = TorrentManager::new(dir, settings_path, None, None)
+            .await
+            .unwrap();
 
         // 验证列表初始为空
         let list = manager.list_torrents();
@@ -752,7 +818,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_proxy_{}", nanos));
         std::fs::create_dir_all(&dir).unwrap();
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path.clone(), None)
+        let manager = TorrentManager::new(dir, settings_path.clone(), None, None)
             .await
             .unwrap();
 
@@ -784,7 +850,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_trackers_{}", nanos));
         std::fs::create_dir_all(&dir).unwrap();
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path.clone(), None)
+        let manager = TorrentManager::new(dir, settings_path.clone(), None, None)
             .await
             .unwrap();
 

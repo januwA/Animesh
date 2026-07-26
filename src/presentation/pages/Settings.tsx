@@ -2,6 +2,7 @@ import {
 	Bot,
 	Download,
 	Folder,
+	Gauge,
 	Globe,
 	HardDrive,
 	Info,
@@ -64,6 +65,7 @@ export default function Settings() {
 	const [customUrl, setCustomUrl] = useState("");
 	const [autoUpdate, setAutoUpdate] = useState(false);
 	const [lastUpdateTime, setLastUpdateTime] = useState(0);
+	const [maxDownloadSpeed, setMaxDownloadSpeed] = useState(0);
 	const [syncing, setSyncing] = useState(false);
 
 	const [aiConfigs, setAiConfigs] = useState<
@@ -260,6 +262,7 @@ export default function Settings() {
 				setCustomUrl(settings.tracker_custom_url || "");
 				setAutoUpdate(settings.tracker_auto_update === true);
 				setLastUpdateTime(settings.tracker_last_update_time || 0);
+				setMaxDownloadSpeed(settings.max_download_speed ?? 0);
 
 				const loadedConfigs = (settings.ai_configs || []).map((c) => ({
 					alias: c.alias,
@@ -336,6 +339,7 @@ export default function Settings() {
 			trackerAutoUpdate: autoUpdate,
 			trackerLastUpdateTime: lastUpdateTime,
 			aiConfigs,
+			maxDownloadSpeed: maxDownloadSpeed || null,
 		});
 
 		if (!validation.success) {
@@ -358,6 +362,7 @@ export default function Settings() {
 				trackerAutoUpdate: validatedData.trackerAutoUpdate,
 				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
 				aiConfigs: validatedData.aiConfigs,
+				maxDownloadSpeed: validatedData.maxDownloadSpeed,
 			});
 			toast.success("设置已保存，后续下载任务将使用新路径");
 		} catch (err: unknown) {
@@ -456,6 +461,40 @@ export default function Settings() {
 											</span>
 										</span>
 									)}
+								</p>
+							</div>
+
+							<div className="space-y-2 pt-3 border-t border-border">
+								<label
+									htmlFor="max-download-speed-input"
+									className="text-muted-foreground font-medium flex items-center gap-1.5"
+								>
+									<Gauge className="h-3.5 w-3.5 text-primary" />
+									后台下载速度限制
+								</label>
+								<div className="flex gap-2 items-center">
+									<Input
+										id="max-download-speed-input"
+										type="number"
+										min={0}
+										value={maxDownloadSpeed}
+										onChange={(e) =>
+											setMaxDownloadSpeed(Number(e.target.value))
+										}
+										placeholder="0"
+										className="sm:w-28"
+									/>
+									<span className="text-xs text-muted-foreground font-medium">
+										KB/s
+									</span>
+								</div>
+								<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
+									<Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+									<span>
+										限制 BT
+										后台下载的速率，避免占用全部网络带宽影响日常使用。设为 0
+										表示不限速。
+									</span>
 								</p>
 							</div>
 						</CardContent>

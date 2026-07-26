@@ -100,6 +100,16 @@ export class HttpSettingsRepository implements SettingsRepository {
 		});
 	}
 
+	async setMaxDownloadSpeed(speed: number | null): Promise<void> {
+		await this.httpClient.request(`${baseUrl}/settings/max-download-speed`, {
+			method: "PUT",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ max_speed: speed }),
+		});
+	}
+
 	async fetchTrackers(url: string): Promise<string[]> {
 		if (!url) {
 			throw new Error("Tracker URL 不能为空");

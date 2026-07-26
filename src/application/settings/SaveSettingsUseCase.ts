@@ -17,6 +17,7 @@ export interface SaveSettingsDto {
 				model?: string | null;
 		  }[]
 		| null;
+	maxDownloadSpeed?: number | null;
 }
 
 export class SaveSettingsUseCase {
@@ -43,6 +44,11 @@ export class SaveSettingsUseCase {
 					}))
 				: null;
 			await this.settingsRepository.setAiConfigs(configs);
+		}
+		if (dto.maxDownloadSpeed !== undefined) {
+			await this.settingsRepository.setMaxDownloadSpeed(
+				dto.maxDownloadSpeed ?? null,
+			);
 		}
 	}
 }

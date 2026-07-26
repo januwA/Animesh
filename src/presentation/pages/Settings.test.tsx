@@ -41,6 +41,7 @@ describe("Settings 页面组件", () => {
 				tracker_custom_url: "",
 				tracker_auto_update: false,
 				tracker_last_update_time: 0,
+				max_download_speed: 0,
 			}),
 			getDefaultTrackers: vi
 				.fn()
@@ -63,6 +64,7 @@ describe("Settings 页面组件", () => {
 			setTrackers: vi.fn(),
 			setTrackerOptions: vi.fn(),
 			setAiConfigs: vi.fn(),
+			setMaxDownloadSpeed: vi.fn(),
 			fetchTrackers: vi.fn(),
 			selectDirectory: vi.fn(),
 			setTheme: vi.fn(),
@@ -194,6 +196,9 @@ describe("Settings 页面组件", () => {
 			target: { value: "udp://tracker2\nhttp://tracker3" },
 		});
 
+		const speedInput = screen.getByPlaceholderText("0");
+		fireEvent.change(speedInput, { target: { value: "2048" } });
+
 		const saveBtn = screen.getByRole("button", { name: "保存设置" });
 		fireEvent.click(saveBtn);
 
@@ -208,6 +213,9 @@ describe("Settings 页面组件", () => {
 				"udp://tracker2",
 				"http://tracker3",
 			]);
+			expect(mockSettingsRepository.setMaxDownloadSpeed).toHaveBeenCalledWith(
+				2048,
+			);
 		});
 		expect(toast.success).toHaveBeenCalledWith(
 			"设置已保存，后续下载任务将使用新路径",
@@ -402,6 +410,7 @@ describe("Settings 页面组件", () => {
 			tracker_custom_url: "",
 			tracker_auto_update: false,
 			tracker_last_update_time: 0,
+			max_download_speed: 0,
 		});
 
 		vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([
@@ -438,6 +447,7 @@ describe("Settings 页面组件", () => {
 			tracker_custom_url: "",
 			tracker_auto_update: false,
 			tracker_last_update_time: 0,
+			max_download_speed: 0,
 		});
 
 		vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([
@@ -526,6 +536,7 @@ describe("Settings 页面组件", () => {
 			tracker_custom_url: "",
 			tracker_auto_update: false,
 			tracker_last_update_time: 0,
+			max_download_speed: 0,
 		});
 
 		vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([]);

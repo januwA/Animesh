@@ -56,6 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let settings_path = app_data_dir.join("settings.json");
     let mut download_dir = app_data_dir.join("downloads");
     let mut proxy = None;
+    let mut max_download_speed = None;
 
     if settings_path.exists() {
         if let Ok(file) = std::fs::File::open(&settings_path) {
@@ -64,6 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 download_dir = std::path::PathBuf::from(settings.download_dir);
                 proxy = settings.proxy;
+                max_download_speed = settings.max_download_speed;
                 log::info!("Loaded settings from settings.json");
             }
         }
@@ -78,6 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracker_auto_update: None,
             tracker_last_update_time: None,
             ai_configs: None,
+            max_download_speed: None,
         };
         if let Ok(file) = std::fs::File::create(&settings_path) {
             let _ = serde_json::to_writer_pretty(file, &settings);
@@ -92,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("ANIMESH_STREAM_PORT", "3000");
     }
 
-    let manager = TorrentManager::new(download_dir, settings_path, proxy)
+    let manager = TorrentManager::new(download_dir, settings_path, proxy, max_download_speed)
         .await
         .expect("Failed to initialize TorrentManager");
 
@@ -141,6 +144,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             put(settings_set_tracker_options_handler),
         )
         .route("/settings/ai-configs", put(settings_set_ai_configs_handler))
+        .route(
+            "/settings/max-download-speed",
+            put(settings_set_max_download_speed_handler),
+        )
         .route("/ai/chat-request", post(ai_chat_request_handler))
         .layer(
             CorsLayer::new()
@@ -554,6 +561,22 @@ async fn settings_set_ai_configs_handler(
     state
         .manager
         .set_ai_configs(payload.configs)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
+#[derive(serde::Deserialize)]
+struct SetMaxDownloadSpeedInput {
+    max_speed: Option<u32>,
+}
+
+async fn settings_set_max_download_speed_handler(
+    State(state): State<Arc<AppState>>,
+    axum::Json(payload): axum::Json<SetMaxDownloadSpeedInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .manager
+        .set_max_download_speed(payload.max_speed)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }

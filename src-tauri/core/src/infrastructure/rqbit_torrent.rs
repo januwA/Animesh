@@ -2,6 +2,7 @@ use crate::domain::torrent::TorrentRepository;
 use crate::torrent::{format_hash, AddTorrentResult, FileDetails, TorrentStatusInfo};
 use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
+use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use std::path::PathBuf;
@@ -284,6 +285,11 @@ impl TorrentRepository for RqbitTorrentRepository {
         })?;
         let tokio_file = tokio::fs::File::from_std(std_file);
         Ok(Box::new(tokio_file))
+    }
+
+    fn set_max_download_speed(&self, bytes_per_sec: Option<u32>) {
+        let bps = bytes_per_sec.and_then(NonZeroU32::new);
+        self.session.ratelimits.set_download_bps(bps);
     }
 }
 

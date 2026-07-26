@@ -14,6 +14,7 @@ export interface SettingsRepository {
 		lastUpdateTime: number | null;
 	}): Promise<void>;
 	setAiConfigs(configs: AiConfig[] | null): Promise<void>;
+	setMaxDownloadSpeed(speed: number | null): Promise<void>;
 	fetchTrackers(url: string): Promise<string[]>;
 	selectDirectory(): Promise<string | null>;
 	setTheme(theme: string): Promise<void>;

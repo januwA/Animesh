@@ -19,6 +19,7 @@ export const SettingsSchema = z.object({
 	tracker_auto_update: z.boolean().nullable().optional(),
 	tracker_last_update_time: z.number().nullable().optional(),
 	ai_configs: z.array(AiConfigSchema).nullable().optional(),
+	max_download_speed: z.number().nullable().optional(),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -66,6 +67,12 @@ export const SettingsFormSchema = z.object({
 				model: z.string().trim().nullable().optional(),
 			}),
 		)
+		.nullable()
+		.optional(),
+	maxDownloadSpeed: z
+		.number()
+		.int("下载速度限制必须是整数")
+		.min(0, "下载速度限制不能为负数")
 		.nullable()
 		.optional(),
 });

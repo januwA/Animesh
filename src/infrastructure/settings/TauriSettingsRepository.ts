@@ -55,6 +55,12 @@ export class TauriSettingsRepository implements SettingsRepository {
 		return invoke<void>("settings_set_ai_configs", { configs });
 	}
 
+	async setMaxDownloadSpeed(speed: number | null): Promise<void> {
+		return invoke<void>("settings_set_max_download_speed", {
+			maxSpeed: speed,
+		});
+	}
+
 	async fetchTrackers(url: string): Promise<string[]> {
 		if (!url) {
 			throw new Error("Tracker URL 不能为空");
