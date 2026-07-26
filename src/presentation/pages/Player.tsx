@@ -274,6 +274,56 @@ export default function Player() {
 		navigate(-1);
 	};
 
+	const videoElement =
+		loading ||
+		!streamUrl ||
+		!torrentStatus ||
+		(torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 < 1 ? (
+			<Loader2 className="h-10 w-10 text-primary animate-spin" />
+		) : (
+			<>
+				{/* biome-ignore lint/a11y/useMediaCaption: subtitles are loaded dynamically from torrent file */}
+				<video
+					ref={videoRef}
+					src={streamUrl}
+					controls
+					playsInline
+					webkit-playsinline="true"
+					className="w-full object-contain max-h-dvh"
+					onError={(e) => {
+						const video = e.currentTarget;
+						const mediaError = video.error;
+						playerLogger.error("Video element error:", mediaError);
+
+						let errorMsg = "视频加载失败";
+						if (mediaError) {
+							if (mediaError.code === 4) {
+								errorMsg =
+									"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。";
+							} else if (mediaError.code === 3) {
+								errorMsg = "视频解码失败，可能数据已损坏或编码不支持。";
+							} else if (mediaError.code === 2) {
+								errorMsg = "视频加载超时或网络断开。";
+							}
+						}
+						toast.error(errorMsg, { duration: 8000 });
+					}}
+				>
+					{subtracks.map((track) => (
+						<track
+							id={track.id.toString()}
+							key={track.id}
+							kind="subtitles"
+							src={subtrackSrcs[track.id] || undefined}
+							srcLang={track.language}
+							label={track.title || `轨道 ${track.id}`}
+							default={track.id === selectedTrackId}
+						/>
+					))}
+				</video>
+			</>
+		);
+
 	return (
 		<div className="w-full space-y-4 animate-in fade-in duration-300">
 			{/* Navigation Header */}
@@ -313,63 +363,14 @@ export default function Player() {
 					</div>
 				</div>
 
-				{/* Player Video aspect-ratio */}
-				{/* style-ignore: bg-black is required for the native video player */}
-				<div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-black shadow-inner flex items-center justify-center">
-					{" "}
-					{/* style-ignore */}
-					{loading ||
-					!streamUrl ||
-					!torrentStatus ||
-					(torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 <
-						1 ? (
-						<Loader2 className="h-10 w-10 text-primary animate-spin" />
-					) : (
-						/* biome-ignore lint/a11y/useMediaCaption: subtitles are loaded dynamically from torrent file */
-						<video
-							ref={videoRef}
-							src={streamUrl}
-							controls
-							playsInline
-							webkit-playsinline="true"
-							className="h-full w-full object-contain"
-							onError={(e) => {
-								const video = e.currentTarget;
-								const mediaError = video.error;
-								playerLogger.error("Video element error:", mediaError);
-
-								let errorMsg = "视频加载失败";
-								if (mediaError) {
-									if (mediaError.code === 4) {
-										errorMsg =
-											"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。";
-									} else if (mediaError.code === 3) {
-										errorMsg = "视频解码失败，可能数据已损坏或编码不支持。";
-									} else if (mediaError.code === 2) {
-										errorMsg = "视频加载超时或网络断开。";
-									}
-								}
-								toast.error(errorMsg, { duration: 8000 });
-							}}
-						>
-							{subtracks.map((track) => (
-								<track
-									id={track.id.toString()}
-									key={track.id}
-									kind="subtitles"
-									src={subtrackSrcs[track.id] || undefined}
-									srcLang={track.language}
-									label={track.title || `轨道 ${track.id}`}
-									default={track.id === selectedTrackId}
-								/>
-							))}
-						</video>
-					)}
+				{/* Player Video */}
+				<div className="relative w-full max-h-dvh overflow-hidden">
+					{videoElement}
 				</div>
 
 				{/* Subtitle Tracks Selection */}
 				{!loading && streamUrl && subtracks.length > 0 && (
-					<div className="flex items-center gap-2.5 p-3">
+					<div className="flex items-center gap-2.5">
 						<span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
 							字幕轨道:
 						</span>
@@ -393,7 +394,7 @@ export default function Player() {
 								}}
 								disabled={subloading}
 							>
-								<SelectTrigger className="w-[200px] h-8 text-xs border-border">
+								<SelectTrigger className="border-border">
 									<SelectValue placeholder="选择字幕轨道" />
 								</SelectTrigger>
 								<SelectContent
