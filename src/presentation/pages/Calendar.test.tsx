@@ -5,6 +5,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -145,8 +146,8 @@ describe("Calendar 页面组件", () => {
 
 		const labels = ["一", "二", "三", "四", "五", "六", "日"];
 		const otherDayLabel = labels[otherDayId - 1];
-		const tabBtn = screen.getByRole("button", { name: otherDayLabel });
-		fireEvent.click(tabBtn);
+		const tabBtn = screen.getByRole("tab", { name: otherDayLabel });
+		await userEvent.setup().click(tabBtn);
 
 		await waitFor(() => {
 			expect(screen.getByText("其他动漫2")).toBeInTheDocument();
@@ -241,9 +242,8 @@ describe("Calendar 页面组件", () => {
 		renderCalendar(Promise.resolve([]));
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("未找到新番数据，请稍后重试"),
-			).toBeInTheDocument();
+			expect(screen.getByText("未找到新番数据")).toBeInTheDocument();
+			expect(screen.getByText("请稍后重试")).toBeInTheDocument();
 		});
 
 		getDayMock.mockRestore();

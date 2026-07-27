@@ -14,6 +14,7 @@ import type {
 	TorrentStatusInfo,
 } from "@/domain/torrent/TorrentSchemas";
 import { Button } from "@/presentation/components/ui/button";
+import { Card, CardContent } from "@/presentation/components/ui/card";
 import { Progress } from "@/presentation/components/ui/progress";
 import {
 	Select,
@@ -325,21 +326,22 @@ export default function Player() {
 		);
 
 	return (
-		<div className="w-full space-y-4 animate-in fade-in duration-300">
+		<div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">
 			{/* Navigation Header */}
-			<button
-				type="button"
+			<Button
+				variant="ghost"
+				size="sm"
 				onClick={handleBack}
-				className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+				className="gap-2 text-muted-foreground hover:text-foreground w-fit"
 			>
 				<ArrowLeft className="h-4 w-4" />
 				返回
-			</button>
+			</Button>
 
-			<div className="bg-card border border-border rounded-xl p-6 space-y-6">
+			<div className="bg-card border border-border rounded-xl p-6 flex flex-col gap-6">
 				{/* Header */}
 				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
-					<div className="space-y-1 flex-1 min-w-0">
+					<div className="flex flex-col gap-1 flex-1 min-w-0">
 						<h2
 							className="text-lg font-bold pr-4 text-foreground"
 							title={fileName}
@@ -428,8 +430,8 @@ export default function Player() {
 				)}
 
 				{/* Progress & Speed */}
-				<div className="space-y-4">
-					<div className="space-y-2">
+				<div className="flex flex-col gap-4">
+					<div className="flex flex-col gap-2">
 						<div className="flex flex-col sm:flex-row sm:justify-between gap-2 text-xs sm:text-sm font-medium">
 							<span className="flex items-center gap-1.5">
 								<Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-pulse" />
@@ -459,46 +461,56 @@ export default function Player() {
 
 					{/* Stats Grid */}
 					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-muted/50">
-							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-								已下载
-							</span>
-							<span className="text-sm font-semibold whitespace-nowrap">
-								{torrentStatus
-									? formatBytes(torrentStatus.progress_bytes)
-									: "0 B"}
-							</span>
-						</div>
-						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-muted/50">
-							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-								总大小
-							</span>
-							<span className="text-sm font-semibold whitespace-nowrap">
-								{torrentStatus ? formatBytes(torrentStatus.total_bytes) : "0 B"}
-							</span>
-						</div>
-						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-muted/50">
-							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-								同伴 (连接/总数)
-							</span>
-							<span className="text-sm font-semibold whitespace-nowrap">
-								{torrentStatus
-									? `${torrentStatus.peers_connected} / ${torrentStatus.peers_total}`
-									: "0 / 0"}
-							</span>
-						</div>
-						<div className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-muted/50">
-							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-								状态
-							</span>
-							<span className="text-sm font-semibold text-primary whitespace-nowrap">
-								{torrentStatus
-									? torrentStatus.finished
-										? "已完成"
-										: "正在缓存..."
-									: "连接中..."}
-							</span>
-						</div>
+						<Card className="bg-muted/50 border-border">
+							<CardContent className="flex flex-col items-center justify-center p-3">
+								<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+									已下载
+								</span>
+								<span className="text-sm font-semibold whitespace-nowrap">
+									{torrentStatus
+										? formatBytes(torrentStatus.progress_bytes)
+										: "0 B"}
+								</span>
+							</CardContent>
+						</Card>
+						<Card className="bg-muted/50 border-border">
+							<CardContent className="flex flex-col items-center justify-center p-3">
+								<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+									总大小
+								</span>
+								<span className="text-sm font-semibold whitespace-nowrap">
+									{torrentStatus
+										? formatBytes(torrentStatus.total_bytes)
+										: "0 B"}
+								</span>
+							</CardContent>
+						</Card>
+						<Card className="bg-muted/50 border-border">
+							<CardContent className="flex flex-col items-center justify-center p-3">
+								<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+									同伴 (连接/总数)
+								</span>
+								<span className="text-sm font-semibold whitespace-nowrap">
+									{torrentStatus
+										? `${torrentStatus.peers_connected} / ${torrentStatus.peers_total}`
+										: "0 / 0"}
+								</span>
+							</CardContent>
+						</Card>
+						<Card className="bg-muted/50 border-border">
+							<CardContent className="flex flex-col items-center justify-center p-3">
+								<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+									状态
+								</span>
+								<span className="text-sm font-semibold text-primary whitespace-nowrap">
+									{torrentStatus
+										? torrentStatus.finished
+											? "已完成"
+											: "正在缓存..."
+										: "连接中..."}
+								</span>
+							</CardContent>
+						</Card>
 					</div>
 				</div>
 			</div>

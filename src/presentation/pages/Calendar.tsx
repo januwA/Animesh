@@ -1,5 +1,5 @@
 import { Background, WithCancel } from "ajanuw-context";
-import { Calendar as CalendarIcon, Loader2, Star, Users } from "lucide-react";
+import { Calendar as CalendarIcon, Star, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
@@ -7,11 +7,19 @@ import type {
 	BangumiCalendarDay,
 	BangumiCalendarItem,
 } from "@/domain/bangumi/BangumiSchemas";
+import { Card, CardContent } from "@/presentation/components/ui/card";
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyTitle,
+} from "@/presentation/components/ui/empty";
+import { Skeleton } from "@/presentation/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 import { FavoriteBadge } from "../components/FavoriteBadge";
 import { LazyImage } from "../components/LazyImage";
-import { Button } from "../components/ui/button";
 import { useAppContext } from "../context/AppContext";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
@@ -45,32 +53,29 @@ function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
 		<section className="w-full">
 			{/* Weekday Tabs */}
 			<div className="sticky-safe-top z-10 bg-background/85 backdrop-blur-md pt-2 pb-2 -mx-4 px-4">
-				<div className="flex gap-1 p-1 bg-muted/60 border border-border/80 rounded-xl shadow-inner">
-					{WEEKDAY_LABELS.map((label, index) => {
-						const dayId = index + 1;
-						const isActive = dayId === activeDay;
-						const isToday = dayId === todayId;
-
-						return (
-							<Button
-								key={dayId}
-								variant={isActive ? "default" : "ghost"}
-								size="sm"
-								className={`flex-1 text-xs relative transition-all ${
-									isActive
-										? "bg-primary text-primary-foreground font-bold shadow-md"
-										: "text-muted-foreground/90 font-semibold hover:text-foreground hover:bg-background/50"
-								}`}
-								onClick={() => setActiveDay(dayId)}
-							>
-								{label}
-								{isToday && !isActive && (
-									<span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
-								)}
-							</Button>
-						);
-					})}
-				</div>
+				<Tabs
+					value={String(activeDay)}
+					onValueChange={(v) => setActiveDay(Number(v))}
+				>
+					<TabsList className="w-full">
+						{WEEKDAY_LABELS.map((label, index) => {
+							const dayId = index + 1;
+							const isToday = dayId === todayId;
+							return (
+								<TabsTrigger
+									key={dayId}
+									value={String(dayId)}
+									className="flex-1 relative text-xs"
+								>
+									{label}
+									{isToday && dayId !== activeDay && (
+										<span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
+									)}
+								</TabsTrigger>
+							);
+						})}
+					</TabsList>
+				</Tabs>
 			</div>
 
 			{/* Anime Grid */}
@@ -88,9 +93,11 @@ function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
 			</div>
 
 			{currentItems.length === 0 && (
-				<div className="text-center py-10 text-sm text-muted-foreground">
-					暂无更新
-				</div>
+				<Empty>
+					<EmptyContent>
+						<EmptyTitle>暂无更新</EmptyTitle>
+					</EmptyContent>
+				</Empty>
 			)}
 		</section>
 	);
@@ -134,7 +141,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 				)}
 
 				{/* Info */}
-				<div className="p-2 space-y-1 flex-1 flex flex-col w-full">
+				<div className="p-2 flex flex-col gap-1 flex-1 w-full">
 					<h3 className="text-xs font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">
 						{displayName}
 					</h3>
@@ -210,23 +217,26 @@ export default function Calendar() {
 	);
 
 	return (
-		<div className="w-full space-y-4">
+		<div className="w-full flex flex-col gap-4">
 			{isLoading && (
-				<div className="flex flex-col items-center justify-center py-20 space-y-4">
-					<Loader2 className="h-10 w-10 text-primary animate-spin" />
-					<p className="text-sm text-muted-foreground font-medium">
-						正在获取新番日历...
-					</p>
-				</div>
+				<Card className="bg-card border-border py-20">
+					<CardContent className="flex flex-col items-center justify-center gap-4">
+						<Skeleton className="h-10 w-10 rounded-full" />
+						<Skeleton className="h-4 w-40" />
+					</CardContent>
+				</Card>
 			)}
 			{error && <ErrorBanner message={error} />}
 			{!isLoading && !error && calendar.length > 0 && (
 				<WeeklyCalendar calendar={calendar} onAnimeClick={handleAnimeClick} />
 			)}
 			{!isLoading && !error && calendar.length === 0 && (
-				<div className="text-center py-20 text-muted-foreground">
-					未找到新番数据，请稍后重试
-				</div>
+				<Empty>
+					<EmptyContent>
+						<EmptyTitle>未找到新番数据</EmptyTitle>
+						<EmptyDescription>请稍后重试</EmptyDescription>
+					</EmptyContent>
+				</Empty>
 			)}
 		</div>
 	);

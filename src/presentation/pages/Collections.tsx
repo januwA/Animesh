@@ -6,6 +6,12 @@ import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
 import { LazyImage } from "@/presentation/components/LazyImage";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
+import { Card } from "@/presentation/components/ui/card";
+import {
+	Empty,
+	EmptyContent,
+	EmptyTitle,
+} from "@/presentation/components/ui/empty";
 
 export default function Collections() {
 	const { collectionRepository } = useDI();
@@ -16,7 +22,7 @@ export default function Collections() {
 	const navigate = useNavigate();
 
 	return (
-		<div className="w-full space-y-4 animate-in fade-in duration-300">
+		<div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">
 			<div className="flex items-center gap-2">
 				<Heart className="h-5 w-5 text-red-500 fill-current" />
 				<h1 className="text-lg font-bold text-foreground">我的收藏</h1>
@@ -49,11 +55,10 @@ export default function Collections() {
 					))}
 				</div>
 			) : (
-				<div className="flex flex-col items-center justify-center py-20 space-y-4">
-					<Heart className="h-12 w-12 text-muted-foreground/30" />
-					<p className="text-sm text-muted-foreground font-medium">
-						还没有收藏任何条目
-					</p>
+				<Empty>
+					<EmptyContent>
+						<EmptyTitle>还没有收藏任何条目</EmptyTitle>
+					</EmptyContent>
 					<Button
 						variant="outline"
 						size="sm"
@@ -61,7 +66,7 @@ export default function Collections() {
 					>
 						去新番日历看看
 					</Button>
-				</div>
+				</Empty>
 			)}
 		</div>
 	);
@@ -76,7 +81,7 @@ function CollectionCard({ item, onClick }: CollectionCardProps) {
 	const displayName = item.nameCn || item.name;
 
 	return (
-		<div className="group flex flex-col bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-all duration-200 text-left relative">
+		<Card className="group flex flex-col overflow-hidden border-border hover:border-primary/30 transition-all duration-200">
 			<button
 				type="button"
 				onClick={onClick}
@@ -102,7 +107,7 @@ function CollectionCard({ item, onClick }: CollectionCardProps) {
 					</div>
 				)}
 
-				<div className="p-2 space-y-1 flex-1 flex flex-col w-full">
+				<div className="p-2 flex flex-col gap-1 flex-1 w-full">
 					<h3 className="text-xs font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">
 						{displayName}
 					</h3>
@@ -117,6 +122,6 @@ function CollectionCard({ item, onClick }: CollectionCardProps) {
 					)}
 				</div>
 			</button>
-		</div>
+		</Card>
 	);
 }

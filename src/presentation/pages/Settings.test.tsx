@@ -465,14 +465,14 @@ describe("Settings 页面组件", () => {
 		const allBtn = screen.getByText("完整列表");
 		fireEvent.click(allBtn);
 		await waitFor(() => {
-			expect(allBtn).toHaveClass("bg-primary");
+			expect(allBtn).toHaveAttribute("data-state", "on");
 		});
 
 		// 2. 切换 CDN 节点 (例如：GitMirror)
-		const mirrorBtn = screen.getByRole("button", { name: /GitMirror/ });
+		const mirrorBtn = screen.getByRole("radio", { name: /GitMirror/ });
 		fireEvent.click(mirrorBtn);
 		await waitFor(() => {
-			expect(mirrorBtn).toHaveClass("bg-primary");
+			expect(mirrorBtn).toHaveAttribute("data-state", "on");
 		});
 
 		// 3. 勾选自动更新
@@ -499,7 +499,7 @@ describe("Settings 页面组件", () => {
 		const customBtn = screen.getByText("自定义");
 		fireEvent.click(customBtn);
 		await waitFor(() => {
-			expect(customBtn).toHaveClass("bg-primary");
+			expect(customBtn).toHaveAttribute("data-state", "on");
 		});
 
 		const syncBtn = screen.getByRole("button", { name: /立即同步并替换/ });
@@ -1282,9 +1282,9 @@ describe("Settings 页面组件", () => {
 			expect(screen.getByText("外观设置")).toBeInTheDocument();
 		});
 
-		const systemBtn = screen.getByRole("button", { name: "跟随系统" });
-		const lightBtn = screen.getByRole("button", { name: "浅色模式" });
-		const darkBtn = screen.getByRole("button", { name: "深色模式" });
+		const systemBtn = screen.getByRole("radio", { name: "跟随系统" });
+		const lightBtn = screen.getByRole("radio", { name: "浅色模式" });
+		const darkBtn = screen.getByRole("radio", { name: "深色模式" });
 
 		expect(systemBtn).toBeInTheDocument();
 		expect(lightBtn).toBeInTheDocument();

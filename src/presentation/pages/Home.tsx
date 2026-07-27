@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import {
@@ -26,6 +27,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/presentation/components/ui/card";
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyTitle,
+} from "@/presentation/components/ui/empty";
 import { Input } from "@/presentation/components/ui/input";
 import {
 	Select,
@@ -34,6 +41,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/presentation/components/ui/select";
+import { Separator } from "@/presentation/components/ui/separator";
 import { useRequestContext } from "@/presentation/hooks/useRequestContext";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
@@ -80,7 +88,10 @@ function SearchForm({
 						</SelectContent>
 					</Select>
 				</div>
-				<div className="h-5 w-[1px] bg-border self-center shrink-0" />
+				<Separator
+					orientation="vertical"
+					className="h-5 self-center shrink-0"
+				/>
 				<Input
 					id="search-input"
 					data-testid="search-input"
@@ -119,7 +130,7 @@ interface SearchLoadingProps {
 // 搜索加载指示器
 function SearchLoading({ onCancel }: SearchLoadingProps) {
 	return (
-		<div className="flex flex-col items-center justify-center py-20 space-y-4">
+		<div className="flex flex-col items-center justify-center py-20 gap-4">
 			<Loader2 className="h-10 w-10 text-primary animate-spin" />
 			<p className="text-sm text-muted-foreground font-medium">
 				正在获取资源列表...
@@ -141,7 +152,7 @@ function SearchLoading({ onCancel }: SearchLoadingProps) {
 // 初始引导推荐组件
 function WelcomeGuide() {
 	return (
-		<div className="mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 opacity-75">
+		<div className="mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 text-muted-foreground/75">
 			<Card className="bg-card/25 border-border">
 				<CardHeader className="pb-2">
 					<CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -219,8 +230,8 @@ function SearchResultCard({
 						<span
 							className={`px-2.5 py-0.5 rounded-full font-mono font-bold ${
 								item.ai_score >= 80
-									? "bg-emerald-500/20 text-emerald-500 border border-emerald-500/30" // style-ignore
-									: "bg-amber-500/15 text-amber-500 border border-amber-500/30" // style-ignore
+									? "bg-success/20 text-success border border-success/30"
+									: "bg-warning/15 text-warning border border-warning/30"
 							}`}
 						>
 							匹配度: {item.ai_score}分
@@ -233,14 +244,12 @@ function SearchResultCard({
 			</CardHeader>
 			<CardContent className="px-5 pb-4 pt-0 flex flex-col gap-3">
 				{item.ai_reason && (
-					<div className="px-3 py-2 bg-cyan-500/10 dark:bg-cyan-950/20 border border-cyan-500/20 dark:border-cyan-500/10 rounded-lg text-xs text-cyan-800 dark:text-cyan-300/90 leading-relaxed font-medium">
-						{" "}
-						{/* style-ignore */}
-						<span className="font-semibold text-cyan-600 dark:text-cyan-400">
-							推荐理由：
-						</span>
-						{item.ai_reason}
-					</div>
+					<Alert variant="default" className="text-xs py-3 px-3">
+						<AlertDescription className="text-xs font-medium">
+							<span className="font-semibold">推荐理由：</span>
+							{item.ai_reason}
+						</AlertDescription>
+					</Alert>
 				)}
 				<div className="flex flex-wrap gap-4 text-xs text-muted-foreground items-center">
 					<div className="flex items-center gap-1.5">
@@ -540,7 +549,7 @@ export default function Home() {
 			{/* 加载提示 */}
 			{isSearching &&
 				(selectedAiAlias !== "none" ? (
-					<div className="flex flex-col items-center justify-center py-20 space-y-4 animate-in fade-in duration-300">
+					<div className="flex flex-col items-center justify-center py-20 gap-4 animate-in fade-in duration-300">
 						<div className="relative flex items-center justify-center">
 							<Loader2 className="h-10 w-10 text-cyan-400 animate-spin" />
 							<div className="absolute inset-0 rounded-full bg-cyan-400/10 blur-xl animate-pulse" />{" "}
@@ -567,25 +576,27 @@ export default function Home() {
 					<SearchLoading onCancel={handleCancelSearch} />
 				))}
 
-			{/* 错误显示 */}
 			{error && <ErrorBanner message={error} />}
+
+			{/* 未搜索空状态或结果为空提示 */}
 
 			{/* 未搜索空状态或结果为空提示 */}
 			{!isSearching &&
 				!error &&
 				(hasSearched && results.length === 0 ? (
-					<div className="text-center py-20 space-y-2">
-						<p className="text-muted-foreground font-medium">
-							未找到相关资源，请换个关键词试试
-						</p>
-					</div>
+					<Empty>
+						<EmptyContent>
+							<EmptyTitle>未找到相关资源</EmptyTitle>
+							<EmptyDescription>请换个关键词试试</EmptyDescription>
+						</EmptyContent>
+					</Empty>
 				) : !hasSearched ? (
 					<WelcomeGuide />
 				) : null)}
 
 			{/* 搜索结果列表 */}
 			{!isSearching && !error && results.length > 0 && (
-				<section className="w-full space-y-4">
+				<section className="w-full flex flex-col gap-4">
 					<div className="flex items-center justify-between border-b border-border pb-2">
 						<div className="results-count text-sm text-muted-foreground">
 							找到{" "}

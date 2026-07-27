@@ -21,6 +21,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/presentation/components/ui/card";
+import { Checkbox } from "@/presentation/components/ui/checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -29,6 +30,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/presentation/components/ui/dialog";
+import {
+	Empty,
+	EmptyContent,
+	EmptyDescription,
+	EmptyTitle,
+} from "@/presentation/components/ui/empty";
+import { Field, FieldLabel } from "@/presentation/components/ui/field";
 import { Progress } from "@/presentation/components/ui/progress";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
@@ -102,7 +110,7 @@ export default function Downloads() {
 
 	if (isLoading) {
 		return (
-			<div className="flex flex-col items-center justify-center py-20 space-y-4">
+			<div className="flex flex-col items-center justify-center py-20 gap-4">
 				<Loader2 className="h-10 w-10 text-primary animate-spin" />
 				<p className="text-sm text-muted-foreground font-medium">
 					正在加载下载管理器...
@@ -112,7 +120,7 @@ export default function Downloads() {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="flex flex-col gap-6">
 			{/* Page Header */}
 			<div className="flex items-center justify-between border-b border-border pb-4">
 				<div>
@@ -131,24 +139,17 @@ export default function Downloads() {
 
 			{/* Empty State */}
 			{torrents.length === 0 ? (
-				<Card className="bg-card border-border py-16 text-center">
-					<CardContent className="space-y-4">
-						<div className="flex justify-center text-muted-foreground/60 select-none">
-							<Download className="h-12 w-12" />
-						</div>
-						<div className="space-y-1">
-							<h3 className="text-sm font-semibold text-foreground">
-								没有正在进行的下载任务
-							</h3>
-							<p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-								您可以在首页搜索动漫花园的资源，点击“边下边播”或者“复制磁力”解析后开始下载。
-							</p>
-						</div>
-						<Button onClick={() => navigate("/")} size="sm" className="mt-2">
-							前往搜索视频
-						</Button>
-					</CardContent>
-				</Card>
+				<Empty>
+					<EmptyContent>
+						<EmptyTitle>没有正在进行的下载任务</EmptyTitle>
+						<EmptyDescription>
+							您可以在首页搜索动漫花园的资源，点击"边下边播"或者"复制磁力"解析后开始下载。
+						</EmptyDescription>
+					</EmptyContent>
+					<Button onClick={() => navigate("/")} size="sm">
+						前往搜索视频
+					</Button>
+				</Empty>
 			) : (
 				/* Download Cards List */
 				<div className="grid gap-4">
@@ -165,7 +166,7 @@ export default function Downloads() {
 								>
 									<CardHeader className="p-5 pb-3">
 										<div className="flex items-start justify-between gap-4">
-											<div className="space-y-1.5 min-w-0 flex-1">
+											<div className="flex flex-col gap-1.5 min-w-0 flex-1">
 												<CardTitle
 													className="text-base font-bold text-foreground leading-normal"
 													title={t.name || "正在解析元数据..."}
@@ -183,21 +184,15 @@ export default function Downloads() {
 											</div>
 											<div className="flex items-center gap-1.5 flex-shrink-0">
 												{t.finished ? (
-													<Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">
-														{" "}
-														{/* style-ignore */}
+													<Badge className="bg-success/10 text-success border-success/20 text-xs">
 														已完成
 													</Badge>
 												) : t.paused ? (
-													<Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">
-														{" "}
-														{/* style-ignore */}
+													<Badge className="bg-warning/10 text-warning border-warning/20 text-xs">
 														已暂停
 													</Badge>
 												) : (
-													<Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs flex items-center gap-1">
-														{" "}
-														{/* style-ignore */}
+													<Badge className="bg-info/10 text-info border-info/20 text-xs flex items-center gap-1">
 														<Loader2 className="h-3 w-3 animate-spin" />
 														下载中
 													</Badge>
@@ -206,9 +201,9 @@ export default function Downloads() {
 										</div>
 									</CardHeader>
 
-									<CardContent className="px-5 pb-5 pt-0 space-y-4">
+									<CardContent className="px-5 pb-5 pt-0 flex flex-col gap-4">
 										{/* Progress Info */}
-										<div className="space-y-2">
+										<div className="flex flex-col gap-2">
 											<div className="flex justify-between text-xs font-medium">
 												<span className="flex items-center gap-1.5 text-muted-foreground">
 													<Download className="h-3.5 w-3.5 text-primary" />
@@ -312,21 +307,19 @@ export default function Downloads() {
 					</DialogHeader>
 
 					{/* File deletion checkbox */}
-					<div className="flex items-center space-x-2.5 py-3 border-t border-b border-border my-2">
-						<input
-							type="checkbox"
+					<Field className="flex flex-row items-center gap-2.5 py-3 border-t border-b border-border my-2">
+						<Checkbox
 							id="delete-files-checkbox"
 							checked={deleteFiles}
-							onChange={(e) => setDeleteFiles(e.target.checked)}
-							className="h-4.5 w-4.5 accent-primary rounded bg-secondary border-border"
+							onCheckedChange={(checked) => setDeleteFiles(checked === true)}
 						/>
-						<label
+						<FieldLabel
 							htmlFor="delete-files-checkbox"
-							className="text-xs font-medium text-foreground cursor-pointer select-none"
+							className="text-xs font-medium cursor-pointer select-none"
 						>
 							同时删除已下载的本地缓存文件 (彻底释放磁盘空间)
-						</label>
-					</div>
+						</FieldLabel>
+					</Field>
 
 					<DialogFooter className="gap-2 sm:gap-0 mt-2">
 						<Button

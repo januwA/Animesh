@@ -272,9 +272,8 @@ describe("App 组件", () => {
 		fireEvent.submit(input.closest("form")!);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("未找到相关资源，请换个关键词试试"),
-			).toBeInTheDocument();
+			expect(screen.getByText("未找到相关资源")).toBeInTheDocument();
+			expect(screen.getByText("请换个关键词试试")).toBeInTheDocument();
 		});
 	});
 

@@ -32,7 +32,18 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/presentation/components/ui/card";
+import { Checkbox } from "@/presentation/components/ui/checkbox";
+import {
+	Empty,
+	EmptyContent,
+	EmptyTitle,
+} from "@/presentation/components/ui/empty";
 import { Input } from "@/presentation/components/ui/input";
+import { Textarea } from "@/presentation/components/ui/textarea";
+import {
+	ToggleGroup,
+	ToggleGroupItem,
+} from "@/presentation/components/ui/toggle-group";
 import { formatError, formatLocalDate } from "@/utils";
 
 export default function Settings() {
@@ -374,7 +385,7 @@ export default function Settings() {
 
 	if (loading) {
 		return (
-			<div className="flex flex-col items-center justify-center py-20 space-y-4">
+			<div className="flex flex-col items-center justify-center py-20 gap-4">
 				<Loader2 className="h-10 w-10 text-primary animate-spin" />
 				<p className="text-sm text-muted-foreground font-medium">
 					正在加载设置面版...
@@ -384,9 +395,9 @@ export default function Settings() {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="flex flex-col gap-6">
 			{/* Settings Form */}
-			<form onSubmit={handleSave} className="space-y-6 flex flex-col">
+			<form onSubmit={handleSave} className="flex flex-col gap-6">
 				{/* Sticky Action Header */}
 				<div className="sticky-safe-top z-20 bg-background/85 backdrop-blur-md py-3 -mx-4 px-4 flex items-center justify-between border-b border-border shadow-sm">
 					<div className="flex items-center gap-2">
@@ -414,8 +425,8 @@ export default function Settings() {
 								存储设置 (BT 下载及缓存目录)
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="px-5 pb-6 space-y-4 text-xs">
-							<div className="space-y-2">
+						<CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
+							<div className="flex flex-col gap-2">
 								<label
 									htmlFor="download-dir-input"
 									className="text-muted-foreground font-medium"
@@ -455,7 +466,7 @@ export default function Settings() {
 										</span>
 									) : (
 										<span className="flex items-start gap-1">
-											<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+											<Lightbulb className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
 											<span>
 												提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区（非系统C盘），以防空间不足导致播放异常。
 											</span>
@@ -464,7 +475,7 @@ export default function Settings() {
 								</p>
 							</div>
 
-							<div className="space-y-2 pt-3 border-t border-border">
+							<div className="flex flex-col gap-2 pt-3 border-t border-border">
 								<label
 									htmlFor="max-download-speed-input"
 									className="text-muted-foreground font-medium flex items-center gap-1.5"
@@ -509,8 +520,8 @@ export default function Settings() {
 								网络设置
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="px-5 pb-6 space-y-4 text-xs">
-							<div className="space-y-2">
+						<CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
+							<div className="flex flex-col gap-2">
 								<label
 									htmlFor="proxy-input"
 									className="text-muted-foreground font-medium"
@@ -525,7 +536,7 @@ export default function Settings() {
 									className="bg-secondary/30 border-border text-foreground py-5 text-xs"
 								/>
 								<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
-									<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+									<Lightbulb className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
 									<span>
 										提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
 										HTTP、HTTPS 或 SOCKS5 代理。
@@ -543,15 +554,15 @@ export default function Settings() {
 							AI 智能搜索模型设置
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+					<CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
 						{/* AI 配置列表 */}
-						<div className="space-y-3">
+						<div className="flex flex-col gap-3">
 							{aiConfigs.map((config, index) => (
 								<div
 									key={index.toString()}
 									className="flex items-center justify-between border border-border bg-secondary/30 rounded-lg p-3"
 								>
-									<div className="space-y-1 min-w-0 flex-1 mr-4">
+									<div className="flex flex-col gap-1 min-w-0 flex-1 mr-4">
 										<div className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
 											<span>{config.alias}</span>
 											{config.model && (
@@ -598,9 +609,11 @@ export default function Settings() {
 							))}
 
 							{aiConfigs.length === 0 && (
-								<div className="text-center py-6 text-muted-foreground text-[11px] border border-dashed border-border rounded-lg bg-secondary/20">
-									暂无 AI 配置，点击下方按钮添加
-								</div>
+								<Empty className="py-6 border-dashed">
+									<EmptyContent>
+										<EmptyTitle>暂无 AI 配置</EmptyTitle>
+									</EmptyContent>
+								</Empty>
 							)}
 
 							{editingIndex === null && (
@@ -618,7 +631,7 @@ export default function Settings() {
 
 						{/* 编辑/添加表单 */}
 						{editingIndex !== null && (
-							<div className="space-y-4 pt-3 border-t border-border animate-in fade-in slide-in-from-top-1 duration-200">
+							<div className="flex flex-col gap-4 pt-3 border-t border-border animate-in fade-in slide-in-from-top-1 duration-200">
 								<div className="font-semibold text-xs text-foreground mb-1">
 									{editingIndex === -1
 										? "添加 AI 配置"
@@ -626,7 +639,7 @@ export default function Settings() {
 								</div>
 
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-									<div className="space-y-2">
+									<div className="flex flex-col gap-2">
 										<label
 											htmlFor="ai-alias-input"
 											className="text-muted-foreground font-medium"
@@ -642,7 +655,7 @@ export default function Settings() {
 										/>
 									</div>
 
-									<div className="space-y-2">
+									<div className="flex flex-col gap-2">
 										<label
 											htmlFor="ai-endpoint-input"
 											className="text-muted-foreground font-medium"
@@ -660,7 +673,7 @@ export default function Settings() {
 								</div>
 
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-									<div className="space-y-2">
+									<div className="flex flex-col gap-2">
 										<label
 											htmlFor="ai-key-input"
 											className="text-muted-foreground font-medium"
@@ -677,7 +690,7 @@ export default function Settings() {
 										/>
 									</div>
 
-									<div className="space-y-2">
+									<div className="flex flex-col gap-2">
 										<label
 											htmlFor="ai-model-input"
 											className="text-muted-foreground font-medium"
@@ -744,9 +757,9 @@ export default function Settings() {
 								检查更新
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="px-5 pb-6 space-y-4 text-xs">
+						<CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
 							<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-border bg-secondary/30 rounded-lg p-4">
-								<div className="space-y-1">
+								<div className="flex flex-col gap-1">
 									<p className="font-semibold text-foreground">
 										Animesh 客户端
 									</p>
@@ -773,7 +786,7 @@ export default function Settings() {
 							</div>
 
 							{updateResult && (
-								<div className="border border-border bg-secondary/30 rounded-lg p-4 space-y-3">
+								<div className="border border-border bg-secondary/30 rounded-lg p-4 flex flex-col gap-3">
 									<div className="flex items-center justify-between">
 										<h4 className="text-xs font-semibold text-foreground">
 											{updateResult.hasUpdate
@@ -781,9 +794,8 @@ export default function Settings() {
 												: "当前已是最新版本"}
 										</h4>
 										{updateResult.hasUpdate && (
-											<span className="text-[10px] bg-green-500/10 text-green-500 px-2 py-0.5 rounded-full font-medium">
-												{" "}
-												{/* style-ignore */}v{updateResult.latestVersion}
+											<span className="text-[10px] bg-success/10 text-success px-2 py-0.5 rounded-full font-medium">
+												v{updateResult.latestVersion}
 											</span>
 										)}
 									</div>
@@ -829,35 +841,22 @@ export default function Settings() {
 							外观设置
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
-						<div className="space-y-1.5">
+					<CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
+						<div className="flex flex-col gap-1.5">
 							<span className="text-[11px] text-muted-foreground font-medium">
 								选择界面主题
 							</span>
-							<div className="flex flex-wrap gap-1">
-								{(["system", "light", "dark"] as const).map((t) => {
-									const labels: Record<string, string> = {
-										system: "跟随系统",
-										light: "浅色模式",
-										dark: "深色模式",
-									};
-									const isActive = theme === t;
-									return (
-										<button
-											key={t}
-											type="button"
-											onClick={() => setTheme(t)}
-											className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 cursor-pointer ${
-												isActive
-													? "bg-primary border-primary text-primary-foreground shadow-primary/20 shadow-md"
-													: "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-											}`}
-										>
-											{labels[t]}
-										</button>
-									);
-								})}
-							</div>
+							<ToggleGroup
+								type="single"
+								value={theme}
+								onValueChange={(v) => v && setTheme(v)}
+								size="sm"
+								variant="outline"
+							>
+								<ToggleGroupItem value="system">跟随系统</ToggleGroupItem>
+								<ToggleGroupItem value="light">浅色模式</ToggleGroupItem>
+								<ToggleGroupItem value="dark">深色模式</ToggleGroupItem>
+							</ToggleGroup>
 						</div>
 					</CardContent>
 				</Card>
@@ -869,9 +868,9 @@ export default function Settings() {
 							BT Trackers 设置 (加速磁力解析与下载)
 						</CardTitle>
 					</CardHeader>
-					<CardContent className="px-5 pb-6 space-y-4 text-xs">
+					<CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
 						{/* Tracker Online Sync & Enhancement Section */}
-						<div className="border border-border bg-secondary/30 rounded-lg p-4 space-y-4 mb-6">
+						<div className="border border-border bg-secondary/30 rounded-lg p-4 flex flex-col gap-4 mb-6">
 							<div className="flex items-center justify-between border-b border-border pb-2">
 								<h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
 									<Globe className="h-3.5 w-3.5 text-primary" />
@@ -884,85 +883,66 @@ export default function Settings() {
 
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								{/* Left side: Configs */}
-								<div className="space-y-3.5">
+								<div className="flex flex-col gap-3.5">
 									{/* Source Type Selection */}
-									<div className="space-y-1.5">
+									<div className="flex flex-col gap-1.5">
 										<span className="text-[11px] text-muted-foreground font-medium">
 											选择列表源
 										</span>
-										<div className="flex flex-wrap gap-1">
-											{(
-												["best", "all", "best_ip", "all_ip", "custom"] as const
-											).map((type) => {
-												const labels: Record<string, string> = {
-													best: "最优列表 (推荐)",
-													all: "完整列表",
-													best_ip: "最优 IP",
-													all_ip: "完整 IP",
-													custom: "自定义",
-												};
-												const isActive = sourceType === type;
-												return (
-													<button
-														key={type}
-														type="button"
-														onClick={() => setSourceType(type)}
-														className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 ${
-															isActive
-																? "bg-primary border-primary text-primary-foreground shadow-primary/20 shadow-md"
-																: "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-														}`}
-													>
-														{labels[type]}
-													</button>
-												);
-											})}
-										</div>
+										<ToggleGroup
+											type="single"
+											value={sourceType}
+											onValueChange={(v) =>
+												v && setSourceType(v as TrackerSourceType)
+											}
+											size="sm"
+											variant="outline"
+											className="flex-wrap"
+										>
+											<ToggleGroupItem value="best">
+												最优列表 (推荐)
+											</ToggleGroupItem>
+											<ToggleGroupItem value="all">完整列表</ToggleGroupItem>
+											<ToggleGroupItem value="best_ip">最优 IP</ToggleGroupItem>
+											<ToggleGroupItem value="all_ip">完整 IP</ToggleGroupItem>
+											<ToggleGroupItem value="custom">自定义</ToggleGroupItem>
+										</ToggleGroup>
 									</div>
 
 									{/* CDN Selection */}
 									{sourceType !== "custom" && (
-										<div className="space-y-1.5">
+										<div className="flex flex-col gap-1.5">
 											<span className="text-[11px] text-muted-foreground font-medium">
 												CDN 加速节点
 											</span>
-											<div className="flex flex-wrap gap-1">
-												{(["jsdelivr", "gitmirror", "github"] as const).map(
-													(cdnType) => {
-														const labels: Record<string, string> = {
-															jsdelivr: "jsDelivr 加速)",
-															gitmirror: "GitMirror (镜像)",
-															github: "GitHub (原始)",
-														};
-														const isActive = cdn === cdnType;
-														return (
-															<button
-																key={cdnType}
-																type="button"
-																onClick={() => setCdn(cdnType)}
-																className={`px-2.5 py-1 text-[11px] font-medium rounded-md border transition-all duration-150 ${
-																	isActive
-																		? "bg-primary border-primary text-primary-foreground shadow-primary/20 shadow-md"
-																		: "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
-																}`}
-															>
-																{labels[cdnType]}
-															</button>
-														);
-													},
-												)}
-											</div>
+											<ToggleGroup
+												type="single"
+												value={cdn}
+												onValueChange={(v) => v && setCdn(v as TrackerCdnType)}
+												size="sm"
+												variant="outline"
+											>
+												<ToggleGroupItem value="jsdelivr">
+													jsDelivr 加速)
+												</ToggleGroupItem>
+												<ToggleGroupItem value="gitmirror">
+													GitMirror (镜像)
+												</ToggleGroupItem>
+												<ToggleGroupItem value="github">
+													GitHub (原始)
+												</ToggleGroupItem>
+											</ToggleGroup>
 										</div>
 									)}
 
 									{/* Auto Update Checkbox */}
 									<div className="flex items-center gap-2 pt-1">
-										<input
+										<Checkbox
 											id="auto-update-checkbox"
-											type="checkbox"
 											checked={autoUpdate}
-											onChange={(e) => setAutoUpdate(e.target.checked)}
-											className="h-3.5 w-3.5 rounded border-border bg-secondary/30 text-primary focus:ring-primary focus:ring-offset-0 accent-primary"
+											onCheckedChange={(checked) =>
+												setAutoUpdate(checked === true)
+											}
 										/>
 										<label
 											htmlFor="auto-update-checkbox"
@@ -974,8 +954,8 @@ export default function Settings() {
 								</div>
 
 								{/* Right side: Input URL & Sync actions */}
-								<div className="flex flex-col justify-between space-y-3">
-									<div className="space-y-1.5">
+								<div className="flex flex-col justify-between gap-3">
+									<div className="flex flex-col gap-1.5">
 										<label
 											htmlFor="tracker-url-input"
 											className="text-[11px] text-muted-foreground font-medium"
@@ -997,7 +977,7 @@ export default function Settings() {
 									</div>
 
 									{/* Sync actions */}
-									<div className="space-y-2">
+									<div className="flex flex-col gap-2">
 										<div className="flex gap-2">
 											<Button
 												type="button"
@@ -1038,7 +1018,7 @@ export default function Settings() {
 							</div>
 						</div>
 
-						<div className="space-y-2">
+						<div className="flex flex-col gap-2">
 							<div className="flex items-center justify-between">
 								<label
 									htmlFor="trackers-input"
@@ -1046,8 +1026,10 @@ export default function Settings() {
 								>
 									Tracker 服务器列表 (每行一个)
 								</label>
-								<button
+								<Button
 									type="button"
+									variant="link"
+									size="sm"
 									onClick={async () => {
 										try {
 											const defaults =
@@ -1060,21 +1042,21 @@ export default function Settings() {
 											);
 										}
 									}}
-									className="text-[11px] text-primary hover:underline font-medium"
+									className="text-[11px]"
 								>
 									重置为默认值
-								</button>
+								</Button>
 							</div>
-							<textarea
+							<Textarea
 								id="trackers-input"
 								value={trackersText}
 								onChange={(e) => setTrackersText(e.target.value)}
 								placeholder="请输入 Tracker 地址，每行输入一个"
 								rows={8}
-								className="w-full rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+								className="bg-secondary/30 text-xs"
 							/>
 							<p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
-								<Lightbulb className="h-3.5 w-3.5 text-yellow-500 shrink-0 mt-0.5" />
+								<Lightbulb className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
 								<span>
 									提示：添加高质量的公网 Tracker
 									可以极大地加快纯净磁力链接的解析速度，并帮助你更快地连接到

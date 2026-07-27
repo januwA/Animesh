@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
+import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
+import { Card, CardContent } from "@/presentation/components/ui/card";
 import { ScrollArea } from "@/presentation/components/ui/scroll-area";
 import { useRequestContext } from "@/presentation/hooks/useRequestContext";
 import { formatBytes, formatError } from "@/utils";
@@ -72,33 +74,34 @@ export default function TorrentDetail() {
 
 	if (loading) {
 		return (
-			<div
-				role="dialog"
-				className="flex flex-col items-center justify-center py-20 text-center space-y-4"
-			>
-				<Loader2 className="h-12 w-12 text-primary animate-spin mb-2" />
-				<h2 className="text-xl font-bold">正在启动下载引擎并解析种子...</h2>
-				<p className="text-sm text-muted-foreground max-w-md">
-					首次连接 Peer 并下载 Metadata 可能需要较长时间，请稍等
-				</p>
-				<Button variant="outline" onClick={handleBack} className="mt-4">
-					取消解析并返回
-				</Button>
-			</div>
+			<Card className="py-20">
+				<CardContent
+					className="flex flex-col items-center justify-center text-center gap-4"
+					role="dialog"
+				>
+					<Loader2 className="h-12 w-12 text-primary animate-spin mb-2" />
+					<h2 className="text-xl font-bold">正在启动下载引擎并解析种子...</h2>
+					<p className="text-sm text-muted-foreground max-w-md">
+						首次连接 Peer 并下载 Metadata 可能需要较长时间，请稍等
+					</p>
+					<Button variant="outline" onClick={handleBack} className="mt-4">
+						取消解析并返回
+					</Button>
+				</CardContent>
+			</Card>
 		);
 	}
 
 	if (error || !torrent) {
 		return (
-			<div
-				role="dialog"
-				className="flex flex-col items-center justify-center py-20 text-center space-y-4"
-			>
-				<h2 className="text-xl font-bold text-destructive">种子解析失败</h2>
-				<p className="text-sm text-muted-foreground max-w-md">
-					{error || /* v8 ignore next */ "未知错误"}
-				</p>
-				<Button variant="outline" onClick={handleBack} className="mt-4">
+			<div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+				<Alert variant="destructive" className="max-w-md">
+					<h2 className="text-xl font-bold">种子解析失败</h2>
+					<AlertDescription>
+						{error || /* v8 ignore next */ "未知错误"}
+					</AlertDescription>
+				</Alert>
+				<Button variant="outline" onClick={handleBack}>
 					返回
 				</Button>
 			</div>
@@ -106,21 +109,19 @@ export default function TorrentDetail() {
 	}
 
 	return (
-		<div className="w-full space-y-4 animate-in fade-in duration-300">
+		<div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">
 			{/* Navigation Header */}
-			<button
-				type="button"
+			<Button
+				variant="ghost"
+				size="sm"
 				onClick={handleBack}
-				className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-fit"
+				className="gap-2 text-muted-foreground hover:text-foreground w-fit"
 			>
 				<ArrowLeft className="h-4 w-4" />
 				返回
-			</button>
+			</Button>
 
-			<div
-				role="dialog"
-				className="bg-card border border-border rounded-xl p-4 sm:p-6 space-y-4 sm:space-y-6"
-			>
+			<Card className="p-4 sm:p-6 flex flex-col gap-4 sm:gap-6">
 				{/* Header info */}
 				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
 					<div className="space-y-1 flex-1 min-w-0">
@@ -148,7 +149,7 @@ export default function TorrentDetail() {
 						</Badge>
 					</div>
 					<ScrollArea className="border border-border rounded-lg bg-muted/30 p-3">
-						<div className="space-y-2">
+						<div className="flex flex-col gap-2">
 							{torrent.files.map((file) => (
 								<div
 									key={file.id}
@@ -181,7 +182,7 @@ export default function TorrentDetail() {
 						</div>
 					</ScrollArea>
 				</div>
-			</div>
+			</Card>
 		</div>
 	);
 }

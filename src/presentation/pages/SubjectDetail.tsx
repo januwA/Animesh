@@ -25,6 +25,11 @@ import { LazyImage } from "@/presentation/components/LazyImage";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
+import {
+	Empty,
+	EmptyContent,
+	EmptyTitle,
+} from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
@@ -100,7 +105,7 @@ function CharacterCard({ character }: { character: BangumiCharacter }) {
 			</div>
 
 			{/* Character info */}
-			<div className="p-3 space-y-2 flex-1 flex flex-col">
+			<div className="p-3 flex-1 flex flex-col gap-1">
 				<h3 className="text-sm font-semibold leading-tight text-foreground line-clamp-1">
 					{character.name}
 				</h3>
@@ -166,9 +171,9 @@ function CharactersSkeleton() {
 
 function StaffSkeleton() {
 	return (
-		<div className="space-y-4">
+		<div className="flex flex-col gap-4">
 			{[0, 1, 2, 3].map((n) => (
-				<div key={n} className="space-y-2">
+				<div key={n} className="flex flex-col gap-2">
 					<Skeleton className="h-4 w-24" />
 					<div className="flex flex-wrap gap-2">
 						{[0, 1, 2].map((n) => (
@@ -390,7 +395,7 @@ export default function SubjectDetail() {
 	const imageUrl = subject?.images?.large || state?.imageUrl;
 
 	return (
-		<div className="w-full space-y-6 animate-in fade-in duration-300">
+		<div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
 			{/* Navigation Header */}
 			<div className="flex items-center justify-between">
 				<Button
@@ -460,8 +465,8 @@ export default function SubjectDetail() {
 				</div>
 
 				{/* Title and Metadata */}
-				<div className="flex-1 flex flex-col justify-between space-y-4">
-					<div className="space-y-2">
+				<div className="flex-1 flex flex-col justify-between gap-4">
+					<div className="flex flex-col gap-2">
 						{!subject ? (
 							<div className="flex flex-wrap items-center gap-2">
 								<Skeleton className="h-5 w-16 rounded-full" />
@@ -592,7 +597,7 @@ export default function SubjectDetail() {
 			) : (
 				subject.summary && (
 					<Card className="bg-card border border-border rounded-xl">
-						<CardContent className="p-6 space-y-2 relative overflow-hidden">
+						<CardContent className="p-6 flex flex-col gap-2 relative overflow-hidden">
 							<h2 className="text-sm font-semibold text-muted-foreground">
 								剧情简介
 							</h2>
@@ -646,7 +651,7 @@ export default function SubjectDetail() {
 			)}
 
 			{/* Characters Section */}
-			<div className="space-y-4">
+			<div className="flex flex-col gap-4">
 				<div className="flex items-center gap-2">
 					<h2 className="text-lg font-bold text-foreground">角色</h2>
 					{characters.length > 0 && (
@@ -670,14 +675,16 @@ export default function SubjectDetail() {
 						))}
 					</div>
 				) : (
-					<div className="text-center py-8 text-sm text-muted-foreground bg-card border border-border rounded-xl">
-						暂无角色数据
-					</div>
+					<Empty className="py-8">
+						<EmptyContent>
+							<EmptyTitle>暂无角色数据</EmptyTitle>
+						</EmptyContent>
+					</Empty>
 				)}
 			</div>
 
 			{/* Episodes List */}
-			<div className="space-y-4">
+			<div className="flex flex-col gap-4">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-bold text-foreground">剧集列表</h2>
 				</div>
@@ -723,7 +730,7 @@ export default function SubjectDetail() {
 									</div>
 
 									{/* Ep Details */}
-									<div className="flex-1 min-w-0 space-y-1">
+									<div className="flex-1 min-w-0 flex flex-col gap-1">
 										<div className="flex items-center gap-1.5 justify-between">
 											<h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
 												{ep.name_cn || ep.name}
@@ -739,14 +746,16 @@ export default function SubjectDetail() {
 						})}
 					</div>
 				) : (
-					<div className="text-center py-12 text-sm text-muted-foreground bg-card border border-border rounded-xl">
-						暂无剧集数据
-					</div>
+					<Empty className="py-12">
+						<EmptyContent>
+							<EmptyTitle>暂无剧集数据</EmptyTitle>
+						</EmptyContent>
+					</Empty>
 				)}
 			</div>
 
 			{/* Staff Section */}
-			<div className="space-y-4">
+			<div className="flex flex-col gap-4">
 				<div className="flex items-center gap-2">
 					<h2 className="text-lg font-bold text-foreground">制作人员</h2>
 					{persons.length > 0 && (
@@ -762,9 +771,9 @@ export default function SubjectDetail() {
 				{personsLoading ? (
 					<StaffSkeleton />
 				) : staffGroupedByRole.size > 0 ? (
-					<div className="space-y-5">
+					<div className="flex flex-col gap-5">
 						{Array.from(staffGroupedByRole.entries()).map(([role, people]) => (
-							<div key={role} className="space-y-2">
+							<div key={role} className="flex flex-col gap-2">
 								<h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 									{role}
 									<span className="ml-1.5 text-[10px] font-normal text-muted-foreground/60">
@@ -783,9 +792,11 @@ export default function SubjectDetail() {
 						))}
 					</div>
 				) : (
-					<div className="text-center py-8 text-sm text-muted-foreground bg-card border border-border rounded-xl">
-						暂无制作人员数据
-					</div>
+					<Empty className="py-8">
+						<EmptyContent>
+							<EmptyTitle>暂无制作人员数据</EmptyTitle>
+						</EmptyContent>
+					</Empty>
 				)}
 			</div>
 		</div>
