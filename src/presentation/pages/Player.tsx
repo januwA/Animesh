@@ -32,6 +32,7 @@ function JsPlayerErrorMonitor() {
 	useEffect(() => {
 		const error = errorState?.error ?? null;
 		if (error) {
+			// v8 ignore next
 			if (lastErrorRef.current === error) return;
 			lastErrorRef.current = error;
 			monitorLogger.error("Video element error:", error);

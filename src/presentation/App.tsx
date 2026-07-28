@@ -23,10 +23,10 @@ export default function App({ router, diContainer }: AppProps) {
 							<RouterProvider router={router} />
 							<Toaster
 								position="top-center"
-								closeButton
 								richColors
 								expand={false}
 								duration={3000}
+								mobileOffset={"calc(env(safe-area-inset-top, 0px) + 1.5rem)"}
 							/>
 						</ThemeProvider>
 					</AppContextProvider>
