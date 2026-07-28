@@ -921,6 +921,7 @@ export default function Settings() {
 												onValueChange={(v) => v && setCdn(v as TrackerCdnType)}
 												size="sm"
 												variant="outline"
+												className="flex-wrap"
 											>
 												<ToggleGroupItem value="jsdelivr">
 													jsDelivr 加速)

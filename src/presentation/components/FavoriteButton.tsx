@@ -6,9 +6,7 @@ import { Button } from "./ui/button";
 export interface FavoriteButtonSubject {
 	subjectId: number;
 	name: string;
-	nameCn: string;
 	imageUrl: string | null;
-	rating: number | null;
 }
 
 interface FavoriteButtonProps {
@@ -32,9 +30,7 @@ export function FavoriteButton({
 			collectionRepository.add({
 				subjectId: subject.subjectId,
 				name: subject.name,
-				nameCn: subject.nameCn,
 				imageUrl: subject.imageUrl,
-				rating: subject.rating,
 			});
 		}
 		setFavorited(!favorited);

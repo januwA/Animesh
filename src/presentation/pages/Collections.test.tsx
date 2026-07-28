@@ -45,13 +45,10 @@ describe("Collections 收藏页面", () => {
 				items: [
 					{
 						subjectId: 101,
-						name: "Original",
-						nameCn: "测试动画",
+						name: "测试动画",
 						imageUrl: null,
-						rating: 8.5,
 						platform: "TV",
 						date: "2026-07-01",
-						summary: "简介",
 						addedAt: Date.now(),
 					},
 				],
@@ -79,13 +76,9 @@ describe("Collections 收藏页面", () => {
 				items: [
 					{
 						subjectId: 201,
-						name: "ImageAnime",
-						nameCn: "带封面动画",
+						name: "带封面动画",
 						imageUrl: "https://example.com/cover.jpg",
-						rating: 9.0,
-						platform: "TV",
 						date: "2026-07-01",
-						summary: "有封面简介",
 						addedAt: Date.now(),
 					},
 				],
@@ -95,31 +88,6 @@ describe("Collections 收藏页面", () => {
 		renderWithProvider();
 		expect(screen.getByText("带封面动画")).toBeInTheDocument();
 		fireEvent.click(screen.getByTitle("详情: 带封面动画"));
-	});
-
-	it("无评分的条目不应显示评分", () => {
-		localStorage.setItem(
-			COLLECTION_STORAGE_KEY,
-			JSON.stringify({
-				items: [
-					{
-						subjectId: 301,
-						name: "NoRating",
-						nameCn: "无评分动画",
-						imageUrl: null,
-						rating: null,
-						platform: "TV",
-						date: "2026-07-01",
-						summary: "无评分",
-						addedAt: Date.now(),
-					},
-				],
-				lastUpdatedAt: Date.now(),
-			}),
-		);
-		renderWithProvider();
-		expect(screen.getByText("无评分动画")).toBeInTheDocument();
-		expect(screen.queryByText(/^\d+\.\d$/)).not.toBeInTheDocument();
 	});
 
 	it("中文名为空时应回退显示英文名", () => {

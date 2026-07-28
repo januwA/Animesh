@@ -5,9 +5,7 @@ export const COLLECTION_STORAGE_KEY = "animesh:collections";
 export const FavoriteItemSchema = z.object({
 	subjectId: z.number(),
 	name: z.string(),
-	nameCn: z.string(),
 	imageUrl: z.string().nullable(),
-	rating: z.number().nullable(),
 	addedAt: z.number(),
 });
 

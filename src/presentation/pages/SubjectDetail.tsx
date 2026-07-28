@@ -413,10 +413,8 @@ export default function SubjectDetail() {
 						<FavoriteButton
 							subject={{
 								subjectId: subject.id,
-								name: subject.name,
-								nameCn: subject.name_cn,
+								name: subject.name_cn || subject.name,
 								imageUrl: subject.images?.large ?? null,
-								rating: subject.rating?.score ?? null,
 							}}
 							showLabel={false}
 						/>

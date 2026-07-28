@@ -5,10 +5,10 @@ import { DIProvider } from "@/di/DIContext";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { AppContextProvider } from "../context/AppContext";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
-import { AppHeader } from "./AppComponents";
+import { AppNavBar } from "./AppComponents";
 
 describe("AppComponents 组件", () => {
-	it("AppHeader 应该在 TorrentStatusProvider 下正确渲染", async () => {
+	it("AppNavBar 应该在 TorrentStatusProvider 下正确渲染", async () => {
 		let resolveUnsubscribe: any;
 		const unsubMock = vi.fn();
 		const promise = new Promise<any>((resolve) => {
@@ -26,7 +26,7 @@ describe("AppComponents 组件", () => {
 				<TorrentStatusProvider>
 					<AppContextProvider>
 						<MemoryRouter>
-							<AppHeader />
+							<AppNavBar />
 						</MemoryRouter>
 					</AppContextProvider>
 				</TorrentStatusProvider>

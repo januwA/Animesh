@@ -36,7 +36,11 @@ import {
 	EmptyDescription,
 	EmptyTitle,
 } from "@/presentation/components/ui/empty";
-import { Field, FieldLabel } from "@/presentation/components/ui/field";
+import {
+	Field,
+	FieldContent,
+	FieldLabel,
+} from "@/presentation/components/ui/field";
 import { Progress } from "@/presentation/components/ui/progress";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
@@ -307,36 +311,34 @@ export default function Downloads() {
 					</DialogHeader>
 
 					{/* File deletion checkbox */}
-					<Field className="flex flex-row items-center gap-2.5 py-3 border-t border-b border-border my-2">
+					<Field orientation="horizontal">
 						<Checkbox
 							id="delete-files-checkbox"
 							checked={deleteFiles}
 							onCheckedChange={(checked) => setDeleteFiles(checked === true)}
 						/>
-						<FieldLabel
-							htmlFor="delete-files-checkbox"
-							className="text-xs font-medium cursor-pointer select-none"
-						>
-							同时删除已下载的本地缓存文件 (彻底释放磁盘空间)
-						</FieldLabel>
+						<FieldContent>
+							<FieldLabel
+								htmlFor="delete-files-checkbox"
+								className="text-xs font-medium cursor-pointer select-none"
+							>
+								同时删除已下载的本地缓存文件 (彻底释放磁盘空间)
+							</FieldLabel>
+						</FieldContent>
 					</Field>
 
-					<DialogFooter className="gap-2 sm:gap-0 mt-2">
+					<DialogFooter>
 						<Button
 							variant="ghost"
-							size="sm"
 							onClick={() => setDeleteTarget(null)}
 							disabled={isActionPending}
-							className="text-xs font-medium"
 						>
 							取消
 						</Button>
 						<Button
 							variant="destructive"
-							size="sm"
 							onClick={handleDelete}
 							disabled={isActionPending}
-							className="text-xs font-medium gap-1"
 						>
 							{isActionPending && <Loader2 className="h-3 w-3 animate-spin" />}
 							确认删除

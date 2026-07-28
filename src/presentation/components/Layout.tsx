@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
-import { AppHeader, PageLoader } from "./AppComponents";
+import { AppNavBar, PageLoader } from "./AppComponents";
 
 export function NavBarLayout() {
 	return (
 		<>
-			<AppHeader />
+			<AppNavBar />
 			<Outlet />
 		</>
 	);
@@ -17,7 +17,7 @@ export function MainLayout() {
 
 	return (
 		<main
-			className="container max-w-6xl mx-auto px-4 pb-24 md:py-10 flex flex-col min-h-screen"
+			className="container max-w-6xl mx-auto px-4 pb-24 md:pb-24 md:pt-10 flex flex-col min-h-screen"
 			style={{
 				paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
 			}}

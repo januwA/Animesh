@@ -23,8 +23,8 @@ const navItems = [
 	{ path: "/settings", label: "设置", icon: SettingsIcon },
 ];
 
-// 页面头部组件
-export function AppHeader() {
+// 底部导航组件
+export function AppNavBar() {
 	const location = useLocation();
 	const { torrents } = useTorrentStatus();
 	const activeCount = torrents.filter((t) => !t.finished && !t.paused).length;
@@ -53,7 +53,7 @@ export function AppHeader() {
 								"md:flex-row md:gap-2 md:px-4 md:py-2.5 md:rounded-xl md:text-sm md:font-semibold",
 								isActive
 									? "bg-primary/10 text-foreground shadow-none md:bg-primary/15 md:text-primary md:shadow-sm"
-									: "text-muted-foreground hover:text-foreground hover:bg-accent/50 hover:text-accent-foreground",
+									: "text-muted-foreground hover:text-foreground hover:bg-accent/50",
 							)}
 						>
 							{isActive && (
