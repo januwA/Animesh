@@ -84,46 +84,6 @@ describe("Player 页面组件", () => {
 		currentLocation.current = null;
 		vi.clearAllMocks();
 		vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
-
-		const mockTracksList: any = [
-			{
-				id: "1",
-				mode: "disabled",
-			},
-			{
-				id: "2",
-				mode: "disabled",
-			},
-			{
-				id: "3",
-				mode: "disabled",
-			},
-		];
-		const addTrackListeners: any[] = [];
-		mockTracksList.addEventListener = vi.fn((event, listener) => {
-			if (event === "addtrack") {
-				addTrackListeners.push(listener);
-			}
-		});
-		mockTracksList.removeEventListener = vi.fn((event, listener) => {
-			if (event === "addtrack") {
-				const index = addTrackListeners.indexOf(listener);
-				if (index > -1) {
-					addTrackListeners.splice(index, 1);
-				}
-			}
-		});
-		mockTracksList.triggerAddTrack = () => {
-			for (const listener of addTrackListeners) {
-				listener();
-			}
-		};
-
-		Object.defineProperty(HTMLMediaElement.prototype, "textTracks", {
-			configurable: true,
-			writable: true,
-			value: mockTracksList,
-		});
 	});
 
 	afterEach(() => {
@@ -427,7 +387,7 @@ describe("Player 页面组件", () => {
 		expect(mockUnsub).toHaveBeenCalled();
 	});
 
-	it("应该成功获取字幕轨道并支持切换字幕轨道", async () => {
+	it("应该成功获取字幕轨道并预加载所有字幕 VTT", async () => {
 		vi.useFakeTimers();
 
 		const mockStatus = {
@@ -469,79 +429,22 @@ describe("Player 页面组件", () => {
 			await vi.runOnlyPendingTimersAsync();
 		});
 
-		// Trigger the addtrack event listener to cover handleAddTrack
-		const textTracks = HTMLMediaElement.prototype.textTracks;
-		if (
-			textTracks &&
-			typeof (textTracks as any).triggerAddTrack === "function"
-		) {
-			(textTracks as any).triggerAddTrack();
-		}
-
-		// Verify the select trigger is rendered
-		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
-		const selectTrigger = screen.getByRole("combobox");
-		expect(selectTrigger).toBeInTheDocument();
-		// Defaults to the first subtitle
-		expect(selectTrigger).toHaveTextContent("English [ENG]");
-
+		// All 3 subtitle VTTs should be preloaded (not just the first one)
 		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
 			"hash123",
 			0,
 			1,
 		);
-
-		// Open dropdown
-		fireEvent.click(selectTrigger);
-
-		// Click to select the Chinese subtitle (to trigger revoking of English subtitle prev URL)
-		const chiItem = screen.getByText("Chinese [CHI]");
-		fireEvent.click(chiItem);
-
-		await act(async () => {
-			await vi.runOnlyPendingTimersAsync();
-		});
-
 		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
 			"hash123",
 			0,
 			2,
 		);
-
-		// Open dropdown again
-		fireEvent.click(selectTrigger);
-
-		// Click to select track 3 (to cover empty title, language fallbacks)
-		const track3Item = screen.getByText("轨道 3 []");
-		fireEvent.click(track3Item);
-
-		await act(async () => {
-			await vi.runOnlyPendingTimersAsync();
-		});
-
 		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
 			"hash123",
 			0,
 			3,
 		);
-
-		// Open dropdown again and select English again (already loaded, covers branch)
-		fireEvent.click(selectTrigger);
-		const engItemAgain = screen.getByText("English [ENG]");
-		fireEvent.click(engItemAgain);
-
-		await act(async () => {
-			await vi.runOnlyPendingTimersAsync();
-		});
-
-		// Open dropdown again and select "无"
-		fireEvent.click(selectTrigger);
-		const noneItem = screen.getByText("无");
-		fireEvent.click(noneItem);
-
-		await act(async () => {
-			await vi.runOnlyPendingTimersAsync();
-		});
 	});
 
 	it("当获取字幕轨道列表失败时，应该优雅处理并打印错误", async () => {
@@ -575,8 +478,6 @@ describe("Player 页面组件", () => {
 		await act(async () => {
 			await vi.runOnlyPendingTimersAsync();
 		});
-
-		expect(screen.queryByText("字幕轨道:")).not.toBeInTheDocument();
 
 		// Trigger the interval and wait for the polling catch block to execute
 		await act(async () => {
@@ -669,8 +570,6 @@ describe("Player 页面组件", () => {
 			await Promise.resolve();
 		});
 
-		expect(screen.queryByText("字幕轨道:")).not.toBeInTheDocument();
-
 		// Advance timers to trigger the polling which will succeed
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(1500);
@@ -683,14 +582,12 @@ describe("Player 页面组件", () => {
 			});
 		}
 
-		// Verify the subtitle tracks are now loaded and displayed
-		expect(screen.getByText("字幕轨道:")).toBeInTheDocument();
-		expect(screen.getByRole("combobox")).toBeInTheDocument();
-		expect(screen.getByRole("combobox")).toHaveTextContent("English [ENG]");
-
-		// Open dropdown and verify the track exists
-		fireEvent.click(screen.getByRole("combobox"));
-		expect(screen.getAllByText("English [ENG]").length).toBe(2);
+		// Verify subtitle VTT was loaded after polling succeeded
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
+			"hash123",
+			0,
+			1,
+		);
 
 		vi.useRealTimers();
 	});
@@ -711,67 +608,57 @@ describe("Player 页面组件", () => {
 			peers_total: 0,
 		});
 
-		const { container } = renderPlayer("/play/hash123/0?fileName=test.mp4");
+		renderPlayer("/play/hash123/0?fileName=test.mp4");
 
-		let video: HTMLVideoElement | null = null;
 		await waitFor(() => {
-			video = container.querySelector("video");
-			expect(video).toBeInTheDocument();
+			expect(screen.getByText("下载进度: 40.00%")).toBeInTheDocument();
 		});
+
+		const vjsMock = (globalThis as any).__vjsMock;
 
 		// 1. Test error code 4 (格式不支持)
-		Object.defineProperty(video!, "error", {
-			value: { code: 4 },
-			configurable: true,
-			writable: true,
+		await act(() => {
+			vjsMock.setError({ code: 4 });
+			vjsMock.trigger();
 		});
-		fireEvent.error(video!);
 		expect(toast.error).toHaveBeenCalledWith(
 			"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。",
 			{ duration: 8000 },
 		);
 
 		// 2. Test error code 3 (解码失败)
-		Object.defineProperty(video!, "error", {
-			value: { code: 3 },
-			configurable: true,
-			writable: true,
+		await act(() => {
+			vjsMock.setError({ code: 3 });
+			vjsMock.trigger();
 		});
-		fireEvent.error(video!);
 		expect(toast.error).toHaveBeenCalledWith(
 			"视频解码失败，可能数据已损坏或编码不支持。",
 			{ duration: 8000 },
 		);
 
 		// 3. Test error code 2 (网络断开)
-		Object.defineProperty(video!, "error", {
-			value: { code: 2 },
-			configurable: true,
-			writable: true,
+		await act(() => {
+			vjsMock.setError({ code: 2 });
+			vjsMock.trigger();
 		});
-		fireEvent.error(video!);
 		expect(toast.error).toHaveBeenCalledWith("视频加载超时或网络断开。", {
 			duration: 8000,
 		});
 
-		// 4. Test generic error (code is null/other)
-		Object.defineProperty(video!, "error", {
-			value: null,
-			configurable: true,
-			writable: true,
+		// 4. Test generic error (code 0 falls through to generic message)
+		await act(() => {
+			vjsMock.setError({ code: 0 });
+			vjsMock.trigger();
 		});
-		fireEvent.error(video!);
 		expect(toast.error).toHaveBeenCalledWith("视频加载失败", {
 			duration: 8000,
 		});
 
 		// 5. Test error code 1 (covers inner conditional else branch)
-		Object.defineProperty(video!, "error", {
-			value: { code: 1 },
-			configurable: true,
-			writable: true,
+		await act(() => {
+			vjsMock.setError({ code: 1 });
+			vjsMock.trigger();
 		});
-		fireEvent.error(video!);
 		expect(toast.error).toHaveBeenCalledWith("视频加载失败", {
 			duration: 8000,
 		});
@@ -1029,23 +916,6 @@ describe("Player 页面组件", () => {
 		vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue("WEBVTT");
 
 		const { unmount } = renderPlayer("/play/hash123/0");
-
-		await act(async () => {
-			await vi.runOnlyPendingTimersAsync();
-		});
-
-		const textTracks = HTMLMediaElement.prototype.textTracks;
-		if (
-			textTracks &&
-			typeof (textTracks as any).triggerAddTrack === "function"
-		) {
-			(textTracks as any).triggerAddTrack();
-		}
-
-		const selectTrigger = screen.getByRole("combobox");
-		fireEvent.click(selectTrigger);
-		const engItem = screen.getByRole("option", { name: "English [ENG]" });
-		fireEvent.click(engItem);
 
 		await act(async () => {
 			await vi.runOnlyPendingTimersAsync();

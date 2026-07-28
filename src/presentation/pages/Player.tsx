@@ -16,14 +16,44 @@ import type {
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import { Progress } from "@/presentation/components/ui/progress";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/presentation/components/ui/select";
 import { formatBytes, formatError } from "@/utils";
+import "@videojs/react/video/skin.css";
+import { createPlayer, selectError, videoFeatures } from "@videojs/react";
+import { Video, VideoSkin } from "@videojs/react/video";
+
+const JsPlayer = createPlayer({ features: videoFeatures });
+
+function JsPlayerErrorMonitor() {
+	const errorState = JsPlayer.usePlayer(selectError);
+	const { logger } = useDI();
+	const monitorLogger = useMemo(() => logger.withCategory("Player"), [logger]);
+	const lastErrorRef = useRef<object | null>(null);
+
+	useEffect(() => {
+		const error = errorState?.error ?? null;
+		if (error) {
+			if (lastErrorRef.current === error) return;
+			lastErrorRef.current = error;
+			monitorLogger.error("Video element error:", error);
+
+			let errorMsg = "视频加载失败";
+			if (error.code === 4) {
+				errorMsg =
+					"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。";
+			} else if (error.code === 3) {
+				errorMsg = "视频解码失败，可能数据已损坏或编码不支持。";
+			} else if (error.code === 2) {
+				errorMsg = "视频加载超时或网络断开。";
+			}
+			toast.error(errorMsg, { duration: 8000 });
+			errorState?.dismissError?.();
+		} else {
+			lastErrorRef.current = null;
+		}
+	}, [errorState?.error, monitorLogger, errorState?.dismissError]);
+
+	return null;
+}
 
 export default function Player() {
 	const navigate = useNavigate();
@@ -52,10 +82,7 @@ export default function Player() {
 	const [loading, setLoading] = useState(true);
 
 	const [subtracks, setSubtracks] = useState<SubtitleTrackInfo[]>([]);
-	const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
 	const [subtrackSrcs, setSubtrackSrcs] = useState<Record<number, string>>({});
-	const [subloading, setSubloading] = useState<boolean>(false);
-	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const subtrackSrcsRef = useRef<Record<number, string>>({});
 
 	// Clean up subtitle object URLs on unmount
@@ -73,7 +100,6 @@ export default function Player() {
 		async (trackId: number) => {
 			/* v8 ignore next */
 			if (!infoHash || fileId === undefined) return;
-			setSubloading(true);
 			try {
 				const parsedFileId = parseInt(fileId, 10);
 				const vttContent = await getSubtitleVttUseCase.execute({
@@ -88,72 +114,12 @@ export default function Player() {
 					subtrackSrcsRef.current = next;
 					return next;
 				});
-				setSelectedTrackId(trackId);
 			} catch (err: unknown) {
 				toast.error(`加载字幕失败: ${formatError(err)}`);
-			} finally {
-				setSubloading(false);
 			}
 		},
 		[infoHash, fileId, getSubtitleVttUseCase],
 	);
-
-	// Synchronize subtitle track selection between Video.js and external state
-	useEffect(() => {
-		if (videoRef.current) {
-			const video = videoRef.current;
-
-			const updateTrackModes = () => {
-				const expectedId =
-					selectedTrackId !== null ? selectedTrackId.toString() : "none";
-				for (let i = 0; i < video.textTracks.length; i++) {
-					const track = video.textTracks[i];
-					if (track.id === expectedId) {
-						track.mode = "showing";
-					} else {
-						track.mode = "disabled";
-					}
-				}
-			};
-
-			updateTrackModes();
-
-			/* v8 ignore start */
-			const handleTrackChange = () => {
-				let activeId: number | null = null;
-				for (let i = 0; i < video.textTracks.length; i++) {
-					const track = video.textTracks[i];
-					if (track.mode === "showing") {
-						const parsedId = parseInt(track.id, 10);
-						if (!Number.isNaN(parsedId)) {
-							activeId = parsedId;
-						}
-					}
-				}
-
-				if (activeId !== selectedTrackId) {
-					if (activeId === null) {
-						setSelectedTrackId(null);
-					} else {
-						if (!subtrackSrcs[activeId]) {
-							loadSubtitleVtt(activeId);
-						} else {
-							setSelectedTrackId(activeId);
-						}
-					}
-				}
-			};
-			/* v8 ignore stop */
-
-			video.textTracks.addEventListener("change", handleTrackChange);
-			video.textTracks.addEventListener("addtrack", updateTrackModes);
-
-			return () => {
-				video.textTracks.removeEventListener("change", handleTrackChange);
-				video.textTracks.removeEventListener("addtrack", updateTrackModes);
-			};
-		}
-	}, [selectedTrackId, subtrackSrcs, loadSubtitleVtt]);
 
 	useEffect(() => {
 		if (!infoHash || fileId === undefined) {
@@ -177,7 +143,7 @@ export default function Player() {
 				setSubtracks(tracks || []);
 				loadedTracks = true;
 				if (tracks && tracks.length > 0) {
-					loadSubtitleVtt(tracks[0].id);
+					await Promise.all(tracks.map((t) => loadSubtitleVtt(t.id)));
 				}
 			} catch (err: unknown) {
 				if (!active) return;
@@ -282,47 +248,24 @@ export default function Player() {
 		(torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 < 1 ? (
 			<Loader2 className="h-10 w-10 text-primary animate-spin" />
 		) : (
-			<>
+			<JsPlayer.Provider>
 				{/* biome-ignore lint/a11y/useMediaCaption: subtitles are loaded dynamically from torrent file */}
-				<video
-					ref={videoRef}
-					src={streamUrl}
-					controls
-					playsInline
-					webkit-playsinline="true"
-					className="w-full object-contain max-h-dvh"
-					onError={(e) => {
-						const video = e.currentTarget;
-						const mediaError = video.error;
-						playerLogger.error("Video element error:", mediaError);
-
-						let errorMsg = "视频加载失败";
-						if (mediaError) {
-							if (mediaError.code === 4) {
-								errorMsg =
-									"当前浏览器不支持播放该格式（例如 MKV 容器），建议点击上方按钮“用系统播放器播放”。";
-							} else if (mediaError.code === 3) {
-								errorMsg = "视频解码失败，可能数据已损坏或编码不支持。";
-							} else if (mediaError.code === 2) {
-								errorMsg = "视频加载超时或网络断开。";
-							}
-						}
-						toast.error(errorMsg, { duration: 8000 });
-					}}
-				>
-					{subtracks.map((track) => (
-						<track
-							id={track.id.toString()}
-							key={track.id}
-							kind="subtitles"
-							src={subtrackSrcs[track.id] || undefined}
-							srcLang={track.language}
-							label={track.title || `轨道 ${track.id}`}
-							default={track.id === selectedTrackId}
-						/>
-					))}
-				</video>
-			</>
+				<VideoSkin className="w-full max-h-dvh">
+					<Video src={streamUrl} playsInline>
+						{subtracks.map((track) => (
+							<track
+								key={track.id}
+								id={track.id.toString()}
+								kind="subtitles"
+								src={subtrackSrcs[track.id] || undefined}
+								srcLang={track.language}
+								label={track.title || `轨道 ${track.id}`}
+							/>
+						))}
+					</Video>
+				</VideoSkin>
+				<JsPlayerErrorMonitor />
+			</JsPlayer.Provider>
 		);
 
 	return (
@@ -369,65 +312,6 @@ export default function Player() {
 				<div className="relative w-full max-h-dvh overflow-hidden">
 					{videoElement}
 				</div>
-
-				{/* Subtitle Tracks Selection */}
-				{!loading && streamUrl && subtracks.length > 0 && (
-					<div className="flex items-center gap-2.5">
-						<span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-							字幕轨道:
-						</span>
-						<div className="flex items-center gap-2">
-							<Select
-								value={
-									selectedTrackId === null ? "none" : selectedTrackId.toString()
-								}
-								onValueChange={(val) => {
-									if (val === "none") {
-										setSelectedTrackId(null);
-									} else {
-										const id = parseInt(val, 10);
-										if (!subtrackSrcs[id]) {
-											loadSubtitleVtt(id);
-										} else {
-											/* v8 ignore next 2 */
-											setSelectedTrackId(id);
-										}
-									}
-								}}
-								disabled={subloading}
-							>
-								<SelectTrigger className="border-border">
-									<SelectValue placeholder="选择字幕轨道" />
-								</SelectTrigger>
-								<SelectContent
-									position="popper"
-									className="z-50 bg-popover border-border text-popover-foreground"
-								>
-									<SelectItem
-										value="none"
-										className="hover:bg-accent cursor-pointer"
-									>
-										无
-									</SelectItem>
-									{subtracks.map((track) => (
-										<SelectItem
-											key={track.id}
-											value={track.id.toString()}
-											className="hover:bg-accent cursor-pointer"
-										>
-											{track.title
-												? `${track.title} [${track.language.toUpperCase()}]`
-												: `轨道 ${track.id} [${track.language.toUpperCase()}]`}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-							{subloading && (
-								<Loader2 className="h-4 w-4 text-primary animate-spin" />
-							)}
-						</div>
-					</div>
-				)}
 
 				{/* Progress & Speed */}
 				<div className="flex flex-col gap-4">

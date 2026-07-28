@@ -30,6 +30,59 @@ vi.mock("react-router-dom", async (importOriginal) => {
 	};
 });
 
+// Mock @videojs/react for testing
+const __vjsMock = vi.hoisted(() => {
+	let _error: MediaError | null = null;
+	let _trigger: (() => void) | null = null;
+	const api = {
+		setError: (err: MediaError | null) => {
+			_error = err;
+		},
+		getError: () => _error,
+		trigger: () => _trigger?.(),
+		_setTrigger: (fn: (() => void) | null) => {
+			_trigger = fn;
+		},
+	};
+	(globalThis as any).__vjsMock = api;
+	return api;
+});
+
+vi.mock("@videojs/react/video/skin.css", () => ({}));
+
+vi.mock("@videojs/react", async () => {
+	const React = await import("react");
+	return {
+		createPlayer: () => ({
+			Provider: ({ children }: any) => children,
+			usePlayer: (selector?: any) => {
+				const [, forceUpdate] = React.useReducer((x: number) => x + 1, 0);
+				React.useEffect(() => {
+					__vjsMock._setTrigger(forceUpdate);
+					return () => __vjsMock._setTrigger(null);
+				});
+				const state = { error: __vjsMock.getError() };
+				return selector ? selector(state) : state;
+			},
+		}),
+		videoFeatures: [],
+		selectError: (s: any) => ({
+			error: s.error,
+			dismissError: () => __vjsMock.setError(null),
+		}),
+	};
+});
+
+vi.mock("@videojs/react/video", async () => {
+	const React = await import("react");
+	return {
+		VideoSkin: ({ children, className }: any) =>
+			React.createElement("div", { className }, children),
+		Video: ({ src, playsInline, children }: any) =>
+			React.createElement("video", { src, playsInline }, children),
+	};
+});
+
 // Mock CSS.supports to prevent JSDOM crash when initializing video.js components
 if (typeof window !== "undefined") {
 	if (typeof window.CSS === "undefined") {
