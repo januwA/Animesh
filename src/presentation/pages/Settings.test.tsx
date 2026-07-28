@@ -84,7 +84,6 @@ describe("Settings 页面组件", () => {
 	});
 
 	afterEach(() => {
-		vi.useRealTimers();
 		vi.unstubAllEnvs();
 	});
 
