@@ -387,7 +387,7 @@ describe("Player 页面组件", () => {
 		expect(mockUnsub).toHaveBeenCalled();
 	});
 
-	it("应该成功获取字幕轨道并预加载所有字幕 VTT", async () => {
+	it("应该成功获取字幕轨道并惰性加载第一个字幕 VTT", async () => {
 		vi.useFakeTimers();
 
 		const mockStatus = {
@@ -429,21 +429,12 @@ describe("Player 页面组件", () => {
 			await vi.runOnlyPendingTimersAsync();
 		});
 
-		// All 3 subtitle VTTs should be preloaded (not just the first one)
+		// Only the first subtitle VTT is preloaded initially (lazy loading)
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
 		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
 			"hash123",
 			0,
 			1,
-		);
-		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
-			"hash123",
-			0,
-			2,
-		);
-		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
-			"hash123",
-			0,
-			3,
 		);
 	});
 
@@ -1005,6 +996,116 @@ describe("Player 页面组件", () => {
 		await act(async () => {
 			rejectTracks(new Error("Subtitle fetch failed"));
 		});
+
+		vi.useRealTimers();
+	});
+
+	it("切换字幕轨道时应该按需加载 VTT", async () => {
+		vi.useFakeTimers();
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		});
+		vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+			{ id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+			{ id: 2, language: "chi", title: "Chinese", codec: "S_TEXT/UTF8" },
+		]);
+		vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+			"WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+		);
+
+		renderPlayer("/play/hash123/0");
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
+			"hash123",
+			0,
+			1,
+		);
+
+		const trigger = screen.getByRole("combobox");
+		await act(async () => {
+			fireEvent.click(trigger);
+		});
+
+		const option = screen.getByRole("option", { name: /Chinese/i });
+		await act(async () => {
+			fireEvent.click(option);
+		});
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
+			"hash123",
+			0,
+			2,
+		);
+
+		vi.useRealTimers();
+	});
+
+	it("关闭字幕时应不加载额外 VTT", async () => {
+		vi.useFakeTimers();
+
+		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+			"http://127.0.0.1:12345/stream/hash123/0",
+		);
+		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+			info_hash: "hash123",
+			name: "测试视频",
+			progress_bytes: 400,
+			total_bytes: 1000,
+			finished: false,
+			download_speed_bytes_per_sec: 100,
+			paused: false,
+			peers_connected: 0,
+			peers_total: 0,
+		});
+		vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+			{ id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+			{ id: 2, language: "chi", title: "Chinese", codec: "S_TEXT/UTF8" },
+		]);
+		vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+			"WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+		);
+
+		renderPlayer("/play/hash123/0");
+
+		await act(async () => {
+			await vi.runOnlyPendingTimersAsync();
+		});
+
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
+
+		const trigger = screen.getByRole("combobox");
+		await act(async () => {
+			fireEvent.click(trigger);
+		});
+
+		const option = screen.getByRole("option", { name: "关闭" });
+		await act(async () => {
+			fireEvent.click(option);
+		});
+
+		expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
 
 		vi.useRealTimers();
 	});

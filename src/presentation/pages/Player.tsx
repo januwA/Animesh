@@ -16,6 +16,13 @@ import type {
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import { Progress } from "@/presentation/components/ui/progress";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/presentation/components/ui/select";
 import { formatBytes, formatError } from "@/utils";
 import "@videojs/react/video/skin.css";
 import { createPlayer, selectError, videoFeatures } from "@videojs/react";
@@ -85,6 +92,8 @@ export default function Player() {
 	const [subtracks, setSubtracks] = useState<SubtitleTrackInfo[]>([]);
 	const [subtrackSrcs, setSubtrackSrcs] = useState<Record<number, string>>({});
 	const subtrackSrcsRef = useRef<Record<number, string>>({});
+	const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
+	const [subtitleLoading, setSubtitleLoading] = useState(false);
 
 	// Clean up subtitle object URLs on unmount
 	useEffect(() => {
@@ -122,6 +131,19 @@ export default function Player() {
 		[infoHash, fileId, getSubtitleVttUseCase],
 	);
 
+	const handleSubtitleChange = useCallback(
+		async (trackId: string) => {
+			const id = trackId ? parseInt(trackId, 10) : null;
+			setSelectedTrackId(id);
+			if (id !== null && !subtrackSrcsRef.current[id]) {
+				setSubtitleLoading(true);
+				await loadSubtitleVtt(id);
+				setSubtitleLoading(false);
+			}
+		},
+		[loadSubtitleVtt],
+	);
+
 	useEffect(() => {
 		if (!infoHash || fileId === undefined) {
 			toast.error("无效的视频播放参数");
@@ -144,7 +166,9 @@ export default function Player() {
 				setSubtracks(tracks || []);
 				loadedTracks = true;
 				if (tracks && tracks.length > 0) {
-					await Promise.all(tracks.map((t) => loadSubtitleVtt(t.id)));
+					const first = tracks[0];
+					setSelectedTrackId(first.id);
+					await loadSubtitleVtt(first.id);
 				}
 			} catch (err: unknown) {
 				if (!active) return;
@@ -253,16 +277,19 @@ export default function Player() {
 				{/* biome-ignore lint/a11y/useMediaCaption: subtitles are loaded dynamically from torrent file */}
 				<VideoSkin className="w-full max-h-dvh">
 					<Video src={streamUrl} playsInline>
-						{subtracks.map((track) => (
-							<track
-								key={track.id}
-								id={track.id.toString()}
-								kind="subtitles"
-								src={subtrackSrcs[track.id] || undefined}
-								srcLang={track.language}
-								label={track.title || `轨道 ${track.id}`}
-							/>
-						))}
+						{subtracks
+							.filter((t) => t.id === selectedTrackId)
+							.map((track) => (
+								<track
+									key={track.id}
+									id={track.id.toString()}
+									kind="subtitles"
+									src={subtrackSrcs[track.id] || undefined}
+									srcLang={track.language}
+									label={track.title}
+									default
+								/>
+							))}
 					</Video>
 				</VideoSkin>
 				<JsPlayerErrorMonitor />
@@ -313,6 +340,34 @@ export default function Player() {
 				<div className="relative w-full max-h-dvh overflow-hidden">
 					{videoElement}
 				</div>
+
+				{/* Subtitle Selector */}
+				{subtracks.length > 0 && (
+					<div className="flex items-center gap-2">
+						<span className="text-xs text-muted-foreground shrink-0">
+							字幕:
+						</span>
+						<Select
+							value={selectedTrackId?.toString() ?? ""}
+							onValueChange={handleSubtitleChange}
+						>
+							<SelectTrigger className="w-45 h-8 text-xs">
+								<SelectValue placeholder="选择字幕" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="">关闭</SelectItem>
+								{subtracks.map((track) => (
+									<SelectItem key={track.id} value={track.id.toString()}>
+										{track.title || `轨道 ${track.id}`} ({track.language})
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						{subtitleLoading && (
+							<Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
+						)}
+					</div>
+				)}
 
 				{/* Progress & Speed */}
 				<div className="flex flex-col gap-4">

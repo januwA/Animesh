@@ -42,6 +42,7 @@ impl<S: tokio::io::AsyncSeek + Unpin> Seek for SyncReader<S> {
 pub struct ZeroCheckReader<R> {
     inner: R,
     consecutive_zeros: usize,
+    skip_check: bool,
 }
 
 impl<R> ZeroCheckReader<R> {
@@ -49,12 +50,25 @@ impl<R> ZeroCheckReader<R> {
         Self {
             inner,
             consecutive_zeros: 0,
+            skip_check: false,
+        }
+    }
+
+    pub fn new_skip_check(inner: R) -> Self {
+        Self {
+            inner,
+            consecutive_zeros: 0,
+            skip_check: true,
         }
     }
 }
 
 impl<R: Read> Read for ZeroCheckReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if self.skip_check {
+            return self.inner.read(buf);
+        }
+
         let n = self.inner.read(buf)?;
         if n == 0 {
             return Ok(0);
@@ -81,6 +95,9 @@ impl<R: Read> Read for ZeroCheckReader<R> {
 
 impl<R: Seek> Seek for ZeroCheckReader<R> {
     fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+        if self.skip_check {
+            return self.inner.seek(pos);
+        }
         // When seeking, reset consecutive zeros because we jumped to a new position
         self.consecutive_zeros = 0;
         self.inner.seek(pos)
@@ -89,8 +106,13 @@ impl<R: Seek> Seek for ZeroCheckReader<R> {
 
 pub fn extract_subtitle_tracks_from_reader<R: Read + Seek>(
     reader: R,
+    skip_check: bool,
 ) -> Result<Vec<SubtitleTrackInfo>, String> {
-    let checked_reader = ZeroCheckReader::new(reader);
+    let checked_reader = if skip_check {
+        ZeroCheckReader::new_skip_check(reader)
+    } else {
+        ZeroCheckReader::new(reader)
+    };
     let mkv =
         MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
 
@@ -116,8 +138,13 @@ pub fn extract_subtitle_tracks_from_reader<R: Read + Seek>(
 pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     reader: R,
     track_id: u64,
+    skip_check: bool,
 ) -> Result<String, String> {
-    let checked_reader = ZeroCheckReader::new(reader);
+    let checked_reader = if skip_check {
+        ZeroCheckReader::new_skip_check(reader)
+    } else {
+        ZeroCheckReader::new(reader)
+    };
     let mut mkv =
         MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
 
@@ -177,13 +204,13 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
 pub fn extract_subtitle_tracks(path: &Path) -> Result<Vec<SubtitleTrackInfo>, String> {
     let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
     let reader = BufReader::new(file);
-    extract_subtitle_tracks_from_reader(reader)
+    extract_subtitle_tracks_from_reader(reader, true)
 }
 
 pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> Result<String, String> {
     let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
     let reader = BufReader::new(file);
-    extract_subtitle_vtt_from_reader(reader, track_id)
+    extract_subtitle_vtt_from_reader(reader, track_id, true)
 }
 
 pub struct MatroskaSubtitleExtractor;

@@ -1,5 +1,6 @@
 use crate::domain::crawler::CrawlerRepository;
 use crate::domain::torrent::TorrentRepository;
+use crate::infrastructure::subtitle_cache::SubtitleCache;
 use crate::torrent::{parse_range, AddTorrentResult, FileDetails, TorrentStatusInfo};
 use axum::{
     body::Body,
@@ -41,6 +42,7 @@ pub struct TorrentManager {
     pub trackers: Arc<std::sync::RwLock<Vec<String>>>,
     pub settings_path: PathBuf,
     pub crawler_repo: Arc<dyn CrawlerRepository + Send + Sync>,
+    pub subtitle_cache: Arc<SubtitleCache>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -186,6 +188,7 @@ impl TorrentManager {
             trackers: trackers_lock,
             settings_path,
             crawler_repo,
+            subtitle_cache: Arc::new(SubtitleCache::new()),
         })
     }
 

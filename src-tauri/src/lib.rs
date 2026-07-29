@@ -289,19 +289,29 @@ async fn torrent_get_subtitle_tracks(
         return Ok(Vec::new());
     }
 
-    let stream = manager
-        .torrent_repo
-        .get_file_reader(info_hash, file_id)
-        .map_err(|e| format!("Failed to open torrent stream: {}", e))?;
-    let sync_reader = animesh_core::subtitles::SyncReader::new(stream);
-    let buffered_reader = std::io::BufReader::new(sync_reader);
+    let download_dir = manager.get_download_dir();
+    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
+    if !path.exists() {
+        return Err("Video file not downloaded or doesn't exist yet".to_string());
+    }
+
+    let cache = manager.subtitle_cache.clone();
+    let cache_path = path.clone();
+    if let Some(tracks) = cache.get_tracks(info_hash, file_id, &cache_path) {
+        return Ok(tracks);
+    }
 
     match tokio::task::spawn_blocking(move || {
-        animesh_core::subtitles::extract_subtitle_tracks_from_reader(buffered_reader)
+        let file = std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
+        let reader = std::io::BufReader::new(file);
+        animesh_core::subtitles::extract_subtitle_tracks_from_reader(reader, true)
     })
     .await
     {
-        Ok(Ok(tracks)) => Ok(tracks),
+        Ok(Ok(tracks)) => {
+            cache.set_tracks(info_hash, file_id, &cache_path, tracks.clone());
+            Ok(tracks)
+        }
         Ok(Err(e)) => Err(format!(
             "Failed to extract tracks (possibly file is incomplete): {}",
             e
@@ -335,12 +345,22 @@ async fn torrent_get_subtitle_vtt(
         return Err("Video file not downloaded or doesn't exist yet".to_string());
     }
 
+    let cache = manager.subtitle_cache.clone();
+    let cache_path = path.clone();
+    if let Some(vtt) = cache.get_vtt(info_hash, file_id, track_id, &cache_path) {
+        return Ok(vtt);
+    }
+
     match tokio::task::spawn_blocking(move || {
         animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
     })
     .await
     {
-        Ok(result) => result,
+        Ok(Ok(vtt)) => {
+            cache.set_vtt(info_hash, file_id, track_id, &cache_path, vtt.clone());
+            Ok(vtt)
+        }
+        Ok(Err(e)) => Err(e),
         Err(e) => Err(format!("Task spawn error: {}", e)),
     }
 }
