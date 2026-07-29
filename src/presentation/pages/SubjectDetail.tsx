@@ -31,6 +31,12 @@ import {
 	EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@/presentation/components/ui/tabs";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 
@@ -149,7 +155,10 @@ function StaffPersonBadge({
 
 function CharactersSkeleton() {
 	return (
-		<div className="flex overflow-x-auto gap-3 pb-2">
+		<div
+			className="flex overflow-x-auto gap-3 pb-2"
+			data-testid="characters-skeleton"
+		>
 			{[0, 1, 2, 3, 4].map((n) => (
 				<div
 					key={n}
@@ -171,7 +180,7 @@ function CharactersSkeleton() {
 
 function StaffSkeleton() {
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-4" data-testid="staff-skeleton">
 			{[0, 1, 2, 3].map((n) => (
 				<div key={n} className="flex flex-col gap-2">
 					<Skeleton className="h-4 w-24" />
@@ -648,39 +657,6 @@ export default function SubjectDetail() {
 				)
 			)}
 
-			{/* Characters Section */}
-			<div className="flex flex-col gap-4">
-				<div className="flex items-center gap-2">
-					<h2 className="text-lg font-bold text-foreground">角色</h2>
-					{characters.length > 0 && (
-						<Badge
-							variant="secondary"
-							className="text-xs border-border text-muted-foreground"
-						>
-							{characters.length}
-						</Badge>
-					)}
-				</div>
-
-				{charactersLoading ? (
-					<CharactersSkeleton />
-				) : characters.length > 0 ? (
-					<div className="flex overflow-x-auto gap-3 pb-2 snap-x scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent -mx-1 px-1">
-						{characters.map((char) => (
-							<div key={char.id} className="snap-start shrink-0 w-36">
-								<CharacterCard character={char} />
-							</div>
-						))}
-					</div>
-				) : (
-					<Empty className="py-8">
-						<EmptyContent>
-							<EmptyTitle>暂无角色数据</EmptyTitle>
-						</EmptyContent>
-					</Empty>
-				)}
-			</div>
-
 			{/* Episodes List */}
 			<div className="flex flex-col gap-4">
 				<div className="flex items-center justify-between">
@@ -708,7 +684,6 @@ export default function SubjectDetail() {
 											: "bg-card border border-border hover:border-primary/30 hover:bg-muted/30"
 									}`}
 								>
-									{/* Ep Number / Icon */}
 									<div
 										className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
 											isAired
@@ -727,7 +702,6 @@ export default function SubjectDetail() {
 										</span>
 									</div>
 
-									{/* Ep Details */}
 									<div className="flex-1 min-w-0 flex flex-col gap-1">
 										<div className="flex items-center gap-1.5 justify-between">
 											<h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
@@ -752,51 +726,97 @@ export default function SubjectDetail() {
 				)}
 			</div>
 
-			{/* Staff Section */}
-			<div className="flex flex-col gap-4">
-				<div className="flex items-center gap-2">
-					<h2 className="text-lg font-bold text-foreground">制作人员</h2>
-					{persons.length > 0 && (
-						<Badge
-							variant="secondary"
-							className="text-xs border-border text-muted-foreground"
-						>
-							{consolidatedStaff.length}
-						</Badge>
-					)}
-				</div>
+			{/* Characters & Staff Tabs */}
+			<Tabs defaultValue="characters" className="w-full">
+				<TabsList
+					variant="line"
+					className="w-full justify-start gap-6 bg-transparent rounded-none h-auto p-0 border-b border-border"
+				>
+					<TabsTrigger
+						value="characters"
+						className="flex-1 sm:flex-none px-0 pb-2 rounded-none bg-transparent text-sm font-semibold after:opacity-0 data-active:after:opacity-100 data-active:bg-transparent dark:data-active:bg-transparent"
+					>
+						角色
+						{characters.length > 0 && (
+							<Badge
+								variant="secondary"
+								className="ml-1 text-xs border-border text-muted-foreground"
+							>
+								{characters.length}
+							</Badge>
+						)}
+					</TabsTrigger>
+					<TabsTrigger
+						value="staff"
+						className="flex-1 sm:flex-none px-0 pb-2 rounded-none bg-transparent text-sm font-semibold after:opacity-0 data-active:after:opacity-100 data-active:bg-transparent dark:data-active:bg-transparent"
+					>
+						制作人员
+						{persons.length > 0 && (
+							<Badge
+								variant="secondary"
+								className="ml-1 text-xs border-border text-muted-foreground"
+							>
+								{consolidatedStaff.length}
+							</Badge>
+						)}
+					</TabsTrigger>
+				</TabsList>
 
-				{personsLoading ? (
-					<StaffSkeleton />
-				) : staffGroupedByRole.size > 0 ? (
-					<div className="flex flex-col gap-5">
-						{Array.from(staffGroupedByRole.entries()).map(([role, people]) => (
-							<div key={role} className="flex flex-col gap-2">
-								<h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-									{role}
-									<span className="ml-1.5 text-[10px] font-normal text-muted-foreground/60">
-										{people.length}
-									</span>
-								</h3>
-								<div className="flex flex-wrap gap-1.5">
-									{people.map((person) => (
-										<StaffPersonBadge
-											key={`${person.id}-${role}`}
-											person={person}
-										/>
-									))}
+				<TabsContent value="characters" className="pt-4">
+					{charactersLoading ? (
+						<CharactersSkeleton />
+					) : characters.length > 0 ? (
+						<div className="flex overflow-x-auto gap-3 pb-2 snap-x scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent -mx-1 px-1">
+							{characters.map((char) => (
+								<div key={char.id} className="snap-start shrink-0 w-36">
+									<CharacterCard character={char} />
 								</div>
-							</div>
-						))}
-					</div>
-				) : (
-					<Empty className="py-8">
-						<EmptyContent>
-							<EmptyTitle>暂无制作人员数据</EmptyTitle>
-						</EmptyContent>
-					</Empty>
-				)}
-			</div>
+							))}
+						</div>
+					) : (
+						<Empty className="py-8">
+							<EmptyContent>
+								<EmptyTitle>暂无角色数据</EmptyTitle>
+							</EmptyContent>
+						</Empty>
+					)}
+				</TabsContent>
+
+				<TabsContent value="staff" className="pt-4">
+					{personsLoading ? (
+						<StaffSkeleton />
+					) : staffGroupedByRole.size > 0 ? (
+						<div className="flex flex-col gap-5">
+							{Array.from(staffGroupedByRole.entries()).map(
+								([role, people]) => (
+									<div key={role} className="flex flex-col gap-2">
+										<h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+											{role}
+											<span className="ml-1.5 text-[10px] font-normal text-muted-foreground/60">
+												{people.length}
+											</span>
+										</h3>
+										<div className="flex flex-wrap gap-1.5">
+											{people.map((person) => (
+												<StaffPersonBadge
+													key={`${person.id}-${role}`}
+													person={person}
+												/>
+											))}
+										</div>
+									</div>
+								),
+							)}
+						</div>
+					) : (
+						<Empty className="py-8">
+							<EmptyContent>
+								<EmptyTitle>暂无制作人员数据</EmptyTitle>
+							</EmptyContent>
+						</Empty>
+					)}
+				</TabsContent>
+			</Tabs>
 		</div>
 	);
 }

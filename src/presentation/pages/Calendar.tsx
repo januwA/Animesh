@@ -124,7 +124,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 				{item.images?.large ? (
 					<div className="aspect-3/4 w-full overflow-hidden bg-muted">
 						<LazyImage
-							src={item.images.large}
+							src={item.images.common}
 							alt={displayName}
 							style={
 								{

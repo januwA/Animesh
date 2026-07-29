@@ -33,28 +33,49 @@ function saveState(state: CollectionsState): void {
 }
 
 export class LocalStorageCollectionRepository implements CollectionRepository {
+	private cachedState: CollectionsState | null = null;
+	private cachedFavorites: Set<number> | null = null;
+
+	private getState(): CollectionsState {
+		if (!this.cachedState) {
+			this.cachedState = loadState();
+		}
+		return this.cachedState;
+	}
+
+	private getFavoriteIds(): Set<number> {
+		if (!this.cachedFavorites) {
+			this.cachedFavorites = new Set(
+				this.getState().items.map((item) => item.subjectId),
+			);
+		}
+		return this.cachedFavorites;
+	}
+
 	getAll(): FavoriteItem[] {
-		return loadState().items;
+		return this.getState().items;
 	}
 
 	isFavorited(subjectId: number): boolean {
-		return loadState().items.some((item) => item.subjectId === subjectId);
+		return this.getFavoriteIds().has(subjectId);
 	}
 
 	add(item: Omit<FavoriteItem, "addedAt">): void {
-		const state = loadState();
+		const state = this.getState();
 		if (state.items.some((i) => i.subjectId === item.subjectId)) {
 			return;
 		}
 		state.items.push({ ...item, addedAt: Date.now() });
 		state.lastUpdatedAt = Date.now();
 		saveState(state);
+		this.cachedFavorites?.add(item.subjectId);
 	}
 
 	remove(subjectId: number): void {
-		const state = loadState();
+		const state = this.getState();
 		state.items = state.items.filter((i) => i.subjectId !== subjectId);
 		state.lastUpdatedAt = Date.now();
 		saveState(state);
+		this.cachedFavorites?.delete(subjectId);
 	}
 }

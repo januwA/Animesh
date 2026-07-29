@@ -15,6 +15,12 @@ export interface LazyImageProps
 // 用于记录全局已加载的图片，防止同一张图片在组件重新挂载（如标签页切换）时反复展示骨架屏和渐显动画
 const loadedSrcCache = new Set<string>();
 
+function toHttps(url: string): string {
+	return url.startsWith("http://lain.bgm.tv/")
+		? url.replace("http://", "https://")
+		: url;
+}
+
 export function LazyImage({
 	src,
 	alt,
@@ -23,7 +29,7 @@ export function LazyImage({
 	placeholder,
 	fallback,
 	threshold = 0.1,
-	rootMargin = "200px",
+	rootMargin = "100px",
 	...props
 }: LazyImageProps) {
 	const [inView, setInView] = useState(() => loadedSrcCache.has(src));
@@ -85,7 +91,7 @@ export function LazyImage({
 
 			{inView && !isError && (
 				<img
-					src={src}
+					src={toHttps(src)}
 					alt={alt}
 					onLoad={() => {
 						setIsLoaded(true);

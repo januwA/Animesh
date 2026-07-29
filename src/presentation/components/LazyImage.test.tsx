@@ -138,6 +138,33 @@ describe("LazyImage 懒加载图片组件", () => {
 		expect(screen.getByTestId("fallback")).toBeInTheDocument();
 	});
 
+	it("当 src 为 http://lain.bgm.tv/ 时，应该自动转换为 https", () => {
+		render(
+			<LazyImage
+				src="http://lain.bgm.tv/pic/cover/l/92/97/975_GFGYI.jpg"
+				alt="bgm 图片"
+			/>,
+		);
+
+		act(() => {
+			observerCallback!(
+				[
+					{
+						isIntersecting: true,
+						target: document.createElement("div"),
+					} as unknown as IntersectionObserverEntry,
+				],
+				{} as IntersectionObserver,
+			);
+		});
+
+		const img = screen.getByAltText("bgm 图片");
+		expect(img).toHaveAttribute(
+			"src",
+			"https://lain.bgm.tv/pic/cover/l/92/97/975_GFGYI.jpg",
+		);
+	});
+
 	it("在不支持 IntersectionObserver 的环境下，应该立即渲染图片", () => {
 		const originalIntersectionObserver = window.IntersectionObserver;
 		Object.defineProperty(window, "IntersectionObserver", {

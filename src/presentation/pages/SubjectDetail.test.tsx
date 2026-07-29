@@ -5,6 +5,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -1061,8 +1062,12 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			expect(screen.getByText("测试动漫")).toBeInTheDocument();
 		});
 
+		// Switch to staff tab
+		await userEvent
+			.setup()
+			.click(screen.getByRole("tab", { name: /制作人员/ }));
+
 		// Staff section should be rendered
-		expect(screen.getByText("制作人员")).toBeInTheDocument();
 		expect(screen.getByText("木村拓")).toBeInTheDocument();
 		expect(screen.getByText("あおしまたかし")).toBeInTheDocument();
 		// Relation header should be visible
@@ -1117,6 +1122,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 		});
 
 		expect(screen.getByText("暂无角色数据")).toBeInTheDocument();
+
+		// Switch to staff tab to check staff empty state
+		await userEvent
+			.setup()
+			.click(screen.getByRole("tab", { name: /制作人员/ }));
 		expect(screen.getByText("暂无制作人员数据")).toBeInTheDocument();
 	});
 
@@ -1151,6 +1161,14 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 		// The sections should exist with skeleton loading indicators
 		expect(screen.getByText("角色")).toBeInTheDocument();
 		expect(screen.getByText("制作人员")).toBeInTheDocument();
+		expect(screen.getByTestId("characters-skeleton")).toBeInTheDocument();
+		expect(screen.queryByTestId("staff-skeleton")).not.toBeInTheDocument();
+
+		// Switch to staff tab to verify staff skeleton exists
+		await userEvent
+			.setup()
+			.click(screen.getByRole("tab", { name: /制作人员/ }));
+		expect(screen.getByTestId("staff-skeleton")).toBeInTheDocument();
 
 		// Resolve to clean up
 		await act(async () => {
@@ -1246,6 +1264,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 		await waitFor(() => {
 			expect(screen.getByText("测试动漫")).toBeInTheDocument();
 		});
+
+		// Switch to staff tab
+		await userEvent
+			.setup()
+			.click(screen.getByRole("tab", { name: /制作人员/ }));
 
 		expect(screen.getByText("导演")).toBeInTheDocument();
 		expect(screen.getByText("脚本")).toBeInTheDocument();
