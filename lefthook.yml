@@ -13,12 +13,12 @@ pre-commit:
     "后端_代码格式化":
       glob: "src-tauri/**/*.rs"
       run: cargo fmt --manifest-path src-tauri/Cargo.toml --all
+    "前端_TypeScript类型检查":
+      run: pnpm typecheck # 全量检查，确保类型安全
 
 pre-push:
   parallel: false
   commands:
-    "前端_TypeScript类型检查":
-      run: pnpm typecheck # 全量检查，确保类型安全
     "前端_错误处理规范检查":
       glob: "src/**/*.{ts,tsx}"
       run: pnpm check:error-handling {push_files}
