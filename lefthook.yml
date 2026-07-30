@@ -15,6 +15,9 @@ pre-commit:
       run: cargo fmt --manifest-path src-tauri/Cargo.toml --all
     "前端_TypeScript类型检查":
       run: pnpm typecheck # 全量检查，确保类型安全
+    "后端_Rust静态代码检查(Clippy)":
+      glob: "src-tauri/**/*"
+      run: cargo clippy --manifest-path src-tauri/Cargo.toml -p animesh_core -- -D warnings
 
 pre-push:
   parallel: false
@@ -39,9 +42,6 @@ pre-push:
       run: pnpm check:presentation-styles {push_files}
     "前端_单元测试与覆盖率":
       run: pnpm test:coverage # 全量测试及覆盖率阈值检查
-    "后端_Rust静态代码检查(Clippy)":
-      glob: "src-tauri/**/*"
-      run: cargo clippy --manifest-path src-tauri/Cargo.toml -p animesh_core -- -D warnings
     "后端_Rust单元测试与覆盖率":
       glob: "src-tauri/**/*"
       run: pnpm test:rust:coverage
