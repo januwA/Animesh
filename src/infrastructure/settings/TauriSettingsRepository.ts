@@ -37,14 +37,12 @@ export class TauriSettingsRepository implements SettingsRepository {
 
 	async setTrackerOptions(options: {
 		sourceType: string | null;
-		cdn: string | null;
 		customUrl: string | null;
 		autoUpdate: boolean | null;
 		lastUpdateTime: number | null;
 	}): Promise<void> {
 		return invoke<void>("settings_set_tracker_options", {
 			sourceType: options.sourceType,
-			cdn: options.cdn,
 			customUrl: options.customUrl,
 			autoUpdate: options.autoUpdate,
 			lastUpdateTime: options.lastUpdateTime,

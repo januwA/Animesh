@@ -14,7 +14,6 @@ export const SettingsSchema = z.object({
 	proxy: z.string().nullable().optional(),
 	trackers: z.array(z.string()).optional(),
 	tracker_source_type: z.string().nullable().optional(),
-	tracker_cdn: z.string().nullable().optional(),
 	tracker_custom_url: z.string().nullable().optional(),
 	tracker_auto_update: z.boolean().nullable().optional(),
 	tracker_last_update_time: z.number().nullable().optional(),

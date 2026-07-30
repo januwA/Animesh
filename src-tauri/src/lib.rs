@@ -473,14 +473,13 @@ fn settings_get_default_trackers() -> Vec<String> {
 #[tauri::command]
 fn settings_set_tracker_options(
     source_type: Option<String>,
-    cdn: Option<String>,
     custom_url: Option<String>,
     auto_update: Option<bool>,
     last_update_time: Option<i64>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), String> {
     manager
-        .set_tracker_options(source_type, cdn, custom_url, auto_update, last_update_time)
+        .set_tracker_options(source_type, custom_url, auto_update, last_update_time)
         .map_err(|e| e.to_string())
 }
 
@@ -646,7 +645,6 @@ pub fn run() {
                     proxy: None,
                     trackers: Some(animesh_core::torrent_manager::get_default_trackers()),
                     tracker_source_type: None,
-                    tracker_cdn: None,
                     tracker_custom_url: None,
                     tracker_auto_update: None,
                     tracker_last_update_time: None,

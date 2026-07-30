@@ -62,8 +62,6 @@ pub struct AppSettings {
     #[serde(default)]
     pub tracker_source_type: Option<String>,
     #[serde(default)]
-    pub tracker_cdn: Option<String>,
-    #[serde(default)]
     pub tracker_custom_url: Option<String>,
     #[serde(default)]
     pub tracker_auto_update: Option<bool>,
@@ -215,7 +213,6 @@ impl TorrentManager {
                 proxy: self.get_proxy(),
                 trackers: Some(self.get_trackers()),
                 tracker_source_type: None,
-                tracker_cdn: None,
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
@@ -228,7 +225,6 @@ impl TorrentManager {
                 proxy: self.get_proxy(),
                 trackers: Some(self.get_trackers()),
                 tracker_source_type: None,
-                tracker_cdn: None,
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
@@ -264,7 +260,6 @@ impl TorrentManager {
                 proxy: proxy.clone(),
                 trackers: Some(self.get_trackers()),
                 tracker_source_type: None,
-                tracker_cdn: None,
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
@@ -277,7 +272,6 @@ impl TorrentManager {
                 proxy: proxy.clone(),
                 trackers: Some(self.get_trackers()),
                 tracker_source_type: None,
-                tracker_cdn: None,
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
@@ -313,7 +307,6 @@ impl TorrentManager {
                 proxy: self.get_proxy(),
                 trackers: Some(trackers.clone()),
                 tracker_source_type: None,
-                tracker_cdn: None,
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
@@ -326,7 +319,6 @@ impl TorrentManager {
                 proxy: self.get_proxy(),
                 trackers: Some(trackers.clone()),
                 tracker_source_type: None,
-                tracker_cdn: None,
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
@@ -357,7 +349,6 @@ impl TorrentManager {
                 proxy: self.get_proxy(),
                 trackers: Some(self.get_trackers()),
                 tracker_source_type: None,
-                tracker_cdn: None,
                 tracker_custom_url: None,
                 tracker_auto_update: None,
                 tracker_last_update_time: None,
@@ -370,7 +361,6 @@ impl TorrentManager {
     pub fn set_tracker_options(
         &self,
         source_type: Option<String>,
-        cdn: Option<String>,
         custom_url: Option<String>,
         auto_update: Option<bool>,
         last_update_time: Option<i64>,
@@ -384,7 +374,6 @@ impl TorrentManager {
             proxy: self.get_proxy(),
             trackers: Some(self.get_trackers()),
             tracker_source_type: None,
-            tracker_cdn: None,
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,
@@ -393,7 +382,6 @@ impl TorrentManager {
         });
 
         settings.tracker_source_type = source_type;
-        settings.tracker_cdn = cdn;
         settings.tracker_custom_url = custom_url;
         settings.tracker_auto_update = auto_update;
         settings.tracker_last_update_time = last_update_time;
@@ -416,7 +404,6 @@ impl TorrentManager {
             proxy: self.get_proxy(),
             trackers: Some(self.get_trackers()),
             tracker_source_type: None,
-            tracker_cdn: None,
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,
@@ -461,7 +448,6 @@ impl TorrentManager {
             proxy: self.get_proxy(),
             trackers: Some(self.get_trackers()),
             tracker_source_type: None,
-            tracker_cdn: None,
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,

@@ -75,7 +75,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             proxy: None,
             trackers: Some(animesh_core::torrent_manager::get_default_trackers()),
             tracker_source_type: None,
-            tracker_cdn: None,
             tracker_custom_url: None,
             tracker_auto_update: None,
             tracker_last_update_time: None,
@@ -542,7 +541,6 @@ async fn settings_set_trackers_handler(
 #[derive(serde::Deserialize)]
 struct SetTrackerOptionsInput {
     source_type: Option<String>,
-    cdn: Option<String>,
     custom_url: Option<String>,
     auto_update: Option<bool>,
     last_update_time: Option<i64>,
@@ -556,7 +554,6 @@ async fn settings_set_tracker_options_handler(
         .manager
         .set_tracker_options(
             payload.source_type,
-            payload.cdn,
             payload.custom_url,
             payload.auto_update,
             payload.last_update_time,

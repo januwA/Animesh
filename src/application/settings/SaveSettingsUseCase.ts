@@ -5,7 +5,6 @@ export interface SaveSettingsDto {
 	proxy: string | null;
 	trackers: string[];
 	trackerSourceType?: string | null;
-	trackerCdn?: string | null;
 	trackerCustomUrl?: string | null;
 	trackerAutoUpdate?: boolean | null;
 	trackerLastUpdateTime?: number | null;
@@ -29,7 +28,6 @@ export class SaveSettingsUseCase {
 		await this.settingsRepository.setTrackers(dto.trackers);
 		await this.settingsRepository.setTrackerOptions({
 			sourceType: dto.trackerSourceType ?? null,
-			cdn: dto.trackerCdn ?? null,
 			customUrl: dto.trackerCustomUrl ?? null,
 			autoUpdate: dto.trackerAutoUpdate ?? null,
 			lastUpdateTime: dto.trackerLastUpdateTime ?? null,

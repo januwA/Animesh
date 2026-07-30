@@ -81,7 +81,6 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 			proxy: "http://127.0.0.1:1080",
 			trackers: ["udp://tracker1"],
 			trackerSourceType: "best",
-			trackerCdn: "jsdelivr",
 			trackerCustomUrl: "",
 			trackerAutoUpdate: true,
 			trackerLastUpdateTime: 123456,
@@ -104,7 +103,6 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		expect(rawMockRepo.setTrackers).toHaveBeenCalledWith(["udp://tracker1"]);
 		expect(rawMockRepo.setTrackerOptions).toHaveBeenCalledWith({
 			sourceType: "best",
-			cdn: "jsdelivr",
 			customUrl: "",
 			autoUpdate: true,
 			lastUpdateTime: 123456,
@@ -161,7 +159,6 @@ describe("Settings 相关的 UseCase 业务编排", () => {
 		});
 		expect(rawMockRepo.setTrackerOptions).toHaveBeenCalledWith({
 			sourceType: null,
-			cdn: null,
 			customUrl: null,
 			autoUpdate: null,
 			lastUpdateTime: null,

@@ -70,7 +70,6 @@ export class HttpSettingsRepository implements SettingsRepository {
 
 	async setTrackerOptions(options: {
 		sourceType: string | null;
-		cdn: string | null;
 		customUrl: string | null;
 		autoUpdate: boolean | null;
 		lastUpdateTime: number | null;
@@ -82,7 +81,6 @@ export class HttpSettingsRepository implements SettingsRepository {
 			},
 			body: JSON.stringify({
 				source_type: options.sourceType,
-				cdn: options.cdn,
 				custom_url: options.customUrl,
 				auto_update: options.autoUpdate,
 				last_update_time: options.lastUpdateTime,

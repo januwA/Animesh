@@ -21,7 +21,6 @@ import { useDI } from "@/di/DIContext";
 import { SettingsFormSchema } from "@/domain/settings/SettingsSchemas";
 import {
 	getTrackerUrl,
-	type TrackerCdnType,
 	type TrackerSourceType,
 } from "@/domain/settings/TrackerSettings";
 import type { UpdateCheckResult } from "@/domain/update/UpdateInfo";
@@ -72,7 +71,6 @@ export default function Settings() {
 	const [saving, setSaving] = useState(false);
 
 	const [sourceType, setSourceType] = useState<TrackerSourceType>("best");
-	const [cdn, setCdn] = useState<TrackerCdnType>("jsdelivr");
 	const [customUrl, setCustomUrl] = useState("");
 	const [autoUpdate, setAutoUpdate] = useState(false);
 	const [lastUpdateTime, setLastUpdateTime] = useState(0);
@@ -206,7 +204,7 @@ export default function Settings() {
 		});
 	};
 
-	const currentUrl = getTrackerUrl(sourceType, cdn, customUrl);
+	const currentUrl = getTrackerUrl(sourceType, customUrl);
 
 	const handleSync = async (mode: "replace" | "append") => {
 		if (sourceType === "custom" && !customUrl) {
@@ -216,7 +214,7 @@ export default function Settings() {
 
 		setSyncing(true);
 		try {
-			const url = getTrackerUrl(sourceType, cdn, customUrl);
+			const url = getTrackerUrl(sourceType, customUrl);
 			const fetched = await syncTrackersUseCase.execute(url);
 
 			if (fetched.length === 0) {
@@ -269,7 +267,6 @@ export default function Settings() {
 				setSourceType(
 					(settings.tracker_source_type || "best") as TrackerSourceType,
 				);
-				setCdn((settings.tracker_cdn || "jsdelivr") as TrackerCdnType);
 				setCustomUrl(settings.tracker_custom_url || "");
 				setAutoUpdate(settings.tracker_auto_update === true);
 				setLastUpdateTime(settings.tracker_last_update_time || 0);
@@ -345,7 +342,6 @@ export default function Settings() {
 			proxy,
 			trackers: parsedTrackers,
 			trackerSourceType: sourceType,
-			trackerCdn: cdn,
 			trackerCustomUrl: customUrl,
 			trackerAutoUpdate: autoUpdate,
 			trackerLastUpdateTime: lastUpdateTime,
@@ -368,7 +364,6 @@ export default function Settings() {
 				proxy: validatedData.proxy,
 				trackers: validatedData.trackers,
 				trackerSourceType: validatedData.trackerSourceType,
-				trackerCdn: validatedData.trackerCdn,
 				trackerCustomUrl: validatedData.trackerCustomUrl,
 				trackerAutoUpdate: validatedData.trackerAutoUpdate,
 				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
@@ -908,33 +903,6 @@ export default function Settings() {
 											<ToggleGroupItem value="custom">自定义</ToggleGroupItem>
 										</ToggleGroup>
 									</div>
-
-									{/* CDN Selection */}
-									{sourceType !== "custom" && (
-										<div className="flex flex-col gap-1.5">
-											<span className="text-[11px] text-muted-foreground font-medium">
-												CDN 加速节点
-											</span>
-											<ToggleGroup
-												type="single"
-												value={cdn}
-												onValueChange={(v) => v && setCdn(v as TrackerCdnType)}
-												size="sm"
-												variant="outline"
-												className="flex-wrap"
-											>
-												<ToggleGroupItem value="jsdelivr">
-													jsDelivr 加速)
-												</ToggleGroupItem>
-												<ToggleGroupItem value="gitmirror">
-													GitMirror (镜像)
-												</ToggleGroupItem>
-												<ToggleGroupItem value="github">
-													GitHub (原始)
-												</ToggleGroupItem>
-											</ToggleGroup>
-										</div>
-									)}
 
 									{/* Auto Update Checkbox */}
 									<div className="flex items-center gap-2 pt-1">

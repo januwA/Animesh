@@ -58,7 +58,6 @@ describe("AutoUpdateTrackersUseCase 自动同步更新用例", () => {
 				tracker_auto_update: true,
 				tracker_last_update_time: 0,
 				tracker_source_type: "best",
-				tracker_cdn: "jsdelivr",
 			}),
 			setTrackers: vi.fn().mockResolvedValue(undefined),
 			setTrackerOptions: vi.fn().mockResolvedValue(undefined),
@@ -72,7 +71,7 @@ describe("AutoUpdateTrackersUseCase 自动同步更新用例", () => {
 		expect(result).toBe(2);
 		expect(settingsRepoMock.getSettings).toHaveBeenCalled();
 		expect(settingsRepoMock.fetchTrackers).toHaveBeenCalledWith(
-			"https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt",
+			"https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt",
 		);
 		expect(settingsRepoMock.setTrackers).toHaveBeenCalledWith([
 			"udp://new1:80",
@@ -80,7 +79,6 @@ describe("AutoUpdateTrackersUseCase 自动同步更新用例", () => {
 		]);
 		expect(settingsRepoMock.setTrackerOptions).toHaveBeenCalledWith({
 			sourceType: "best",
-			cdn: "jsdelivr",
 			customUrl: "",
 			autoUpdate: true,
 			lastUpdateTime: expect.any(Number),
@@ -96,7 +94,7 @@ describe("AutoUpdateTrackersUseCase 自动同步更新用例", () => {
 		expect(result).toBeNull();
 	});
 
-	it("如果设置中缺省了 sourceType 与 cdn，应该使用默认值且成功拉取并保存", async () => {
+	it("如果设置中缺省了 sourceType，应该使用默认值且成功拉取并保存", async () => {
 		const settingsRepoMock = {
 			getSettings: vi.fn().mockResolvedValue({
 				download_dir: "C:\\Downloads",
@@ -111,7 +109,7 @@ describe("AutoUpdateTrackersUseCase 自动同步更新用例", () => {
 		const result = await useCase.execute();
 		expect(result).toBe(1);
 		expect(settingsRepoMock.fetchTrackers).toHaveBeenCalledWith(
-			"https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt",
+			"https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt",
 		);
 	});
 
@@ -140,7 +138,6 @@ describe("AutoUpdateTrackersUseCase 自动同步更新用例", () => {
 				tracker_auto_update: true,
 				tracker_last_update_time: 0,
 				tracker_source_type: "best",
-				tracker_cdn: "jsdelivr",
 			}),
 			setTrackers: vi.fn(),
 			fetchTrackers: vi.fn().mockResolvedValue([]),

@@ -64,7 +64,6 @@ describe("基础设施层 HttpSettingsRepository", () => {
 				proxy: "socks5://127.0.0.1:1080",
 				trackers: ["http://tracker1", "http://tracker2"],
 				tracker_source_type: "custom",
-				tracker_cdn: "none",
 				tracker_custom_url: "",
 				tracker_auto_update: true,
 				tracker_last_update_time: 1718880000,

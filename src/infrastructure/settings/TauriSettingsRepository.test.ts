@@ -79,7 +79,6 @@ describe("基础设施层 TauriSettingsRepository", () => {
 				proxy: "http://127.0.0.1:7890",
 				trackers: ["udp://tracker"],
 				tracker_source_type: "custom",
-				tracker_cdn: "none",
 				tracker_custom_url: "",
 				tracker_auto_update: true,
 				tracker_last_update_time: 123456,

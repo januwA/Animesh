@@ -2,7 +2,6 @@ import type { SettingsRepository } from "../../domain/settings/SettingsRepositor
 import type { Settings } from "../../domain/settings/SettingsSchemas";
 import {
 	getTrackerUrl,
-	type TrackerCdnType,
 	type TrackerSourceType,
 } from "../../domain/settings/TrackerSettings";
 
@@ -20,14 +19,12 @@ export class AutoUpdateTrackersUseCase {
 	private async performTrackerUpdate(
 		fetched: string[],
 		sourceType: string,
-		cdn: string,
 		customUrl: string,
 		now: number,
 	): Promise<void> {
 		await this.settingsRepository.setTrackers(fetched);
 		await this.settingsRepository.setTrackerOptions({
 			sourceType,
-			cdn,
 			customUrl,
 			autoUpdate: true,
 			lastUpdateTime: now,
@@ -43,21 +40,17 @@ export class AutoUpdateTrackersUseCase {
 			return null;
 		}
 
-		const sourceType = settings.tracker_source_type || "best";
-		const cdn = settings.tracker_cdn || "jsdelivr";
+		const sourceType = (settings.tracker_source_type ||
+			"best") as TrackerSourceType;
 		const customUrl = settings.tracker_custom_url || "";
 
-		const url = getTrackerUrl(
-			sourceType as TrackerSourceType,
-			cdn as TrackerCdnType,
-			customUrl,
-		);
+		const url = getTrackerUrl(sourceType, customUrl);
 		if (!url) return null;
 
 		const fetched = await this.settingsRepository.fetchTrackers(url);
 		if (fetched.length === 0) return null;
 
-		await this.performTrackerUpdate(fetched, sourceType, cdn, customUrl, now);
+		await this.performTrackerUpdate(fetched, sourceType, customUrl, now);
 		return fetched.length;
 	}
 }

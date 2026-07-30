@@ -37,7 +37,6 @@ describe("Settings 页面组件", () => {
 				proxy: "",
 				trackers: [],
 				tracker_source_type: "best",
-				tracker_cdn: "jsdelivr",
 				tracker_custom_url: "",
 				tracker_auto_update: false,
 				tracker_last_update_time: 0,
@@ -400,12 +399,11 @@ describe("Settings 页面组件", () => {
 		});
 	});
 
-	it("应该支持选择不同的 Tracker 列表源和 CDN 节点，并进行在线同步", async () => {
+	it("应该支持选择不同的 Tracker 列表源，并进行在线同步", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",
 			trackers: ["udp://oldtracker"],
 			tracker_source_type: "best",
-			tracker_cdn: "jsdelivr",
 			tracker_custom_url: "",
 			tracker_auto_update: false,
 			tracker_last_update_time: 0,
@@ -437,12 +435,11 @@ describe("Settings 页面组件", () => {
 		);
 	});
 
-	it("应该支持切换不同的 Tracker 列表源与 CDN 加速节点，更改自动更新选项，更改自定义URL，并测试追加同步以及各类失败校验", async () => {
+	it("应该支持切换不同的 Tracker 列表源，更改自动更新选项，更改自定义URL，并测试追加同步以及各类失败校验", async () => {
 		vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
 			download_dir: "C:\\Downloads",
 			trackers: ["udp://oldtracker"],
 			tracker_source_type: "best",
-			tracker_cdn: "jsdelivr",
 			tracker_custom_url: "",
 			tracker_auto_update: false,
 			tracker_last_update_time: 0,
@@ -467,14 +464,7 @@ describe("Settings 页面组件", () => {
 			expect(allBtn).toHaveAttribute("data-state", "on");
 		});
 
-		// 2. 切换 CDN 节点 (例如：GitMirror)
-		const mirrorBtn = screen.getByRole("radio", { name: /GitMirror/ });
-		fireEvent.click(mirrorBtn);
-		await waitFor(() => {
-			expect(mirrorBtn).toHaveAttribute("data-state", "on");
-		});
-
-		// 3. 勾选自动更新
+		// 2. 勾选自动更新
 		const autoUpdateCheckbox = screen.getByLabelText(
 			"启动时自动更新 (每24小时)",
 		);
@@ -531,7 +521,6 @@ describe("Settings 页面组件", () => {
 			download_dir: "C:\\Downloads",
 			trackers: ["udp://oldtracker"],
 			tracker_source_type: "best",
-			tracker_cdn: "jsdelivr",
 			tracker_custom_url: "",
 			tracker_auto_update: false,
 			tracker_last_update_time: 0,

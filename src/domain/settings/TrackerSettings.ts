@@ -4,7 +4,6 @@ export type TrackerSourceType =
 	| "best_ip"
 	| "all_ip"
 	| "custom";
-export type TrackerCdnType = "github" | "jsdelivr" | "gitmirror" | "custom";
 
 export const TRACKER_PRESETS: Record<
 	Exclude<TrackerSourceType, "custom">,
@@ -16,26 +15,18 @@ export const TRACKER_PRESETS: Record<
 	all_ip: "trackers_all_ip.txt",
 };
 
-export const TRACKER_CDN_BASES: Record<
-	Exclude<TrackerCdnType, "custom">,
-	string
-> = {
-	github: "https://raw.githubusercontent.com/ngosang/trackerslist/master",
-	jsdelivr: "https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master",
-	gitmirror: "https://raw.gitmirror.com/ngosang/trackerslist/master",
-};
+const GITHUB_CDN_BASE =
+	"https://raw.githubusercontent.com/ngosang/trackerslist/master";
 
 export function getTrackerUrl(
 	type: TrackerSourceType,
-	cdn: TrackerCdnType,
 	customUrl?: string,
 ): string {
-	if (type === "custom" || cdn === "custom") {
+	if (type === "custom") {
 		return customUrl || "";
 	}
 	const filename = TRACKER_PRESETS[type];
-	const base = TRACKER_CDN_BASES[cdn];
-	return `${base}/${filename}`;
+	return `${GITHUB_CDN_BASE}/${filename}`;
 }
 
 export function parseTrackers(text: string): string[] {

@@ -3,20 +3,21 @@ import { getTrackerUrl, parseTrackers } from "./TrackerSettings";
 
 describe("领域层 TrackerSettings 规则", () => {
 	describe("getTrackerUrl 获取同步源 URL", () => {
-		it("应该根据指定的 Preset 与 CDN 返回正确的 URL 链接", () => {
-			const url = getTrackerUrl("best", "jsdelivr");
+		it("应该根据指定的 Preset 返回 GitHub CDN URL", () => {
+			const url = getTrackerUrl("best");
 			expect(url).toBe(
-				"https://cdn.jsdelivr.net/gh/ngosang/trackerslist@master/trackers_best.txt",
+				"https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best.txt",
 			);
 		});
 
 		it("对于自定义的情况，应该原样返回 customUrl", () => {
-			const url = getTrackerUrl(
-				"custom",
-				"github",
-				"https://example.com/trackers.txt",
-			);
+			const url = getTrackerUrl("custom", "https://example.com/trackers.txt");
 			expect(url).toBe("https://example.com/trackers.txt");
+		});
+
+		it("自定义且无URL时应该返回空串", () => {
+			const url = getTrackerUrl("custom");
+			expect(url).toBe("");
 		});
 	});
 
