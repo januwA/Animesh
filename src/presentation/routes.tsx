@@ -6,6 +6,8 @@ import Home from "./pages/Home";
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Collections = lazy(() => import("./pages/Collections"));
 const Downloads = lazy(() => import("./pages/Downloads"));
+const Iptv = lazy(() => import("./pages/Iptv"));
+const LivePlayer = lazy(() => import("./pages/LivePlayer"));
 const Player = lazy(() => import("./pages/Player"));
 const Settings = lazy(() => import("./pages/Settings"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
@@ -45,6 +47,14 @@ export const routes: RouteObject[] = [
 					{
 						path: "downloads",
 						element: <Downloads />,
+					},
+					{
+						path: "live",
+						element: <Iptv />,
+					},
+					{
+						path: "live/play",
+						element: <LivePlayer />,
 					},
 					{
 						path: "settings",

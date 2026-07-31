@@ -1,6 +1,8 @@
 import { createContext, use } from "react";
 import {
 	CollectionRepositoryImpl,
+	IptvRepositoryImpl,
+	IptvStreamUrlRepositoryImpl,
 	NotificationRepositoryImpl,
 	OpenerRepositoryImpl,
 	SettingsRepositoryImpl,
@@ -18,6 +20,9 @@ import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase
 import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
 import { GetFavoriteStatusUseCase } from "../application/collection/GetFavoriteStatusUseCase";
 import { RemoveFavoriteUseCase } from "../application/collection/RemoveFavoriteUseCase";
+import { GetIptvChannelsUseCase } from "../application/iptv/GetIptvChannelsUseCase";
+import { GetIptvCountriesUseCase } from "../application/iptv/GetIptvCountriesUseCase";
+import { ResolvePlayableStreamUrlUseCase } from "../application/iptv/ResolvePlayableStreamUrlUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
@@ -52,6 +57,7 @@ import type { NotificationRepository } from "../domain/notification/Notification
 import { BrowserBangumiCache } from "../infrastructure/bangumi/BrowserBangumiCache";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpClient } from "../infrastructure/http/HttpClient";
+import { BrowserIptvCache } from "../infrastructure/iptv/BrowserIptvCache";
 import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 
 export interface DIContainer {
@@ -95,6 +101,9 @@ export interface DIContainer {
 	getBangumiEpisodesUseCase: GetBangumiEpisodesUseCase;
 	getBangumiPersonsUseCase: GetBangumiPersonsUseCase;
 	getBangumiCharactersUseCase: GetBangumiCharactersUseCase;
+	getIptvCountriesUseCase: GetIptvCountriesUseCase;
+	getIptvChannelsUseCase: GetIptvChannelsUseCase;
+	resolvePlayableStreamUrlUseCase: ResolvePlayableStreamUrlUseCase;
 	checkUpdateUseCase: CheckUpdateUseCase;
 	getCurrentVersionUseCase: GetCurrentVersionUseCase;
 	openUpdateUrlUseCase: OpenUpdateUrlUseCase;
@@ -186,6 +195,20 @@ export function createDefaultDIContainer(): DIContainer {
 		bangumiRepository,
 		bangumiCache,
 	);
+	const iptvCache = new BrowserIptvCache();
+	const iptvRepository = new IptvRepositoryImpl(httpClient);
+	const getIptvCountriesUseCase = new GetIptvCountriesUseCase(
+		iptvRepository,
+		iptvCache,
+	);
+	const getIptvChannelsUseCase = new GetIptvChannelsUseCase(
+		iptvRepository,
+		iptvCache,
+	);
+	const iptvStreamUrlRepository = new IptvStreamUrlRepositoryImpl();
+	const resolvePlayableStreamUrlUseCase = new ResolvePlayableStreamUrlUseCase(
+		iptvStreamUrlRepository,
+	);
 	const checkUpdateUseCase = new CheckUpdateUseCase(updateRepository);
 	const getCurrentVersionUseCase = new GetCurrentVersionUseCase(
 		updateRepository,
@@ -236,6 +259,9 @@ export function createDefaultDIContainer(): DIContainer {
 		getBangumiEpisodesUseCase,
 		getBangumiPersonsUseCase,
 		getBangumiCharactersUseCase,
+		getIptvCountriesUseCase,
+		getIptvChannelsUseCase,
+		resolvePlayableStreamUrlUseCase,
 		getCollectionsUseCase,
 		addFavoriteUseCase,
 		removeFavoriteUseCase,

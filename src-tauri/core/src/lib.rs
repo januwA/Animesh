@@ -1,5 +1,6 @@
 pub mod crawler;
 pub mod domain;
+pub mod hls_proxy;
 pub mod infrastructure;
 pub mod subtitles;
 pub mod torrent;

@@ -27,7 +27,14 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["**", "!!src-tauri", "!!public", "!!scripts"]
+		"includes": [
+			"**",
+			"!!src-tauri",
+			"!!public",
+			"!!scripts",
+			"!!.agents",
+			"!!.claude"
+		]
 	},
 	"formatter": {
 		"enabled": true,

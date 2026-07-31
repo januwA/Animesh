@@ -66,6 +66,7 @@ vi.mock("@videojs/react", async () => {
 			},
 		}),
 		videoFeatures: [],
+		liveVideoFeatures: [],
 		selectError: (s: any) => ({
 			error: s.error,
 			dismissError: () => __vjsMock.setError(null),

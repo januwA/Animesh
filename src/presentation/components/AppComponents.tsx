@@ -5,6 +5,7 @@ import {
 	Loader2,
 	Search,
 	Settings as SettingsIcon,
+	Tv,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
@@ -20,6 +21,7 @@ const navItems = [
 	{ path: "/calendar", label: "新番", icon: Calendar },
 	{ path: "/collections", label: "收藏", icon: Heart },
 	{ path: "/downloads", label: "下载", icon: Download },
+	{ path: "/live", label: "直播", icon: Tv },
 	{ path: "/settings", label: "设置", icon: SettingsIcon },
 ];
 

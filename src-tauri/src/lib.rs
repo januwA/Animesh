@@ -257,6 +257,11 @@ fn torrent_get_stream_url(
 }
 
 #[tauri::command]
+fn iptv_proxy_base_url(manager: tauri::State<'_, Arc<TorrentManager>>) -> String {
+    animesh_core::hls_proxy::proxy_base_url(manager.port)
+}
+
+#[tauri::command]
 fn torrent_get_files(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
@@ -676,6 +681,7 @@ pub fn run() {
             cancel_add_magnet,
             torrent_get_status,
             torrent_get_stream_url,
+            iptv_proxy_base_url,
             torrent_get_files,
             torrent_pause,
             torrent_resume,

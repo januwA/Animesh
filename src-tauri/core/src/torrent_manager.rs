@@ -1,12 +1,13 @@
 use crate::domain::crawler::CrawlerRepository;
 use crate::domain::torrent::TorrentRepository;
+use crate::hls_proxy::{self, HlsProxyState};
 use crate::infrastructure::subtitle_cache::SubtitleCache;
 use crate::torrent::{parse_range, AddTorrentResult, FileDetails, TorrentStatusInfo};
 use axum::{
     body::Body,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, HeaderMap, StatusCode},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -71,6 +72,12 @@ pub struct AppSettings {
     pub ai_configs: Option<Vec<AiConfig>>,
     #[serde(default)]
     pub max_download_speed: Option<u32>,
+}
+
+#[derive(Clone)]
+pub struct StreamState {
+    pub torrent_repo: Arc<dyn TorrentRepository>,
+    pub hls_proxy: HlsProxyState,
 }
 
 impl TorrentManager {
@@ -157,10 +164,16 @@ impl TorrentManager {
             .allow_methods(Any)
             .allow_headers(Any);
 
+        let stream_state = StreamState {
+            torrent_repo: torrent_repo.clone(),
+            hls_proxy: HlsProxyState::new(hls_proxy::proxy_base_url(port)),
+        };
+
         let app = Router::new()
             .route("/stream/:info_hash/:file_id", get(stream_handler))
+            .route(hls_proxy::IPTV_PROXY_PATH, get(iptv_proxy_route))
             .layer(cors)
-            .with_state(torrent_repo.clone());
+            .with_state(stream_state);
 
         tokio::spawn(async move {
             axum::serve(listener, app).await.unwrap();
@@ -601,11 +614,20 @@ fn get_local_ip() -> Option<String> {
     socket.local_addr().ok().map(|addr| addr.ip().to_string())
 }
 
+async fn iptv_proxy_route(
+    State(state): State<StreamState>,
+    Query(query): Query<hls_proxy::ProxyQuery>,
+    headers: HeaderMap,
+) -> Response {
+    hls_proxy::proxy_request(&state.hls_proxy, &query, &headers).await
+}
+
 async fn stream_handler(
     Path((info_hash_hex, file_id)): Path<(String, usize)>,
-    State(torrent_repo): State<Arc<dyn TorrentRepository>>,
+    State(state): State<StreamState>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, StatusCode> {
+    let torrent_repo = state.torrent_repo;
     let files = torrent_repo
         .get_torrent_files(&info_hash_hex)
         .ok_or(StatusCode::NOT_FOUND)?;
@@ -708,7 +730,10 @@ mod tests {
         // 测试 HTTP 流式播放接口_未找到种子
         let app = Router::new()
             .route("/stream/:info_hash/:file_id", get(stream_handler))
-            .with_state(manager.torrent_repo.clone());
+            .with_state(StreamState {
+                torrent_repo: manager.torrent_repo.clone(),
+                hls_proxy: HlsProxyState::new(hls_proxy::proxy_base_url(manager.port)),
+            });
 
         use axum::http::Request;
         use tower::ServiceExt;
