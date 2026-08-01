@@ -271,11 +271,13 @@ export default function Player() {
 		!streamUrl ||
 		!torrentStatus ||
 		(torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 < 1 ? (
-			<Loader2 className="h-10 w-10 text-primary animate-spin" />
+			<div className="flex items-center justify-center h-full">
+				<Loader2 className="h-10 w-10 text-primary animate-spin" />
+			</div>
 		) : (
 			<JsPlayer.Provider>
 				{/* biome-ignore lint/a11y/useMediaCaption: subtitles are loaded dynamically from torrent file */}
-				<VideoSkin className="w-full max-h-dvh">
+				<VideoSkin className="w-full h-full">
 					<Video src={streamUrl} playsInline>
 						{subtracks
 							.filter((t) => t.id === selectedTrackId)
@@ -297,7 +299,7 @@ export default function Player() {
 		);
 
 	return (
-		<div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">
+		<div className="w-full flex flex-col gap-4 lg:gap-6 animate-in fade-in duration-300">
 			{/* Navigation Header */}
 			<Button
 				variant="ghost"
@@ -309,149 +311,145 @@ export default function Player() {
 				返回
 			</Button>
 
-			<div className="bg-card border border-border rounded-xl p-6 flex flex-col gap-6">
-				{/* Header */}
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
-					<div className="flex flex-col gap-1 flex-1 min-w-0">
-						<h2
-							className="text-lg font-bold pr-4 text-foreground"
-							title={fileName}
-						>
-							{fileName}
-						</h2>
-						<p className="text-xs text-muted-foreground">
-							来自种子: {title || "未命名种子"}
-						</p>
-					</div>
-					<div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={handleCopyStreamUrl}
-							className="h-8 gap-1 text-muted-foreground hover:text-foreground"
-						>
-							<Clipboard className="h-4 w-4" />
-							复制视频流地址
-						</Button>
-					</div>
+			{/* Player Video */}
+			<div className="relative w-full aspect-video max-h-dvh overflow-hidden rounded-xl">
+				{videoElement}
+			</div>
+
+			{/* Title & Actions */}
+			<div className="flex flex-col gap-3">
+				<div className="flex flex-col gap-1">
+					<h1
+						className="text-xl sm:text-2xl font-bold text-foreground break-words"
+						title={fileName}
+					>
+						{fileName}
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						来自种子: {title || "未命名种子"}
+					</p>
 				</div>
 
-				{/* Player Video */}
-				<div className="relative w-full max-h-dvh overflow-hidden">
-					{videoElement}
-				</div>
+				<div className="flex flex-wrap items-center gap-2">
+					{subtracks.length > 0 && (
+						<>
+							<span className="text-xs text-muted-foreground shrink-0">
+								字幕:
+							</span>
+							<Select
+								value={selectedTrackId?.toString() ?? ""}
+								onValueChange={handleSubtitleChange}
+							>
+								<SelectTrigger className="w-40 h-8 text-xs">
+									<SelectValue placeholder="选择字幕" />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="">关闭</SelectItem>
+									{subtracks.map((track) => (
+										<SelectItem key={track.id} value={track.id.toString()}>
+											{track.title || `轨道 ${track.id}`} ({track.language})
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							{subtitleLoading && (
+								<Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
+							)}
+						</>
+					)}
 
-				{/* Subtitle Selector */}
-				{subtracks.length > 0 && (
-					<div className="flex items-center gap-2">
-						<span className="text-xs text-muted-foreground shrink-0">
-							字幕:
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={handleCopyStreamUrl}
+						className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+					>
+						<Clipboard className="h-4 w-4" />
+						复制视频流地址
+					</Button>
+				</div>
+			</div>
+
+			{/* Progress & Stats */}
+			<div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-4">
+				<div className="flex flex-col gap-2">
+					<div className="flex flex-col sm:flex-row sm:justify-between gap-2 text-xs sm:text-sm font-medium">
+						<span className="flex items-center gap-1.5">
+							<Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-pulse" />
+							下载进度:{" "}
+							{torrentStatus
+								? `${((torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100).toFixed(2)}%`
+								: "计算中..."}
 						</span>
-						<Select
-							value={selectedTrackId?.toString() ?? ""}
-							onValueChange={handleSubtitleChange}
-						>
-							<SelectTrigger className="w-45 h-8 text-xs">
-								<SelectValue placeholder="选择字幕" />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="">关闭</SelectItem>
-								{subtracks.map((track) => (
-									<SelectItem key={track.id} value={track.id.toString()}>
-										{track.title || `轨道 ${track.id}`} ({track.language})
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-						{subtitleLoading && (
-							<Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
-						)}
+						<span className="flex items-center gap-1.5 text-muted-foreground">
+							<Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
+							速度:{" "}
+							{torrentStatus
+								? `${formatBytes(torrentStatus.download_speed_bytes_per_sec)}/s (连接: ${torrentStatus.peers_connected}/${torrentStatus.peers_total})`
+								: "0 B/s"}
+						</span>
 					</div>
-				)}
+					<Progress
+						value={
+							torrentStatus
+								? (torrentStatus.progress_bytes / torrentStatus.total_bytes) *
+									100
+								: 0
+						}
+						className="h-2"
+					/>
+				</div>
 
-				{/* Progress & Speed */}
-				<div className="flex flex-col gap-4">
-					<div className="flex flex-col gap-2">
-						<div className="flex flex-col sm:flex-row sm:justify-between gap-2 text-xs sm:text-sm font-medium">
-							<span className="flex items-center gap-1.5">
-								<Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-pulse" />
-								下载进度:{" "}
-								{torrentStatus
-									? `${((torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100).toFixed(2)}%`
-									: "计算中..."}
+				{/* Stats Grid */}
+				<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+					<Card className="bg-muted/50 border-border">
+						<CardContent className="flex flex-col items-center justify-center p-3">
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+								已下载
 							</span>
-							<span className="flex items-center gap-1.5 text-muted-foreground">
-								<Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
-								速度:{" "}
+							<span className="text-sm font-semibold whitespace-nowrap">
 								{torrentStatus
-									? `${formatBytes(torrentStatus.download_speed_bytes_per_sec)}/s (连接: ${torrentStatus.peers_connected}/${torrentStatus.peers_total})`
-									: "0 B/s"}
+									? formatBytes(torrentStatus.progress_bytes)
+									: "0 B"}
 							</span>
-						</div>
-						<Progress
-							value={
-								torrentStatus
-									? (torrentStatus.progress_bytes / torrentStatus.total_bytes) *
-										100
-									: 0
-							}
-							className="h-2"
-						/>
-					</div>
-
-					{/* Stats Grid */}
-					<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-						<Card className="bg-muted/50 border-border">
-							<CardContent className="flex flex-col items-center justify-center p-3">
-								<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-									已下载
-								</span>
-								<span className="text-sm font-semibold whitespace-nowrap">
-									{torrentStatus
-										? formatBytes(torrentStatus.progress_bytes)
-										: "0 B"}
-								</span>
-							</CardContent>
-						</Card>
-						<Card className="bg-muted/50 border-border">
-							<CardContent className="flex flex-col items-center justify-center p-3">
-								<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-									总大小
-								</span>
-								<span className="text-sm font-semibold whitespace-nowrap">
-									{torrentStatus
-										? formatBytes(torrentStatus.total_bytes)
-										: "0 B"}
-								</span>
-							</CardContent>
-						</Card>
-						<Card className="bg-muted/50 border-border">
-							<CardContent className="flex flex-col items-center justify-center p-3">
-								<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-									同伴 (连接/总数)
-								</span>
-								<span className="text-sm font-semibold whitespace-nowrap">
-									{torrentStatus
-										? `${torrentStatus.peers_connected} / ${torrentStatus.peers_total}`
-										: "0 / 0"}
-								</span>
-							</CardContent>
-						</Card>
-						<Card className="bg-muted/50 border-border">
-							<CardContent className="flex flex-col items-center justify-center p-3">
-								<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-									状态
-								</span>
-								<span className="text-sm font-semibold text-primary whitespace-nowrap">
-									{torrentStatus
-										? torrentStatus.finished
-											? "已完成"
-											: "正在缓存..."
-										: "连接中..."}
-								</span>
-							</CardContent>
-						</Card>
-					</div>
+						</CardContent>
+					</Card>
+					<Card className="bg-muted/50 border-border">
+						<CardContent className="flex flex-col items-center justify-center p-3">
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+								总大小
+							</span>
+							<span className="text-sm font-semibold whitespace-nowrap">
+								{torrentStatus ? formatBytes(torrentStatus.total_bytes) : "0 B"}
+							</span>
+						</CardContent>
+					</Card>
+					<Card className="bg-muted/50 border-border">
+						<CardContent className="flex flex-col items-center justify-center p-3">
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+								同伴 (连接/总数)
+							</span>
+							<span className="text-sm font-semibold whitespace-nowrap">
+								{torrentStatus
+									? `${torrentStatus.peers_connected} / ${torrentStatus.peers_total}`
+									: "0 / 0"}
+							</span>
+						</CardContent>
+					</Card>
+					<Card className="bg-muted/50 border-border">
+						<CardContent className="flex flex-col items-center justify-center p-3">
+							<span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
+								状态
+							</span>
+							<span className="text-sm font-semibold text-primary whitespace-nowrap">
+								{torrentStatus
+									? torrentStatus.finished
+										? "已完成"
+										: "正在缓存..."
+									: "连接中..."}
+							</span>
+						</CardContent>
+					</Card>
 				</div>
 			</div>
 		</div>

@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
-import { Card, CardContent } from "@/presentation/components/ui/card";
 import "@videojs/react/video/skin.css";
 import { createPlayer, liveVideoFeatures, selectError } from "@videojs/react";
 import {
@@ -136,7 +135,7 @@ export default function LivePlayer() {
 	};
 
 	return (
-		<div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">
+		<div className="w-full flex flex-col gap-4 lg:gap-6 animate-in fade-in duration-300">
 			<Button
 				variant="ghost"
 				size="sm"
@@ -147,62 +146,61 @@ export default function LivePlayer() {
 				返回
 			</Button>
 
-			<div className="bg-card border border-border rounded-xl p-6 flex flex-col gap-6">
-				<div className="flex flex-col md:flex-row md:items-center gap-4 border-b border-border pb-4">
-					<div className="flex items-center gap-3 flex-1 min-w-0">
+			{/* Player Video */}
+			<div className="relative w-full aspect-video max-h-dvh overflow-hidden rounded-xl">
+				{url ? (
+					resolvedUrl ? (
+						<JsLivePlayer.Provider>
+							<VideoSkin className="w-full h-full">
+								<HlsJsVideo
+									key={reloadKey}
+									src={resolvedUrl}
+									streamType="live"
+									config={hlsMediaConfig}
+									playsInline
+								/>
+							</VideoSkin>
+							<JsLivePlayerErrorMonitor onRecover={handleRecover} />
+						</JsLivePlayer.Provider>
+					) : (
+						<div className="flex items-center justify-center gap-3 h-full text-muted-foreground">
+							<Loader2 className="h-6 w-6 animate-spin" />
+							<p className="text-sm">正在加载直播源...</p>
+						</div>
+					)
+				) : (
+					<div className="flex flex-col items-center justify-center gap-3 h-full text-muted-foreground">
+						<Radio className="h-10 w-10 text-primary/40" />
+						<p className="text-sm">无效的直播地址</p>
+					</div>
+				)}
+			</div>
+
+			{/* Channel Info */}
+			{url && (
+				<div className="flex flex-col gap-4">
+					<div className="flex items-start gap-3">
 						{logo && (
-							<div className="h-10 w-10 rounded-md overflow-hidden bg-muted shrink-0">
+							<div className="h-12 w-12 rounded-lg overflow-hidden bg-muted shrink-0">
 								<LazyImage src={logo} alt={name} />
 							</div>
 						)}
-						<div className="flex flex-col gap-1 min-w-0">
-							<h2
-								className="text-lg font-bold text-foreground truncate"
+						<div className="flex flex-col gap-1 min-w-0 flex-1">
+							<h1
+								className="text-xl sm:text-2xl font-bold text-foreground truncate"
 								title={name}
 							>
 								{name || "未命名频道"}
-							</h2>
+							</h1>
 							<div className="flex items-center gap-2">
 								{category && <Badge variant="secondary">{category}</Badge>}
 								<span className="text-xs text-muted-foreground">直播</span>
 							</div>
 						</div>
 					</div>
-				</div>
 
-				{url ? (
-					<div className="relative w-full max-h-dvh overflow-hidden">
-						{resolvedUrl ? (
-							<JsLivePlayer.Provider>
-								<VideoSkin className="w-full max-h-dvh">
-									<HlsJsVideo
-										key={reloadKey}
-										src={resolvedUrl}
-										streamType="live"
-										config={hlsMediaConfig}
-										playsInline
-									/>
-								</VideoSkin>
-								<JsLivePlayerErrorMonitor onRecover={handleRecover} />
-							</JsLivePlayer.Provider>
-						) : (
-							<div className="flex items-center justify-center gap-3 py-24 text-muted-foreground">
-								<Loader2 className="h-6 w-6 animate-spin" />
-								<p className="text-sm">正在加载直播源...</p>
-							</div>
-						)}
-					</div>
-				) : (
-					<Card className="bg-muted/50 border-border py-16">
-						<CardContent className="flex flex-col items-center justify-center gap-3 text-muted-foreground">
-							<Radio className="h-10 w-10 text-primary/40" />
-							<p className="text-sm">无效的直播地址</p>
-						</CardContent>
-					</Card>
-				)}
-
-				{url && (
-					<div className="flex flex-col gap-2 border-t border-border pt-4">
+					{/* Raw URL */}
+					<div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-2">
 						<div className="flex items-center gap-2">
 							<Link2 className="h-4 w-4 text-muted-foreground" />
 							<span className="text-xs text-muted-foreground">
@@ -210,7 +208,7 @@ export default function LivePlayer() {
 							</span>
 						</div>
 						<div className="flex items-center gap-2">
-							<p className="flex-1 min-w-0 font-mono text-xs text-muted-foreground">
+							<p className="flex-1 min-w-0 font-mono text-xs text-muted-foreground break-all">
 								{url}
 							</p>
 							<Button
@@ -224,8 +222,8 @@ export default function LivePlayer() {
 							</Button>
 						</div>
 					</div>
-				)}
-			</div>
+				</div>
+			)}
 		</div>
 	);
 }

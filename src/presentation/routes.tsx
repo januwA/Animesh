@@ -30,6 +30,10 @@ export const routes: RouteObject[] = [
 				element: <Player />,
 			},
 			{
+				path: "live/play",
+				element: <LivePlayer />,
+			},
+			{
 				element: <NavBarLayout />,
 				children: [
 					{
@@ -52,10 +56,7 @@ export const routes: RouteObject[] = [
 						path: "live",
 						element: <Iptv />,
 					},
-					{
-						path: "live/play",
-						element: <LivePlayer />,
-					},
+
 					{
 						path: "settings",
 						element: <Settings />,
