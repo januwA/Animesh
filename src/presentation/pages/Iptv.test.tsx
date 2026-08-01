@@ -235,6 +235,28 @@ describe("Iptv 页面组件", () => {
 		});
 	});
 
+	it("应该根据 country.code 展示国旗图片，图片加载失败时回退到 emoji", async () => {
+		renderIptv();
+
+		await waitFor(() => {
+			expect(screen.getByText("CCTV-1")).toBeInTheDocument();
+		});
+
+		const selectTrigger = screen.getByRole("combobox");
+		await act(async () => {
+			fireEvent.click(selectTrigger);
+		});
+
+		const flagImg = screen.getAllByAltText("中国")[0] as HTMLImageElement;
+		expect(flagImg.src).toBe("https://flagcdn.com/w40/cn.png");
+		expect(screen.queryByText("🇨🇳")).not.toBeInTheDocument();
+
+		await act(async () => {
+			fireEvent.error(flagImg);
+		});
+		expect(screen.getByText("🇨🇳")).toBeInTheDocument();
+	});
+
 	it("当国家列表为空或缺少当前选中国家时，应该展示默认中国选项", async () => {
 		renderIptv({ getCountries: vi.fn().mockResolvedValue([]) });
 

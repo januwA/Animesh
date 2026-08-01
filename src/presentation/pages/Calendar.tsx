@@ -57,7 +57,7 @@ function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
 					value={String(activeDay)}
 					onValueChange={(v) => setActiveDay(Number(v))}
 				>
-					<TabsList className="w-full">
+					<TabsList className="w-full" variant="line">
 						{WEEKDAY_LABELS.map((label, index) => {
 							const dayId = index + 1;
 							const isToday = dayId === todayId;
@@ -124,7 +124,7 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 				{item.images?.large ? (
 					<div className="aspect-3/4 w-full overflow-hidden bg-muted">
 						<LazyImage
-							src={item.images.common}
+							src={item.images.large}
 							alt={displayName}
 							style={
 								{

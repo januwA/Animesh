@@ -36,6 +36,22 @@ const DEFAULT_COUNTRY_FALLBACK: IptvCountry = {
 };
 const ALL_CATEGORY_LABEL = "全部";
 
+function CountryFlag({ country }: { country: IptvCountry }) {
+	const [failed, setFailed] = useState(false);
+
+	if (failed) {
+		return <span>{country.flag}</span>;
+	}
+	return (
+		<img
+			src={`https://flagcdn.com/w40/${country.code.toLowerCase()}.png`}
+			alt={country.name}
+			className="inline-block h-3.5 w-5 object-cover rounded-[2px]"
+			onError={() => setFailed(true)}
+		/>
+	);
+}
+
 interface ChannelCardProps {
 	channel: IptvChannel;
 	onClick: () => void;
@@ -243,7 +259,7 @@ export default function Iptv() {
 						<SelectContent>
 							{selectCountries.map((country) => (
 								<SelectItem key={country.code} value={country.code}>
-									{country.flag} {country.name}
+									<CountryFlag country={country} /> {country.name}
 								</SelectItem>
 							))}
 						</SelectContent>

@@ -17,7 +17,7 @@ export function MainLayout() {
 
 	return (
 		<main
-			className="container mx-auto px-4 pb-24 md:pb-24 md:pt-10 flex flex-col min-h-screen"
+			className="container max-w-7xl mx-auto px-4 pb-24 md:pb-24 md:pt-10 flex flex-col min-h-screen"
 			style={{
 				paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.5rem)",
 			}}
