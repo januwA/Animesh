@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
+import type { ResolvedStreamUrl } from "@/domain/iptv/IptvStreamUrlRepository";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import "@videojs/react/video/skin.css";
@@ -13,6 +14,7 @@ import {
 } from "@videojs/react/media/hlsjs-video";
 import { VideoSkin } from "@videojs/react/video";
 import { LazyImage } from "../components/LazyImage";
+import { MpegtsVideo } from "../components/MpegtsVideo";
 
 const JsLivePlayer = createPlayer({ features: liveVideoFeatures });
 
@@ -68,7 +70,8 @@ export default function LivePlayer() {
 	const category = searchParams.get("category") || "";
 
 	const { resolvePlayableStreamUrlUseCase } = useDI();
-	const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+	const [resolvedStream, setResolvedStream] =
+		useState<ResolvedStreamUrl | null>(null);
 	const [reloadKey, setReloadKey] = useState(0);
 	const recoveriesRef = useRef(0);
 
@@ -105,16 +108,16 @@ export default function LivePlayer() {
 	useEffect(() => {
 		let cancelled = false;
 		if (!url) {
-			setResolvedUrl(null);
+			setResolvedStream(null);
 			return;
 		}
 		resolvePlayableStreamUrlUseCase
 			.execute(url)
-			.then((playableUrl) => {
-				if (!cancelled) setResolvedUrl(playableUrl);
+			.then((resolved) => {
+				if (!cancelled) setResolvedStream(resolved);
 			})
 			.catch(() => {
-				if (!cancelled) setResolvedUrl(url);
+				if (!cancelled) setResolvedStream({ url, kind: "unknown" });
 			});
 		return () => {
 			cancelled = true;
@@ -149,19 +152,28 @@ export default function LivePlayer() {
 			{/* Player Video */}
 			<div className="relative w-full aspect-video max-h-dvh overflow-hidden rounded-xl">
 				{url ? (
-					resolvedUrl ? (
-						<JsLivePlayer.Provider>
-							<VideoSkin className="w-full h-full">
-								<HlsJsVideo
-									key={reloadKey}
-									src={resolvedUrl}
-									streamType="live"
-									config={hlsMediaConfig}
-									playsInline
-								/>
-							</VideoSkin>
-							<JsLivePlayerErrorMonitor onRecover={handleRecover} />
-						</JsLivePlayer.Provider>
+					resolvedStream ? (
+						resolvedStream.kind === "flv" ? (
+							<MpegtsVideo
+								key={reloadKey}
+								src={resolvedStream.url}
+								autoplay
+								onError={handleRecover}
+							/>
+						) : (
+							<JsLivePlayer.Provider>
+								<VideoSkin className="w-full h-full">
+									<HlsJsVideo
+										key={reloadKey}
+										src={resolvedStream.url}
+										streamType="live"
+										config={hlsMediaConfig}
+										playsInline
+									/>
+								</VideoSkin>
+								<JsLivePlayerErrorMonitor onRecover={handleRecover} />
+							</JsLivePlayer.Provider>
+						)
 					) : (
 						<div className="flex items-center justify-center gap-3 h-full text-muted-foreground">
 							<Loader2 className="h-6 w-6 animate-spin" />

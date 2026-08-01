@@ -262,6 +262,17 @@ fn iptv_proxy_base_url(manager: tauri::State<'_, Arc<TorrentManager>>) -> String
 }
 
 #[tauri::command]
+async fn iptv_resolve_stream(
+    raw_url: String,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<animesh_core::hls_proxy::ResolvedStream, String> {
+    let hls_proxy = manager.hls_proxy.clone();
+    let proxy_url = animesh_core::hls_proxy::proxy_base_url(manager.port);
+    let kind = animesh_core::hls_proxy::probe_stream(&hls_proxy, &raw_url).await;
+    Ok(animesh_core::hls_proxy::ResolvedStream { proxy_url, kind })
+}
+
+#[tauri::command]
 fn torrent_get_files(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
@@ -682,6 +693,7 @@ pub fn run() {
             torrent_get_status,
             torrent_get_stream_url,
             iptv_proxy_base_url,
+            iptv_resolve_stream,
             torrent_get_files,
             torrent_pause,
             torrent_resume,

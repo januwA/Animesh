@@ -192,7 +192,10 @@ export function createDIContainerForTest(
 	} as IptvCache;
 
 	const iptvStreamUrlRepo = {
-		resolvePlayableStreamUrl: async (rawUrl: string) => rawUrl,
+		resolvePlayableStreamUrl: async (rawUrl: string) => ({
+			url: rawUrl,
+			kind: "unknown" as const,
+		}),
 		...params.iptvStreamUrlRepository,
 	} as IptvStreamUrlRepository;
 

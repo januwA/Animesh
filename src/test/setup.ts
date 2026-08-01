@@ -92,6 +92,30 @@ vi.mock("@videojs/react/media/hlsjs-video", async () => {
 	};
 });
 
+// Mock mpegts.js for testing
+const __mpegtsMock = vi.hoisted(() => {
+	const api = {
+		createPlayer: vi.fn(() => ({
+			on: vi.fn(),
+			off: vi.fn(),
+			attachMediaElement: vi.fn(),
+			load: vi.fn(),
+			play: vi.fn(() => Promise.resolve()),
+			destroy: vi.fn(),
+		})),
+	};
+	(globalThis as any).__mpegtsMock = api;
+	return api;
+});
+
+vi.mock("mpegts.js", () => ({
+	default: {
+		isSupported: () => true,
+		Events: { ERROR: "error" },
+		createPlayer: __mpegtsMock.createPlayer,
+	},
+}));
+
 // Mock CSS.supports to prevent JSDOM crash when initializing video.js components
 if (typeof window !== "undefined") {
 	if (typeof window.CSS === "undefined") {

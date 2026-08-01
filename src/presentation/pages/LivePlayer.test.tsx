@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
+import type { ResolvedStreamUrl } from "@/domain/iptv/IptvStreamUrlRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
@@ -105,8 +106,10 @@ describe("LivePlayer 页面组件", () => {
 	it("直播源应经本地代理地址播放", async () => {
 		mockContainer = createDIContainerForTest({
 			iptvStreamUrlRepository: {
-				resolvePlayableStreamUrl: async (rawUrl) =>
-					`http://127.0.0.1:1234/iptv-proxy?url=${encodeURIComponent(rawUrl)}`,
+				resolvePlayableStreamUrl: async (rawUrl) => ({
+					url: `http://127.0.0.1:1234/iptv-proxy?url=${encodeURIComponent(rawUrl)}`,
+					kind: "hls" as const,
+				}),
 			},
 		});
 		renderLivePlayer("?url=http%3A%2F%2Fexample.com%2Flive.m3u8");
@@ -118,14 +121,45 @@ describe("LivePlayer 页面组件", () => {
 		);
 	});
 
+	it("当后端判定为 FLV 时应该用 mpegts 播放器", async () => {
+		mockContainer = createDIContainerForTest({
+			iptvStreamUrlRepository: {
+				resolvePlayableStreamUrl: async (rawUrl) => ({
+					url: `http://127.0.0.1:1234/iptv-proxy?url=${encodeURIComponent(rawUrl)}`,
+					kind: "flv" as const,
+				}),
+			},
+		});
+		renderLivePlayer("?url=http%3A%2F%2Fexample.com%2Flive.flv");
+
+		await waitFor(() =>
+			expect(document.querySelector("video")).toBeInTheDocument(),
+		);
+		expect((globalThis as any).__mpegtsMock.createPlayer).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: "http://127.0.0.1:1234/iptv-proxy?url=http%3A%2F%2Fexample.com%2Flive.flv",
+				type: "flv",
+				isLive: true,
+			}),
+			expect.objectContaining({
+				enableStashBuffer: true,
+				lazyLoad: false,
+			}),
+		);
+	});
+
 	it("解析直播源期间应展示加载状态", async () => {
-		let resolveUrl: ((value: string) => void) | null = null;
+		let resolveUrl:
+			| ((value: { url: string; kind: "hls" | "flv" | "unknown" }) => void)
+			| null = null;
 		mockContainer = createDIContainerForTest({
 			iptvStreamUrlRepository: {
 				resolvePlayableStreamUrl: () =>
-					new Promise<string>((resolve) => {
-						resolveUrl = resolve;
-					}),
+					new Promise<{ url: string; kind: "hls" | "flv" | "unknown" }>(
+						(resolve) => {
+							resolveUrl = resolve;
+						},
+					),
 			},
 		});
 		renderLivePlayer("?url=http%3A%2F%2Fexample.com%2Flive.m3u8");
@@ -134,7 +168,10 @@ describe("LivePlayer 页面组件", () => {
 		expect(document.querySelector("video")).not.toBeInTheDocument();
 
 		await act(async () => {
-			resolveUrl?.("http://127.0.0.1:1234/iptv-proxy?url=x");
+			resolveUrl?.({
+				url: "http://127.0.0.1:1234/iptv-proxy?url=x",
+				kind: "hls",
+			});
 		});
 
 		const video = await findVideo();
@@ -145,13 +182,18 @@ describe("LivePlayer 页面组件", () => {
 	});
 
 	it("解析成功且组件已卸载时不应再更新状态", async () => {
-		let resolveUrl!: (value: string) => void;
+		let resolveUrl!: (value: {
+			url: string;
+			kind: "hls" | "flv" | "unknown";
+		}) => void;
 		mockContainer = createDIContainerForTest({
 			iptvStreamUrlRepository: {
 				resolvePlayableStreamUrl: () =>
-					new Promise<string>((resolve) => {
-						resolveUrl = resolve;
-					}),
+					new Promise<{ url: string; kind: "hls" | "flv" | "unknown" }>(
+						(resolve) => {
+							resolveUrl = resolve;
+						},
+					),
 			},
 		});
 		const { unmount } = renderLivePlayer(
@@ -160,7 +202,7 @@ describe("LivePlayer 页面组件", () => {
 
 		unmount();
 		await act(async () => {
-			resolveUrl("proxied");
+			resolveUrl({ url: "proxied", kind: "hls" });
 		});
 	});
 
@@ -183,7 +225,7 @@ describe("LivePlayer 页面组件", () => {
 		mockContainer = createDIContainerForTest({
 			iptvStreamUrlRepository: {
 				resolvePlayableStreamUrl: () =>
-					new Promise<string>((_, reject) => {
+					new Promise<ResolvedStreamUrl>((_, reject) => {
 						rejectUrl = reject;
 					}),
 			},

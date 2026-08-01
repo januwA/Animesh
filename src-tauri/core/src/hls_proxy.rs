@@ -3,6 +3,8 @@ use axum::{
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
+use bytes::Bytes;
+use futures_util::{stream, StreamExt};
 use m3u8_rs::{Playlist, SessionDataField};
 use reqwest::{Response as UpstreamResponse, Url};
 use serde::Deserialize;
@@ -16,6 +18,13 @@ pub const IPTV_PROXY_PATH: &str = "/iptv-proxy";
 /// 上游请求携带的浏览器 User-Agent。部分直播源（如 Cloudflare 防护站点）会拒绝
 /// 非浏览器请求（403/连接重置），必须伪装成浏览器才能正常拉流。
 const UPSTREAM_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
+/// 播放器 User-Agent。部分直播源按 UA 分流：浏览器 UA 会被引导到蜜罐死链，
+/// 只有播放器 UA（如 ffmpeg）才能拿到真实直播流。首次拉流失败时回退到该 UA 重试。
+const PLAYER_USER_AGENT: &str = "Lavf62.12.100";
+
+/// 嗅探前缀的最小长度，足以识别清单/FLV/TS/HTML 魔数。
+const PEEK_MIN: usize = 16;
 
 /// 分片/子资源的最大缓冲上限。超限时退化为流式透传。
 const MAX_BUFFER_SIZE: usize = 64 * 1024 * 1024;
@@ -89,7 +98,8 @@ pub struct ProxyQuery {
     pub ref_url: Option<String>,
 }
 
-/// 代理上游请求：m3u8 清单会被重写为经本代理访问，其余内容（ts 分片、密钥等）透传。
+/// 代理上游请求：m3u8 清单会被重写为经本代理访问，无限直播流（FLV/TS）流式透传，
+/// 其余内容（ts 分片、密钥等）缓冲透传。
 pub async fn proxy_request(
     state: &HlsProxyState,
     query: &ProxyQuery,
@@ -103,10 +113,10 @@ pub async fn proxy_request(
     let range = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
 
     // 首次请求原始地址；失败时先整体重试一次（应对瞬时断流/截断），再考虑重定向缓存。
-    let fetched = match fetch(&state.client, &upstream_url, range, referer).await {
-        Ok(fetched) => fetched,
-        Err((code, msg)) => match fetch(&state.client, &upstream_url, range, referer).await {
-            Ok(fetched) => fetched,
+    match fetch_browser(state, &upstream_url, range, referer).await {
+        Ok(response) => response,
+        Err((code, msg)) => match fetch_browser(state, &upstream_url, range, referer).await {
+            Ok(response) => response,
             Err((_second_code, _second_msg)) => {
                 if looks_like_manifest_url(&upstream_url) {
                     if let Some(response) =
@@ -115,52 +125,160 @@ pub async fn proxy_request(
                         return response;
                     }
                 }
-                return (code, msg).into_response();
+                (code, msg).into_response()
             }
         },
-    };
+    }
+}
 
-    // 判断是否为清单，并缓存 原始->最终 映射。只有内容以 #EXTM3U 开头才视为清单，
-    // Content-Type 与 URL 扩展名仅作为“本应返回清单”的提示，用于失败后的缓存重试。
-    let (is_manifest, is_bad_manifest) = match &fetched {
+/// 以浏览器 UA 拉取上游并分类处理；仅网络级失败返回 Err。
+async fn fetch_browser(
+    state: &HlsProxyState,
+    url: &Url,
+    range: Option<&str>,
+    referer: Option<&str>,
+) -> Result<Response, (StatusCode, String)> {
+    let fetched = fetch(&state.client, url, range, referer, UPSTREAM_USER_AGENT).await?;
+    Ok(handle_fetched(state, fetched, url, range, referer).await)
+}
+
+/// 分类并处理一次上游响应：清单重写、蜜罐 HTML 回退播放器 UA、缓存重试、媒体透传。
+async fn handle_fetched(
+    state: &HlsProxyState,
+    fetched: Fetched,
+    original: &Url,
+    range: Option<&str>,
+    referer: Option<&str>,
+) -> Response {
+    match fetched {
         Fetched::Full {
             status,
             headers,
             final_url,
             bytes,
-            ..
         } => {
-            let sniffed = is_playlist_sniff(bytes);
+            let sniffed = sniff(&bytes);
             let expected_manifest =
-                looks_like_manifest_url(&upstream_url) || content_type_is_playlist(headers);
-            if status.is_success() && sniffed {
-                state.cache_update(upstream_url.as_str(), final_url);
+                looks_like_manifest_url(original) || content_type_is_playlist(&headers);
+
+            if status.is_success() && sniffed == Sniff::Playlist {
+                state.cache_update(original.as_str(), &final_url);
+                return manifest_response(rewrite_hls_manifest(&bytes, &final_url, &state.proxy_base));
             }
-            let is_manifest = status.is_success() && sniffed;
-            let is_bad = expected_manifest && (!status.is_success() || !sniffed);
-            (is_manifest, is_bad)
+
+            // 蜜罐：浏览器 UA 拿到的多为 200 HTML（反盗链），换播放器 UA 重试原始地址。
+            if status.is_success() && sniffed == Sniff::Html {
+                if let Some(response) = retry_player_fetch(state, original, range, referer).await {
+                    return response;
+                }
+                return media_response(status, &headers, bytes);
+            }
+
+            // 清单地址拿到了非成功状态或非清单内容（签名过期/反盗链），尝试用缓存最终地址重试。
+            if expected_manifest && (!status.is_success() || sniffed != Sniff::Playlist) {
+                if let Some(response) =
+                    serve_cached_manifest(state, original, range, referer).await
+                {
+                    return response;
+                }
+            }
+
+            media_response(status, &headers, bytes)
         }
-        Fetched::Stream(_) => (false, false),
+        Fetched::Stream {
+            status,
+            headers,
+            body,
+        } => serve_media_stream(status, &headers, body),
+    }
+}
+
+/// 用播放器 UA 重试一次并处理结果（不再递归，避免死循环）。
+async fn retry_player_fetch(
+    state: &HlsProxyState,
+    original: &Url,
+    range: Option<&str>,
+    referer: Option<&str>,
+) -> Option<Response> {
+    log::info!("iptv proxy retry with player UA: {original}");
+    let fetched = fetch(
+        &state.client,
+        original,
+        range,
+        referer,
+        PLAYER_USER_AGENT,
+    )
+    .await
+    .ok()?;
+
+    match fetched {
+        Fetched::Full {
+            status,
+            headers,
+            final_url,
+            bytes,
+        } => {
+            let sniffed = sniff(&bytes);
+            if status.is_success() && sniffed == Sniff::Playlist {
+                state.cache_update(original.as_str(), &final_url);
+                Some(manifest_response(rewrite_hls_manifest(
+                    &bytes,
+                    &final_url,
+                    &state.proxy_base,
+                )))
+            } else if status.is_success() && sniffed == Sniff::Html {
+                None
+            } else {
+                Some(media_response(status, &headers, bytes))
+            }
+        }
+        Fetched::Stream {
+            status,
+            headers,
+            body,
+        } => Some(serve_media_stream(status, &headers, body)),
+    }
+}
+
+/// 流类型判定结果。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StreamKind {
+    Hls,
+    Flv,
+    Unknown,
+}
+
+/// Tauri 命令返回的已解析直播源。
+#[derive(serde::Serialize)]
+pub struct ResolvedStream {
+    pub proxy_url: String,
+    pub kind: StreamKind,
+}
+
+/// 嗅探上游响应并判定流类型（只读取少量前缀即断开，不消耗直播流）。
+pub async fn probe_stream(state: &HlsProxyState, raw_url: &str) -> StreamKind {
+    let Ok(url) = Url::parse(raw_url) else {
+        return StreamKind::Unknown;
     };
-
-    if is_manifest {
-        if let Fetched::Full {
-            bytes, final_url, ..
-        } = &fetched
-        {
-            let rewritten = rewrite_hls_manifest(bytes, final_url, &state.proxy_base);
-            return manifest_response(rewritten);
-        }
+    if !matches!(url.scheme(), "http" | "https") {
+        return StreamKind::Unknown;
     }
 
-    // 清单地址拿到了非成功状态或非清单内容（签名过期/反盗链），尝试用缓存最终地址重试。
-    if is_bad_manifest {
-        if let Some(response) = serve_cached_manifest(state, &upstream_url, range, referer).await {
-            return response;
-        }
+    let first = probe_sniff(&state.client, &url, UPSTREAM_USER_AGENT).await;
+    let kind = classify_sniff(first);
+    if kind != StreamKind::Unknown {
+        return kind;
     }
+    classify_sniff(probe_sniff(&state.client, &url, PLAYER_USER_AGENT).await)
+}
 
-    serve_media(fetched)
+fn classify_sniff(sniffed: Sniff) -> StreamKind {
+    match sniffed {
+        Sniff::Playlist => StreamKind::Hls,
+        Sniff::Flv | Sniff::MpegTs => StreamKind::Flv,
+        Sniff::Html | Sniff::Unknown => StreamKind::Unknown,
+    }
 }
 
 /// 使用缓存中的最终地址重拉取清单；无可用缓存时返回 None。
@@ -176,9 +294,15 @@ async fn serve_cached_manifest(
     }
     let cached_url = Url::parse(&cached).ok()?;
     log::info!("iptv proxy manifest refetch via cached final url: {original} -> {cached}");
-    match fetch(&state.client, &cached_url, range, referer)
-        .await
-        .ok()?
+    match fetch(
+        &state.client,
+        &cached_url,
+        range,
+        referer,
+        UPSTREAM_USER_AGENT,
+    )
+    .await
+    .ok()?
     {
         Fetched::Full {
             status,
@@ -197,11 +321,15 @@ async fn serve_cached_manifest(
                 Some(media_response(status, &headers, bytes))
             }
         }
-        Fetched::Stream(response) => Some(serve_media_stream(response)),
+        Fetched::Stream {
+            status,
+            headers,
+            body,
+        } => Some(serve_media_stream(status, &headers, body)),
     }
 }
 
-/// 上游响应：要么完整缓冲（可校验长度），要么超限流式透传。
+/// 上游响应：要么完整缓冲（可校验长度），要么流式透传。
 enum Fetched {
     Full {
         status: StatusCode,
@@ -209,27 +337,33 @@ enum Fetched {
         final_url: Url,
         bytes: Vec<u8>,
     },
-    Stream(UpstreamResponse),
+    Stream {
+        status: StatusCode,
+        headers: HeaderMap,
+        body: Body,
+    },
 }
 
-/// 请求上游。分片/子资源会按声明长度完整缓冲后再返回，截断或超限视为失败。
+/// 前缀内容嗅探分类。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Sniff {
+    Playlist,
+    Flv,
+    MpegTs,
+    Html,
+    Unknown,
+}
+
+/// 请求上游。有声明长度的小体积分片/清单会完整缓冲并按长度校验；
+/// 无长度且嗅探为直播流（FLV/TS）的内容改为流式透传，避免无限流被 64MB 上限截断。
 async fn fetch(
     client: &reqwest::Client,
     url: &Url,
     range: Option<&str>,
     referer: Option<&str>,
+    user_agent: &str,
 ) -> Result<Fetched, (StatusCode, String)> {
-    let mut request = client
-        .get(url.clone())
-        .header(header::USER_AGENT, UPSTREAM_USER_AGENT);
-    if let Some(range) = range {
-        request = request.header(header::RANGE, range);
-    }
-    if let Some(referer) = referer {
-        request = request.header(header::REFERER, referer);
-    }
-
-    let response = request.send().await.map_err(|err| {
+    let response = send(client, url, range, referer, user_agent).await.map_err(|err| {
         log::error!("iptv proxy upstream request failed for {url}: {err}");
         (
             StatusCode::BAD_GATEWAY,
@@ -247,14 +381,50 @@ async fn fetch(
 
     // 声明长度超过缓冲上限时直接流式透传。
     if declared.is_some_and(|size| size > MAX_BUFFER_SIZE) {
-        return Ok(Fetched::Stream(response));
+        return Ok(Fetched::Stream {
+            status,
+            headers,
+            body: Body::from_stream(response.bytes_stream()),
+        });
     }
 
-    let mut bytes = Vec::new();
-    let mut stream = response;
+    let mut stream = response.bytes_stream();
+
+    // 读取前缀用于嗅探。
+    let mut prefix = Vec::new();
     loop {
-        match stream.chunk().await {
-            Ok(Some(chunk)) => {
+        if prefix.len() >= PEEK_MIN {
+            break;
+        }
+        match stream.next().await {
+            Some(Ok(chunk)) => prefix.extend_from_slice(&chunk),
+            Some(Err(err)) => {
+                log::warn!("iptv proxy upstream response truncated for {url}: {err}");
+                return Err((
+                    StatusCode::BAD_GATEWAY,
+                    format!("upstream response truncated: {err}"),
+                ));
+            }
+            None => break,
+        }
+    }
+
+    // 无声明长度的直播流（FLV/TS）流式透传，前缀与剩余流拼接。
+    if declared.is_none() && matches!(sniff(&prefix), Sniff::Flv | Sniff::MpegTs) {
+        let body = Body::from_stream(
+            stream::iter([Ok::<Bytes, reqwest::Error>(Bytes::from(prefix))]).chain(stream),
+        );
+        return Ok(Fetched::Stream {
+            status,
+            headers,
+            body,
+        });
+    }
+
+    let mut bytes = prefix;
+    loop {
+        match stream.next().await {
+            Some(Ok(chunk)) => {
                 if bytes.len() + chunk.len() > MAX_BUFFER_SIZE {
                     return Err((
                         StatusCode::BAD_GATEWAY,
@@ -263,14 +433,14 @@ async fn fetch(
                 }
                 bytes.extend_from_slice(&chunk);
             }
-            Ok(None) => break,
-            Err(err) => {
+            Some(Err(err)) => {
                 log::warn!("iptv proxy upstream response truncated for {url}: {err}");
                 return Err((
                     StatusCode::BAD_GATEWAY,
                     format!("upstream response truncated: {err}"),
                 ));
             }
+            None => break,
         }
     }
 
@@ -296,6 +466,78 @@ async fn fetch(
         final_url,
         bytes,
     })
+}
+
+/// 发送上游请求并携带指定 User-Agent、Range、Referer。
+async fn send(
+    client: &reqwest::Client,
+    url: &Url,
+    range: Option<&str>,
+    referer: Option<&str>,
+    user_agent: &str,
+) -> Result<UpstreamResponse, reqwest::Error> {
+    let mut request = client.get(url.clone()).header(header::USER_AGENT, user_agent);
+    if let Some(range) = range {
+        request = request.header(header::RANGE, range);
+    }
+    if let Some(referer) = referer {
+        request = request.header(header::REFERER, referer);
+    }
+    request.send().await
+}
+
+/// 只读取少量前缀用于探测流类型，随后断开连接，不消费直播流。
+async fn probe_sniff(
+    client: &reqwest::Client,
+    url: &Url,
+    user_agent: &str,
+) -> Sniff {
+    let Ok(response) = send(client, url, None, None, user_agent).await else {
+        return Sniff::Unknown;
+    };
+    if !response.status().is_success() {
+        return Sniff::Unknown;
+    }
+    let mut stream = response.bytes_stream();
+    let mut prefix = Vec::new();
+    loop {
+        if prefix.len() >= PEEK_MIN {
+            break;
+        }
+        match stream.next().await {
+            Some(Ok(chunk)) => prefix.extend_from_slice(&chunk),
+            Some(Err(_)) | None => break,
+        }
+    }
+    sniff(&prefix)
+}
+
+/// 依据前缀魔数分类内容。
+fn sniff(bytes: &[u8]) -> Sniff {
+    let b = strip_bom(bytes);
+    if b.starts_with(b"#EXTM3U") {
+        return Sniff::Playlist;
+    }
+    if b.starts_with(b"FLV") && b.get(3) == Some(&0x01) {
+        return Sniff::Flv;
+    }
+    if b.first() == Some(&0x47) {
+        return Sniff::MpegTs;
+    }
+    if trim_start_ascii_whitespace(b).starts_with(b"<") {
+        return Sniff::Html;
+    }
+    Sniff::Unknown
+}
+
+fn trim_start_ascii_whitespace(mut input: &[u8]) -> &[u8] {
+    while let [first, rest @ ..] = input {
+        if !first.is_ascii_whitespace() {
+            break;
+        }
+        input = rest;
+    }
+    input
 }
 
 fn content_type_is_playlist(headers: &HeaderMap) -> bool {
@@ -337,18 +579,6 @@ fn manifest_response(rewritten: String) -> Response {
         .into_response()
 }
 
-fn serve_media(fetched: Fetched) -> Response {
-    match fetched {
-        Fetched::Full {
-            status,
-            headers,
-            bytes,
-            ..
-        } => media_response(status, &headers, bytes),
-        Fetched::Stream(response) => serve_media_stream(response),
-    }
-}
-
 fn media_response(status: StatusCode, headers: &HeaderMap, bytes: Vec<u8>) -> Response {
     let mut response_headers = HeaderMap::new();
     for key in [
@@ -368,7 +598,7 @@ fn media_response(status: StatusCode, headers: &HeaderMap, bytes: Vec<u8>) -> Re
     (status, response_headers, bytes).into_response()
 }
 
-fn serve_media_stream(response: UpstreamResponse) -> Response {
+fn serve_media_stream(status: StatusCode, headers: &HeaderMap, body: Body) -> Response {
     let mut response_headers = HeaderMap::new();
     for key in [
         header::CONTENT_TYPE,
@@ -376,16 +606,11 @@ fn serve_media_stream(response: UpstreamResponse) -> Response {
         header::ACCEPT_RANGES,
         header::CONTENT_ENCODING,
     ] {
-        if let Some(value) = response.headers().get(&key) {
+        if let Some(value) = headers.get(&key) {
             response_headers.insert(key, value.clone());
         }
     }
-    (
-        response.status(),
-        response_headers,
-        Body::from_stream(response.bytes_stream()),
-    )
-        .into_response()
+    (status, response_headers, body).into_response()
 }
 
 /// 重写 m3u8 清单，把所有子资源 URI（分片、子清单、密钥）改写为经本代理访问的地址。
@@ -530,7 +755,12 @@ fn rewrite_uri_attributes(line: &str, base: &Url, proxy_base: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{body::to_bytes, routing::get, Router};
+    use axum::{
+        body::to_bytes,
+        response::IntoResponse,
+        routing::get,
+        Router,
+    };
     use std::net::SocketAddr;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::net::TcpListener;
@@ -1052,5 +1282,236 @@ mod tests {
         );
         let bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
         assert_eq!(bytes.len(), 64);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_蜜罐HTML_浏览器UA回退播放器UA_流式透传FLV() {
+        let addr = spawn_upstream(Router::new().route(
+            "/entry",
+            get(|headers: HeaderMap| async move {
+                let ua = headers
+                    .get(header::USER_AGENT)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("")
+                    .to_string();
+                if ua.starts_with("Mozilla") {
+                    (
+                        StatusCode::OK,
+                        [(header::CONTENT_TYPE, "text/html")],
+                        b"<html><body>honeypot</body></html>".to_vec(),
+                    )
+                        .into_response()
+                } else {
+                    let flv = vec![0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00];
+                    (
+                        StatusCode::OK,
+                        [(header::CONTENT_TYPE, "video/x-flv")],
+                        Body::from_stream(stream::iter([Ok::<Bytes, std::io::Error>(
+                            Bytes::from(flv),
+                        )])),
+                    )
+                        .into_response()
+                }
+            }),
+        ))
+        .await;
+        let query = proxy_query(format!("http://{addr}/entry"));
+        let response = proxy_request(&test_state(), &query, &HeaderMap::new()).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok()),
+            Some("video/x-flv")
+        );
+        let bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+        assert!(
+            bytes.starts_with(&[0x46, 0x4c, 0x56, 0x01]),
+            "实际字节: {bytes:?}"
+        );
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_蜜罐HTML_浏览器UA回退播放器UA_重写清单() {
+        let addr = spawn_upstream(Router::new().route(
+            "/entry",
+            get(|headers: HeaderMap| async move {
+                let ua = headers
+                    .get(header::USER_AGENT)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("")
+                    .to_string();
+                if ua.starts_with("Mozilla") {
+                    (
+                        StatusCode::OK,
+                        [(header::CONTENT_TYPE, "text/html")],
+                        b"<html><body>honeypot</body></html>".to_vec(),
+                    )
+                        .into_response()
+                } else {
+                    (
+                        StatusCode::OK,
+                        [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                        "#EXTM3U\n#EXTINF:10.0,\nseg.ts\n",
+                    )
+                        .into_response()
+                }
+            }),
+        ))
+        .await;
+        let query = proxy_query(format!("http://{addr}/entry"));
+        let (status, text) =
+            body_of(proxy_request(&test_state(), &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            text.contains("?url=") && text.contains("seg.ts"),
+            "实际输出: {text}"
+        );
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_播放器UA也返回HTML_透传原响应不回退死循环() {
+        let addr = spawn_upstream(Router::new().route(
+            "/entry",
+            get(|| async {
+                (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "text/html")],
+                    b"<html><body>honeypot</body></html>".to_vec(),
+                )
+            }),
+        ))
+        .await;
+        let query = proxy_query(format!("http://{addr}/entry"));
+        let (status, text) =
+            body_of(proxy_request(&test_state(), &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(text.starts_with("<html>"), "实际输出: {text}");
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_无限FLV流式透传_保留内容类型() {
+        let addr = spawn_upstream(Router::new().route(
+            "/live",
+            get(|| async {
+                let flv = vec![0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00];
+                (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "video/x-flv")],
+                    Body::from_stream(stream::iter([
+                        Ok::<Bytes, std::io::Error>(Bytes::from(flv)),
+                        Ok::<Bytes, std::io::Error>(Bytes::from_static(b"tail-data")),
+                    ])),
+                )
+            }),
+        ))
+        .await;
+        let query = proxy_query(format!("http://{addr}/live"));
+        let response = proxy_request(&test_state(), &query, &HeaderMap::new()).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok()),
+            Some("video/x-flv")
+        );
+        assert!(response.headers().get(header::CONTENT_LENGTH).is_none());
+        let bytes = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
+        assert!(
+            bytes.starts_with(&[0x46, 0x4c, 0x56, 0x01]) && bytes.ends_with(b"tail-data"),
+            "实际字节: {bytes:?}"
+        );
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_probe_stream_识别HLS() {
+        let addr = spawn_upstream(Router::new().route(
+            "/live.m3u8",
+            get(|| async {
+                (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                    "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXTINF:10.0,\nseg.ts\n",
+                )
+            }),
+        ))
+        .await;
+        let kind = probe_stream(&test_state(), &format!("http://{addr}/live.m3u8")).await;
+        assert_eq!(kind, StreamKind::Hls);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_probe_stream_识别FLV() {
+        let addr = spawn_upstream(Router::new().route(
+            "/live",
+            get(|| async {
+                let flv = vec![0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00];
+                (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "video/x-flv")],
+                    Body::from_stream(stream::iter([Ok::<Bytes, std::io::Error>(
+                        Bytes::from(flv),
+                    )])),
+                )
+            }),
+        ))
+        .await;
+        let kind = probe_stream(&test_state(), &format!("http://{addr}/live")).await;
+        assert_eq!(kind, StreamKind::Flv);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_probe_stream_蜜罐后回退播放器UA识别FLV() {
+        let addr = spawn_upstream(Router::new().route(
+            "/entry",
+            get(|headers: HeaderMap| async move {
+                let ua = headers
+                    .get(header::USER_AGENT)
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("")
+                    .to_string();
+                if ua.starts_with("Mozilla") {
+                    (
+                        StatusCode::OK,
+                        [(header::CONTENT_TYPE, "text/html")],
+                        b"<html><body>honeypot</body></html>".to_vec(),
+                    )
+                        .into_response()
+                } else {
+                    let flv = vec![0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00];
+                    (
+                        StatusCode::OK,
+                        [(header::CONTENT_TYPE, "video/x-flv")],
+                        Body::from_stream(stream::iter([Ok::<Bytes, std::io::Error>(
+                            Bytes::from(flv),
+                        )])),
+                    )
+                        .into_response()
+                }
+            }),
+        ))
+        .await;
+        let kind = probe_stream(&test_state(), &format!("http://{addr}/entry")).await;
+        assert_eq!(kind, StreamKind::Flv);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_probe_stream_非法URL返回Unknown() {
+        let state = test_state();
+        assert_eq!(probe_stream(&state, "not-a-url").await, StreamKind::Unknown);
+        assert_eq!(
+            probe_stream(&state, "ftp://example.com/live").await,
+            StreamKind::Unknown
+        );
     }
 }

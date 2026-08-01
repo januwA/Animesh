@@ -44,6 +44,7 @@ pub struct TorrentManager {
     pub settings_path: PathBuf,
     pub crawler_repo: Arc<dyn CrawlerRepository + Send + Sync>,
     pub subtitle_cache: Arc<SubtitleCache>,
+    pub hls_proxy: HlsProxyState,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -164,9 +165,11 @@ impl TorrentManager {
             .allow_methods(Any)
             .allow_headers(Any);
 
+        let hls_proxy = HlsProxyState::new(hls_proxy::proxy_base_url(port));
+
         let stream_state = StreamState {
             torrent_repo: torrent_repo.clone(),
-            hls_proxy: HlsProxyState::new(hls_proxy::proxy_base_url(port)),
+            hls_proxy: hls_proxy.clone(),
         };
 
         let app = Router::new()
@@ -200,6 +203,7 @@ impl TorrentManager {
             settings_path,
             crawler_repo,
             subtitle_cache: Arc::new(SubtitleCache::new()),
+            hls_proxy,
         })
     }
 
