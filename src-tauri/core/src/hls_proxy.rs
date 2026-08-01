@@ -163,7 +163,11 @@ async fn handle_fetched(
 
             if status.is_success() && sniffed == Sniff::Playlist {
                 state.cache_update(original.as_str(), &final_url);
-                return manifest_response(rewrite_hls_manifest(&bytes, &final_url, &state.proxy_base));
+                return manifest_response(rewrite_hls_manifest(
+                    &bytes,
+                    &final_url,
+                    &state.proxy_base,
+                ));
             }
 
             // 蜜罐：浏览器 UA 拿到的多为 200 HTML（反盗链），换播放器 UA 重试原始地址。
@@ -176,8 +180,7 @@ async fn handle_fetched(
 
             // 清单地址拿到了非成功状态或非清单内容（签名过期/反盗链），尝试用缓存最终地址重试。
             if expected_manifest && (!status.is_success() || sniffed != Sniff::Playlist) {
-                if let Some(response) =
-                    serve_cached_manifest(state, original, range, referer).await
+                if let Some(response) = serve_cached_manifest(state, original, range, referer).await
                 {
                     return response;
                 }
@@ -201,15 +204,9 @@ async fn retry_player_fetch(
     referer: Option<&str>,
 ) -> Option<Response> {
     log::info!("iptv proxy retry with player UA: {original}");
-    let fetched = fetch(
-        &state.client,
-        original,
-        range,
-        referer,
-        PLAYER_USER_AGENT,
-    )
-    .await
-    .ok()?;
+    let fetched = fetch(&state.client, original, range, referer, PLAYER_USER_AGENT)
+        .await
+        .ok()?;
 
     match fetched {
         Fetched::Full {
@@ -363,13 +360,15 @@ async fn fetch(
     referer: Option<&str>,
     user_agent: &str,
 ) -> Result<Fetched, (StatusCode, String)> {
-    let response = send(client, url, range, referer, user_agent).await.map_err(|err| {
-        log::error!("iptv proxy upstream request failed for {url}: {err}");
-        (
-            StatusCode::BAD_GATEWAY,
-            format!("upstream request failed: {err}"),
-        )
-    })?;
+    let response = send(client, url, range, referer, user_agent)
+        .await
+        .map_err(|err| {
+            log::error!("iptv proxy upstream request failed for {url}: {err}");
+            (
+                StatusCode::BAD_GATEWAY,
+                format!("upstream request failed: {err}"),
+            )
+        })?;
 
     let status = response.status();
     let headers = response.headers().clone();
@@ -476,7 +475,9 @@ async fn send(
     referer: Option<&str>,
     user_agent: &str,
 ) -> Result<UpstreamResponse, reqwest::Error> {
-    let mut request = client.get(url.clone()).header(header::USER_AGENT, user_agent);
+    let mut request = client
+        .get(url.clone())
+        .header(header::USER_AGENT, user_agent);
     if let Some(range) = range {
         request = request.header(header::RANGE, range);
     }
@@ -487,11 +488,7 @@ async fn send(
 }
 
 /// 只读取少量前缀用于探测流类型，随后断开连接，不消费直播流。
-async fn probe_sniff(
-    client: &reqwest::Client,
-    url: &Url,
-    user_agent: &str,
-) -> Sniff {
+async fn probe_sniff(client: &reqwest::Client, url: &Url, user_agent: &str) -> Sniff {
     let Ok(response) = send(client, url, None, None, user_agent).await else {
         return Sniff::Unknown;
     };
@@ -755,12 +752,7 @@ fn rewrite_uri_attributes(line: &str, base: &Url, proxy_base: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{
-        body::to_bytes,
-        response::IntoResponse,
-        routing::get,
-        Router,
-    };
+    use axum::{body::to_bytes, response::IntoResponse, routing::get, Router};
     use std::net::SocketAddr;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::net::TcpListener;
@@ -1303,7 +1295,10 @@ mod tests {
                     )
                         .into_response()
                 } else {
-                    let flv = vec![0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00];
+                    let flv = vec![
+                        0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00,
+                        0x00,
+                    ];
                     (
                         StatusCode::OK,
                         [(header::CONTENT_TYPE, "video/x-flv")],
@@ -1399,7 +1394,9 @@ mod tests {
         let addr = spawn_upstream(Router::new().route(
             "/live",
             get(|| async {
-                let flv = vec![0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00];
+                let flv = vec![
+                    0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00,
+                ];
                 (
                     StatusCode::OK,
                     [(header::CONTENT_TYPE, "video/x-flv")],
@@ -1453,13 +1450,15 @@ mod tests {
         let addr = spawn_upstream(Router::new().route(
             "/live",
             get(|| async {
-                let flv = vec![0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00];
+                let flv = vec![
+                    0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00,
+                ];
                 (
                     StatusCode::OK,
                     [(header::CONTENT_TYPE, "video/x-flv")],
-                    Body::from_stream(stream::iter([Ok::<Bytes, std::io::Error>(
-                        Bytes::from(flv),
-                    )])),
+                    Body::from_stream(stream::iter([Ok::<Bytes, std::io::Error>(Bytes::from(
+                        flv,
+                    ))])),
                 )
             }),
         ))
@@ -1487,7 +1486,10 @@ mod tests {
                     )
                         .into_response()
                 } else {
-                    let flv = vec![0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00];
+                    let flv = vec![
+                        0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00,
+                        0x00,
+                    ];
                     (
                         StatusCode::OK,
                         [(header::CONTENT_TYPE, "video/x-flv")],
