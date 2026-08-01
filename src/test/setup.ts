@@ -84,6 +84,14 @@ vi.mock("@videojs/react/video", async () => {
 	};
 });
 
+vi.mock("@videojs/react/media/hlsjs-video", async () => {
+	const React = await import("react");
+	return {
+		HlsJsVideo: ({ src, playsInline, children }: any) =>
+			React.createElement("video", { src, playsInline }, children),
+	};
+});
+
 // Mock CSS.supports to prevent JSDOM crash when initializing video.js components
 if (typeof window !== "undefined") {
 	if (typeof window.CSS === "undefined") {

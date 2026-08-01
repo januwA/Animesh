@@ -305,6 +305,45 @@ describe("LivePlayer 页面组件", () => {
 		});
 	});
 
+	it("遇到可恢复错误时应该自动重连并重建播放器", async () => {
+		renderLivePlayer("?url=http%3A%2F%2Fexample.com%2Flive.m3u8&name=CCTV-1");
+
+		await waitFor(() =>
+			expect(document.querySelector("video")).toBeInTheDocument(),
+		);
+		const video = document.querySelector("video") as HTMLVideoElement;
+		const vjsMock = (globalThis as any).__vjsMock;
+
+		await act(() => {
+			vjsMock.setError({ code: 2 });
+			vjsMock.trigger();
+		});
+
+		expect(toast).toHaveBeenCalledWith("直播流中断，正在自动重连...");
+		await waitFor(() =>
+			expect(document.querySelector("video")).not.toBe(video),
+		);
+	});
+
+	it("自动重连次数达到上限后应停止重连", async () => {
+		renderLivePlayer("?url=http%3A%2F%2Fexample.com%2Flive.m3u8&name=CCTV-1");
+
+		await waitFor(() =>
+			expect(document.querySelector("video")).toBeInTheDocument(),
+		);
+		const vjsMock = (globalThis as any).__vjsMock;
+		vi.mocked(toast).mockClear();
+
+		for (let i = 0; i < 6; i++) {
+			await act(() => {
+				vjsMock.setError({ code: 2 });
+				vjsMock.trigger();
+			});
+		}
+
+		expect(toast).toHaveBeenCalledTimes(5);
+	});
+
 	it("在播放器渲染后卸载组件时，应该正常清理", async () => {
 		const { unmount } = renderLivePlayer(
 			"?url=http%3A%2F%2Fexample.com%2Flive.m3u8&name=CCTV-1",

@@ -1,5 +1,5 @@
 import { ArrowLeft, Clipboard, Link2, Loader2, Radio } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
@@ -8,12 +8,20 @@ import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import "@videojs/react/video/skin.css";
 import { createPlayer, liveVideoFeatures, selectError } from "@videojs/react";
-import { Video, VideoSkin } from "@videojs/react/video";
+import {
+	HlsJsVideo,
+	type HlsJsVideoProps,
+} from "@videojs/react/media/hlsjs-video";
+import { VideoSkin } from "@videojs/react/video";
 import { LazyImage } from "../components/LazyImage";
 
 const JsLivePlayer = createPlayer({ features: liveVideoFeatures });
 
-function JsLivePlayerErrorMonitor() {
+type HlsMediaConfig = NonNullable<HlsJsVideoProps["config"]>;
+
+const MAX_RECOVERIES = 5;
+
+function JsLivePlayerErrorMonitor({ onRecover }: { onRecover: () => void }) {
 	const errorState = JsLivePlayer.usePlayer(selectError);
 	const { logger } = useDI();
 	const monitorLogger = useMemo(
@@ -39,11 +47,15 @@ function JsLivePlayerErrorMonitor() {
 				errorMsg = "直播流加载超时或网络断开。";
 			}
 			toast.error(errorMsg, { duration: 8000 });
+
+			if (error.code === 2 || error.code === 3) {
+				onRecover();
+			}
 			errorState?.dismissError?.();
 		} else {
 			lastErrorRef.current = null;
 		}
-	}, [errorState?.error, monitorLogger, errorState?.dismissError]);
+	}, [errorState?.error, monitorLogger, errorState?.dismissError, onRecover]);
 
 	return null;
 }
@@ -58,6 +70,38 @@ export default function LivePlayer() {
 
 	const { resolvePlayableStreamUrlUseCase } = useDI();
 	const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+	const [reloadKey, setReloadKey] = useState(0);
+	const recoveriesRef = useRef(0);
+
+	const hlsMediaConfig = useMemo<HlsMediaConfig>(
+		() => ({
+			hlsJs: {
+				enableWorker: true,
+				fragLoadingTimeOut: 20000,
+				fragLoadingMaxRetry: 20,
+				fragLoadingRetryDelay: 200,
+				fragLoadingMaxRetryTimeout: 60000,
+				levelLoadingTimeOut: 20000,
+				levelLoadingMaxRetry: 10,
+				levelLoadingRetryDelay: 300,
+				manifestLoadingTimeOut: 20000,
+				manifestLoadingMaxRetry: 10,
+				manifestLoadingRetryDelay: 300,
+				liveSyncDurationCount: 3,
+				liveMaxLatencyDurationCount: 6,
+				maxBufferLength: 30,
+				backBufferLength: 30,
+			},
+		}),
+		[],
+	);
+
+	const handleRecover = useCallback(() => {
+		if (recoveriesRef.current >= MAX_RECOVERIES) return;
+		recoveriesRef.current += 1;
+		toast("直播流中断，正在自动重连...");
+		setReloadKey((key) => key + 1);
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -131,9 +175,15 @@ export default function LivePlayer() {
 						{resolvedUrl ? (
 							<JsLivePlayer.Provider>
 								<VideoSkin className="w-full max-h-dvh">
-									<Video src={resolvedUrl} playsInline />
+									<HlsJsVideo
+										key={reloadKey}
+										src={resolvedUrl}
+										streamType="live"
+										config={hlsMediaConfig}
+										playsInline
+									/>
 								</VideoSkin>
-								<JsLivePlayerErrorMonitor />
+								<JsLivePlayerErrorMonitor onRecover={handleRecover} />
 							</JsLivePlayer.Provider>
 						) : (
 							<div className="flex items-center justify-center gap-3 py-24 text-muted-foreground">
