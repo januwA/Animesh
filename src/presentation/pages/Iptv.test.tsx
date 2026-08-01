@@ -5,7 +5,13 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+	MemoryRouter,
+	Route,
+	Routes,
+	useLocation,
+	useNavigate,
+} from "react-router-dom";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
@@ -21,6 +27,15 @@ const currentLocation = {
 const LocationTracker = () => {
 	currentLocation.current = useLocation();
 	return null;
+};
+
+const BackButton = () => {
+	const navigate = useNavigate();
+	return (
+		<button type="button" onClick={() => navigate("/live")}>
+			返回列表
+		</button>
+	);
 };
 
 const mockCountries = [
@@ -76,7 +91,15 @@ describe("Iptv 页面组件", () => {
 						<Routes>
 							<Route path="/" element={<NavBarLayout />}>
 								<Route path="live" element={<IptvPage />} />
-								<Route path="live/play" element={<div>Live Play</div>} />
+								<Route
+									path="live/play"
+									element={
+										<>
+											<div>Live Play</div>
+											<BackButton />
+										</>
+									}
+								/>
 							</Route>
 						</Routes>
 					</MemoryRouter>
@@ -260,6 +283,66 @@ describe("Iptv 页面组件", () => {
 		expect(searchParams.get("name")).toBe("测试频道");
 		expect(searchParams.get("logo")).toBe("");
 		expect(searchParams.get("category")).toBe("");
+	});
+
+	it("从直播播放页返回后，应该保留筛选状态且不重复请求频道", async () => {
+		renderIptv({
+			getChannels: vi.fn().mockImplementation((_ctx: unknown, code: string) =>
+				code === "JP"
+					? Promise.resolve([
+							{
+								tvgId: "nhk",
+								name: "NHK",
+								logo: null,
+								category: "综合",
+								url: "http://example.com/nhk.m3u8",
+							},
+						])
+					: Promise.resolve(mockChannels),
+			),
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("CCTV-1")).toBeInTheDocument();
+		});
+
+		const selectTrigger = screen.getByRole("combobox");
+		await act(async () => {
+			fireEvent.click(selectTrigger);
+		});
+		const jpOption = screen.getByRole("option", { name: /日本/ });
+		await act(async () => {
+			fireEvent.click(jpOption);
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("NHK")).toBeInTheDocument();
+		});
+
+		const input = screen.getByPlaceholderText("搜索频道...");
+		await act(async () => {
+			fireEvent.change(input, { target: { value: "nhk" } });
+		});
+
+		const getChannelsMock = vi.mocked(mockIptvRepository.getChannels);
+		const callsBeforeBack = getChannelsMock.mock.calls.length;
+
+		await act(async () => {
+			fireEvent.click(screen.getByTitle("播放: NHK"));
+		});
+		expect(currentLocation.current?.pathname).toBe("/live/play");
+
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "返回列表" }));
+		});
+		expect(currentLocation.current?.pathname).toBe("/live");
+
+		expect(screen.getByText("NHK")).toBeInTheDocument();
+		expect(screen.getByRole("radio", { name: "全部" })).toBeInTheDocument();
+		expect(
+			(screen.getByPlaceholderText("搜索频道...") as HTMLInputElement).value,
+		).toBe("nhk");
+		expect(getChannelsMock.mock.calls.length).toBe(callsBeforeBack);
 	});
 
 	it("当获取频道列表失败时，应该显示错误提示", async () => {

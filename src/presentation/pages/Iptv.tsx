@@ -27,14 +27,13 @@ import {
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 import { LazyImage } from "../components/LazyImage";
+import { DEFAULT_IPTV_CATEGORY, useAppContext } from "../context/AppContext";
 
-const DEFAULT_COUNTRY = "CN";
 const DEFAULT_COUNTRY_FALLBACK: IptvCountry = {
 	name: "中国",
 	code: "CN",
 	flag: "🇨🇳",
 };
-const ALL_CATEGORY = "all";
 const ALL_CATEGORY_LABEL = "全部";
 
 interface ChannelCardProps {
@@ -82,24 +81,38 @@ function ChannelCard({ channel, onClick }: ChannelCardProps) {
 export default function Iptv() {
 	const navigate = useNavigate();
 	const { getIptvCountriesUseCase, getIptvChannelsUseCase, logger } = useDI();
+	const {
+		iptvCountries,
+		setIptvCountries,
+		iptvSelectedCountry,
+		setIptvSelectedCountry,
+		iptvChannels,
+		setIptvChannels,
+		iptvChannelsCountry,
+		setIptvChannelsCountry,
+		iptvSelectedCategory,
+		setIptvSelectedCategory,
+		iptvKeyword,
+		setIptvKeyword,
+	} = useAppContext();
 	const iptvLogger = useMemo(() => logger.withCategory("Iptv"), [logger]);
 
-	const [countries, setCountries] = useState<IptvCountry[]>([]);
-	const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY);
-	const [channels, setChannels] = useState<IptvChannel[]>([]);
-	const [selectedCategory, setSelectedCategory] = useState(ALL_CATEGORY);
-	const [keyword, setKeyword] = useState("");
-	const [isLoading, setIsLoading] = useState(true);
+	const [isLoading, setIsLoading] = useState(
+		iptvChannelsCountry !== iptvSelectedCountry,
+	);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
+		if (iptvCountries.length > 0) {
+			return;
+		}
 		const [ctx, cancel] = WithCancel(Background);
 
 		(async () => {
 			try {
 				const data = await getIptvCountriesUseCase.execute(ctx);
 				if (!ctx.err()) {
-					setCountries(data);
+					setIptvCountries(data);
 				}
 			} catch (err: unknown) {
 				if (!ctx.err()) {
@@ -111,20 +124,32 @@ export default function Iptv() {
 		return () => {
 			cancel();
 		};
-	}, [getIptvCountriesUseCase, iptvLogger]);
+	}, [
+		getIptvCountriesUseCase,
+		iptvLogger,
+		iptvCountries.length,
+		setIptvCountries,
+	]);
 
 	useEffect(() => {
-		setChannels([]);
-		setSelectedCategory(ALL_CATEGORY);
+		if (iptvChannelsCountry === iptvSelectedCountry) {
+			return;
+		}
+		setIptvChannels([]);
+		setIptvSelectedCategory(DEFAULT_IPTV_CATEGORY);
 		setError(null);
 		setIsLoading(true);
 		const [ctx, cancel] = WithCancel(Background);
 
 		(async () => {
 			try {
-				const data = await getIptvChannelsUseCase.execute(ctx, selectedCountry);
+				const data = await getIptvChannelsUseCase.execute(
+					ctx,
+					iptvSelectedCountry,
+				);
 				if (!ctx.err()) {
-					setChannels(data);
+					setIptvChannels(data);
+					setIptvChannelsCountry(iptvSelectedCountry);
 				}
 			} catch (err: unknown) {
 				if (!ctx.err()) {
@@ -140,31 +165,38 @@ export default function Iptv() {
 		return () => {
 			cancel();
 		};
-	}, [getIptvChannelsUseCase, selectedCountry]);
+	}, [
+		getIptvChannelsUseCase,
+		iptvSelectedCountry,
+		iptvChannelsCountry,
+		setIptvChannels,
+		setIptvSelectedCategory,
+		setIptvChannelsCountry,
+	]);
 
 	const selectCountries = useMemo(() => {
-		if (countries.some((country) => country.code === selectedCountry)) {
-			return countries;
+		if (iptvCountries.some((country) => country.code === iptvSelectedCountry)) {
+			return iptvCountries;
 		}
-		return [DEFAULT_COUNTRY_FALLBACK, ...countries];
-	}, [countries, selectedCountry]);
+		return [DEFAULT_COUNTRY_FALLBACK, ...iptvCountries];
+	}, [iptvCountries, iptvSelectedCountry]);
 
 	const categories = useMemo(() => {
 		const categorySet = new Set<string>();
-		for (const channel of channels) {
+		for (const channel of iptvChannels) {
 			if (channel.category) {
 				categorySet.add(channel.category);
 			}
 		}
 		return Array.from(categorySet).sort();
-	}, [channels]);
+	}, [iptvChannels]);
 
 	const filteredChannels = useMemo(() => {
-		const normalizedKeyword = keyword.trim().toLowerCase();
-		return channels.filter((channel) => {
+		const normalizedKeyword = iptvKeyword.trim().toLowerCase();
+		return iptvChannels.filter((channel) => {
 			if (
-				selectedCategory !== ALL_CATEGORY &&
-				channel.category !== selectedCategory
+				iptvSelectedCategory !== DEFAULT_IPTV_CATEGORY &&
+				channel.category !== iptvSelectedCategory
 			) {
 				return false;
 			}
@@ -177,14 +209,14 @@ export default function Iptv() {
 				(channel.category ?? "").toLowerCase().includes(normalizedKeyword)
 			);
 		});
-	}, [channels, selectedCategory, keyword]);
+	}, [iptvChannels, iptvSelectedCategory, iptvKeyword]);
 
 	const handleCountryChange = (value: string) => {
-		setSelectedCountry(value);
+		setIptvSelectedCountry(value);
 	};
 
 	const handleCategoryChange = (value: string) => {
-		setSelectedCategory(value || ALL_CATEGORY);
+		setIptvSelectedCategory(value || DEFAULT_IPTV_CATEGORY);
 	};
 
 	const handleChannelClick = (channel: IptvChannel) => {
@@ -201,7 +233,10 @@ export default function Iptv() {
 		<div className="w-full flex flex-col gap-4">
 			<div className="flex flex-col gap-3">
 				<div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-					<Select value={selectedCountry} onValueChange={handleCountryChange}>
+					<Select
+						value={iptvSelectedCountry}
+						onValueChange={handleCountryChange}
+					>
 						<SelectTrigger className="w-full sm:w-56 h-10">
 							<SelectValue placeholder="选择国家" />
 						</SelectTrigger>
@@ -216,8 +251,8 @@ export default function Iptv() {
 					<div className="relative flex-1">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 						<Input
-							value={keyword}
-							onChange={(e) => setKeyword(e.target.value)}
+							value={iptvKeyword}
+							onChange={(e) => setIptvKeyword(e.target.value)}
 							placeholder="搜索频道..."
 							className="pl-9"
 						/>
@@ -227,12 +262,12 @@ export default function Iptv() {
 				<div className="overflow-x-auto -mx-4 px-4">
 					<ToggleGroup
 						type="single"
-						value={selectedCategory}
+						value={iptvSelectedCategory}
 						onValueChange={handleCategoryChange}
 						variant="outline"
 						size="sm"
 					>
-						<ToggleGroupItem value={ALL_CATEGORY}>
+						<ToggleGroupItem value={DEFAULT_IPTV_CATEGORY}>
 							{ALL_CATEGORY_LABEL}
 						</ToggleGroupItem>
 						{categories.map((category) => (
@@ -261,7 +296,7 @@ export default function Iptv() {
 
 			{error && <ErrorBanner message={error} />}
 
-			{!isLoading && !error && channels.length === 0 && (
+			{!isLoading && !error && iptvChannels.length === 0 && (
 				<Empty>
 					<EmptyContent>
 						<EmptyTitle>该国家暂无频道</EmptyTitle>
@@ -272,7 +307,7 @@ export default function Iptv() {
 
 			{!isLoading &&
 				!error &&
-				channels.length > 0 &&
+				iptvChannels.length > 0 &&
 				filteredChannels.length === 0 && (
 					<Empty>
 						<EmptyContent>

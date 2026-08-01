@@ -5,7 +5,13 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+	MemoryRouter,
+	Route,
+	Routes,
+	useLocation,
+	useNavigate,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -70,6 +76,15 @@ const LocationTracker = () => {
 	return null;
 };
 
+const BackButton = () => {
+	const navigate = useNavigate();
+	return (
+		<button type="button" onClick={() => navigate("/")}>
+			返回首页
+		</button>
+	);
+};
+
 describe("Home 页面组件", () => {
 	let mockTorrentRepository: TorrentRepository;
 	let mockContainer: DIContainer;
@@ -113,7 +128,15 @@ describe("Home 页面组件", () => {
 						<Routes>
 							<Route path="/" element={<NavBarLayout />}>
 								<Route index element={<Home />} />
-								<Route path="torrent" element={<div>TorrentDetail Page</div>} />
+								<Route
+									path="torrent"
+									element={
+										<>
+											<div>TorrentDetail Page</div>
+											<BackButton />
+										</>
+									}
+								/>
 							</Route>
 						</Routes>
 					</MemoryRouter>
@@ -359,6 +382,46 @@ describe("Home 页面组件", () => {
 		expect(currentLocation.current?.pathname).toBe("/torrent");
 		expect(currentLocation.current?.search).toContain("magnet=");
 		expect(currentLocation.current?.search).toContain("title=");
+	});
+
+	it("从 Torrent 详情页返回后，应该保留搜索关键词、搜索结果且不重复请求", async () => {
+		const mockResults = [
+			{
+				title: "xxx 第1集",
+				link: "http://example.com/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 350000000,
+			},
+		];
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+		renderHome();
+
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
+		fireEvent.submit(input.closest("form")!);
+
+		await waitFor(() => {
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
+		});
+
+		const searchMock = vi.mocked(mockTorrentRepository.search);
+		const callsBeforeBack = searchMock.mock.calls.length;
+
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "边下边播" }));
+		});
+		expect(currentLocation.current?.pathname).toBe("/torrent");
+
+		await act(async () => {
+			fireEvent.click(screen.getByRole("button", { name: "返回首页" }));
+		});
+		expect(currentLocation.current?.pathname).toBe("/");
+
+		expect(screen.getByTestId("search-input")).toHaveValue("xxx");
+		expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
+		expect(searchMock.mock.calls.length).toBe(callsBeforeBack);
 	});
 
 	it("当挂载时从 URL 读取 keyword 触发的搜索失败（字符串错误）时，应该显示错误提示", async () => {

@@ -45,6 +45,7 @@ import { Separator } from "@/presentation/components/ui/separator";
 import { useRequestContext } from "@/presentation/hooks/useRequestContext";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
+import { useAppContext } from "../context/AppContext";
 
 // 搜索栏组件
 interface SearchFormProps {
@@ -308,12 +309,19 @@ export default function Home() {
 		getSettingsUseCase,
 	} = useDI();
 
-	const [keyword, setKeyword] = useState("");
-	const [results, setResults] = useState<AiSearchResultItem[]>([]);
+	const {
+		homeKeyword: keyword,
+		setHomeKeyword: setKeyword,
+		homeSearchEngine: searchEngine,
+		setHomeSearchEngine: setSearchEngine,
+		homeResults: results,
+		setHomeResults: setResults,
+		homeHasSearched: hasSearched,
+		setHomeHasSearched: setHasSearched,
+	} = useAppContext();
+
 	const [error, setError] = useState<string | null>(null);
-	const [searchEngine, setSearchEngine] = useState("dmhy");
 	const [isSearching, setIsSearching] = useState(false);
-	const [hasSearched, setHasSearched] = useState(false);
 	const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
 		() => localStorage.getItem("animesh_selected_ai_alias") || "none",
 	);
@@ -402,6 +410,8 @@ export default function Home() {
 			searchEngine,
 			selectedAiAlias,
 			createContext,
+			setHasSearched,
+			setResults,
 		],
 	);
 
@@ -414,7 +424,7 @@ export default function Home() {
 				performSearch(query);
 			}
 		}
-	}, [keywordParam, setSearchParams, performSearch]);
+	}, [keywordParam, setSearchParams, performSearch, setKeyword]);
 
 	function handleSearch(e: SubmitEvent) {
 		e.preventDefault();
