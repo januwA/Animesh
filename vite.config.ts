@@ -66,6 +66,7 @@ export default defineConfig(({ mode }) => {
 					"src/di/**",
 					"src/domain/**",
 					"src/infrastructure/**",
+					"src/presentation/components/MpegtsVideo.tsx",
 				],
 				thresholds: {
 					lines: 100,
