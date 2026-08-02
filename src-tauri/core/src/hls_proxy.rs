@@ -32,6 +32,16 @@ const MAX_BUFFER_SIZE: usize = 64 * 1024 * 1024;
 /// 重定向缓存有效期：覆盖 CDN 签名地址的常见过期周期（分钟级）。
 const REDIRECT_CACHE_TTL: Duration = Duration::from_secs(600);
 
+/// 清单被重定向到广告中继时的重试次数。部分盗播源会概率性把清单
+/// 重定向到广告中继，重试直到命中真实中继为止。真实中继命中率约
+/// 10%，故取较大值以保证大概率在首次发现时就拿到真实地址。
+const MANIFEST_AD_RETRIES: usize = 10;
+
+/// 广告中继判定标记（匹配 path+query 的小写形式）。`a=tvzb0011` 是
+/// 广告家族的稳定查询参数；`mkt`/`zmt`/`adhw` 为历史路径标记，
+/// 保留作为补充信号，兼容无查询参数的广告路径形态。
+const AD_MANIFEST_MARKERS: &[&str] = &["a=tvzb0011", "mkt", "zmt", "adhw"];
+
 /// 缓存一条 `原始URL -> 最终URL` 的映射，用于直播清单重拉取时应对签名地址过期。
 #[derive(Clone)]
 struct RedirectEntry {
@@ -83,6 +93,13 @@ impl HlsProxyState {
         cache.retain(|_, entry| entry.updated_at.elapsed() < REDIRECT_CACHE_TTL);
         cache.get(original).map(|entry| entry.final_url.clone())
     }
+
+    /// 删除 `original` 的缓存条目（缓存地址失效/确认是广告时使用）。
+    fn cache_remove(&self, original: &str) {
+        if let Ok(mut cache) = self.redirect_cache.lock() {
+            cache.remove(original);
+        }
+    }
 }
 
 /// 生成对前端公开的代理基础地址，前端在该地址后追加 `?url=` 即可发起代理请求。
@@ -111,6 +128,19 @@ pub async fn proxy_request(
     };
     let referer = query.ref_url.as_deref();
     let range = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
+    log::info!(
+        "[TRACE] iptv proxy_request url={} ref={referer:?} range={range:?}",
+        query.url
+    );
+
+    // 直播清单刷新优先走已缓存的真实中继地址：一旦命中过真实中继就
+    // 粘住它，避免每次刷新都重新赌概率重定向到广告中继。无缓存或
+    // 缓存失效时才重新请求原始地址。
+    if looks_like_manifest_url(&upstream_url) {
+        if let Some(response) = serve_cached_manifest(state, &upstream_url, range, referer).await {
+            return response;
+        }
+    }
 
     // 首次请求原始地址；失败时先整体重试一次（应对瞬时断流/截断），再考虑重定向缓存。
     match fetch_browser(state, &upstream_url, range, referer).await {
@@ -138,6 +168,9 @@ async fn fetch_browser(
     range: Option<&str>,
     referer: Option<&str>,
 ) -> Result<Response, (StatusCode, String)> {
+    log::info!(
+        "[TRACE] proxy fetch_browser url={url} referer={referer:?} range={range:?} ua={UPSTREAM_USER_AGENT}"
+    );
     let fetched = fetch(&state.client, url, range, referer, UPSTREAM_USER_AGENT).await?;
     Ok(handle_fetched(state, fetched, url, range, referer).await)
 }
@@ -162,6 +195,34 @@ async fn handle_fetched(
                 looks_like_manifest_url(original) || content_type_is_playlist(&headers);
 
             if status.is_success() && sniffed == Sniff::Playlist {
+                log::info!(
+                    "[TRACE] proxy playlist hit: original={original} redirected_to={final_url} status={status} bytes={}",
+                    bytes.len()
+                );
+                // 广告中继：清单被重定向到广告路径时重试命中真实中继，广告地址不写入缓存。
+                if expected_manifest && looks_like_ad_manifest(&final_url) {
+                    log::info!(
+                        "[TRACE] proxy ad relay detected: {final_url}, retry for real relay"
+                    );
+                    if let Some(response) =
+                        retry_real_manifest(state, original, range, referer).await
+                    {
+                        return response;
+                    }
+                    if let Some(response) =
+                        serve_cached_manifest(state, original, range, referer).await
+                    {
+                        return response;
+                    }
+                    log::info!(
+                        "[TRACE] proxy ad relay all retries failed, serve ad manifest as fallback"
+                    );
+                    return manifest_response(rewrite_hls_manifest(
+                        &bytes,
+                        &final_url,
+                        &state.proxy_base,
+                    ));
+                }
                 state.cache_update(original.as_str(), &final_url);
                 return manifest_response(rewrite_hls_manifest(
                     &bytes,
@@ -172,6 +233,9 @@ async fn handle_fetched(
 
             // 蜜罐：浏览器 UA 拿到的多为 200 HTML（反盗链），换播放器 UA 重试原始地址。
             if status.is_success() && sniffed == Sniff::Html {
+                log::info!(
+                    "[TRACE] proxy html honeypot: original={original} status={status}, retry with player UA"
+                );
                 if let Some(response) = retry_player_fetch(state, original, range, referer).await {
                     return response;
                 }
@@ -180,19 +244,31 @@ async fn handle_fetched(
 
             // 清单地址拿到了非成功状态或非清单内容（签名过期/反盗链），尝试用缓存最终地址重试。
             if expected_manifest && (!status.is_success() || sniffed != Sniff::Playlist) {
+                log::info!(
+                    "[TRACE] proxy manifest not ok: original={original} status={status} sniff={sniffed:?}, try cached final url"
+                );
                 if let Some(response) = serve_cached_manifest(state, original, range, referer).await
                 {
                     return response;
                 }
             }
 
+            log::info!(
+                "[TRACE] proxy media passthrough: original={original} final={final_url} status={status} sniff={sniffed:?} bytes={}",
+                bytes.len()
+            );
             media_response(status, &headers, bytes)
         }
         Fetched::Stream {
             status,
             headers,
             body,
-        } => serve_media_stream(status, &headers, body),
+        } => {
+            log::info!(
+                "[TRACE] proxy media stream passthrough: original={original} status={status}"
+            );
+            serve_media_stream(status, &headers, body)
+        }
     }
 }
 
@@ -203,7 +279,7 @@ async fn retry_player_fetch(
     range: Option<&str>,
     referer: Option<&str>,
 ) -> Option<Response> {
-    log::info!("iptv proxy retry with player UA: {original}");
+    log::info!("[TRACE] proxy retry with player UA: {original}");
     let fetched = fetch(&state.client, original, range, referer, PLAYER_USER_AGENT)
         .await
         .ok()?;
@@ -217,6 +293,15 @@ async fn retry_player_fetch(
         } => {
             let sniffed = sniff(&bytes);
             if status.is_success() && sniffed == Sniff::Playlist {
+                if looks_like_ad_manifest(&final_url) {
+                    log::info!(
+                        "[TRACE] proxy player UA ad playlist: original={original} redirected_to={final_url}, give up"
+                    );
+                    return None;
+                }
+                log::info!(
+                    "[TRACE] proxy player UA playlist: original={original} redirected_to={final_url} status={status}"
+                );
                 state.cache_update(original.as_str(), &final_url);
                 Some(manifest_response(rewrite_hls_manifest(
                     &bytes,
@@ -224,8 +309,14 @@ async fn retry_player_fetch(
                     &state.proxy_base,
                 )))
             } else if status.is_success() && sniffed == Sniff::Html {
+                log::info!(
+                    "[TRACE] proxy player UA also html: original={original} status={status}, give up"
+                );
                 None
             } else {
+                log::info!(
+                    "[TRACE] proxy player UA media: original={original} final={final_url} status={status} sniff={sniffed:?}"
+                );
                 Some(media_response(status, &headers, bytes))
             }
         }
@@ -233,8 +324,82 @@ async fn retry_player_fetch(
             status,
             headers,
             body,
-        } => Some(serve_media_stream(status, &headers, body)),
+        } => {
+            log::info!("[TRACE] proxy player UA stream: original={original} status={status}");
+            Some(serve_media_stream(status, &headers, body))
+        }
     }
+}
+
+/// 清单被重定向到广告中继时，重试原始地址若干次直到命中真实中继。
+/// 全部失败时返回 None，由调用方决定兜底（缓存最终地址或透传广告清单）。
+async fn retry_real_manifest(
+    state: &HlsProxyState,
+    original: &Url,
+    range: Option<&str>,
+    referer: Option<&str>,
+) -> Option<Response> {
+    for attempt in 1..=MANIFEST_AD_RETRIES {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        let Ok(fetched) = fetch(&state.client, original, range, referer, UPSTREAM_USER_AGENT).await
+        else {
+            log::info!("[TRACE] proxy ad retry attempt {attempt} fetch failed for {original}");
+            continue;
+        };
+        match fetched {
+            Fetched::Full {
+                status,
+                headers: _,
+                final_url,
+                bytes,
+            } => {
+                let sniffed = sniff(&bytes);
+                if status.is_success()
+                    && sniffed == Sniff::Playlist
+                    && !looks_like_ad_manifest(&final_url)
+                {
+                    log::info!(
+                        "[TRACE] proxy ad retry success on attempt {attempt}: {original} -> {final_url}"
+                    );
+                    state.cache_update(original.as_str(), &final_url);
+                    return Some(manifest_response(rewrite_hls_manifest(
+                        &bytes,
+                        &final_url,
+                        &state.proxy_base,
+                    )));
+                }
+                log::info!(
+                    "[TRACE] proxy ad retry attempt {attempt} not real: final={final_url} status={status} sniff={sniffed:?}"
+                );
+            }
+            Fetched::Stream {
+                status,
+                headers,
+                body,
+            } => {
+                log::info!(
+                    "[TRACE] proxy ad retry attempt {attempt} stream: original={original} status={status}"
+                );
+                return Some(serve_media_stream(status, &headers, body));
+            }
+        }
+    }
+    None
+}
+
+/// 依据 URL 判定是否为广告中继清单。优先匹配查询参数 `a=tvzb0011`
+/// （广告家族的稳定标记，`byt`/`yss`/`mkt` 均携带），再匹配
+/// `mkt`/`zmt`/`adhw` 等历史路径标记。真实中继（`from=zbdq6`）不含
+/// 上述标记，不会被误判。
+fn looks_like_ad_manifest(url: &Url) -> bool {
+    let mut hay = url.path().to_ascii_lowercase();
+    if let Some(query) = url.query() {
+        hay.push('?');
+        hay.push_str(&query.to_ascii_lowercase());
+    }
+    AD_MANIFEST_MARKERS
+        .iter()
+        .any(|marker| hay.contains(marker))
 }
 
 /// 流类型判定结果。
@@ -255,19 +420,31 @@ pub struct ResolvedStream {
 
 /// 嗅探上游响应并判定流类型（只读取少量前缀即断开，不消耗直播流）。
 pub async fn probe_stream(state: &HlsProxyState, raw_url: &str) -> StreamKind {
+    log::info!("[TRACE] probe_stream start raw_url={raw_url}");
     let Ok(url) = Url::parse(raw_url) else {
+        log::info!("[TRACE] probe_stream parse failed, return Unknown");
         return StreamKind::Unknown;
     };
     if !matches!(url.scheme(), "http" | "https") {
+        log::info!(
+            "[TRACE] probe_stream unsupported scheme={}, return Unknown",
+            url.scheme()
+        );
         return StreamKind::Unknown;
     }
 
     let first = probe_sniff(&state.client, &url, UPSTREAM_USER_AGENT).await;
+    log::info!("[TRACE] probe_stream browser UA sniff={first:?} url={raw_url}");
     let kind = classify_sniff(first);
     if kind != StreamKind::Unknown {
+        log::info!("[TRACE] probe_stream classified={kind:?} via browser UA, url={raw_url}");
         return kind;
     }
-    classify_sniff(probe_sniff(&state.client, &url, PLAYER_USER_AGENT).await)
+    let second = probe_sniff(&state.client, &url, PLAYER_USER_AGENT).await;
+    log::info!("[TRACE] probe_stream player UA sniff={second:?} url={raw_url}");
+    let kind = classify_sniff(second);
+    log::info!("[TRACE] probe_stream classified={kind:?} via player UA fallback, url={raw_url}");
+    kind
 }
 
 fn classify_sniff(sniffed: Sniff) -> StreamKind {
@@ -278,7 +455,9 @@ fn classify_sniff(sniffed: Sniff) -> StreamKind {
     }
 }
 
-/// 使用缓存中的最终地址重拉取清单；无可用缓存时返回 None。
+/// 使用缓存中的最终地址重拉取清单；无可用缓存或缓存地址失效时返回 None。
+/// 缓存里的广告中继地址会被拒绝，失效（签名过期/反盗链）的条目会被清除，
+/// 以便调用方重新请求原始地址以发现新的真实中继。
 async fn serve_cached_manifest(
     state: &HlsProxyState,
     original: &Url,
@@ -290,8 +469,13 @@ async fn serve_cached_manifest(
         return None;
     }
     let cached_url = Url::parse(&cached).ok()?;
-    log::info!("iptv proxy manifest refetch via cached final url: {original} -> {cached}");
-    match fetch(
+    if looks_like_ad_manifest(&cached_url) {
+        log::info!("[TRACE] proxy cached ad relay skipped: {original} -> {cached}, remove entry");
+        state.cache_remove(original.as_str());
+        return None;
+    }
+    log::info!("[TRACE] proxy manifest refetch via cached final url: {original} -> {cached}");
+    let Ok(fetched) = fetch(
         &state.client,
         &cached_url,
         range,
@@ -299,24 +483,29 @@ async fn serve_cached_manifest(
         UPSTREAM_USER_AGENT,
     )
     .await
-    .ok()?
-    {
+    else {
+        return None;
+    };
+    match fetched {
         Fetched::Full {
             status,
-            headers,
+            headers: _,
             final_url,
             bytes,
         } => {
-            state.cache_update(original.as_str(), &final_url);
             if status.is_success() && is_playlist_sniff(&bytes) {
-                Some(manifest_response(rewrite_hls_manifest(
+                state.cache_update(original.as_str(), &final_url);
+                return Some(manifest_response(rewrite_hls_manifest(
                     &bytes,
                     &final_url,
                     &state.proxy_base,
-                )))
-            } else {
-                Some(media_response(status, &headers, bytes))
+                )));
             }
+            log::info!(
+                "[TRACE] proxy cached manifest invalid: {original} -> {cached} status={status}, remove entry"
+            );
+            state.cache_remove(original.as_str());
+            None
         }
         Fetched::Stream {
             status,
@@ -373,6 +562,11 @@ async fn fetch(
     let status = response.status();
     let headers = response.headers().clone();
     let final_url = response.url().clone();
+    if looks_like_manifest_url(url) {
+        log::info!("[TRACE] proxy upstream manifest: url={url} status={status} final={final_url}");
+    } else {
+        log::debug!("[TRACE] proxy upstream media: url={url} status={status} final={final_url}");
+    }
     let declared = headers
         .get(header::CONTENT_LENGTH)
         .and_then(|v| v.to_str().ok())
@@ -490,11 +684,17 @@ async fn send(
 /// 只读取少量前缀用于探测流类型，随后断开连接，不消费直播流。
 async fn probe_sniff(client: &reqwest::Client, url: &Url, user_agent: &str) -> Sniff {
     let Ok(response) = send(client, url, None, None, user_agent).await else {
+        log::info!("[TRACE] probe_sniff request failed for {url} ua={user_agent}");
         return Sniff::Unknown;
     };
     if !response.status().is_success() {
+        log::info!(
+            "[TRACE] probe_sniff status={} for {url} ua={user_agent}",
+            response.status()
+        );
         return Sniff::Unknown;
     }
+    let final_url = response.url().clone();
     let mut stream = response.bytes_stream();
     let mut prefix = Vec::new();
     loop {
@@ -506,7 +706,9 @@ async fn probe_sniff(client: &reqwest::Client, url: &Url, user_agent: &str) -> S
             Some(Err(_)) | None => break,
         }
     }
-    sniff(&prefix)
+    let sniffed = sniff(&prefix);
+    log::info!("[TRACE] probe_sniff final_url={final_url} sniff={sniffed:?} ua={user_agent}");
+    sniffed
 }
 
 /// 依据前缀魔数分类内容。
@@ -1515,5 +1717,302 @@ mod tests {
             probe_stream(&state, "ftp://example.com/live").await,
             StreamKind::Unknown
         );
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_广告中继标记识别() {
+        let cases = [
+            ("http://host/applive/mkt.m3u8", true),
+            ("http://host/applive/mkt.m3u8?a=tvzb0011", true),
+            ("http://host/applive/byt.m3u8?a=tvzb0011", true),
+            ("http://host/applive/yss.m3u8?a=tvzb0011", true),
+            ("http://host/applive/zmt.m3u8", true),
+            ("http://host/appadhw/byt.m3u8", true),
+            ("http://host/applive/byt.m3u8", false),
+            ("http://host/applive/yss.m3u8", false),
+            ("http://host/live/cctv6md.m3u8?from=zbdq6", false),
+            (
+                "http://host/live/cctv1.m3u8?jsbt=1&jsbk=2&from=zbdq6",
+                false,
+            ),
+        ];
+        for (url, expected) in cases {
+            let parsed = Url::parse(url).unwrap();
+            assert_eq!(looks_like_ad_manifest(&parsed), expected, "url: {url}");
+        }
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_广告中继重定向_重试命中真实清单() {
+        let entry_hits = Arc::new(AtomicUsize::new(0));
+        let entry_hits_clone = entry_hits.clone();
+        let addr = spawn_upstream(
+            Router::new()
+                .route(
+                    "/entry.m3u8",
+                    get(move || {
+                        let entry_hits = entry_hits_clone.clone();
+                        async move {
+                            let count = entry_hits.fetch_add(1, Ordering::SeqCst);
+                            let target = if count == 0 {
+                                "/applive/mkt.m3u8"
+                            } else {
+                                "/live/cctv1md.m3u8?from=zbdq6"
+                            };
+                            (StatusCode::FOUND, [("location", target)])
+                        }
+                    }),
+                )
+                .route(
+                    "/applive/mkt.m3u8",
+                    get(|| async {
+                        (
+                            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                            "#EXTM3U\n#EXTINF:10.0,\nad.ts\n",
+                        )
+                    }),
+                )
+                .route(
+                    "/live/cctv1md.m3u8",
+                    get(|| async {
+                        (
+                            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                            "#EXTM3U\n#EXTINF:10.0,\nreal.ts\n",
+                        )
+                    }),
+                ),
+        )
+        .await;
+        let query = proxy_query(format!("http://{addr}/entry.m3u8"));
+        let (status, text) =
+            body_of(proxy_request(&test_state(), &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            text.contains("real.ts") && !text.contains("ad.ts"),
+            "实际输出: {text}"
+        );
+        assert_eq!(entry_hits.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_广告重试成功后_刷新清单走缓存真实中继() {
+        let entry_hits = Arc::new(AtomicUsize::new(0));
+        let entry_hits_clone = entry_hits.clone();
+        let real_hits = Arc::new(AtomicUsize::new(0));
+        let real_hits_clone = real_hits.clone();
+        let addr = spawn_upstream(
+            Router::new()
+                .route(
+                    "/entry.m3u8",
+                    get(move || {
+                        let entry_hits = entry_hits_clone.clone();
+                        async move {
+                            let count = entry_hits.fetch_add(1, Ordering::SeqCst);
+                            let target = if count == 0 {
+                                "/applive/mkt.m3u8?a=tvzb0011"
+                            } else {
+                                "/live/cctv1md.m3u8?from=zbdq6"
+                            };
+                            (StatusCode::FOUND, [("location", target)])
+                        }
+                    }),
+                )
+                .route(
+                    "/applive/mkt.m3u8",
+                    get(|| async {
+                        (
+                            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                            "#EXTM3U\n#EXTINF:10.0,\nad.ts\n",
+                        )
+                    }),
+                )
+                .route(
+                    "/live/cctv1md.m3u8",
+                    get(move || {
+                        let real_hits = real_hits_clone.clone();
+                        async move {
+                            real_hits.fetch_add(1, Ordering::SeqCst);
+                            (
+                                [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                                "#EXTM3U\n#EXTINF:10.0,\nreal.ts\n",
+                            )
+                        }
+                    }),
+                ),
+        )
+        .await;
+        let state = test_state();
+        let query = proxy_query(format!("http://{addr}/entry.m3u8"));
+
+        // 第一次请求：入口先重定向到广告，重试后命中真实中继。
+        let (status, text) = body_of(proxy_request(&state, &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(text.contains("real.ts"), "实际输出: {text}");
+        assert_eq!(real_hits.load(Ordering::SeqCst), 1);
+        assert_eq!(entry_hits.load(Ordering::SeqCst), 2);
+
+        // 第二次刷新：直接走缓存中的真实中继地址，不再请求广告入口。
+        let (status, text) = body_of(proxy_request(&state, &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(text.contains("real.ts"), "实际输出: {text}");
+        assert_eq!(entry_hits.load(Ordering::SeqCst), 2);
+        assert_eq!(real_hits.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_缓存广告中继地址被拒绝并重新发现真实中继() {
+        let entry_hits = Arc::new(AtomicUsize::new(0));
+        let entry_hits_clone = entry_hits.clone();
+        let addr = spawn_upstream(
+            Router::new()
+                .route(
+                    "/entry.m3u8",
+                    get(move || {
+                        let entry_hits = entry_hits_clone.clone();
+                        async move {
+                            let count = entry_hits.fetch_add(1, Ordering::SeqCst);
+                            let target = if count == 0 {
+                                "/applive/mkt.m3u8?a=tvzb0011"
+                            } else {
+                                "/live/cctv1md.m3u8?from=zbdq6"
+                            };
+                            (StatusCode::FOUND, [("location", target)])
+                        }
+                    }),
+                )
+                .route(
+                    "/applive/mkt.m3u8",
+                    get(|| async {
+                        (
+                            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                            "#EXTM3U\n#EXTINF:10.0,\nad.ts\n",
+                        )
+                    }),
+                )
+                .route(
+                    "/live/cctv1md.m3u8",
+                    get(|| async {
+                        (
+                            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                            "#EXTM3U\n#EXTINF:10.0,\nreal.ts\n",
+                        )
+                    }),
+                ),
+        )
+        .await;
+        let state = test_state();
+        let original = format!("http://{addr}/entry.m3u8");
+        // 注入历史错误缓存：广告地址不应被回放，应被拒绝并重新发现真实中继。
+        let ad_url = Url::parse(&format!("http://{addr}/applive/mkt.m3u8?a=tvzb0011")).unwrap();
+        state.cache_update(&original, &ad_url);
+        let query = proxy_query(original);
+        let (status, text) = body_of(proxy_request(&state, &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            text.contains("real.ts") && !text.contains("ad.ts"),
+            "实际输出: {text}"
+        );
+        assert_eq!(entry_hits.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_缓存地址失效_清除后重新发现真实中继() {
+        let entry_hits = Arc::new(AtomicUsize::new(0));
+        let entry_hits_clone = entry_hits.clone();
+        let addr = spawn_upstream(
+            Router::new()
+                .route(
+                    "/entry.m3u8",
+                    get(move || {
+                        let entry_hits = entry_hits_clone.clone();
+                        async move {
+                            let count = entry_hits.fetch_add(1, Ordering::SeqCst);
+                            let target = if count == 0 {
+                                "/applive/mkt.m3u8?a=tvzb0011"
+                            } else {
+                                "/live/cctv1md.m3u8?from=zbdq6"
+                            };
+                            (StatusCode::FOUND, [("location", target)])
+                        }
+                    }),
+                )
+                .route(
+                    "/applive/mkt.m3u8",
+                    get(|| async {
+                        (
+                            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                            "#EXTM3U\n#EXTINF:10.0,\nad.ts\n",
+                        )
+                    }),
+                )
+                .route(
+                    "/live/cctv1md.m3u8",
+                    get(|| async {
+                        (
+                            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                            "#EXTM3U\n#EXTINF:10.0,\nreal.ts\n",
+                        )
+                    }),
+                )
+                .route(
+                    "/live/stale.m3u8",
+                    get(|| async { (StatusCode::FORBIDDEN, "signature expired") }),
+                ),
+        )
+        .await;
+        let state = test_state();
+        let original = format!("http://{addr}/entry.m3u8");
+        // 注入过期签名缓存：缓存地址返回 403，应被清除并重新发现真实中继。
+        let stale_url = Url::parse(&format!("http://{addr}/live/stale.m3u8?from=zbdq6")).unwrap();
+        state.cache_update(&original, &stale_url);
+        let query = proxy_query(original);
+        let (status, text) = body_of(proxy_request(&state, &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(
+            text.contains("real.ts") && !text.contains("ad.ts"),
+            "实际输出: {text}"
+        );
+        assert_eq!(entry_hits.load(Ordering::SeqCst), 2);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_广告中继重定向_重试全部失败_透传广告清单() {
+        let entry_hits = Arc::new(AtomicUsize::new(0));
+        let entry_hits_clone = entry_hits.clone();
+        let addr = spawn_upstream(
+            Router::new()
+                .route(
+                    "/entry.m3u8",
+                    get(move || {
+                        let entry_hits = entry_hits_clone.clone();
+                        async move {
+                            entry_hits.fetch_add(1, Ordering::SeqCst);
+                            (StatusCode::FOUND, [("location", "/applive/mkt.m3u8")])
+                        }
+                    }),
+                )
+                .route(
+                    "/applive/mkt.m3u8",
+                    get(|| async {
+                        (
+                            [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                            "#EXTM3U\n#EXTINF:10.0,\nad.ts\n",
+                        )
+                    }),
+                ),
+        )
+        .await;
+        let query = proxy_query(format!("http://{addr}/entry.m3u8"));
+        let (status, text) =
+            body_of(proxy_request(&test_state(), &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(text.contains("ad.ts"), "实际输出: {text}");
+        assert_eq!(entry_hits.load(Ordering::SeqCst), MANIFEST_AD_RETRIES + 1);
     }
 }

@@ -266,9 +266,11 @@ async fn iptv_resolve_stream(
     raw_url: String,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<animesh_core::hls_proxy::ResolvedStream, String> {
+    trace_log(&format!("iptv_resolve_stream raw_url={raw_url}"));
     let hls_proxy = manager.hls_proxy.clone();
     let proxy_url = animesh_core::hls_proxy::proxy_base_url(manager.port);
     let kind = animesh_core::hls_proxy::probe_stream(&hls_proxy, &raw_url).await;
+    trace_log(&format!("iptv_resolve_stream resolved kind={kind:?}"));
     Ok(animesh_core::hls_proxy::ResolvedStream { proxy_url, kind })
 }
 
