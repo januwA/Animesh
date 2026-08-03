@@ -9,14 +9,33 @@ export interface LengthErrorLocation {
 	message: string;
 }
 
-function countLogicalLines(funcText: string): number {
+/** 一个跨多行的纯数据字面量所占的行区间（0 起始，含起止）。 */
+interface LineSpan {
+	startLine: number;
+	endLine: number;
+}
+
+function countLogicalLines(funcText: string, dataSpans: LineSpan[] = []): number {
 	const lines = funcText.split(/\r?\n/);
 	let count = 0;
 	let inBlockComment = false;
+	let spanIdx = 0;
 
-	for (let line of lines) {
-		line = line.trim();
+	for (let li = 0; li < lines.length; li++) {
+		const line = lines[li].trim();
 		if (!line) continue;
+
+		// 多行纯数据字面量的内部行与结束行不重复计数，起点行已按 1 行计入
+		while (spanIdx < dataSpans.length && li > dataSpans[spanIdx].endLine) {
+			spanIdx++;
+		}
+		if (spanIdx < dataSpans.length) {
+			const span = dataSpans[spanIdx];
+			if (li > span.startLine && li <= span.endLine) {
+				if (li === span.endLine) spanIdx++;
+				continue;
+			}
+		}
 
 		if (inBlockComment) {
 			if (line.includes("*/")) {
@@ -57,6 +76,89 @@ export function checkCode(
 	}
 
 	const errors: LengthErrorLocation[] = [];
+
+	// 所有行首偏移，用于 offset -> 0 起始行号的快速转换
+	const lineStarts = [0];
+	for (let i = 0; i < code.length; i++) {
+		if (code[i] === "\n") lineStarts.push(i + 1);
+	}
+
+	function lineOf(offset: number): number {
+		let lo = 0;
+		let hi = lineStarts.length - 1;
+		while (lo < hi) {
+			const mid = (lo + hi + 1) >> 1;
+			if (lineStarts[mid] <= offset) lo = mid;
+			else hi = mid - 1;
+		}
+		return lo;
+	}
+
+	// 是否为"纯数据字面量"：内部只包含字面量、纯数据数组/对象，不含标识符、
+	// 函数体、展开等表达式。格式化器可能将其逐行展开，逻辑上应视为 1 行。
+	function isPureDataLiteral(node: any): boolean {
+		if (!node || typeof node !== "object") return false;
+		switch (node.type) {
+			case "Literal":
+				return true;
+			case "ArrayExpression":
+				return node.elements.every(
+					(el: any) => el !== null && isPureDataLiteral(el),
+				);
+			case "ObjectExpression":
+				return node.properties.every(
+					(prop: any) =>
+						prop.type === "Property" &&
+						!prop.method &&
+						!prop.shorthand &&
+						!prop.computed &&
+						isPureDataLiteral(prop.value),
+				);
+			case "TemplateLiteral":
+				return node.expressions.length === 0;
+			case "UnaryExpression":
+				// 支持负数等一元字面量，如 [-1, -2.5]
+				return (
+					(node.operator === "-" || node.operator === "+") &&
+					isPureDataLiteral(node.argument)
+				);
+			default:
+				return false;
+		}
+	}
+
+	// 收集 body 内所有跨多行的纯数据字面量行区间（0 起始），命中后剪枝避免嵌套区间
+	function collectDataSpans(node: any, spans: LineSpan[]): void {
+		if (!node || typeof node !== "object") return;
+		if (Array.isArray(node)) {
+			for (const item of node) collectDataSpans(item, spans);
+			return;
+		}
+		if (
+			node.type === "ArrayExpression" ||
+			node.type === "ObjectExpression" ||
+			node.type === "TemplateLiteral"
+		) {
+			if (isPureDataLiteral(node)) {
+				const startLine = lineOf(node.start);
+				const endLine = lineOf(node.end);
+				if (endLine > startLine) {
+					spans.push({ startLine, endLine });
+				}
+				return;
+			}
+		}
+		for (const key in node) {
+			if (Object.hasOwn(node, key)) {
+				const child = node[key];
+				if (Array.isArray(child)) {
+					for (const item of child) collectDataSpans(item, spans);
+				} else if (child && typeof child === "object") {
+					collectDataSpans(child, spans);
+				}
+			}
+		}
+	}
 
 	function offsetToLoc(
 		src: string,
@@ -134,7 +236,14 @@ export function checkCode(
 				const sliceStart = isBlock ? bodyNode.start + 1 : bodyNode.start;
 				const sliceEnd = isBlock ? bodyNode.end - 1 : bodyNode.end;
 				const bodyText = code.slice(sliceStart, sliceEnd);
-				const lineCount = countLogicalLines(bodyText);
+				const bodyStartLine = lineOf(sliceStart);
+				const spans: LineSpan[] = [];
+				collectDataSpans(bodyNode, spans);
+				const relSpans = spans.map((span) => ({
+					startLine: span.startLine - bodyStartLine,
+					endLine: span.endLine - bodyStartLine,
+				}));
+				const lineCount = countLogicalLines(bodyText, relSpans);
 
 				if (lineCount > 30) {
 					const name = getFunctionName(checkNode, parent);

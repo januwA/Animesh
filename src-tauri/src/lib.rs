@@ -112,6 +112,18 @@ async fn search_torrents(
                     .search_nyaa(&keyword_string, proxy)
                     .await
             }
+            "acgrip" => {
+                manager_clone
+                    .crawler_repo
+                    .search_acgrip(&keyword_string, proxy)
+                    .await
+            }
+            "anibt" => {
+                manager_clone
+                    .crawler_repo
+                    .search_anibt(&keyword_string, proxy)
+                    .await
+            }
             _ => Err(format!("Unsupported search engine: {}", engine_string)),
         }
     });

@@ -34,4 +34,16 @@ pub trait CrawlerRepository: Send + Sync {
         keyword: &str,
         proxy: Option<String>,
     ) -> Result<Vec<SearchResultItem>, String>;
+
+    async fn search_acgrip(
+        &self,
+        keyword: &str,
+        proxy: Option<String>,
+    ) -> Result<Vec<SearchResultItem>, String>;
+
+    async fn search_anibt(
+        &self,
+        keyword: &str,
+        proxy: Option<String>,
+    ) -> Result<Vec<SearchResultItem>, String>;
 }

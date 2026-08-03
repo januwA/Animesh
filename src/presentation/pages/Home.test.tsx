@@ -546,6 +546,70 @@ describe("Home 页面组件", () => {
 		});
 	});
 
+	it("应该支持切换到 ACG.RIP 搜索引擎并触发对应的搜索逻辑", async () => {
+		const mockResults = [
+			{
+				title: "ACG.RIP资源 1",
+				link: "https://acg.rip/t/1",
+				pub_date: "2026-06-23",
+				magnet: "https://acg.rip/t/1.torrent",
+				size: 800000000,
+			},
+		];
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+		renderHome();
+
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
+
+		const select = screen.getByRole("combobox");
+		fireEvent.change(select, { target: { value: "acgrip" } });
+
+		fireEvent.submit(input.closest("form")!);
+
+		await waitFor(() => {
+			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+				expect.any(Object),
+				"xxx",
+				"acgrip",
+			);
+			expect(screen.getByText("ACG.RIP资源 1")).toBeInTheDocument();
+		});
+	});
+
+	it("应该支持切换到 ANiBT 搜索引擎并触发对应的搜索逻辑", async () => {
+		const mockResults = [
+			{
+				title: "ANiBT资源 1",
+				link: "https://anibt.net/release/rel_1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TESTANIBT",
+				size: 900000000,
+			},
+		];
+		vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+		renderHome();
+
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
+
+		const select = screen.getByRole("combobox");
+		fireEvent.change(select, { target: { value: "anibt" } });
+
+		fireEvent.submit(input.closest("form")!);
+
+		await waitFor(() => {
+			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
+				expect.any(Object),
+				"xxx",
+				"anibt",
+			);
+			expect(screen.getByText("ANiBT资源 1")).toBeInTheDocument();
+		});
+	});
+
 	it("应该在组件挂载时读取 URL 的 keyword 参数，当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 

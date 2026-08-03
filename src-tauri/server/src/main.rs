@@ -215,6 +215,8 @@ async fn search_torrents_handler(
             }
             "mikan" => manager.crawler_repo.search_mikan(&keyword, proxy).await,
             "nyaa" => manager.crawler_repo.search_nyaa(&keyword, proxy).await,
+            "acgrip" => manager.crawler_repo.search_acgrip(&keyword, proxy).await,
+            "anibt" => manager.crawler_repo.search_anibt(&keyword, proxy).await,
             _ => Err(format!("Unsupported search engine: {}", engine)),
         }
     });

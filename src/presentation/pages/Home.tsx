@@ -86,6 +86,8 @@ function SearchForm({
 							<SelectItem value="bangumi_moe">萌番组</SelectItem>
 							<SelectItem value="mikan">蜜柑计划</SelectItem>
 							<SelectItem value="nyaa">Nyaa</SelectItem>
+							<SelectItem value="acgrip">ACG.RIP</SelectItem>
+							<SelectItem value="anibt">ANiBT</SelectItem>
 						</SelectContent>
 					</Select>
 				</div>

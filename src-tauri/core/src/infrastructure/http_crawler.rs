@@ -1,4 +1,7 @@
-use crate::crawler::{parse_bangumi_moe_json, parse_dmhy_rss, parse_mikan_rss, parse_nyaa_rss};
+use crate::crawler::{
+    parse_acgrip_rss, parse_anibt_rss, parse_bangumi_moe_json, parse_dmhy_rss, parse_mikan_rss,
+    parse_nyaa_rss,
+};
 use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
 use crate::infrastructure::http_client::HttpClient;
 use async_trait::async_trait;
@@ -80,6 +83,30 @@ impl CrawlerRepository for HttpCrawlerRepository {
 
         let xml_data = self.client.get(&url, proxy).await?;
         parse_nyaa_rss(&xml_data)
+    }
+
+    async fn search_acgrip(
+        &self,
+        keyword: &str,
+        proxy: Option<String>,
+    ) -> Result<Vec<SearchResultItem>, String> {
+        let encoded_keyword = encode(keyword);
+        let url = format!("https://acg.rip/.xml?term={}", encoded_keyword);
+
+        let xml_data = self.client.get(&url, proxy).await?;
+        parse_acgrip_rss(&xml_data)
+    }
+
+    async fn search_anibt(
+        &self,
+        keyword: &str,
+        proxy: Option<String>,
+    ) -> Result<Vec<SearchResultItem>, String> {
+        let encoded_keyword = encode(keyword);
+        let url = format!("https://anibt.net/rss/magnets.xml?q={}", encoded_keyword);
+
+        let xml_data = self.client.get(&url, proxy).await?;
+        parse_anibt_rss(&xml_data)
     }
 }
 
@@ -263,5 +290,79 @@ mod tests {
             results[0].title,
             "[FSP DN] A Record of a Mortal’s Journey to Immortality - 179 (1080p)"
         );
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_search_acgrip_使用MockHttpClient() {
+        let mock_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:torrent="http://xmlns.ezrss.it/0.1/">
+  <channel>
+    <title>ACG.RIP</title>
+    <item>
+      <title>[jibaketa合成] xxx - 10 END</title>
+      <link>https://acg.rip/t/355679</link>
+      <pubDate>Fri, 05 Jun 2026 08:15:41 -0700</pubDate>
+      <enclosure url="https://acg.rip/t/355679.torrent" type="application/x-bittorrent"/>
+      <torrent:contentLength>875401216</torrent:contentLength>
+    </item>
+  </channel>
+</rss>"#;
+
+        let mock_client = MockHttpClient {
+            get_handler: Arc::new(move |url, _proxy| {
+                assert!(url.contains("acg.rip"));
+                assert!(url.contains("term=xxx"));
+                Ok(mock_xml.to_string())
+            }),
+            ..Default::default()
+        };
+
+        let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
+        let results = repo.search_acgrip("xxx", None).await.unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].title, "[jibaketa合成] xxx - 10 END");
+        assert_eq!(results[0].magnet, "https://acg.rip/t/355679.torrent");
+        assert_eq!(results[0].size, Some(875401216));
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_search_anibt_使用MockHttpClient() {
+        let mock_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:anibt="https://anibt.net/xmlns/rss/1.0/">
+  <channel>
+    <title>Anibt Anime Releases</title>
+    <item>
+      <title>[喵萌奶茶屋] xxx - 35 [1080p]</title>
+      <link>https://anibt.net/release/rel_pGPUDY2z9WX_</link>
+      <pubDate>Fri, 17 Jul 2026 02:27:06 +0800</pubDate>
+      <torrent xmlns="https://anibt.moe/xmlns/0.1/">
+        <contentLength>123456789</contentLength>
+        <infohash>6d04d7ee50c873dd71face5fddf6807a0a8a763e</infohash>
+        <magneturi>magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e</magneturi>
+      </torrent>
+    </item>
+  </channel>
+</rss>"#;
+
+        let mock_client = MockHttpClient {
+            get_handler: Arc::new(move |url, _proxy| {
+                assert!(url.contains("anibt.net"));
+                assert!(url.contains("q=xxx"));
+                Ok(mock_xml.to_string())
+            }),
+            ..Default::default()
+        };
+
+        let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
+        let results = repo.search_anibt("xxx", None).await.unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].title, "[喵萌奶茶屋] xxx - 35 [1080p]");
+        assert_eq!(
+            results[0].magnet,
+            "magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e"
+        );
+        assert_eq!(results[0].size, Some(123456789));
     }
 }

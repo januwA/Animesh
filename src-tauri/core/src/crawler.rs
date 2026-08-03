@@ -198,6 +198,105 @@ pub fn parse_mikan_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> 
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct AcgRipRss {
+    pub channel: AcgRipChannel,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AcgRipChannel {
+    #[serde(default)]
+    pub title: String,
+    #[serde(rename = "item", default)]
+    pub items: Vec<AcgRipItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AcgRipItem {
+    pub title: String,
+    pub link: String,
+    #[serde(rename = "pubDate", default)]
+    pub pub_date: String,
+    #[serde(rename = "contentLength", default)]
+    pub content_length: Option<u64>,
+    pub enclosure: Enclosure,
+}
+
+/// Parse ACG.RIP RSS XML data into SearchResultItems.
+///
+/// ACG.RIP 的搜索结果只提供 .torrent 下载链接，不提供磁力链接，
+/// 因此 magnet 字段直接使用种子文件的下载地址。
+pub fn parse_acgrip_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
+    let rss: AcgRipRss = quick_xml::de::from_str(xml_data)
+        .map_err(|e| format!("Failed to deserialize ACG.RIP XML data: {}", e))?;
+
+    let results = rss
+        .channel
+        .items
+        .into_iter()
+        .map(|item| SearchResultItem {
+            title: item.title,
+            link: item.link,
+            pub_date: item.pub_date,
+            magnet: item.enclosure.url,
+            size: item.content_length,
+        })
+        .collect();
+
+    Ok(results)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AnibtRss {
+    pub channel: AnibtChannel,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AnibtChannel {
+    #[serde(default)]
+    pub title: String,
+    #[serde(rename = "item", default)]
+    pub items: Vec<AnibtItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AnibtItem {
+    pub title: String,
+    pub link: String,
+    #[serde(rename = "pubDate", default)]
+    pub pub_date: String,
+    pub torrent: AnibtTorrent,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AnibtTorrent {
+    #[serde(rename = "contentLength", default)]
+    pub content_length: Option<u64>,
+    #[serde(rename = "magneturi", default)]
+    pub magnet_uri: String,
+}
+
+/// Parse AniBT RSS XML data into SearchResultItems.
+pub fn parse_anibt_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
+    let rss: AnibtRss = quick_xml::de::from_str(xml_data)
+        .map_err(|e| format!("Failed to deserialize AniBT XML data: {}", e))?;
+
+    let results = rss
+        .channel
+        .items
+        .into_iter()
+        .map(|item| SearchResultItem {
+            title: item.title,
+            link: item.link,
+            pub_date: item.pub_date,
+            magnet: item.torrent.magnet_uri,
+            size: item.torrent.content_length,
+        })
+        .collect();
+
+    Ok(results)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NyaaRss {
     pub channel: NyaaChannel,
 }
@@ -453,6 +552,91 @@ mod tests {
     fn 测试_解析nyaa_rss_无效数据() {
         let invalid_xml = "<invalid>";
         let result = parse_nyaa_rss(invalid_xml);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to deserialize"));
+    }
+
+    #[test]
+    fn 测试_解析acgrip_rss_模拟数据() {
+        let mock_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:torrent="http://xmlns.ezrss.it/0.1/" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>ACG.RIP</title>
+    <item>
+      <title>[jibaketa合成] 葬送的芙莉蓮 第二季 - 10 END</title>
+      <pubDate>Fri, 05 Jun 2026 08:15:41 -0700</pubDate>
+      <link>https://acg.rip/t/355679</link>
+      <guid>https://acg.rip/t/355679</guid>
+      <enclosure url="https://acg.rip/t/355679.torrent" type="application/x-bittorrent"/>
+      <torrent:contentLength>875401216</torrent:contentLength>
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_acgrip_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        let item = &items[0];
+        assert_eq!(item.title, "[jibaketa合成] 葬送的芙莉蓮 第二季 - 10 END");
+        assert_eq!(item.link, "https://acg.rip/t/355679");
+        assert_eq!(item.pub_date, "Fri, 05 Jun 2026 08:15:41 -0700");
+        assert_eq!(item.magnet, "https://acg.rip/t/355679.torrent");
+        assert_eq!(item.size, Some(875401216));
+    }
+
+    #[test]
+    fn 测试_解析acgrip_rss_无效数据() {
+        let invalid_xml = "<invalid>";
+        let result = parse_acgrip_rss(invalid_xml);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to deserialize"));
+    }
+
+    #[test]
+    fn 测试_解析anibt_rss_模拟数据() {
+        let mock_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:anibt="https://anibt.net/xmlns/rss/1.0/">
+  <channel>
+    <title>Anibt Anime Releases</title>
+    <item>
+      <title>[喵萌奶茶屋] 葬送的芙莉莲 / Sousou no Frieren - 35 [1080p][简繁日内封字幕]</title>
+      <link>https://anibt.net/release/rel_pGPUDY2z9WX_</link>
+      <guid isPermaLink="false">rel_pGPUDY2z9WX_</guid>
+      <pubDate>Fri, 17 Jul 2026 02:27:06 +0800</pubDate>
+      <anibt:type>anime</anibt:type>
+      <anibt:releaseId>rel_pGPUDY2z9WX_</anibt:releaseId>
+      <torrent xmlns="https://anibt.moe/xmlns/0.1/">
+        <link>https://anibt.net/release/rel_pGPUDY2z9WX_</link>
+        <contentLength>123456789</contentLength>
+        <pubDate>2026-07-16T18:27:06</pubDate>
+        <infohash>6d04d7ee50c873dd71face5fddf6807a0a8a763e</infohash>
+        <magneturi>magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e&amp;dn=test&amp;tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce</magneturi>
+        <filename>test.mkv</filename>
+      </torrent>
+      <enclosure url="https://anibt.net/api/torrent/rel_pGPUDY2z9WX_.torrent" length="123456789" type="application/x-bittorrent" />
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_anibt_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        let item = &items[0];
+        assert_eq!(
+            item.title,
+            "[喵萌奶茶屋] 葬送的芙莉莲 / Sousou no Frieren - 35 [1080p][简繁日内封字幕]"
+        );
+        assert_eq!(item.link, "https://anibt.net/release/rel_pGPUDY2z9WX_");
+        assert_eq!(item.pub_date, "Fri, 17 Jul 2026 02:27:06 +0800");
+        assert_eq!(
+            item.magnet,
+            "magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e&dn=test&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce"
+        );
+        assert_eq!(item.size, Some(123456789));
+    }
+
+    #[test]
+    fn 测试_解析anibt_rss_无效数据() {
+        let invalid_xml = "<invalid>";
+        let result = parse_anibt_rss(invalid_xml);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Failed to deserialize"));
     }

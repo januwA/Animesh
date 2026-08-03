@@ -354,7 +354,14 @@ export class SearchTorrentsWithAiUseCase {
 							engine: {
 								type: "string",
 								description: "搜索引擎标识",
-								enum: ["dmhy", "bangumi_moe", "mikan", "nyaa"],
+								enum: [
+									"dmhy",
+									"bangumi_moe",
+									"mikan",
+									"nyaa",
+									"acgrip",
+									"anibt",
+								],
 							},
 						},
 						required: ["keyword", "engine"],
@@ -372,7 +379,7 @@ export class SearchTorrentsWithAiUseCase {
 1. 提取核心动漫名称：用户的原始输入可能是复杂的自然语言或口语化句子（例如：“看下xxx最新的一集”、“有没有xxx第10集 1080p”、“我想播放xxx”）。
    - 在调用 'search_torrents' 进行搜索时，你必须把“看下”、“我想看”、“求”、“最新的一集”、“最新一集”、“最新的一话”、“最新一话”、“最新的一期”、“最新一期”、“最新”、“第X集”等动作词和具体剧集过滤掉，仅提取出最核心的动漫名称（例如：“xxx”）作为搜索关键字。
    - 千万不要直接拿口语化句子作为 keyword 搜索，搜索引擎会返回空。
-2. 灵活搜索：如果默认搜索引擎没有结果，自动尝试其他引擎（"dmhy", "bangumi_moe", "mikan", "nyaa"）或微调核心关键词。
+2. 灵活搜索：如果默认搜索引擎没有结果，自动尝试其他引擎（"dmhy", "bangumi_moe", "mikan", "nyaa", "acgrip", "anibt"）或微调核心关键词。
 3. 智能评分与排序：
    - 找到结果后，结合用户的原始意图（如“最新一集”、“第10集”、“1080p”）对最后一次搜索到的结果列表进行评分（0-100分）。
    - 如果用户要求“最新一集”或“最新的一话”，你应当重点参考种子的发布日期（越新越好）和标题中的集数信息，将最新发布的、集数最大的种子排在最前面并给出高分，在推荐理由中写明它是最新的原因。
