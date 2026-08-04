@@ -387,7 +387,7 @@ export default function SubjectDetail() {
 					className="gap-2 text-muted-foreground hover:text-foreground"
 				>
 					<ArrowLeft className="h-4 w-4" />
-					返回日历
+					返回
 				</Button>
 				<ErrorBanner message={error} />
 			</div>
@@ -414,7 +414,7 @@ export default function SubjectDetail() {
 					className="gap-2 text-muted-foreground hover:text-foreground"
 				>
 					<ArrowLeft className="h-4 w-4" />
-					返回日历
+					返回
 				</Button>
 
 				<div className="flex items-center gap-1">
@@ -500,14 +500,12 @@ export default function SubjectDetail() {
 										{subject.date}
 									</Badge>
 								)}
-								{subject.eps !== undefined && subject.eps !== null && (
-									<Badge
-										variant="secondary"
-										className="gap-1 bg-secondary border border-border text-muted-foreground"
-									>
-										<Clock className="h-3 w-3" />共 {subject.eps} 话
-									</Badge>
-								)}
+								<Badge
+									variant="secondary"
+									className="gap-1 bg-secondary border border-border text-muted-foreground"
+								>
+									<Clock className="h-3 w-3" />共 {subject.eps || "??"} 话
+								</Badge>
 							</div>
 						)}
 

@@ -128,7 +128,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 			router.navigate("/subject/1");
 		});
 		await waitFor(() => {
-			expect(screen.getByText(/返回日历|加载中/)).toBeInTheDocument();
+			expect(screen.getByText(/返回|加载中/)).toBeInTheDocument();
 		});
 
 		// 10. 跳转到播放页 /play/1/1 并等待载入 (Lazy)

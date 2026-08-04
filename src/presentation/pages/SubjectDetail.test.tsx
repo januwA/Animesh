@@ -366,7 +366,7 @@ describe("SubjectDetail 页面组件", () => {
 		expect(unairedCard!.className).toContain("border-border");
 	});
 
-	it("点击返回日历按钮时，应该返回上一页", async () => {
+	it("点击返回按钮时，应该返回上一页", async () => {
 		const mockSubject: BangumiSubject = {
 			id: 123,
 			name: "Test Anime Title",
@@ -417,7 +417,7 @@ describe("SubjectDetail 页面组件", () => {
 			expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
 		});
 
-		const backButton = screen.getByRole("button", { name: "返回日历" });
+		const backButton = screen.getByRole("button", { name: "返回" });
 		fireEvent.click(backButton);
 
 		await waitFor(() => {
@@ -527,7 +527,7 @@ describe("SubjectDetail 页面组件", () => {
 			expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
 		});
 
-		const backButton = screen.getByRole("button", { name: "返回日历" });
+		const backButton = screen.getByRole("button", { name: "返回" });
 		fireEvent.click(backButton);
 
 		expect(startViewTransitionMock).toHaveBeenCalled();
