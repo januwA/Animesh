@@ -18,19 +18,13 @@
 	--card-foreground: oklch(0.25 0.02 240);
 	--popover: oklch(1 0 0);
 	--popover-foreground: oklch(0.25 0.02 240);
-	--primary: oklch(0.58 0.18 245);
-	--primary-foreground: oklch(0.985 0.005 240);
 	--secondary: oklch(0.95 0.01 240);
 	--secondary-foreground: oklch(0.25 0.02 240);
 	--muted: oklch(0.94 0.01 240);
 	--muted-foreground: oklch(0.5 0.015 240);
-	--accent: oklch(0.94 0.02 245);
-	--accent-foreground: oklch(0.58 0.18 245);
 	--destructive: oklch(0.6 0.18 25);
 	--border: oklch(0.91 0.01 240);
 	--input: oklch(0.91 0.01 240);
-	--ring: oklch(0.58 0.18 245);
-	--chart-1: oklch(0.58 0.18 245);
 	--chart-2: oklch(0.65 0.15 190);
 	--chart-3: oklch(0.6 0.15 150);
 	--chart-4: oklch(0.55 0.18 340);
@@ -38,12 +32,22 @@
 	--radius: 0.75rem;
 	--sidebar: oklch(0.98 0.005 240);
 	--sidebar-foreground: oklch(0.25 0.02 240);
-	--sidebar-primary: oklch(0.58 0.18 245);
-	--sidebar-primary-foreground: oklch(0.985 0.005 240);
-	--sidebar-accent: oklch(0.94 0.02 245);
-	--sidebar-accent-foreground: oklch(0.58 0.18 245);
 	--sidebar-border: oklch(0.91 0.01 240);
-	--sidebar-ring: oklch(0.58 0.18 245);
+
+	/* 品牌主色：由 --brand-hue 驱动，可通过 data-accent 属性切换 */
+	--brand-hue: 245;
+
+	--primary: oklch(0.58 0.18 var(--brand-hue));
+	--primary-foreground: oklch(0.985 0.005 240);
+	--ring: var(--primary);
+	--accent: oklch(0.94 0.02 var(--brand-hue));
+	--accent-foreground: var(--primary);
+	--chart-1: var(--primary);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--accent);
+	--sidebar-accent-foreground: var(--primary);
+	--sidebar-ring: var(--ring);
 }
 
 body {
@@ -136,31 +140,52 @@ body {
 	--card-foreground: oklch(0.985 0 0);
 	--popover: oklch(0.12 0.01 240);
 	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.6 0.18 240);
-	--primary-foreground: oklch(0.08 0.01 240);
 	--secondary: oklch(0.18 0.02 240);
 	--secondary-foreground: oklch(0.985 0 0);
 	--muted: oklch(0.16 0.02 240);
 	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.2 0.03 240);
-	--accent-foreground: oklch(0.985 0 0);
 	--destructive: oklch(0.704 0.191 22.216);
 	--border: oklch(1 0 0 / 8%);
 	--input: oklch(1 0 0 / 10%);
-	--ring: oklch(0.6 0.18 240);
-	--chart-1: oklch(0.87 0 0);
 	--chart-2: oklch(0.556 0 0);
 	--chart-3: oklch(0.439 0 0);
 	--chart-4: oklch(0.371 0 0);
 	--chart-5: oklch(0.269 0 0);
 	--sidebar: oklch(0.1 0.01 240);
 	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.6 0.18 240);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.18 0.02 240);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
 	--sidebar-border: oklch(1 0 0 / 8%);
-	--sidebar-ring: oklch(0.6 0.18 240);
+
+	/* 品牌主色：默认深色靛蓝，可被 data-accent 属性覆盖 */
+	--brand-hue: 240;
+
+	--primary: oklch(0.6 0.18 var(--brand-hue));
+	--primary-foreground: oklch(0.08 0.01 240);
+	--ring: var(--primary);
+	--accent: oklch(0.2 0.03 var(--brand-hue));
+	--accent-foreground: oklch(0.985 0 0);
+	--chart-1: oklch(0.87 0 0);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--accent-foreground);
+	--sidebar-accent: var(--accent);
+	--sidebar-accent-foreground: var(--accent-foreground);
+	--sidebar-ring: var(--ring);
+}
+
+/* 主色预设：仅覆盖 --brand-hue 即可整体切换品牌色（需置于 .dark 之后） */
+:root[data-accent="indigo"] {
+	--brand-hue: 245;
+}
+:root[data-accent="sky"] {
+	--brand-hue: 200;
+}
+:root[data-accent="emerald"] {
+	--brand-hue: 160;
+}
+:root[data-accent="rose"] {
+	--brand-hue: 355;
+}
+:root[data-accent="amber"] {
+	--brand-hue: 85;
 }
 
 @layer base {

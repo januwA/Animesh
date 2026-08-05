@@ -12,6 +12,7 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
+import { ACCENT_STORAGE_KEY } from "@/presentation/hooks/useAccentTheme";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
@@ -1287,5 +1288,63 @@ describe("Settings 页面组件", () => {
 		await waitFor(() => {
 			expect(localStorage.getItem("theme")).toBe("dark");
 		});
+	});
+
+	it("应该提供主色色块选择，默认选中 indigo 并应用到 html 属性", async () => {
+		window.localStorage.removeItem(ACCENT_STORAGE_KEY);
+		delete document.documentElement.dataset.accent;
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("外观设置")).toBeInTheDocument();
+		});
+
+		expect(screen.getByText("选择主色调")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "翠绿" })).toBeInTheDocument();
+
+		const indigoBtn = screen.getByRole("button", { name: "靛蓝" });
+		expect(indigoBtn).toHaveAttribute("aria-pressed", "true");
+		expect(document.documentElement.dataset.accent).toBe("indigo");
+	});
+
+	it("点击主色色块后应该切换主色并同步 localStorage 与 html 属性", async () => {
+		window.localStorage.removeItem(ACCENT_STORAGE_KEY);
+		delete document.documentElement.dataset.accent;
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("外观设置")).toBeInTheDocument();
+		});
+
+		const emeraldBtn = screen.getByRole("button", { name: "翠绿" });
+		fireEvent.click(emeraldBtn);
+
+		await waitFor(() => {
+			expect(emeraldBtn).toHaveAttribute("aria-pressed", "true");
+			expect(screen.getByRole("button", { name: "靛蓝" })).toHaveAttribute(
+				"aria-pressed",
+				"false",
+			);
+		});
+		expect(localStorage.getItem(ACCENT_STORAGE_KEY)).toBe("emerald");
+		expect(document.documentElement.dataset.accent).toBe("emerald");
+	});
+
+	it("应该从 localStorage 恢复上次选择的主色", async () => {
+		window.localStorage.setItem(ACCENT_STORAGE_KEY, "rose");
+
+		renderSettings();
+
+		await waitFor(() => {
+			expect(screen.getByText("外观设置")).toBeInTheDocument();
+		});
+
+		expect(screen.getByRole("button", { name: "玫瑰" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
+		expect(document.documentElement.dataset.accent).toBe("rose");
 	});
 });

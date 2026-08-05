@@ -1,5 +1,6 @@
 import {
 	Bot,
+	Check,
 	Download,
 	Folder,
 	Gauge,
@@ -43,10 +44,16 @@ import {
 	ToggleGroup,
 	ToggleGroupItem,
 } from "@/presentation/components/ui/toggle-group";
+import {
+	ACCENT_PRESETS,
+	useAccentTheme,
+} from "@/presentation/hooks/useAccentTheme";
+import { cn } from "@/presentation/lib/utils";
 import { formatError, formatLocalDate } from "@/utils";
 
 export default function Settings() {
 	const { theme, setTheme } = useTheme();
+	const { accent, setAccent } = useAccentTheme();
 	const {
 		getSettingsUseCase,
 		getDefaultTrackersUseCase,
@@ -852,6 +859,36 @@ export default function Settings() {
 								<ToggleGroupItem value="light">浅色模式</ToggleGroupItem>
 								<ToggleGroupItem value="dark">深色模式</ToggleGroupItem>
 							</ToggleGroup>
+						</div>
+
+						<div className="flex flex-col gap-1.5">
+							<span className="text-[11px] text-muted-foreground font-medium">
+								选择主色调
+							</span>
+							<div className="flex items-center gap-2.5">
+								{ACCENT_PRESETS.map((preset) => {
+									const selected = accent === preset.id;
+									return (
+										<button
+											key={preset.id}
+											type="button"
+											aria-label={preset.label}
+											aria-pressed={selected}
+											title={preset.label}
+											onClick={() => setAccent(preset.id)}
+											className={cn(
+												"flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border transition-transform",
+												selected
+													? "scale-110 ring-2 ring-ring ring-offset-2 ring-offset-background"
+													: "hover:scale-105",
+											)}
+											style={{ backgroundColor: preset.color }}
+										>
+											{selected && <Check className="h-4 w-4 text-white" />}
+										</button>
+									);
+								})}
+							</div>
 						</div>
 					</CardContent>
 				</Card>
