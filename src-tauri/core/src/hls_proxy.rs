@@ -961,7 +961,35 @@ mod tests {
 
     const PROXY_BASE: &str = "http://127.0.0.1:9999/iptv-proxy";
 
+    /// 测试专用日志记录器：格式化 `log!` 宏的格式参数，强制求值其中
+    /// 的表达式（如 `bytes.len()`），使覆盖率统计能反映日志参数体的执行。
+    struct TestLogger;
+
+    impl log::Log for TestLogger {
+        fn enabled(&self, _metadata: &log::Metadata<'_>) -> bool {
+            true
+        }
+
+        fn log(&self, record: &log::Record<'_>) {
+            let _ = format!("{}", record.args());
+        }
+
+        fn flush(&self) {}
+    }
+
+    static TEST_LOGGER: TestLogger = TestLogger;
+
+    fn enable_logger() {
+        use std::sync::Once;
+        static INIT: Once = Once::new();
+        INIT.call_once(|| {
+            let _ = log::set_logger(&TEST_LOGGER);
+            log::set_max_level(log::LevelFilter::Trace);
+        });
+    }
+
     fn test_state() -> HlsProxyState {
+        enable_logger();
         HlsProxyState::new(PROXY_BASE.to_string())
     }
 
@@ -1048,6 +1076,66 @@ mod tests {
         assert_eq!(
             proxy_uri("http://host:abc/seg.ts", &base, PROXY_BASE),
             "http://host:abc/seg.ts"
+        );
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_重写URI附加Referer_解析失败保留原文() {
+        let base = Url::parse("http://example.com/playlist.m3u8").unwrap();
+        let raw = "http://host:abc/seg.ts";
+        assert_eq!(proxy_uri_with_ref(raw, &base, PROXY_BASE, &base), raw);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_重写URI属性_各种形态() {
+        let base = Url::parse("http://example.com/live/playlist.m3u8").unwrap();
+        let quoted = rewrite_uri_attributes(
+            "EXT-X-KEY:METHOD=AES-128,URI=\"key.bin\"",
+            &base,
+            PROXY_BASE,
+        );
+        assert!(quoted.contains("?url="), "实际输出: {quoted}");
+        assert!(quoted.contains("key.bin"), "实际输出: {quoted}");
+
+        let unclosed = rewrite_uri_attributes("EXT-X-KEY:URI=\"unclosed", &base, PROXY_BASE);
+        assert!(unclosed.contains("unclosed"), "实际输出: {unclosed}");
+
+        let unquoted = rewrite_uri_attributes("EXT-X-KEY:URI=plain.bin", &base, PROXY_BASE);
+        assert_eq!(unquoted, "EXT-X-KEY:URI=plain.bin", "实际输出: {unquoted}");
+
+        let plain = rewrite_uri_attributes("EXT-X-VERSION:3", &base, PROXY_BASE);
+        assert_eq!(plain, "EXT-X-VERSION:3");
+
+        let multiple = rewrite_uri_attributes("A,URI=\"a.bin\",B,URI=\"b.bin\"", &base, PROXY_BASE);
+        assert!(
+            multiple.matches("?url=").count() >= 2,
+            "实际输出: {multiple}"
+        );
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_重写清单_master会话数据与密钥() {
+        let base = Url::parse("http://example.com/master.m3u8").unwrap();
+        let body = "#EXTM3U\n#EXT-X-SESSION-DATA:DATA-ID=\"com.example.session\",URI=\"sess.json\"\n#EXT-X-SESSION-KEY:METHOD=AES-128,URI=\"sk.bin\",IV=0x00000000000000000000000000000001\n#EXT-X-STREAM-INF:BANDWIDTH=1280000,PROGRAM-ID=1\nindex.m3u8\n";
+        let rewritten = rewrite_hls_manifest(body.as_bytes(), &base, PROXY_BASE);
+        assert!(
+            rewritten.contains("sess.json") && rewritten.contains("sk.bin"),
+            "实际输出: {rewritten}"
+        );
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_重写清单_媒体映射() {
+        let base = Url::parse("http://example.com/live/playlist.m3u8").unwrap();
+        let body = "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXT-X-MAP:URI=\"init.mp4\",BYTERANGE=\"720@0\"\n#EXTINF:10.0,\nseg.ts\n";
+        let rewritten = rewrite_hls_manifest(body.as_bytes(), &base, PROXY_BASE);
+        assert!(
+            rewritten.contains("init.mp4") && rewritten.contains("?url="),
+            "实际输出: {rewritten}"
         );
     }
 
@@ -1314,7 +1402,8 @@ mod tests {
         )
         .await;
         let state = test_state();
-        let query = proxy_query(format!("http://{addr}/entry.m3u8"));
+        let original = format!("http://{addr}/entry.m3u8");
+        let query = proxy_query(original.clone());
         let (status, _) = body_of(proxy_request(&state, &query, &HeaderMap::new()).await).await;
         assert_eq!(status, StatusCode::OK);
 
@@ -1325,6 +1414,11 @@ mod tests {
             "?url={}",
             urlencoding::encode(&format!("http://{addr}/final.ts"))
         )));
+
+        // 清除缓存后入口持续 503：透传上游状态码而非回退死循环。
+        state.cache_remove(&original);
+        let (status, _) = body_of(proxy_request(&state, &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
     }
 
     #[tokio::test]
@@ -2014,5 +2108,166 @@ mod tests {
         assert_eq!(status, StatusCode::OK);
         assert!(text.contains("ad.ts"), "实际输出: {text}");
         assert_eq!(entry_hits.load(Ordering::SeqCst), MANIFEST_AD_RETRIES + 1);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_广告重试期间上游返回流_直接透传() {
+        let flv = vec![
+            0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00,
+        ];
+        let flv_calls = Arc::new(AtomicUsize::new(0));
+        let flv_calls_clone = flv_calls.clone();
+        let addr = spawn_upstream(
+            Router::new()
+                .route(
+                    "/entry.m3u8",
+                    get(|| async { (StatusCode::FOUND, [("location", "/applive/mkt.m3u8")]) }),
+                )
+                .route(
+                    "/applive/mkt.m3u8",
+                    get(move || {
+                        let flv = flv.clone();
+                        let flv_calls = flv_calls_clone.clone();
+                        async move {
+                            let count = flv_calls.fetch_add(1, Ordering::SeqCst);
+                            if count == 0 {
+                                (
+                                    StatusCode::OK,
+                                    [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                                    "#EXTM3U\n#EXTINF:10.0,\nad.ts\n",
+                                )
+                                    .into_response()
+                            } else {
+                                (
+                                    StatusCode::OK,
+                                    [(header::CONTENT_TYPE, "video/x-flv")],
+                                    Body::from_stream(stream::iter([Ok::<Bytes, std::io::Error>(
+                                        Bytes::from(flv),
+                                    )])),
+                                )
+                                    .into_response()
+                            }
+                        }
+                    }),
+                ),
+        )
+        .await;
+        let query = proxy_query(format!("http://{addr}/entry.m3u8"));
+        let response = proxy_request(&test_state(), &query, &HeaderMap::new()).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok()),
+            Some("video/x-flv")
+        );
+        assert!(flv_calls.load(Ordering::SeqCst) >= 2);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_缓存地址请求失败_回退原始地址() {
+        let dead_listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let dead_addr = dead_listener.local_addr().unwrap();
+        drop(dead_listener);
+
+        let addr = spawn_upstream(Router::new().route(
+            "/live.m3u8",
+            get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")],
+                    "#EXTM3U\n#EXT-X-TARGETDURATION:10\n#EXTINF:10.0,\nseg.ts\n",
+                )
+            }),
+        ))
+        .await;
+        let state = test_state();
+        let original = format!("http://{addr}/live.m3u8");
+        let dead_url = Url::parse(&format!("http://{dead_addr}/live.m3u8")).unwrap();
+        state.cache_update(&original, &dead_url);
+        let query = proxy_query(original);
+        let (status, text) = body_of(proxy_request(&state, &query, &HeaderMap::new()).await).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(text.contains("?url="), "实际输出: {text}");
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_缓存地址返回流_透传媒体() {
+        let addr = spawn_upstream(Router::new().route(
+            "/flv",
+            get(|| async {
+                let flv = vec![
+                    0x46, 0x4c, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00,
+                ];
+                (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "video/x-flv")],
+                    Body::from_stream(stream::iter([Ok::<Bytes, std::io::Error>(Bytes::from(
+                        flv,
+                    ))])),
+                )
+            }),
+        ))
+        .await;
+        let state = test_state();
+        let original = format!("http://{addr}/live.m3u8");
+        let flv_url = Url::parse(&format!("http://{addr}/flv")).unwrap();
+        state.cache_update(&original, &flv_url);
+        let query = proxy_query(original);
+        let response = proxy_request(&state, &query, &HeaderMap::new()).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok()),
+            Some("video/x-flv")
+        );
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_代理_声明超大长度_流式透传() {
+        let huge_len = MAX_BUFFER_SIZE + 1;
+        let addr = spawn_upstream(Router::new().route(
+            "/seg.ts",
+            get(move || async move {
+                (
+                    StatusCode::OK,
+                    [(header::CONTENT_TYPE, "video/mp2t")],
+                    vec![0x47u8; huge_len],
+                )
+            }),
+        ))
+        .await;
+        let query = proxy_query(format!("http://{addr}/seg.ts"));
+        let response = proxy_request(&test_state(), &query, &HeaderMap::new()).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok()),
+            Some("video/mp2t")
+        );
+        assert!(
+            response.headers().get(header::CONTENT_LENGTH).is_none(),
+            "声明超长应走流式透传而非完整缓冲"
+        );
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_probe_stream_上游非成功状态返回Unknown() {
+        let addr = spawn_upstream(Router::new().route(
+            "/live.m3u8",
+            get(|| async { (StatusCode::FORBIDDEN, "forbidden") }),
+        ))
+        .await;
+        let kind = probe_stream(&test_state(), &format!("http://{addr}/live.m3u8")).await;
+        assert_eq!(kind, StreamKind::Unknown);
     }
 }
