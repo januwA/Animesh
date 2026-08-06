@@ -535,6 +535,46 @@ describe("Downloads 页面组件", () => {
 		});
 	});
 
+	it("已完成的任务也应支持暂停(停止做种)", async () => {
+		const mockTorrents = [
+			{
+				info_hash: "hashSeeding",
+				name: "已完成做种视频",
+				progress_bytes: 1000,
+				total_bytes: 1000,
+				finished: true,
+				download_speed_bytes_per_sec: 0,
+				paused: false,
+				peers_connected: 0,
+				peers_total: 0,
+			},
+		];
+
+		vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+			mockTorrents,
+		);
+
+		renderDownloads();
+
+		await waitFor(() => {
+			expect(screen.getByText("已完成做种视频")).toBeInTheDocument();
+		});
+
+		vi.useFakeTimers();
+
+		const pauseBtn = screen.getByTitle("暂停下载");
+		expect(pauseBtn).toBeInTheDocument();
+
+		fireEvent.click(pauseBtn);
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(0);
+		});
+		expect(mockTorrentRepository.pauseTorrent).toHaveBeenCalledWith(
+			"hashSeeding",
+		);
+		expect(toast).toHaveBeenCalledWith("已暂停任务: 已完成做种视频");
+	});
+
 	it("应该在下载列表中展示创建时间，并按创建时间倒序排列(最新的在最前面)", async () => {
 		const mockTorrents = [
 			{

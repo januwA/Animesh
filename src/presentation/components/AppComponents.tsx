@@ -61,17 +61,12 @@ export function AppNavBar() {
 							{isActive && (
 								<span className="absolute inset-0 bg-primary/10 rounded-xl blur-xs -z-10 md:hidden animate-fade-in" />
 							)}
-							<Icon
-								className={cn(
-									iconClass,
-									showBounce && "animate-bounce text-cyan-400",
-								)}
-							/>
+							<Icon className={cn(iconClass, showBounce && "animate-bounce")} />
 							<span>{item.label}</span>
 							{isDownload && activeCount > 0 && (
 								<Badge
 									variant="secondary"
-									className="absolute -top-1 -right-1 md:static md:ml-2 h-4.5 px-1.5 text-[9px] font-extrabold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded-full animate-pulse flex items-center justify-center" // style-ignore
+									className="absolute -top-1 -right-1 md:static md:ml-2 h-4.5 px-1.5 text-[9px] font-extrabold border rounded-full animate-pulse flex items-center justify-center"
 								>
 									{activeCount}
 								</Badge>

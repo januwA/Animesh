@@ -186,7 +186,7 @@ export default function Downloads() {
 													)}
 												</div>
 											</div>
-											<div className="flex items-center gap-1.5 flex-shrink-0">
+											<div className="flex items-center gap-1.5 shrink-0">
 												{t.finished ? (
 													<Badge className="bg-success/10 text-success border-success/20 text-xs">
 														已完成
@@ -246,28 +246,26 @@ export default function Downloads() {
 												</Button>
 
 												{/* Pause / Resume */}
-												{!t.finished && (
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={() => {
-															const nameFallback = t.name || "";
-															if (t.paused) {
-																handleResume(t.info_hash, nameFallback);
-															} else {
-																handlePause(t.info_hash, nameFallback);
-															}
-														}}
-														className="h-8 w-8 p-0"
-														title={t.paused ? "开始下载" : "暂停下载"}
-													>
-														{t.paused ? (
-															<Play className="h-3.5 w-3.5 fill-current" />
-														) : (
-															<Pause className="h-3.5 w-3.5 fill-current" />
-														)}
-													</Button>
-												)}
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => {
+														const nameFallback = t.name || "";
+														if (t.paused) {
+															handleResume(t.info_hash, nameFallback);
+														} else {
+															handlePause(t.info_hash, nameFallback);
+														}
+													}}
+													className="h-8 w-8 p-0"
+													title={t.paused ? "开始下载" : "暂停下载"}
+												>
+													{t.paused ? (
+														<Play className="h-3.5 w-3.5 fill-current" />
+													) : (
+														<Pause className="h-3.5 w-3.5 fill-current" />
+													)}
+												</Button>
 
 												{/* Delete */}
 												<Button
