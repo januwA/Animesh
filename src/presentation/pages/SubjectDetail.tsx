@@ -1,4 +1,3 @@
-import { Background, WithCancel } from "ajanuw-context";
 import {
 	ArrowLeft,
 	Calendar,
@@ -18,7 +17,6 @@ import type {
 	BangumiCharacter,
 	BangumiEpisode,
 	BangumiPerson,
-	BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
 import { FavoriteButton } from "@/presentation/components/FavoriteButton";
 import { LazyImage } from "@/presentation/components/LazyImage";
@@ -37,6 +35,7 @@ import {
 	TabsList,
 	TabsTrigger,
 } from "@/presentation/components/ui/tabs";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 
@@ -196,7 +195,7 @@ function StaffSkeleton() {
 }
 
 export default function SubjectDetail() {
-	const { subjectId } = useParams<{ subjectId: string }>();
+	const { subjectId = "" } = useParams<{ subjectId: string }>();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const state = location.state as { name?: string; imageUrl?: string } | null;
@@ -208,19 +207,46 @@ export default function SubjectDetail() {
 		openUrlUseCase,
 	} = useDI();
 
-	const [subject, setSubject] = useState<BangumiSubject | null>(null);
-	const [episodes, setEpisodes] = useState<BangumiEpisode[]>([]);
-	const [persons, setPersons] = useState<BangumiPerson[]>([]);
-	const [characters, setCharacters] = useState<BangumiCharacter[]>([]);
-	const [error, setError] = useState<string | null>(null);
-
 	const [summaryExpanded, setSummaryExpanded] = useState(false);
 	const [summaryHasMore, setSummaryHasMore] = useState(false);
 	const summaryRef = useRef<HTMLParagraphElement>(null);
 
-	const [episodesLoading, setEpisodesLoading] = useState(true);
-	const [charactersLoading, setCharactersLoading] = useState(true);
-	const [personsLoading, setPersonsLoading] = useState(true);
+	const subjectQuery = useQuery(
+		(ctx) => getBangumiSubjectUseCase.execute(ctx, subjectId),
+		[subjectId, getBangumiSubjectUseCase],
+		{ enabled: !!subjectId },
+	);
+	const subject = subjectQuery.data;
+	const error = subjectQuery.error
+		? `获取动漫详情失败: ${formatError(subjectQuery.error)}`
+		: null;
+
+	const episodesQuery = useQuery(
+		async (ctx) => {
+			const data = await getBangumiEpisodesUseCase.execute(ctx, subjectId);
+			return [...data].sort((a, b) => a.sort - b.sort);
+		},
+		[subjectId, getBangumiEpisodesUseCase],
+		{ enabled: !!subjectId },
+	);
+	const episodes = episodesQuery.data ?? [];
+	const episodesLoading = episodesQuery.loading;
+
+	const charactersQuery = useQuery(
+		(ctx) => getBangumiCharactersUseCase.execute(ctx, subjectId),
+		[subjectId, getBangumiCharactersUseCase],
+		{ enabled: !!subjectId },
+	);
+	const characters = charactersQuery.data ?? [];
+	const charactersLoading = charactersQuery.loading;
+
+	const personsQuery = useQuery(
+		(ctx) => getBangumiPersonsUseCase.execute(ctx, subjectId),
+		[subjectId, getBangumiPersonsUseCase],
+		{ enabled: !!subjectId },
+	);
+	const persons = personsQuery.data ?? [];
+	const personsLoading = personsQuery.loading;
 
 	// Reset summary expansion state when subject changes
 	useEffect(() => {
@@ -253,94 +279,6 @@ export default function SubjectDetail() {
 		const day = String(today.getDate()).padStart(2, "0");
 		return `${year}-${month}-${day}`;
 	}, []);
-
-	useEffect(() => {
-		if (!subjectId) return;
-
-		setSubject(null);
-		setEpisodes([]);
-		setPersons([]);
-		setCharacters([]);
-		setError(null);
-		setEpisodesLoading(true);
-		setCharactersLoading(true);
-		setPersonsLoading(true);
-		const [ctx, cancel] = WithCancel(Background);
-
-		const fetchSubject = async () => {
-			try {
-				const data = await getBangumiSubjectUseCase.execute(ctx, subjectId);
-				if (!ctx.err()) {
-					setSubject(data);
-				}
-			} catch (err: unknown) {
-				if (!ctx.err()) {
-					setError(`获取动漫详情失败: ${formatError(err)}`);
-				}
-			}
-		};
-
-		const fetchEpisodes = async () => {
-			try {
-				const data = await getBangumiEpisodesUseCase.execute(ctx, subjectId);
-				if (!ctx.err()) {
-					const sorted = [...data].sort((a, b) => a.sort - b.sort);
-					setEpisodes(sorted);
-				}
-			} catch {
-				// Episodes are non-critical
-			} finally {
-				if (!ctx.err()) {
-					setEpisodesLoading(false);
-				}
-			}
-		};
-
-		const fetchCharacters = async () => {
-			try {
-				const data = await getBangumiCharactersUseCase.execute(ctx, subjectId);
-				if (!ctx.err()) {
-					setCharacters(data);
-				}
-			} catch {
-				// Characters are non-critical
-			} finally {
-				if (!ctx.err()) {
-					setCharactersLoading(false);
-				}
-			}
-		};
-
-		const fetchPersons = async () => {
-			try {
-				const data = await getBangumiPersonsUseCase.execute(ctx, subjectId);
-				if (!ctx.err()) {
-					setPersons(data);
-				}
-			} catch {
-				// Persons are non-critical
-			} finally {
-				if (!ctx.err()) {
-					setPersonsLoading(false);
-				}
-			}
-		};
-
-		fetchSubject();
-		fetchEpisodes();
-		fetchCharacters();
-		fetchPersons();
-
-		return () => {
-			cancel();
-		};
-	}, [
-		subjectId,
-		getBangumiSubjectUseCase,
-		getBangumiEpisodesUseCase,
-		getBangumiPersonsUseCase,
-		getBangumiCharactersUseCase,
-	]);
 
 	const handleEpisodeClick = (episode: BangumiEpisode) => {
 		/* v8 ignore next */

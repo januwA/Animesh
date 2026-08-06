@@ -1,14 +1,12 @@
 import { ArrowLeft, FileVideo, Film, Loader2, Play } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
-import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import { ScrollArea } from "@/presentation/components/ui/scroll-area";
-import { useRequestContext } from "@/presentation/hooks/useRequestContext";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatBytes, formatError } from "@/utils";
 
 export default function TorrentDetail() {
@@ -17,47 +15,29 @@ export default function TorrentDetail() {
 	const magnet = searchParams.get("magnet") || "";
 	const title = searchParams.get("title") || "";
 	const infoHash = searchParams.get("infoHash") || "";
+	const hasSource = !!(magnet || infoHash);
 
 	const { resolveTorrentUseCase } = useDI();
-	const { createContext, cancel } = useRequestContext();
-	const [error, setError] = useState<string | null>(null);
-	const [torrent, setTorrent] = useState<AddTorrentResult | null>(null);
-	const [loading, setLoading] = useState(true);
+
+	const {
+		data: torrent,
+		loading,
+		error,
+	} = useQuery(
+		(ctx) => resolveTorrentUseCase.execute(ctx, { magnet, infoHash, title }),
+		[magnet, infoHash, title, resolveTorrentUseCase],
+		{ enabled: hasSource },
+	);
 
 	const handleBack = () => {
-		cancel();
 		navigate(-1);
 	};
 
-	useEffect(() => {
-		if (!magnet && !infoHash) {
-			setError("未提供有效的磁力链接或种子 Hash");
-			setLoading(false);
-			return;
-		}
-
-		const resolveTorrent = async () => {
-			setLoading(true);
-			setError(null);
-
-			const ctx = createContext();
-
-			try {
-				const result = await resolveTorrentUseCase.execute(ctx, {
-					magnet,
-					infoHash,
-					title,
-				});
-				setTorrent(result);
-			} catch (err: unknown) {
-				setError(`解析种子失败: ${formatError(err)}`);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		resolveTorrent();
-	}, [infoHash, title, magnet, resolveTorrentUseCase, createContext]);
+	const errorMessage = !hasSource
+		? "未提供有效的磁力链接或种子 Hash"
+		: error
+			? `解析种子失败: ${formatError(error)}`
+			: null;
 
 	const handleStartPlayback = (fileId: number, fileName: string) => {
 		// v8 ignore next
@@ -92,13 +72,13 @@ export default function TorrentDetail() {
 		);
 	}
 
-	if (error || !torrent) {
+	if (errorMessage || !torrent) {
 		return (
 			<div className="flex flex-col items-center justify-center py-20 text-center gap-4">
 				<Alert variant="destructive" className="max-w-md">
 					<h2 className="text-xl font-bold">种子解析失败</h2>
 					<AlertDescription>
-						{error || /* v8 ignore next */ "未知错误"}
+						{errorMessage || /* v8 ignore next */ "未知错误"}
 					</AlertDescription>
 				</Alert>
 				<Button variant="outline" onClick={handleBack}>

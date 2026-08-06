@@ -1,6 +1,5 @@
-import { Background, WithCancel } from "ajanuw-context";
 import { Search, Tv } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type { IptvChannel, IptvCountry } from "@/domain/iptv/IptvSchemas";
@@ -24,6 +23,7 @@ import {
 	ToggleGroup,
 	ToggleGroupItem,
 } from "@/presentation/components/ui/toggle-group";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 import { LazyImage } from "../components/LazyImage";
@@ -113,82 +113,48 @@ export default function Iptv() {
 	} = useAppContext();
 	const iptvLogger = useMemo(() => logger.withCategory("Iptv"), [logger]);
 
-	const [isLoading, setIsLoading] = useState(
-		iptvChannelsCountry !== iptvSelectedCountry,
-	);
 	const [error, setError] = useState<string | null>(null);
 
-	useEffect(() => {
-		if (iptvCountries.length > 0) {
-			return;
-		}
-		const [ctx, cancel] = WithCancel(Background);
+	useQuery(
+		(ctx) => getIptvCountriesUseCase.execute(ctx),
+		[
+			getIptvCountriesUseCase,
+			iptvCountries.length,
+			iptvLogger,
+			setIptvCountries,
+		],
+		{
+			enabled: iptvCountries.length === 0,
+			onSuccess: (data) => setIptvCountries(data),
+			onError: (err) => {
+				iptvLogger.warn("Failed to fetch IPTV countries:", err);
+			},
+		},
+	);
 
-		(async () => {
-			try {
-				const data = await getIptvCountriesUseCase.execute(ctx);
-				if (!ctx.err()) {
-					setIptvCountries(data);
-				}
-			} catch (err: unknown) {
-				if (!ctx.err()) {
-					iptvLogger.warn("Failed to fetch IPTV countries:", err);
-				}
-			}
-		})();
-
-		return () => {
-			cancel();
-		};
-	}, [
-		getIptvCountriesUseCase,
-		iptvLogger,
-		iptvCountries.length,
-		setIptvCountries,
-	]);
-
-	useEffect(() => {
-		if (iptvChannelsCountry === iptvSelectedCountry) {
-			return;
-		}
-		setIptvChannels([]);
-		setIptvSelectedCategory(DEFAULT_IPTV_CATEGORY);
-		setError(null);
-		setIsLoading(true);
-		const [ctx, cancel] = WithCancel(Background);
-
-		(async () => {
-			try {
-				const data = await getIptvChannelsUseCase.execute(
-					ctx,
-					iptvSelectedCountry,
-				);
-				if (!ctx.err()) {
-					setIptvChannels(data);
-					setIptvChannelsCountry(iptvSelectedCountry);
-				}
-			} catch (err: unknown) {
-				if (!ctx.err()) {
-					setError(`获取频道列表失败，请检查网络或重试: ${formatError(err)}`);
-				}
-			} finally {
-				if (!ctx.err()) {
-					setIsLoading(false);
-				}
-			}
-		})();
-
-		return () => {
-			cancel();
-		};
-	}, [
-		getIptvChannelsUseCase,
-		iptvSelectedCountry,
-		iptvChannelsCountry,
-		setIptvChannels,
-		setIptvSelectedCategory,
-		setIptvChannelsCountry,
-	]);
+	const channelsNeedsFetch = iptvChannelsCountry !== iptvSelectedCountry;
+	const { loading: isLoading } = useQuery(
+		(ctx) => getIptvChannelsUseCase.execute(ctx, iptvSelectedCountry),
+		[
+			getIptvChannelsUseCase,
+			iptvSelectedCountry,
+			iptvChannelsCountry,
+			setIptvChannels,
+			setIptvSelectedCategory,
+			setIptvChannelsCountry,
+		],
+		{
+			enabled: channelsNeedsFetch,
+			onSuccess: (data) => {
+				setError(null);
+				setIptvChannels(data);
+				setIptvChannelsCountry(iptvSelectedCountry);
+			},
+			onError: (err) => {
+				setError(`获取频道列表失败，请检查网络或重试: ${formatError(err)}`);
+			},
+		},
+	);
 
 	const selectCountries = useMemo(() => {
 		if (iptvCountries.some((country) => country.code === iptvSelectedCountry)) {
@@ -229,6 +195,10 @@ export default function Iptv() {
 
 	const handleCountryChange = (value: string) => {
 		setIptvSelectedCountry(value);
+		if (iptvChannelsCountry !== value) {
+			setIptvChannels([]);
+			setIptvSelectedCategory(DEFAULT_IPTV_CATEGORY);
+		}
 	};
 
 	const handleCategoryChange = (value: string) => {

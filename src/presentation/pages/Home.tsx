@@ -1,4 +1,3 @@
-import { Canceled } from "ajanuw-context";
 import {
 	Clock,
 	ExternalLink,
@@ -15,7 +14,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
-import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import {
 	TORRENT_SEARCH_ENGINES,
 	type TorrentSearchEngine,
@@ -46,7 +44,8 @@ import {
 	SelectValue,
 } from "@/presentation/components/ui/select";
 import { Separator } from "@/presentation/components/ui/separator";
-import { useRequestContext } from "@/presentation/hooks/useRequestContext";
+import { useMutation } from "@/presentation/hooks/useMutation";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 import { useAppContext } from "../context/AppContext";
@@ -334,17 +333,42 @@ export default function Home() {
 		setHomeHasSearched: setHasSearched,
 	} = useAppContext();
 
-	const [error, setError] = useState<string | null>(null);
-	const [isSearching, setIsSearching] = useState(false);
 	const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
 		() => localStorage.getItem("animesh_selected_ai_alias") || "none",
 	);
-	const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
-	const { createContext, cancel: cancelSearch } = useRequestContext();
+
+	const aiQuery = useQuery(
+		() => getSettingsUseCase.execute(),
+		[getSettingsUseCase],
+	);
+	const aiConfigs = aiQuery.data?.ai_configs ?? [];
+
+	const searchMutation = useMutation<
+		AiSearchResultItem[],
+		{ queryText: string; engine: TorrentSearchEngine; aiAlias: string }
+	>(
+		(ctx, params) => {
+			const dto = { keyword: params.queryText, engine: params.engine };
+			return params.aiAlias !== "none"
+				? searchTorrentsWithAiUseCase.execute(ctx, {
+						...dto,
+						aiAlias: params.aiAlias,
+					})
+				: searchTorrentsUseCase.execute(ctx, dto);
+		},
+		{
+			onSuccess: (data) => setResults(data),
+			onError: () => setResults([]),
+		},
+	);
+
+	const error = searchMutation.error
+		? `搜索失败，请检查网络或重试: ${formatError(searchMutation.error)}`
+		: null;
+
 	const handleCancelSearch = useCallback(() => {
-		cancelSearch();
-		setIsSearching(false);
-	}, [cancelSearch]);
+		searchMutation.cancel();
+	}, [searchMutation.cancel]);
 
 	const [history, setHistory] = useState<string[]>(() => {
 		try {
@@ -355,25 +379,10 @@ export default function Home() {
 		}
 	});
 
-	// 检测本地 AI 配置
-	useEffect(() => {
-		const checkAi = async () => {
-			try {
-				const settings = await getSettingsUseCase.execute();
-				const configs = settings.ai_configs || [];
-				setAiConfigs(configs);
-			} catch {
-				// 静默退化
-			}
-		};
-		checkAi();
-	}, [getSettingsUseCase]);
-
 	const keywordParam = searchParams.get("keyword");
 
 	const performSearch = useCallback(
 		(queryText: string) => {
-			setError(null);
 			setHasSearched(true);
 
 			setHistory((prev) => {
@@ -386,47 +395,13 @@ export default function Home() {
 				return nextHistory;
 			});
 
-			const ctx = createContext();
-			setIsSearching(true);
-
-			(async () => {
-				try {
-					const data =
-						selectedAiAlias !== "none"
-							? await searchTorrentsWithAiUseCase.execute(ctx, {
-									keyword: queryText,
-									engine: searchEngine,
-									aiAlias: selectedAiAlias,
-								})
-							: await searchTorrentsUseCase.execute(ctx, {
-									keyword: queryText,
-									engine: searchEngine,
-								});
-					/* v8 ignore next */
-					if (ctx.err()) return;
-					setResults(data);
-				} catch (err: unknown) {
-					if (ctx.err() === Canceled) {
-						return;
-					}
-					setError(`搜索失败，请检查网络或重试: ${formatError(err)}`);
-					setResults([]);
-				} finally {
-					if (ctx.err() === null) {
-						setIsSearching(false);
-					}
-				}
-			})();
+			searchMutation.execute({
+				queryText,
+				engine: searchEngine,
+				aiAlias: selectedAiAlias,
+			});
 		},
-		[
-			searchTorrentsUseCase,
-			searchTorrentsWithAiUseCase,
-			searchEngine,
-			selectedAiAlias,
-			createContext,
-			setHasSearched,
-			setResults,
-		],
+		[searchEngine, selectedAiAlias, searchMutation.execute, setHasSearched],
 	);
 
 	useEffect(() => {
@@ -494,7 +469,7 @@ export default function Home() {
 			<SearchForm
 				keyword={keyword}
 				setKeyword={setKeyword}
-				loading={isSearching}
+				loading={searchMutation.loading}
 				onSubmit={handleSearch}
 				searchEngine={searchEngine}
 				setSearchEngine={setSearchEngine}
@@ -513,7 +488,7 @@ export default function Home() {
 								setSelectedAiAlias(val);
 								localStorage.setItem("animesh_selected_ai_alias", val);
 							}}
-							disabled={isSearching}
+							disabled={searchMutation.loading}
 						>
 							<SelectTrigger className="h-7 border-0 bg-transparent py-0 px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-1">
 								<SelectValue />
@@ -571,7 +546,7 @@ export default function Home() {
 			)}
 
 			{/* 加载提示 */}
-			{isSearching &&
+			{searchMutation.loading &&
 				(selectedAiAlias !== "none" ? (
 					<div className="flex flex-col items-center justify-center py-20 gap-4 animate-in fade-in duration-300">
 						<div className="relative flex items-center justify-center">
@@ -605,7 +580,7 @@ export default function Home() {
 			{/* 未搜索空状态或结果为空提示 */}
 
 			{/* 未搜索空状态或结果为空提示 */}
-			{!isSearching &&
+			{!searchMutation.loading &&
 				!error &&
 				(hasSearched && results.length === 0 ? (
 					<Empty>
@@ -619,7 +594,7 @@ export default function Home() {
 				) : null)}
 
 			{/* 搜索结果列表 */}
-			{!isSearching && !error && results.length > 0 && (
+			{!searchMutation.loading && !error && results.length > 0 && (
 				<section className="w-full flex flex-col gap-4">
 					<div className="flex items-center justify-between border-b border-border pb-2">
 						<div className="results-count text-sm text-muted-foreground">

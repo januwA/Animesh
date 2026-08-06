@@ -1,6 +1,5 @@
-import { Background, WithCancel } from "ajanuw-context";
 import { Calendar as CalendarIcon, Star, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type {
@@ -16,6 +15,7 @@ import {
 } from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 import { FavoriteBadge } from "../components/FavoriteBadge";
@@ -171,37 +171,21 @@ export default function Calendar() {
 	const { getBangumiCalendarUseCase } = useDI();
 	const { calendar, setCalendar } = useAppContext();
 	const [error, setError] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(false);
 
-	useEffect(() => {
-		if (calendar.length > 0) {
-			return;
-		}
-		setError(null);
-		setIsLoading(true);
-		const [ctx, cancel] = WithCancel(Background);
-
-		(async () => {
-			try {
-				const data = await getBangumiCalendarUseCase.execute(ctx);
-				if (!ctx.err()) {
-					setCalendar(data);
-				}
-			} catch (err: unknown) {
-				if (!ctx.err()) {
-					setError(`获取新番日历失败，请检查网络或重试: ${formatError(err)}`);
-				}
-			} finally {
-				if (!ctx.err()) {
-					setIsLoading(false);
-				}
-			}
-		})();
-
-		return () => {
-			cancel();
-		};
-	}, [getBangumiCalendarUseCase, calendar.length, setCalendar]);
+	const { loading: isLoading } = useQuery(
+		(ctx) => getBangumiCalendarUseCase.execute(ctx),
+		[getBangumiCalendarUseCase, calendar.length, setCalendar],
+		{
+			enabled: calendar.length === 0,
+			onSuccess: (data) => {
+				setError(null);
+				setCalendar(data);
+			},
+			onError: (err) => {
+				setError(`获取新番日历失败，请检查网络或重试: ${formatError(err)}`);
+			},
+		},
+	);
 
 	const handleAnimeClick = useCallback(
 		(item: BangumiCalendarItem) => {

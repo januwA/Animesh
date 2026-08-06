@@ -16,15 +16,15 @@ import {
 	Settings as SettingsIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import type { SaveSettingsDto } from "@/application/settings/SaveSettingsUseCase";
 import { useDI } from "@/di/DIContext";
 import { SettingsFormSchema } from "@/domain/settings/SettingsSchemas";
 import {
 	getTrackerUrl,
 	type TrackerSourceType,
 } from "@/domain/settings/TrackerSettings";
-import type { UpdateCheckResult } from "@/domain/update/UpdateInfo";
 import { Button } from "@/presentation/components/ui/button";
 import {
 	Card,
@@ -48,6 +48,8 @@ import {
 	ACCENT_PRESETS,
 	useAccentTheme,
 } from "@/presentation/hooks/useAccentTheme";
+import { useMutation } from "@/presentation/hooks/useMutation";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { cn } from "@/presentation/lib/utils";
 import { formatError, formatLocalDate } from "@/utils";
 
@@ -65,24 +67,21 @@ export default function Settings() {
 		openUpdateUrlUseCase,
 		verifyAiConnectionUseCase,
 	} = useDI();
-	const [currentVersion, setCurrentVersion] = useState("");
+	const isTauri = import.meta.env.MODE !== "web";
 
-	const [checkingUpdate, setCheckingUpdate] = useState(false);
-	const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(
-		null,
-	);
+	const isMobile =
+		["android", "ios"].includes(import.meta.env.TAURI_ENV_PLATFORM || "") ||
+		(typeof navigator !== "undefined" &&
+			/android|iphone|ipad|ipod/i.test(navigator.userAgent));
+
 	const [downloadDir, setDownloadDir] = useState("");
 	const [proxy, setProxy] = useState("");
 	const [trackersText, setTrackersText] = useState("");
-	const [loading, setLoading] = useState(true);
-	const [saving, setSaving] = useState(false);
-
 	const [sourceType, setSourceType] = useState<TrackerSourceType>("best");
 	const [customUrl, setCustomUrl] = useState("");
 	const [autoUpdate, setAutoUpdate] = useState(false);
 	const [lastUpdateTime, setLastUpdateTime] = useState(0);
 	const [maxDownloadSpeed, setMaxDownloadSpeed] = useState(0);
-	const [syncing, setSyncing] = useState(false);
 
 	const [aiConfigs, setAiConfigs] = useState<
 		{
@@ -97,7 +96,227 @@ export default function Settings() {
 	const [apiEndpointInput, setApiEndpointInput] = useState("");
 	const [apiKeyInput, setApiKeyInput] = useState("");
 	const [modelInput, setModelInput] = useState("");
-	const [testingAi, setTestingAi] = useState(false);
+
+	// Load settings
+	const settingsQuery = useQuery(
+		() => getSettingsUseCase.execute(),
+		[getSettingsUseCase],
+		{
+			onSuccess: (settings) => {
+				setDownloadDir(settings.download_dir);
+				setProxy(settings.proxy || "");
+				setTrackersText((settings.trackers || []).join("\n"));
+				setSourceType(
+					(settings.tracker_source_type || "best") as TrackerSourceType,
+				);
+				setCustomUrl(settings.tracker_custom_url || "");
+				setAutoUpdate(settings.tracker_auto_update === true);
+				setLastUpdateTime(settings.tracker_last_update_time || 0);
+				setMaxDownloadSpeed(settings.max_download_speed ?? 0);
+
+				const loadedConfigs = (settings.ai_configs || []).map((c) => ({
+					alias: c.alias,
+					apiEndpoint: c.api_endpoint,
+					apiKey: c.api_key,
+					model: c.ai_model,
+				}));
+				setAiConfigs(loadedConfigs);
+			},
+			onError: (err) => toast.error(`加载设置失败: ${formatError(err)}`),
+		},
+	);
+	const loading = settingsQuery.loading;
+
+	// Load version
+	const versionQuery = useQuery(
+		() => getCurrentVersionUseCase.execute(),
+		[getCurrentVersionUseCase],
+		{ enabled: isTauri },
+	);
+	const currentVersion = versionQuery.data ?? "";
+
+	// AI connection test
+	const verifyAiMutation = useMutation(
+		(
+			_ctx,
+			config: { apiEndpoint: string; apiKey: string; model?: string | null },
+		) =>
+			verifyAiConnectionUseCase.execute({
+				apiEndpoint: config.apiEndpoint,
+				apiKey: config.apiKey,
+				model: config.model || undefined,
+			}),
+		{
+			onSuccess: () => toast.success("AI 模型连接测试成功！"),
+			onError: (err) =>
+				toast.error(`AI 模型连接测试失败: ${formatError(err)}`, {
+					duration: 5000,
+				}),
+		},
+	);
+	const testingAi = verifyAiMutation.loading;
+
+	const handleTestConfigConnection = (config: {
+		apiEndpoint: string;
+		apiKey: string;
+		model?: string | null;
+	}) => {
+		verifyAiMutation.execute({
+			apiEndpoint: config.apiEndpoint,
+			apiKey: config.apiKey,
+			model: config.model || undefined,
+		});
+	};
+
+	const handleTestCurrentConnection = () => {
+		if (!apiEndpointInput.trim()) {
+			toast.warning("请输入 AI 接口地址");
+			return;
+		}
+		if (!apiKeyInput.trim()) {
+			toast.warning("请输入 API 密钥");
+			return;
+		}
+		handleTestConfigConnection({
+			apiEndpoint: apiEndpointInput,
+			apiKey: apiKeyInput,
+			model: modelInput,
+		});
+	};
+
+	const currentUrl = getTrackerUrl(sourceType, customUrl);
+
+	// Tracker sync
+	const syncMutation = useMutation(
+		(_ctx, params: { url: string; mode: "replace" | "append" }) =>
+			syncTrackersUseCase.execute(params.url),
+		{
+			onSuccess: (fetched, params) => {
+				if (fetched.length === 0) {
+					toast.warning("未获取到有效的 Tracker 地址");
+					return;
+				}
+
+				if (params.mode === "replace") {
+					setTrackersText(fetched.join("\n"));
+					toast.success(
+						`同步成功：已替换为最新的 ${fetched.length} 个 Tracker，请保存设置`,
+					);
+				} else {
+					const currentTrackers = trackersText
+						.split("\n")
+						.map((t) => t.trim())
+						.filter((t) => t.length > 0);
+					const merged = Array.from(new Set([...currentTrackers, ...fetched]));
+					setTrackersText(merged.join("\n"));
+					const addedCount = merged.length - currentTrackers.length;
+					toast.success(
+						`同步成功：已追加 ${addedCount} 个新 Tracker (共计 ${merged.length} 个)，请保存设置`,
+					);
+				}
+
+				setLastUpdateTime(Date.now());
+			},
+			onError: (err) => toast.error(`同步 Tracker 失败: ${formatError(err)}`),
+		},
+	);
+	const syncing = syncMutation.loading;
+
+	const handleSync = (mode: "replace" | "append") => {
+		if (sourceType === "custom" && !customUrl) {
+			toast.warning("请输入自定义 Tracker 列表 URL");
+			return;
+		}
+
+		syncMutation.execute({ url: getTrackerUrl(sourceType, customUrl), mode });
+	};
+
+	// Check update
+	const checkUpdateMutation = useMutation(() => checkUpdateUseCase.execute(), {
+		onSuccess: (result) => {
+			if (result.hasUpdate) {
+				toast(`发现新版本 v${result.latestVersion}`);
+			} else {
+				toast.success("当前已是最新版本");
+			}
+		},
+		onError: (err) => toast.error(`检查更新失败: ${formatError(err)}`),
+	});
+	const checkingUpdate = checkUpdateMutation.loading;
+	const updateResult = checkUpdateMutation.data;
+	const handleCheckUpdate = () => {
+		checkUpdateMutation.execute();
+	};
+
+	// Directory selection
+	const selectDirMutation = useMutation(
+		() => selectDirectoryUseCase.execute(),
+		{
+			onSuccess: (selected) => {
+				if (selected) {
+					setDownloadDir(selected);
+					toast.success("已选择目录，点击保存以生效");
+				}
+			},
+			onError: (err) => toast.error(`选择文件夹失败: ${formatError(err)}`),
+		},
+	);
+	const handleSelectDir = () => {
+		selectDirMutation.execute();
+	};
+
+	// Reset to default trackers
+	const resetTrackersMutation = useMutation(
+		() => getDefaultTrackersUseCase.execute(),
+		{
+			onSuccess: (defaults) => {
+				setTrackersText(defaults.join("\n"));
+				toast.success("已重置为默认 Tracker 列表，点击保存生效");
+			},
+			onError: (err) =>
+				toast.error(`获取默认 Tracker 列表失败: ${formatError(err)}`),
+		},
+	);
+
+	// Save settings
+	const saveMutation = useMutation(
+		(_ctx, data: SaveSettingsDto) => saveSettingsUseCase.execute(data),
+		{
+			onSuccess: () => toast.success("设置已保存，后续下载任务将使用新路径"),
+			onError: (err) =>
+				toast.error(`保存路径失败: ${formatError(err)}`, { duration: 5000 }),
+		},
+	);
+	const saving = saveMutation.loading;
+
+	const handleSave = (e: React.SubmitEvent) => {
+		e.preventDefault();
+
+		const parsedTrackers = trackersText
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0);
+
+		const validation = SettingsFormSchema.safeParse({
+			downloadDir,
+			proxy,
+			trackers: parsedTrackers,
+			trackerSourceType: sourceType,
+			trackerCustomUrl: customUrl,
+			trackerAutoUpdate: autoUpdate,
+			trackerLastUpdateTime: lastUpdateTime,
+			aiConfigs,
+			maxDownloadSpeed: maxDownloadSpeed || null,
+		});
+
+		if (!validation.success) {
+			const firstError = validation.error.issues[0].message;
+			toast.error(firstError);
+			return;
+		}
+
+		saveMutation.execute(validation.data);
+	};
 
 	const handleStartAdd = () => {
 		setEditingIndex(-1);
@@ -171,218 +390,6 @@ export default function Settings() {
 			});
 		}
 		setEditingIndex(null);
-	};
-
-	const handleTestConfigConnection = async (config: {
-		apiEndpoint: string;
-		apiKey: string;
-		model?: string | null;
-	}) => {
-		setTestingAi(true);
-		try {
-			await verifyAiConnectionUseCase.execute({
-				apiEndpoint: config.apiEndpoint,
-				apiKey: config.apiKey,
-				model: config.model || undefined,
-			});
-			toast.success("AI 模型连接测试成功！");
-		} catch (err: unknown) {
-			toast.error(`AI 模型连接测试失败: ${formatError(err)}`, {
-				duration: 5000,
-			});
-		} finally {
-			setTestingAi(false);
-		}
-	};
-
-	const handleTestCurrentConnection = async () => {
-		if (!apiEndpointInput.trim()) {
-			toast.warning("请输入 AI 接口地址");
-			return;
-		}
-		if (!apiKeyInput.trim()) {
-			toast.warning("请输入 API 密钥");
-			return;
-		}
-		await handleTestConfigConnection({
-			apiEndpoint: apiEndpointInput,
-			apiKey: apiKeyInput,
-			model: modelInput,
-		});
-	};
-
-	const currentUrl = getTrackerUrl(sourceType, customUrl);
-
-	const handleSync = async (mode: "replace" | "append") => {
-		if (sourceType === "custom" && !customUrl) {
-			toast.warning("请输入自定义 Tracker 列表 URL");
-			return;
-		}
-
-		setSyncing(true);
-		try {
-			const url = getTrackerUrl(sourceType, customUrl);
-			const fetched = await syncTrackersUseCase.execute(url);
-
-			if (fetched.length === 0) {
-				toast.warning("未获取到有效的 Tracker 地址");
-				return;
-			}
-
-			if (mode === "replace") {
-				setTrackersText(fetched.join("\n"));
-				toast.success(
-					`同步成功：已替换为最新的 ${fetched.length} 个 Tracker，请保存设置`,
-				);
-			} else {
-				const currentTrackers = trackersText
-					.split("\n")
-					.map((t) => t.trim())
-					.filter((t) => t.length > 0);
-				const merged = Array.from(new Set([...currentTrackers, ...fetched]));
-				setTrackersText(merged.join("\n"));
-				const addedCount = merged.length - currentTrackers.length;
-				toast.success(
-					`同步成功：已追加 ${addedCount} 个新 Tracker (共计 ${merged.length} 个)，请保存设置`,
-				);
-			}
-
-			const now = Date.now();
-			setLastUpdateTime(now);
-		} catch (err: unknown) {
-			toast.error(`同步 Tracker 失败: ${formatError(err)}`);
-		} finally {
-			setSyncing(false);
-		}
-	};
-
-	const isTauri = import.meta.env.MODE !== "web";
-
-	const isMobile =
-		["android", "ios"].includes(import.meta.env.TAURI_ENV_PLATFORM || "") ||
-		(typeof navigator !== "undefined" &&
-			/android|iphone|ipad|ipod/i.test(navigator.userAgent));
-
-	// Load settings
-	useEffect(() => {
-		const loadSettings = async () => {
-			try {
-				const settings = await getSettingsUseCase.execute();
-				setDownloadDir(settings.download_dir);
-				setProxy(settings.proxy || "");
-				setTrackersText((settings.trackers || []).join("\n"));
-				setSourceType(
-					(settings.tracker_source_type || "best") as TrackerSourceType,
-				);
-				setCustomUrl(settings.tracker_custom_url || "");
-				setAutoUpdate(settings.tracker_auto_update === true);
-				setLastUpdateTime(settings.tracker_last_update_time || 0);
-				setMaxDownloadSpeed(settings.max_download_speed ?? 0);
-
-				const loadedConfigs = (settings.ai_configs || []).map((c) => ({
-					alias: c.alias,
-					apiEndpoint: c.api_endpoint,
-					apiKey: c.api_key,
-					model: c.ai_model,
-				}));
-				setAiConfigs(loadedConfigs);
-			} catch (err: unknown) {
-				toast.error(`加载设置失败: ${formatError(err)}`);
-			} finally {
-				setLoading(false);
-			}
-		};
-		loadSettings();
-	}, [getSettingsUseCase]);
-	// Load version
-	useEffect(() => {
-		if (!isTauri) return;
-		const loadVersion = async () => {
-			const version = await getCurrentVersionUseCase.execute();
-			setCurrentVersion(version);
-		};
-		loadVersion();
-	}, [getCurrentVersionUseCase]);
-
-	const handleCheckUpdate = async () => {
-		setCheckingUpdate(true);
-		setUpdateResult(null);
-		try {
-			const result = await checkUpdateUseCase.execute();
-			setUpdateResult(result);
-			if (result.hasUpdate) {
-				toast(`发现新版本 v${result.latestVersion}`);
-			} else {
-				toast.success("当前已是最新版本");
-			}
-		} catch (err: unknown) {
-			toast.error(`检查更新失败: ${formatError(err)}`);
-		} finally {
-			setCheckingUpdate(false);
-		}
-	};
-
-	// Handle native directory selection
-	const handleSelectDir = async () => {
-		try {
-			const selected = await selectDirectoryUseCase.execute();
-			if (selected) {
-				setDownloadDir(selected);
-				toast.success("已选择目录，点击保存以生效");
-			}
-		} catch (err: unknown) {
-			toast.error(`选择文件夹失败: ${formatError(err)}`);
-		}
-	};
-
-	// Save settings
-	const handleSave = async (e: React.SubmitEvent) => {
-		e.preventDefault();
-
-		const parsedTrackers = trackersText
-			.split("\n")
-			.map((line) => line.trim())
-			.filter((line) => line.length > 0);
-
-		const validation = SettingsFormSchema.safeParse({
-			downloadDir,
-			proxy,
-			trackers: parsedTrackers,
-			trackerSourceType: sourceType,
-			trackerCustomUrl: customUrl,
-			trackerAutoUpdate: autoUpdate,
-			trackerLastUpdateTime: lastUpdateTime,
-			aiConfigs,
-			maxDownloadSpeed: maxDownloadSpeed || null,
-		});
-
-		if (!validation.success) {
-			const firstError = validation.error.issues[0].message;
-			toast.error(firstError);
-			return;
-		}
-
-		const validatedData = validation.data;
-
-		setSaving(true);
-		try {
-			await saveSettingsUseCase.execute({
-				downloadDir: validatedData.downloadDir,
-				proxy: validatedData.proxy,
-				trackers: validatedData.trackers,
-				trackerSourceType: validatedData.trackerSourceType,
-				trackerCustomUrl: validatedData.trackerCustomUrl,
-				trackerAutoUpdate: validatedData.trackerAutoUpdate,
-				trackerLastUpdateTime: validatedData.trackerLastUpdateTime,
-				aiConfigs: validatedData.aiConfigs,
-				maxDownloadSpeed: validatedData.maxDownloadSpeed,
-			});
-			toast.success("设置已保存，后续下载任务将使用新路径");
-		} catch (err: unknown) {
-			toast.error(`保存路径失败: ${formatError(err)}`, { duration: 5000 });
-		} finally {
-			setSaving(false);
-		}
 	};
 
 	if (loading) {
@@ -1036,18 +1043,7 @@ export default function Settings() {
 									type="button"
 									variant="link"
 									size="sm"
-									onClick={async () => {
-										try {
-											const defaults =
-												await getDefaultTrackersUseCase.execute();
-											setTrackersText(defaults.join("\n"));
-											toast.success("已重置为默认 Tracker 列表，点击保存生效");
-										} catch (err: unknown) {
-											toast.error(
-												`获取默认 Tracker 列表失败: ${formatError(err)}`,
-											);
-										}
-									}}
+									onClick={() => resetTrackersMutation.execute()}
 									className="text-[11px]"
 								>
 									重置为默认值
