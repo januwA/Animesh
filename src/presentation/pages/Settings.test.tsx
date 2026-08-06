@@ -315,6 +315,7 @@ describe("Settings 页面组件", () => {
 		vi.mocked(mockSettingsRepository.selectDirectory).mockResolvedValue(null);
 
 		fireEvent.click(selectBtn);
+		await act(async () => {});
 		expect(screen.getByPlaceholderText(/选择或输入下载路径/)).toHaveValue(
 			"D:\\SelectedDir",
 		);

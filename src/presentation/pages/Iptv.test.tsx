@@ -235,6 +235,49 @@ describe("Iptv 页面组件", () => {
 		});
 	});
 
+	it("切换国家加载失败后重新选择已加载的国家,不应触发重复请求", async () => {
+		renderIptv({
+			getChannels: vi
+				.fn()
+				.mockImplementation((_ctx: unknown, code: string) =>
+					code === "JP"
+						? Promise.reject(new Error("网络错误"))
+						: Promise.resolve(mockChannels),
+				),
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("CCTV-1")).toBeInTheDocument();
+		});
+
+		// 切换到加载失败的国家
+		let selectTrigger = screen.getByRole("combobox");
+		await act(async () => {
+			fireEvent.click(selectTrigger);
+		});
+		const jpOption = screen.getByRole("option", { name: /日本/ });
+		await act(async () => {
+			fireEvent.click(jpOption);
+		});
+		await waitFor(() => {
+			expect(screen.getByText(/获取频道列表失败/)).toBeInTheDocument();
+		});
+
+		// 重新选择已加载的国家,此时 iptvChannelsCountry === value,不应重复请求
+		selectTrigger = screen.getByRole("combobox");
+		await act(async () => {
+			fireEvent.click(selectTrigger);
+		});
+		const cnOption = screen.getByRole("option", { name: /中国/ });
+		await act(async () => {
+			fireEvent.click(cnOption);
+		});
+
+		await waitFor(() => {
+			expect(mockIptvRepository.getChannels).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	it("应该根据 country.code 展示国旗图片，图片加载失败时回退到 emoji", async () => {
 		renderIptv();
 

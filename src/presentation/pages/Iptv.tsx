@@ -46,7 +46,7 @@ function CountryFlag({ country }: { country: IptvCountry }) {
 		<img
 			src={`https://flagcdn.com/w40/${country.code.toLowerCase()}.png`}
 			alt={country.name}
-			className="inline-block h-3.5 w-5 object-cover rounded-[2px]"
+			className="inline-block h-3.5 w-5 object-cover rounded-xs"
 			onError={() => setFailed(true)}
 		/>
 	);
