@@ -532,25 +532,27 @@ fn select_best_local_ip(interfaces: Vec<(String, std::net::IpAddr)>) -> Option<S
             _ => continue, // Ignore IPv6 for stream URL compatibility
         };
 
+        // 回环、未指定以及链路本地地址(169.254.x.x / APIPA)均不适合作为流地址，
+        // APIPA 是网卡拿不到 DHCP 时的临时地址，随时会失效导致 URL 不可达
         if ipv4.is_loopback() || ipv4.is_unspecified() {
+            continue;
+        }
+
+        let octets = ipv4.octets();
+        let is_link_local = octets[0] == 169 && octets[1] == 254;
+        if is_link_local {
             continue;
         }
 
         let name_lower = name.to_lowercase();
         let mut score = 0;
 
-        let octets = ipv4.octets();
         let is_private = (octets[0] == 10)
             || (octets[0] == 172 && octets[1] >= 16 && octets[1] <= 31)
             || (octets[0] == 192 && octets[1] == 168);
 
-        let is_link_local = octets[0] == 169 && octets[1] == 254;
-
         if is_private {
             score += 10;
-        }
-        if is_link_local {
-            score -= 10;
         }
 
         let ignore_keywords = [
@@ -599,7 +601,12 @@ fn select_best_local_ip(interfaces: Vec<(String, std::net::IpAddr)>) -> Option<S
         }
     }
 
-    best_ip.map(|(ip, _score)| ip)
+    // 只返回真实可达的物理网卡地址；虚拟网卡(xray/Tailscale/WSL 等)优先级过低，
+    // 若没有更好的候选则视为无可用地址，交由调用方回退到 127.0.0.1
+    match best_ip {
+        Some((ip, score)) if score >= 0 => Some(ip),
+        _ => None,
+    }
 }
 
 fn get_local_ip() -> Option<String> {
@@ -611,11 +618,7 @@ fn get_local_ip() -> Option<String> {
         }
     }
 
-    // Fallback: original UdpSocket connection method
-    use std::net::UdpSocket;
-    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
-    socket.connect("8.8.8.8:80").ok()?;
-    socket.local_addr().ok().map(|addr| addr.ip().to_string())
+    None
 }
 
 async fn iptv_proxy_route(
@@ -960,6 +963,39 @@ mod tests {
         assert_eq!(
             super::select_best_local_ip(simple_ip),
             Some("192.168.1.50".to_string())
+        );
+
+        // 5. 只有链路本地地址(APIPA 169.254.x.x)时不应选中，应回退到 127.0.0.1
+        let link_local_only = vec![(
+            "以太网".to_string(),
+            "169.254.112.178".parse::<IpAddr>().unwrap(),
+        )];
+        assert_eq!(super::select_best_local_ip(link_local_only), None);
+
+        // 6. 故障场景：网卡掉线拿到 APIPA 地址 + xray 虚拟隧道，不应返回不可达地址
+        let apipa_with_vpn = vec![
+            ("xray0".to_string(), "198.18.0.1".parse::<IpAddr>().unwrap()),
+            (
+                "以太网".to_string(),
+                "169.254.112.178".parse::<IpAddr>().unwrap(),
+            ),
+        ];
+        assert_eq!(super::select_best_local_ip(apipa_with_vpn), None);
+
+        // 7. 链路本地地址与真实局域网地址并存时，选择真实地址
+        let link_local_with_real = vec![
+            (
+                "以太网".to_string(),
+                "169.254.112.178".parse::<IpAddr>().unwrap(),
+            ),
+            (
+                "以太网".to_string(),
+                "192.168.0.108".parse::<IpAddr>().unwrap(),
+            ),
+        ];
+        assert_eq!(
+            super::select_best_local_ip(link_local_with_real),
+            Some("192.168.0.108".to_string())
         );
     }
 }
