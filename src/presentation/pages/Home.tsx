@@ -16,6 +16,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
+import {
+	TORRENT_SEARCH_ENGINES,
+	type TorrentSearchEngine,
+} from "@/domain/torrent/TorrentEngines";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
 import { Badge } from "@/presentation/components/ui/badge";
@@ -47,14 +51,23 @@ import { formatBytes, formatError, formatLocalDate } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 import { useAppContext } from "../context/AppContext";
 
+const ENGINE_LABELS: Record<TorrentSearchEngine, string> = {
+	dmhy: "动漫花园",
+	bangumi_moe: "萌番组",
+	mikan: "蜜柑计划",
+	nyaa: "Nyaa",
+	acgrip: "ACG.RIP",
+	anibt: "ANiBT",
+};
+
 // 搜索栏组件
 interface SearchFormProps {
 	keyword: string;
 	setKeyword: (val: string) => void;
 	loading: boolean;
 	onSubmit: (e: SubmitEvent) => void;
-	searchEngine: string;
-	setSearchEngine: (val: string) => void;
+	searchEngine: TorrentSearchEngine;
+	setSearchEngine: (val: TorrentSearchEngine) => void;
 }
 
 function SearchForm({
@@ -82,12 +95,11 @@ function SearchForm({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="dmhy">动漫花园</SelectItem>
-							<SelectItem value="bangumi_moe">萌番组</SelectItem>
-							<SelectItem value="mikan">蜜柑计划</SelectItem>
-							<SelectItem value="nyaa">Nyaa</SelectItem>
-							<SelectItem value="acgrip">ACG.RIP</SelectItem>
-							<SelectItem value="anibt">ANiBT</SelectItem>
+							{TORRENT_SEARCH_ENGINES.map((engine) => (
+								<SelectItem key={engine} value={engine}>
+									{ENGINE_LABELS[engine]}
+								</SelectItem>
+							))}
 						</SelectContent>
 					</Select>
 				</div>

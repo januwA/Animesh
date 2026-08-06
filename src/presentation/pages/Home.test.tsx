@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
+import { TORRENT_SEARCH_ENGINES } from "@/domain/torrent/TorrentEngines";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
@@ -172,7 +173,7 @@ describe("Home 页面组件", () => {
 		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 			expect.any(Object),
 			"xxx",
-			"dmhy",
+			TORRENT_SEARCH_ENGINES[0],
 		);
 	});
 
@@ -208,7 +209,7 @@ describe("Home 页面组件", () => {
 		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 			expect.any(Object),
 			"xxx",
-			"dmhy",
+			TORRENT_SEARCH_ENGINES[0],
 		);
 	});
 
@@ -774,7 +775,7 @@ describe("Home 页面组件", () => {
 			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 				expect.any(Object),
 				"柯南",
-				"dmhy",
+				TORRENT_SEARCH_ENGINES[0],
 			);
 		});
 	});

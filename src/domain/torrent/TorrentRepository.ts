@@ -1,4 +1,5 @@
 import type { Context } from "ajanuw-context";
+import type { TorrentSearchEngine } from "./TorrentEngines";
 import type {
 	AddTorrentResult,
 	FileDetails,
@@ -11,7 +12,7 @@ export interface TorrentRepository {
 	search(
 		ctx: Context,
 		keyword: string,
-		engine: string,
+		engine: TorrentSearchEngine,
 	): Promise<SearchResultItem[]>;
 	listTorrents(): Promise<TorrentStatusInfo[]>;
 	pauseTorrent(infoHash: string): Promise<void>;

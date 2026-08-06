@@ -147,7 +147,7 @@ export default function Downloads() {
 					<EmptyContent>
 						<EmptyTitle>没有正在进行的下载任务</EmptyTitle>
 						<EmptyDescription>
-							您可以在首页搜索动漫花园的资源，点击"边下边播"或者"复制磁力"解析后开始下载。
+							您可以在首页搜索资源，点击"边下边播"或者"复制磁力"解析后开始下载。
 						</EmptyDescription>
 					</EmptyContent>
 					<Button onClick={() => navigate("/")} size="sm">

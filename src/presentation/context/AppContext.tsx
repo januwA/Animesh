@@ -1,11 +1,16 @@
 import { createContext, use, useState } from "react";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import type { IptvChannel, IptvCountry } from "@/domain/iptv/IptvSchemas";
+import {
+	TORRENT_SEARCH_ENGINES,
+	type TorrentSearchEngine,
+} from "@/domain/torrent/TorrentEngines";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 
 export const DEFAULT_IPTV_COUNTRY = "CN";
 export const DEFAULT_IPTV_CATEGORY = "all";
-export const DEFAULT_HOME_SEARCH_ENGINE = "dmhy";
+export const DEFAULT_HOME_SEARCH_ENGINE: TorrentSearchEngine =
+	TORRENT_SEARCH_ENGINES[0];
 
 interface AppContextType {
 	calendar: BangumiCalendarDay[];
@@ -26,8 +31,8 @@ interface AppContextType {
 	setIptvKeyword: (val: string) => void;
 	homeKeyword: string;
 	setHomeKeyword: (val: string) => void;
-	homeSearchEngine: string;
-	setHomeSearchEngine: (val: string) => void;
+	homeSearchEngine: TorrentSearchEngine;
+	setHomeSearchEngine: (val: TorrentSearchEngine) => void;
 	homeResults: AiSearchResultItem[];
 	setHomeResults: (val: AiSearchResultItem[]) => void;
 	homeHasSearched: boolean;

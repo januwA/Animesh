@@ -1,5 +1,6 @@
 import type { Context } from "ajanuw-context";
 import { z } from "zod";
+import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
 	type AddTorrentResult,
@@ -45,7 +46,7 @@ export class HttpTorrentRepository implements TorrentRepository {
 	async search(
 		ctx: Context,
 		keyword: string,
-		engine: string,
+		engine: TorrentSearchEngine,
 	): Promise<SearchResultItem[]> {
 		const traceId = ctx.value<string>("traceId") || "";
 		const status = { isFinished: false };

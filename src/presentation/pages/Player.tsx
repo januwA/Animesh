@@ -276,7 +276,6 @@ export default function Player() {
 			</div>
 		) : (
 			<JsPlayer.Provider>
-				{/* biome-ignore lint/a11y/useMediaCaption: subtitles are loaded dynamically from torrent file */}
 				<VideoSkin className="w-full h-full">
 					<Video src={streamUrl} playsInline>
 						{subtracks

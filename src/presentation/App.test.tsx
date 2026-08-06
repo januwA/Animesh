@@ -11,6 +11,7 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import type { BangumiRepository } from "@/domain/bangumi/BangumiRepository";
 import type { NotificationRepository } from "@/domain/notification/NotificationRepository";
+import { TORRENT_SEARCH_ENGINES } from "@/domain/torrent/TorrentEngines";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import OriginalApp from "./App";
@@ -188,7 +189,7 @@ describe("App 组件", () => {
 		expect(mockTorrentRepository.search).toHaveBeenCalledWith(
 			expect.any(Object),
 			"xxx",
-			"dmhy",
+			TORRENT_SEARCH_ENGINES[0],
 		);
 
 		// 检查资源渲染

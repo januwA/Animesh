@@ -1,4 +1,5 @@
 import type { Context } from "ajanuw-context";
+import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 
@@ -7,7 +8,7 @@ export class SearchTorrentsUseCase {
 
 	execute(
 		ctx: Context,
-		dto: { keyword: string; engine: string },
+		dto: { keyword: string; engine: TorrentSearchEngine },
 	): Promise<SearchResultItem[]> {
 		return this.torrentRepository.search(ctx, dto.keyword, dto.engine);
 	}

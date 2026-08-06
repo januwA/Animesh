@@ -1,6 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import type { Context } from "ajanuw-context";
 import { z } from "zod";
+import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
 	type AddTorrentResult,
@@ -21,7 +22,7 @@ export class TauriTorrentRepository implements TorrentRepository {
 	async search(
 		ctx: Context,
 		keyword: string,
-		engine: string,
+		engine: TorrentSearchEngine,
 	): Promise<SearchResultItem[]> {
 		const traceId = ctx.value<string>("traceId") || "";
 		let isFinished = false;

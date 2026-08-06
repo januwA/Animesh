@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { TORRENT_SEARCH_ENGINES } from "@/domain/torrent/TorrentEngines";
 import { AppContextProvider, useAppContext } from "./AppContext";
 
 const mockCountry = { name: "日本", code: "JP", flag: "🇯🇵" };
@@ -206,7 +207,9 @@ describe("AppContext 状态上下文", () => {
 		);
 
 		expect(screen.getByTestId("home-keyword").textContent).toBe("");
-		expect(screen.getByTestId("home-search-engine").textContent).toBe("dmhy");
+		expect(screen.getByTestId("home-search-engine").textContent).toBe(
+			TORRENT_SEARCH_ENGINES[0],
+		);
 		expect(screen.getByTestId("home-results-length").textContent).toBe("0");
 		expect(screen.getByTestId("home-has-searched").textContent).toBe("false");
 
