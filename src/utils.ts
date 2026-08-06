@@ -7,7 +7,7 @@ export function formatBytes(bytes: number | null | undefined): string {
 }
 
 export function formatLocalDate(
-	dateInput: string | number | null | undefined,
+	dateInput: string | number | Date | null | undefined,
 ): string {
 	if (!dateInput) return "";
 	const date = new Date(dateInput);
@@ -15,13 +15,29 @@ export function formatLocalDate(
 		return String(dateInput);
 	}
 	const pad = (n: number) => String(n).padStart(2, "0");
-	const year = date.getFullYear();
-	const month = pad(date.getMonth() + 1);
-	const day = pad(date.getDate());
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	const diffDays = Math.floor(
+		(today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24),
+	);
 	const hours = pad(date.getHours());
 	const minutes = pad(date.getMinutes());
 	const seconds = pad(date.getSeconds());
-	return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+	const timeStr = `${hours}:${minutes}:${seconds}`;
+	if (diffDays === 0) {
+		return `今天 ${timeStr}`;
+	}
+	if (diffDays === 1) {
+		return `昨天 ${timeStr}`;
+	}
+	if (diffDays === 2) {
+		return `前天 ${timeStr}`;
+	}
+	const year = date.getFullYear();
+	const month = pad(date.getMonth() + 1);
+	const day = pad(date.getDate());
+	return `${year}-${month}-${day} ${timeStr}`;
 }
 
 export function formatError(err: unknown): string {

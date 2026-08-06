@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { formatBytes, formatError, formatLocalDate } from "./utils";
 
 describe("格式化字节大小函数 formatBytes", () => {
@@ -35,6 +35,60 @@ describe("格式化本地时间函数 formatLocalDate", () => {
 	it("当输入空字符串或无效日期时，应该原样返回或返回空", () => {
 		expect(formatLocalDate("")).toBe("");
 		expect(formatLocalDate("invalid-date")).toBe("invalid-date");
+	});
+
+	it("应该将今天的日期格式化为 今天 HH:mm:ss", () => {
+		vi.useFakeTimers();
+		const now = new Date("2026-08-06T10:11:12");
+		vi.setSystemTime(now);
+		try {
+			const result = formatLocalDate(now);
+			expect(result).toBe("今天 10:11:12");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("应该将昨天的日期格式化为 昨天 HH:mm:ss", () => {
+		vi.useFakeTimers();
+		const now = new Date("2026-08-06T10:11:12");
+		vi.setSystemTime(now);
+		try {
+			const yesterday = new Date(now);
+			yesterday.setDate(now.getDate() - 1);
+			const result = formatLocalDate(yesterday);
+			expect(result).toBe("昨天 10:11:12");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("应该将前天的日期格式化为 前天 HH:mm:ss", () => {
+		vi.useFakeTimers();
+		const now = new Date("2026-08-06T10:11:12");
+		vi.setSystemTime(now);
+		try {
+			const dayBeforeYesterday = new Date(now);
+			dayBeforeYesterday.setDate(now.getDate() - 2);
+			const result = formatLocalDate(dayBeforeYesterday);
+			expect(result).toBe("前天 10:11:12");
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("应该将三天前的日期格式化为完整日期字符串", () => {
+		vi.useFakeTimers();
+		const now = new Date("2026-08-06T10:11:12");
+		vi.setSystemTime(now);
+		try {
+			const threeDaysAgo = new Date(now);
+			threeDaysAgo.setDate(now.getDate() - 3);
+			const result = formatLocalDate(threeDaysAgo);
+			expect(result).toMatch(/^\d{4}-\d{2}-\d{2} 10:11:12$/);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
 
