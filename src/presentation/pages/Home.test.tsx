@@ -761,23 +761,18 @@ describe("Home 页面组件", () => {
 		expect(historyList.includes("xxx")).toBe(true);
 	});
 
-	it("点击历史搜索记录项时，应该将关键词填入输入框并触发搜索", async () => {
+	it("点击历史搜索记录项时，应该将关键词填入输入框", async () => {
 		localStorage.setItem("animesh_search_history", JSON.stringify(["柯南"]));
 		vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
 		renderHome();
 
 		const historyItem = screen.getByText("柯南");
-		fireEvent.click(historyItem);
+		await act(async () => {
+			fireEvent.click(historyItem);
+		});
 
 		expect(screen.getByTestId("search-input")).toHaveValue("柯南");
-		await waitFor(() => {
-			expect(mockTorrentRepository.search).toHaveBeenCalledWith(
-				expect.any(Object),
-				"柯南",
-				TORRENT_SEARCH_ENGINES[0],
-			);
-		});
 	});
 
 	it("点击删除单个历史记录按钮时，应该将其从列表中移除并更新 localStorage", async () => {

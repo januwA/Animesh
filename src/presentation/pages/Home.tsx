@@ -90,7 +90,7 @@ function SearchForm({
 						onValueChange={setSearchEngine}
 						disabled={loading}
 					>
-						<SelectTrigger className="h-8 border-0 bg-transparent py-0 px-1.5 md:px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-0.5 md:gap-1 max-w-[70px] sm:max-w-[85px] md:max-w-none">
+						<SelectTrigger className="h-8 border-0 bg-transparent py-0 px-1.5 md:px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-0.5 md:gap-1 max-w-17.5 sm:max-w-21.25 md:max-w-none">
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
@@ -225,7 +225,7 @@ function SearchResultCard({
 			id={`torrent-item-${index}`}
 			className={
 				isBestAi
-					? "bg-gradient-to-br from-cyan-950/10 via-card/50 to-indigo-950/10 border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.1)] hover:border-primary/40 transition-all duration-300 group"
+					? "bg-linear-to-br from-cyan-950/10 via-card/50 to-indigo-950/10 border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.1)] hover:border-primary/40 transition-all duration-300 group"
 					: "bg-card/50 hover:bg-accent/10 border-border hover:border-muted-foreground/30 transition-all duration-300 group"
 			}
 		>
@@ -423,11 +423,6 @@ export default function Home() {
 		performSearch(query);
 	}
 
-	const handleHistoryClick = (item: string) => {
-		setKeyword(item);
-		performSearch(item);
-	};
-
 	const handleDeleteHistory = (item: string) => {
 		setHistory((prev) => {
 			const nextHistory = prev.filter((x) => x !== item);
@@ -477,7 +472,7 @@ export default function Home() {
 
 			{/* AI 智能过滤开关 */}
 			{aiConfigs.length > 0 && (
-				<div className="mx-auto w-full mb-6 mt-[-1rem] flex items-center justify-end animate-in fade-in duration-200">
+				<div className="mx-auto w-full mb-6 -mt-4 flex items-center justify-end animate-in fade-in duration-200">
 					<div className="flex items-center gap-2 bg-card border border-border backdrop-blur-md px-3 py-1 rounded-lg shadow-sm hover:border-muted-foreground/30 transition-all duration-300">
 						<span className="text-[11px] font-medium text-muted-foreground select-none pl-1 flex items-center gap-1">
 							✨ AI 智能过滤:
@@ -518,7 +513,7 @@ export default function Home() {
 							key={item}
 							variant="secondary"
 							className="cursor-pointer hover:bg-secondary/80 flex items-center gap-1 px-2.5 py-0.5"
-							onClick={() => handleHistoryClick(item)}
+							onClick={() => setKeyword(item)}
 						>
 							{item}
 							<button
@@ -554,7 +549,7 @@ export default function Home() {
 							<div className="absolute inset-0 rounded-full bg-cyan-400/10 blur-xl animate-pulse" />{" "}
 							{/* style-ignore */}
 						</div>
-						<p className="text-sm font-semibold bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-400 bg-clip-text text-transparent animate-pulse">
+						<p className="text-sm font-semibold bg-linear-to-r from-cyan-400 via-blue-500 to-indigo-400 bg-clip-text text-transparent animate-pulse">
 							AI 正在搜索，可能需要数秒，请稍候...
 						</p>
 						<p className="text-xs text-muted-foreground max-w-xs text-center leading-relaxed">
