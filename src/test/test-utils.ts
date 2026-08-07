@@ -55,338 +55,338 @@ import { FetchAiClient } from "../infrastructure/ai/FetchAiClient";
 import { HttpClient } from "../infrastructure/http/HttpClient";
 
 const dummyLogger: Logger = {
-	debug: () => {},
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-	withCategory: () => dummyLogger,
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  withCategory: () => dummyLogger,
 };
 
 export interface CreateContainerParamsForTest {
-	torrentRepository?: Partial<TorrentRepository>;
-	settingsRepository?: Partial<SettingsRepository>;
-	collectionRepository?: Partial<CollectionRepository>;
-	bangumiRepository?: Partial<BangumiRepository>;
-	bangumiCache?: Partial<BangumiCache>;
-	notificationRepository?: Partial<NotificationRepository>;
-	logger?: Logger;
+  torrentRepository?: Partial<TorrentRepository>;
+  settingsRepository?: Partial<SettingsRepository>;
+  collectionRepository?: Partial<CollectionRepository>;
+  bangumiRepository?: Partial<BangumiRepository>;
+  bangumiCache?: Partial<BangumiCache>;
+  notificationRepository?: Partial<NotificationRepository>;
+  logger?: Logger;
 
-	notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
-	searchTorrentsUseCase?: SearchTorrentsUseCase;
-	searchTorrentsWithAiUseCase?: SearchTorrentsWithAiUseCase;
-	listTorrentsUseCase?: ListTorrentsUseCase;
-	subscribeTorrentsUseCase?: SubscribeTorrentsUseCase;
-	pauseTorrentUseCase?: PauseTorrentUseCase;
-	resumeTorrentUseCase?: ResumeTorrentUseCase;
-	deleteTorrentUseCase?: DeleteTorrentUseCase;
-	addTorrentMagnetUseCase?: AddTorrentMagnetUseCase;
-	getTorrentFilesUseCase?: GetTorrentFilesUseCase;
-	resolveTorrentUseCase?: ResolveTorrentUseCase;
-	getTorrentStatusUseCase?: GetTorrentStatusUseCase;
-	getTorrentStreamUrlUseCase?: GetTorrentStreamUrlUseCase;
-	getSubtitleTracksUseCase?: GetSubtitleTracksUseCase;
-	getSubtitleVttUseCase?: GetSubtitleVttUseCase;
+  notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
+  searchTorrentsUseCase?: SearchTorrentsUseCase;
+  searchTorrentsWithAiUseCase?: SearchTorrentsWithAiUseCase;
+  listTorrentsUseCase?: ListTorrentsUseCase;
+  subscribeTorrentsUseCase?: SubscribeTorrentsUseCase;
+  pauseTorrentUseCase?: PauseTorrentUseCase;
+  resumeTorrentUseCase?: ResumeTorrentUseCase;
+  deleteTorrentUseCase?: DeleteTorrentUseCase;
+  addTorrentMagnetUseCase?: AddTorrentMagnetUseCase;
+  getTorrentFilesUseCase?: GetTorrentFilesUseCase;
+  resolveTorrentUseCase?: ResolveTorrentUseCase;
+  getTorrentStatusUseCase?: GetTorrentStatusUseCase;
+  getTorrentStreamUrlUseCase?: GetTorrentStreamUrlUseCase;
+  getSubtitleTracksUseCase?: GetSubtitleTracksUseCase;
+  getSubtitleVttUseCase?: GetSubtitleVttUseCase;
 
-	getSettingsUseCase?: GetSettingsUseCase;
-	getDefaultTrackersUseCase?: GetDefaultTrackersUseCase;
-	saveSettingsUseCase?: SaveSettingsUseCase;
-	selectDirectoryUseCase?: SelectDirectoryUseCase;
-	syncTrackersUseCase?: SyncTrackersUseCase;
-	autoUpdateTrackersUseCase?: AutoUpdateTrackersUseCase;
-	verifyAiConnectionUseCase?: VerifyAiConnectionUseCase;
-	setThemeUseCase?: SetThemeUseCase;
-	aiClient?: AiClient;
+  getSettingsUseCase?: GetSettingsUseCase;
+  getDefaultTrackersUseCase?: GetDefaultTrackersUseCase;
+  saveSettingsUseCase?: SaveSettingsUseCase;
+  selectDirectoryUseCase?: SelectDirectoryUseCase;
+  syncTrackersUseCase?: SyncTrackersUseCase;
+  autoUpdateTrackersUseCase?: AutoUpdateTrackersUseCase;
+  verifyAiConnectionUseCase?: VerifyAiConnectionUseCase;
+  setThemeUseCase?: SetThemeUseCase;
+  aiClient?: AiClient;
 
-	getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
-	getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
-	getBangumiEpisodesUseCase?: GetBangumiEpisodesUseCase;
-	getBangumiPersonsUseCase?: GetBangumiPersonsUseCase;
-	getBangumiCharactersUseCase?: GetBangumiCharactersUseCase;
-	iptvRepository?: Partial<IptvRepository>;
-	iptvCache?: Partial<IptvCache>;
-	iptvStreamUrlRepository?: Partial<IptvStreamUrlRepository>;
-	getIptvCountriesUseCase?: GetIptvCountriesUseCase;
-	getIptvChannelsUseCase?: GetIptvChannelsUseCase;
-	updateRepository?: Partial<UpdateRepository>;
-	getCollectionsUseCase?: GetCollectionsUseCase;
-	addFavoriteUseCase?: AddFavoriteUseCase;
-	removeFavoriteUseCase?: RemoveFavoriteUseCase;
-	getFavoriteStatusUseCase?: GetFavoriteStatusUseCase;
-	checkUpdateUseCase?: CheckUpdateUseCase;
-	getCurrentVersionUseCase?: GetCurrentVersionUseCase;
-	openUpdateUrlUseCase?: OpenUpdateUrlUseCase;
-	openerRepository?: Partial<OpenerRepository>;
-	openUrlUseCase?: OpenUrlUseCase;
+  getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
+  getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
+  getBangumiEpisodesUseCase?: GetBangumiEpisodesUseCase;
+  getBangumiPersonsUseCase?: GetBangumiPersonsUseCase;
+  getBangumiCharactersUseCase?: GetBangumiCharactersUseCase;
+  iptvRepository?: Partial<IptvRepository>;
+  iptvCache?: Partial<IptvCache>;
+  iptvStreamUrlRepository?: Partial<IptvStreamUrlRepository>;
+  getIptvCountriesUseCase?: GetIptvCountriesUseCase;
+  getIptvChannelsUseCase?: GetIptvChannelsUseCase;
+  updateRepository?: Partial<UpdateRepository>;
+  getCollectionsUseCase?: GetCollectionsUseCase;
+  addFavoriteUseCase?: AddFavoriteUseCase;
+  removeFavoriteUseCase?: RemoveFavoriteUseCase;
+  getFavoriteStatusUseCase?: GetFavoriteStatusUseCase;
+  checkUpdateUseCase?: CheckUpdateUseCase;
+  getCurrentVersionUseCase?: GetCurrentVersionUseCase;
+  openUpdateUrlUseCase?: OpenUpdateUrlUseCase;
+  openerRepository?: Partial<OpenerRepository>;
+  openUrlUseCase?: OpenUrlUseCase;
 }
 
 export function createDIContainerForTest(
-	params: CreateContainerParamsForTest,
+  params: CreateContainerParamsForTest,
 ): DIContainer {
-	const torrentRepo = {
-		search: async () => [],
-		listTorrents: async () => [],
-		pauseTorrent: async () => {},
-		resumeTorrent: async () => {},
-		deleteTorrent: async () => {},
-		addTorrentMagnet: async () => ({ info_hash: "", name: "", files: [] }),
-		getTorrentFiles: async () => [],
-		getTorrentStreamUrl: async () => "",
-		getTorrentStatus: async () => ({}) as any,
-		getSubtitleTracks: async () => [],
-		getSubtitleVtt: async () => "",
-		subscribeTorrents: async (onUpdate: (list: any[]) => void) => {
-			onUpdate([]);
-			return () => {};
-		},
-		...params.torrentRepository,
-	} as unknown as TorrentRepository;
+  const torrentRepo = {
+    search: async () => [],
+    listTorrents: async () => [],
+    pauseTorrent: async () => {},
+    resumeTorrent: async () => {},
+    deleteTorrent: async () => {},
+    addTorrentMagnet: async () => ({ info_hash: "", name: "", files: [] }),
+    getTorrentFiles: async () => [],
+    getTorrentStreamUrl: async () => "",
+    getTorrentStatus: async () => ({}) as any,
+    getSubtitleTracks: async () => [],
+    getSubtitleVtt: async () => "",
+    subscribeTorrents: async (onUpdate: (list: any[]) => void) => {
+      onUpdate([]);
+      return () => {};
+    },
+    ...params.torrentRepository,
+  } as unknown as TorrentRepository;
 
-	const settingsRepo = {
-		getSettings: async () => ({ download_dir: "", trackers: [] }),
-		setDownloadDir: async () => {},
-		setProxy: async () => {},
-		setTrackers: async () => {},
-		setTrackerOptions: async () => {},
-		setAiOptions: async () => {},
-		fetchTrackers: async () => [],
-		selectDirectory: async () => null,
-		setTheme: async () => {},
-		...params.settingsRepository,
-	} as SettingsRepository;
+  const settingsRepo = {
+    getSettings: async () => ({ download_dir: "", trackers: [] }),
+    setDownloadDir: async () => {},
+    setProxy: async () => {},
+    setTrackers: async () => {},
+    setTrackerOptions: async () => {},
+    setAiOptions: async () => {},
+    fetchTrackers: async () => [],
+    selectDirectory: async () => null,
+    setTheme: async () => {},
+    ...params.settingsRepository,
+  } as SettingsRepository;
 
-	const bangumiRepo = {
-		getCalendar: async () => [],
-		getSubject: async () => ({}) as any,
-		getEpisodes: async () => ({ items: [], total: 0 }),
-		getSubjectPersons: async () => [],
-		getSubjectCharacters: async () => [],
-		...params.bangumiRepository,
-	} as BangumiRepository;
+  const bangumiRepo = {
+    getCalendar: async () => [],
+    getSubject: async () => ({}) as any,
+    getEpisodes: async () => ({ items: [], total: 0 }),
+    getSubjectPersons: async () => [],
+    getSubjectCharacters: async () => [],
+    ...params.bangumiRepository,
+  } as BangumiRepository;
 
-	const bangumiCache = {
-		getCalendar: async () => null,
-		setCalendar: async () => {},
-		getSubject: async () => null,
-		setSubject: async () => {},
-		getEpisodes: async () => null,
-		setEpisodes: async () => {},
-		getPersons: async () => null,
-		setPersons: async () => {},
-		getCharacters: async () => null,
-		setCharacters: async () => {},
-		...params.bangumiCache,
-	} as BangumiCache;
+  const bangumiCache = {
+    getCalendar: async () => null,
+    setCalendar: async () => {},
+    getSubject: async () => null,
+    setSubject: async () => {},
+    getEpisodes: async () => null,
+    setEpisodes: async () => {},
+    getPersons: async () => null,
+    setPersons: async () => {},
+    getCharacters: async () => null,
+    setCharacters: async () => {},
+    ...params.bangumiCache,
+  } as BangumiCache;
 
-	const iptvRepo = {
-		getCountries: async () => [],
-		getChannels: async () => [],
-		...params.iptvRepository,
-	} as IptvRepository;
+  const iptvRepo = {
+    getCountries: async () => [],
+    getChannels: async () => [],
+    ...params.iptvRepository,
+  } as IptvRepository;
 
-	const iptvCache = {
-		getCountries: async () => null,
-		setCountries: async () => {},
-		getChannels: async () => null,
-		setChannels: async () => {},
-		...params.iptvCache,
-	} as IptvCache;
+  const iptvCache = {
+    getCountries: async () => null,
+    setCountries: async () => {},
+    getChannels: async () => null,
+    setChannels: async () => {},
+    ...params.iptvCache,
+  } as IptvCache;
 
-	const iptvStreamUrlRepo = {
-		resolvePlayableStreamUrl: async (rawUrl: string) => ({
-			url: rawUrl,
-			kind: "unknown" as const,
-		}),
-		...params.iptvStreamUrlRepository,
-	} as IptvStreamUrlRepository;
+  const iptvStreamUrlRepo = {
+    resolvePlayableStreamUrl: async (rawUrl: string) => ({
+      url: rawUrl,
+      kind: "unknown" as const,
+    }),
+    ...params.iptvStreamUrlRepository,
+  } as IptvStreamUrlRepository;
 
-	const notificationRepo = {
-		requestPermission: async () => false,
-		sendNotification: async () => {},
-		...params.notificationRepository,
-	} as NotificationRepository;
+  const notificationRepo = {
+    requestPermission: async () => false,
+    sendNotification: async () => {},
+    ...params.notificationRepository,
+  } as NotificationRepository;
 
-	const collectionRepo = {
-		getAll: () => [],
-		isFavorited: () => false,
-		add: () => {},
-		remove: () => {},
-		...params.collectionRepository,
-	} as CollectionRepository;
+  const collectionRepo = {
+    getAll: () => [],
+    isFavorited: () => false,
+    add: () => {},
+    remove: () => {},
+    ...params.collectionRepository,
+  } as CollectionRepository;
 
-	const updateRepo = {
-		getLatestRelease: async () => ({
-			version: "0.0.0",
-			notes: "",
-			htmlUrl: "",
-		}),
-		getCurrentVersion: async () => "0.0.0",
-		openUrl: async () => {},
-		...params.updateRepository,
-	} as unknown as UpdateRepository;
+  const updateRepo = {
+    getLatestRelease: async () => ({
+      version: "0.0.0",
+      notes: "",
+      htmlUrl: "",
+    }),
+    getCurrentVersion: async () => "0.0.0",
+    openUrl: async () => {},
+    ...params.updateRepository,
+  } as unknown as UpdateRepository;
 
-	const openerRepo = {
-		openUrl: async () => {},
-		...params.openerRepository,
-	} as OpenerRepository;
+  const openerRepo = {
+    openUrl: async () => {},
+    ...params.openerRepository,
+  } as OpenerRepository;
 
-	const notifyUseCase =
-		params.notifyDownloadCompletionUseCase ||
-		new NotifyDownloadCompletionUseCase(torrentRepo, notificationRepo);
+  const notifyUseCase =
+    params.notifyDownloadCompletionUseCase ||
+    new NotifyDownloadCompletionUseCase(torrentRepo, notificationRepo);
 
-	const searchTorrentsUseCase =
-		params.searchTorrentsUseCase || new SearchTorrentsUseCase(torrentRepo);
-	const searchTorrentsWithAiUseCase =
-		params.searchTorrentsWithAiUseCase ||
-		new SearchTorrentsWithAiUseCase(
-			torrentRepo,
-			settingsRepo,
-			new FetchAiClient(new HttpClient()),
-			dummyLogger,
-		);
-	const listTorrentsUseCase =
-		params.listTorrentsUseCase || new ListTorrentsUseCase(torrentRepo);
-	const subscribeTorrentsUseCase =
-		params.subscribeTorrentsUseCase ||
-		new SubscribeTorrentsUseCase(torrentRepo);
-	const pauseTorrentUseCase =
-		params.pauseTorrentUseCase || new PauseTorrentUseCase(torrentRepo);
-	const resumeTorrentUseCase =
-		params.resumeTorrentUseCase || new ResumeTorrentUseCase(torrentRepo);
-	const deleteTorrentUseCase =
-		params.deleteTorrentUseCase || new DeleteTorrentUseCase(torrentRepo);
-	const addTorrentMagnetUseCase =
-		params.addTorrentMagnetUseCase || new AddTorrentMagnetUseCase(torrentRepo);
-	const getTorrentFilesUseCase =
-		params.getTorrentFilesUseCase || new GetTorrentFilesUseCase(torrentRepo);
-	const resolveTorrentUseCase =
-		params.resolveTorrentUseCase || new ResolveTorrentUseCase(torrentRepo);
-	const getTorrentStatusUseCase =
-		params.getTorrentStatusUseCase || new GetTorrentStatusUseCase(torrentRepo);
-	const getTorrentStreamUrlUseCase =
-		params.getTorrentStreamUrlUseCase ||
-		new GetTorrentStreamUrlUseCase(torrentRepo);
-	const getSubtitleTracksUseCase =
-		params.getSubtitleTracksUseCase ||
-		new GetSubtitleTracksUseCase(torrentRepo);
-	const getSubtitleVttUseCase =
-		params.getSubtitleVttUseCase || new GetSubtitleVttUseCase(torrentRepo);
+  const searchTorrentsUseCase =
+    params.searchTorrentsUseCase || new SearchTorrentsUseCase(torrentRepo);
+  const searchTorrentsWithAiUseCase =
+    params.searchTorrentsWithAiUseCase ||
+    new SearchTorrentsWithAiUseCase(
+      torrentRepo,
+      settingsRepo,
+      new FetchAiClient(new HttpClient()),
+      dummyLogger,
+    );
+  const listTorrentsUseCase =
+    params.listTorrentsUseCase || new ListTorrentsUseCase(torrentRepo);
+  const subscribeTorrentsUseCase =
+    params.subscribeTorrentsUseCase ||
+    new SubscribeTorrentsUseCase(torrentRepo);
+  const pauseTorrentUseCase =
+    params.pauseTorrentUseCase || new PauseTorrentUseCase(torrentRepo);
+  const resumeTorrentUseCase =
+    params.resumeTorrentUseCase || new ResumeTorrentUseCase(torrentRepo);
+  const deleteTorrentUseCase =
+    params.deleteTorrentUseCase || new DeleteTorrentUseCase(torrentRepo);
+  const addTorrentMagnetUseCase =
+    params.addTorrentMagnetUseCase || new AddTorrentMagnetUseCase(torrentRepo);
+  const getTorrentFilesUseCase =
+    params.getTorrentFilesUseCase || new GetTorrentFilesUseCase(torrentRepo);
+  const resolveTorrentUseCase =
+    params.resolveTorrentUseCase || new ResolveTorrentUseCase(torrentRepo);
+  const getTorrentStatusUseCase =
+    params.getTorrentStatusUseCase || new GetTorrentStatusUseCase(torrentRepo);
+  const getTorrentStreamUrlUseCase =
+    params.getTorrentStreamUrlUseCase ||
+    new GetTorrentStreamUrlUseCase(torrentRepo);
+  const getSubtitleTracksUseCase =
+    params.getSubtitleTracksUseCase ||
+    new GetSubtitleTracksUseCase(torrentRepo);
+  const getSubtitleVttUseCase =
+    params.getSubtitleVttUseCase || new GetSubtitleVttUseCase(torrentRepo);
 
-	const getSettingsUseCase =
-		params.getSettingsUseCase || new GetSettingsUseCase(settingsRepo);
-	const getDefaultTrackersUseCase =
-		params.getDefaultTrackersUseCase ||
-		new GetDefaultTrackersUseCase(settingsRepo);
-	const saveSettingsUseCase =
-		params.saveSettingsUseCase || new SaveSettingsUseCase(settingsRepo);
-	const selectDirectoryUseCase =
-		params.selectDirectoryUseCase || new SelectDirectoryUseCase(settingsRepo);
-	const syncTrackersUseCase =
-		params.syncTrackersUseCase || new SyncTrackersUseCase(settingsRepo);
-	const autoUpdateTrackersUseCase =
-		params.autoUpdateTrackersUseCase ||
-		new AutoUpdateTrackersUseCase(settingsRepo);
-	const aiClient = params.aiClient || new FetchAiClient(new HttpClient());
-	const verifyAiConnectionUseCase =
-		params.verifyAiConnectionUseCase || new VerifyAiConnectionUseCase(aiClient);
-	const setThemeUseCase =
-		params.setThemeUseCase || new SetThemeUseCase(settingsRepo);
+  const getSettingsUseCase =
+    params.getSettingsUseCase || new GetSettingsUseCase(settingsRepo);
+  const getDefaultTrackersUseCase =
+    params.getDefaultTrackersUseCase ||
+    new GetDefaultTrackersUseCase(settingsRepo);
+  const saveSettingsUseCase =
+    params.saveSettingsUseCase || new SaveSettingsUseCase(settingsRepo);
+  const selectDirectoryUseCase =
+    params.selectDirectoryUseCase || new SelectDirectoryUseCase(settingsRepo);
+  const syncTrackersUseCase =
+    params.syncTrackersUseCase || new SyncTrackersUseCase(settingsRepo);
+  const autoUpdateTrackersUseCase =
+    params.autoUpdateTrackersUseCase ||
+    new AutoUpdateTrackersUseCase(settingsRepo);
+  const aiClient = params.aiClient || new FetchAiClient(new HttpClient());
+  const verifyAiConnectionUseCase =
+    params.verifyAiConnectionUseCase || new VerifyAiConnectionUseCase(aiClient);
+  const setThemeUseCase =
+    params.setThemeUseCase || new SetThemeUseCase(settingsRepo);
 
-	const getBangumiCalendarUseCase =
-		params.getBangumiCalendarUseCase ||
-		new GetBangumiCalendarUseCase(bangumiRepo, bangumiCache);
+  const getBangumiCalendarUseCase =
+    params.getBangumiCalendarUseCase ||
+    new GetBangumiCalendarUseCase(bangumiRepo, bangumiCache);
 
-	const getBangumiSubjectUseCase =
-		params.getBangumiSubjectUseCase ||
-		new GetBangumiSubjectUseCase(bangumiRepo, bangumiCache);
+  const getBangumiSubjectUseCase =
+    params.getBangumiSubjectUseCase ||
+    new GetBangumiSubjectUseCase(bangumiRepo, bangumiCache);
 
-	const getBangumiEpisodesUseCase =
-		params.getBangumiEpisodesUseCase ||
-		new GetBangumiEpisodesUseCase(bangumiRepo, bangumiCache);
+  const getBangumiEpisodesUseCase =
+    params.getBangumiEpisodesUseCase ||
+    new GetBangumiEpisodesUseCase(bangumiRepo, bangumiCache);
 
-	const getBangumiPersonsUseCase =
-		params.getBangumiPersonsUseCase ||
-		new GetBangumiPersonsUseCase(bangumiRepo, bangumiCache);
+  const getBangumiPersonsUseCase =
+    params.getBangumiPersonsUseCase ||
+    new GetBangumiPersonsUseCase(bangumiRepo, bangumiCache);
 
-	const getBangumiCharactersUseCase =
-		params.getBangumiCharactersUseCase ||
-		new GetBangumiCharactersUseCase(bangumiRepo, bangumiCache);
+  const getBangumiCharactersUseCase =
+    params.getBangumiCharactersUseCase ||
+    new GetBangumiCharactersUseCase(bangumiRepo, bangumiCache);
 
-	const getIptvCountriesUseCase =
-		params.getIptvCountriesUseCase ||
-		new GetIptvCountriesUseCase(iptvRepo, iptvCache);
-	const getIptvChannelsUseCase =
-		params.getIptvChannelsUseCase ||
-		new GetIptvChannelsUseCase(iptvRepo, iptvCache);
+  const getIptvCountriesUseCase =
+    params.getIptvCountriesUseCase ||
+    new GetIptvCountriesUseCase(iptvRepo, iptvCache);
+  const getIptvChannelsUseCase =
+    params.getIptvChannelsUseCase ||
+    new GetIptvChannelsUseCase(iptvRepo, iptvCache);
 
-	const resolvePlayableStreamUrlUseCase = new ResolvePlayableStreamUrlUseCase(
-		iptvStreamUrlRepo,
-	);
+  const resolvePlayableStreamUrlUseCase = new ResolvePlayableStreamUrlUseCase(
+    iptvStreamUrlRepo,
+  );
 
-	const checkUpdateUseCase =
-		params.checkUpdateUseCase || new CheckUpdateUseCase(updateRepo);
-	const getCurrentVersionUseCase =
-		params.getCurrentVersionUseCase || new GetCurrentVersionUseCase(updateRepo);
-	const openUpdateUrlUseCase =
-		params.openUpdateUrlUseCase || new OpenUpdateUrlUseCase(updateRepo);
-	const openUrlUseCase =
-		params.openUrlUseCase || new OpenUrlUseCase(openerRepo);
+  const checkUpdateUseCase =
+    params.checkUpdateUseCase || new CheckUpdateUseCase(updateRepo);
+  const getCurrentVersionUseCase =
+    params.getCurrentVersionUseCase || new GetCurrentVersionUseCase(updateRepo);
+  const openUpdateUrlUseCase =
+    params.openUpdateUrlUseCase || new OpenUpdateUrlUseCase(updateRepo);
+  const openUrlUseCase =
+    params.openUrlUseCase || new OpenUrlUseCase(openerRepo);
 
-	const getCollectionsUseCase =
-		params.getCollectionsUseCase || new GetCollectionsUseCase(collectionRepo);
-	const addFavoriteUseCase =
-		params.addFavoriteUseCase || new AddFavoriteUseCase(collectionRepo);
-	const removeFavoriteUseCase =
-		params.removeFavoriteUseCase || new RemoveFavoriteUseCase(collectionRepo);
-	const getFavoriteStatusUseCase =
-		params.getFavoriteStatusUseCase ||
-		new GetFavoriteStatusUseCase(collectionRepo);
+  const getCollectionsUseCase =
+    params.getCollectionsUseCase || new GetCollectionsUseCase(collectionRepo);
+  const addFavoriteUseCase =
+    params.addFavoriteUseCase || new AddFavoriteUseCase(collectionRepo);
+  const removeFavoriteUseCase =
+    params.removeFavoriteUseCase || new RemoveFavoriteUseCase(collectionRepo);
+  const getFavoriteStatusUseCase =
+    params.getFavoriteStatusUseCase ||
+    new GetFavoriteStatusUseCase(collectionRepo);
 
-	return {
-		collectionRepository: collectionRepo,
-		notificationRepository: notificationRepo,
-		logger: params.logger || dummyLogger,
+  return {
+    collectionRepository: collectionRepo,
+    notificationRepository: notificationRepo,
+    logger: params.logger || dummyLogger,
 
-		getCollectionsUseCase,
-		addFavoriteUseCase,
-		removeFavoriteUseCase,
-		getFavoriteStatusUseCase,
-		notifyDownloadCompletionUseCase: notifyUseCase,
-		searchTorrentsUseCase,
-		searchTorrentsWithAiUseCase,
-		listTorrentsUseCase,
-		subscribeTorrentsUseCase,
-		pauseTorrentUseCase,
-		resumeTorrentUseCase,
-		deleteTorrentUseCase,
-		addTorrentMagnetUseCase,
-		getTorrentFilesUseCase,
-		resolveTorrentUseCase,
-		getTorrentStatusUseCase,
-		getTorrentStreamUrlUseCase,
-		getSubtitleTracksUseCase,
-		getSubtitleVttUseCase,
+    getCollectionsUseCase,
+    addFavoriteUseCase,
+    removeFavoriteUseCase,
+    getFavoriteStatusUseCase,
+    notifyDownloadCompletionUseCase: notifyUseCase,
+    searchTorrentsUseCase,
+    searchTorrentsWithAiUseCase,
+    listTorrentsUseCase,
+    subscribeTorrentsUseCase,
+    pauseTorrentUseCase,
+    resumeTorrentUseCase,
+    deleteTorrentUseCase,
+    addTorrentMagnetUseCase,
+    getTorrentFilesUseCase,
+    resolveTorrentUseCase,
+    getTorrentStatusUseCase,
+    getTorrentStreamUrlUseCase,
+    getSubtitleTracksUseCase,
+    getSubtitleVttUseCase,
 
-		getSettingsUseCase,
-		getDefaultTrackersUseCase,
-		saveSettingsUseCase,
-		selectDirectoryUseCase,
-		syncTrackersUseCase,
-		autoUpdateTrackersUseCase,
-		verifyAiConnectionUseCase,
-		setThemeUseCase,
-		aiClient,
+    getSettingsUseCase,
+    getDefaultTrackersUseCase,
+    saveSettingsUseCase,
+    selectDirectoryUseCase,
+    syncTrackersUseCase,
+    autoUpdateTrackersUseCase,
+    verifyAiConnectionUseCase,
+    setThemeUseCase,
+    aiClient,
 
-		getBangumiCalendarUseCase,
-		getBangumiSubjectUseCase,
-		getBangumiEpisodesUseCase,
-		getBangumiPersonsUseCase,
-		getBangumiCharactersUseCase,
-		getIptvCountriesUseCase,
-		getIptvChannelsUseCase,
-		resolvePlayableStreamUrlUseCase,
-		checkUpdateUseCase,
-		getCurrentVersionUseCase,
-		openUpdateUrlUseCase,
-		openUrlUseCase,
-	};
+    getBangumiCalendarUseCase,
+    getBangumiSubjectUseCase,
+    getBangumiEpisodesUseCase,
+    getBangumiPersonsUseCase,
+    getBangumiCharactersUseCase,
+    getIptvCountriesUseCase,
+    getIptvChannelsUseCase,
+    resolvePlayableStreamUrlUseCase,
+    checkUpdateUseCase,
+    getCurrentVersionUseCase,
+    openUpdateUrlUseCase,
+    openUrlUseCase,
+  };
 }

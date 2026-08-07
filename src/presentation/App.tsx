@@ -9,29 +9,29 @@ import { TorrentStatusProvider } from "./context/TorrentStatusContext";
 import "./App.css";
 
 interface AppProps {
-	router: ReturnType<typeof createHashRouter>;
-	diContainer: DIContainer;
+  router: ReturnType<typeof createHashRouter>;
+  diContainer: DIContainer;
 }
 
 export default function App({ router, diContainer }: AppProps) {
-	return (
-		<ErrorBoundary>
-			<DIProvider value={diContainer}>
-				<TorrentStatusProvider>
-					<AppContextProvider>
-						<ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-							<RouterProvider router={router} />
-							<Toaster
-								position="top-center"
-								richColors
-								expand={false}
-								duration={3000}
-								mobileOffset={"calc(env(safe-area-inset-top, 0px) + 1.5rem)"}
-							/>
-						</ThemeProvider>
-					</AppContextProvider>
-				</TorrentStatusProvider>
-			</DIProvider>
-		</ErrorBoundary>
-	);
+  return (
+    <ErrorBoundary>
+      <DIProvider value={diContainer}>
+        <TorrentStatusProvider>
+          <AppContextProvider>
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+              <RouterProvider router={router} />
+              <Toaster
+                position="top-center"
+                richColors
+                expand={false}
+                duration={3000}
+                mobileOffset={"calc(env(safe-area-inset-top, 0px) + 1.5rem)"}
+              />
+            </ThemeProvider>
+          </AppContextProvider>
+        </TorrentStatusProvider>
+      </DIProvider>
+    </ErrorBoundary>
+  );
 }

@@ -7,236 +7,236 @@ import { LazyImage } from "./LazyImage";
 let observerCallback: IntersectionObserverCallback | null = null;
 
 class MockIntersectionObserver {
-	constructor(callback: IntersectionObserverCallback) {
-		observerCallback = callback;
-	}
-	observe = vi.fn();
-	disconnect = vi.fn();
-	unobserve = vi.fn();
+  constructor(callback: IntersectionObserverCallback) {
+    observerCallback = callback;
+  }
+  observe = vi.fn();
+  disconnect = vi.fn();
+  unobserve = vi.fn();
 }
 
 describe("LazyImage 懒加载图片组件", () => {
-	const originalIntersectionObserver = window.IntersectionObserver;
+  const originalIntersectionObserver = window.IntersectionObserver;
 
-	beforeEach(() => {
-		observerCallback = null;
-		window.IntersectionObserver = MockIntersectionObserver as any;
-	});
+  beforeEach(() => {
+    observerCallback = null;
+    window.IntersectionObserver = MockIntersectionObserver as any;
+  });
 
-	afterEach(() => {
-		window.IntersectionObserver = originalIntersectionObserver;
-	});
+  afterEach(() => {
+    window.IntersectionObserver = originalIntersectionObserver;
+  });
 
-	it("在未进入视口时，不应该渲染真正的 img 元素，但应该渲染占位符", () => {
-		render(
-			<LazyImage
-				src="https://example.com/image1.jpg"
-				alt="测试图片"
-				placeholder={<div data-testid="placeholder">加载中</div>}
-			/>,
-		);
+  it("在未进入视口时，不应该渲染真正的 img 元素，但应该渲染占位符", () => {
+    render(
+      <LazyImage
+        src="https://example.com/image1.jpg"
+        alt="测试图片"
+        placeholder={<div data-testid="placeholder">加载中</div>}
+      />,
+    );
 
-		// 不应该有 img 元素
-		expect(screen.queryByAltText("测试图片")).not.toBeInTheDocument();
-		// 应该有占位符
-		expect(screen.getByTestId("placeholder")).toBeInTheDocument();
-	});
+    // 不应该有 img 元素
+    expect(screen.queryByAltText("测试图片")).not.toBeInTheDocument();
+    // 应该有占位符
+    expect(screen.getByTestId("placeholder")).toBeInTheDocument();
+  });
 
-	it("当进入视口时，应该开始渲染真正的 img 元素", () => {
-		render(
-			<LazyImage
-				src="https://example.com/image2.jpg"
-				alt="测试图片"
-				placeholder={<div data-testid="placeholder">加载中</div>}
-			/>,
-		);
+  it("当进入视口时，应该开始渲染真正的 img 元素", () => {
+    render(
+      <LazyImage
+        src="https://example.com/image2.jpg"
+        alt="测试图片"
+        placeholder={<div data-testid="placeholder">加载中</div>}
+      />,
+    );
 
-		// 手动模拟触发进入视口
-		expect(observerCallback).not.toBeNull();
-		act(() => {
-			observerCallback!(
-				[
-					{
-						isIntersecting: true,
-						target: document.createElement("div"),
-					} as unknown as IntersectionObserverEntry,
-				],
-				{} as IntersectionObserver,
-			);
-		});
+    // 手动模拟触发进入视口
+    expect(observerCallback).not.toBeNull();
+    act(() => {
+      observerCallback!(
+        [
+          {
+            isIntersecting: true,
+            target: document.createElement("div"),
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      );
+    });
 
-		// 应该渲染真正的 img 元素
-		const img = screen.getByAltText("测试图片");
-		expect(img).toBeInTheDocument();
-		expect(img).toHaveAttribute("src", "https://example.com/image2.jpg");
-	});
+    // 应该渲染真正的 img 元素
+    const img = screen.getByAltText("测试图片");
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("src", "https://example.com/image2.jpg");
+  });
 
-	it("图片加载成功后，应该隐藏占位符", () => {
-		render(
-			<LazyImage
-				src="https://example.com/image3.jpg"
-				alt="测试图片"
-				placeholder={<div data-testid="placeholder">加载中</div>}
-			/>,
-		);
+  it("图片加载成功后，应该隐藏占位符", () => {
+    render(
+      <LazyImage
+        src="https://example.com/image3.jpg"
+        alt="测试图片"
+        placeholder={<div data-testid="placeholder">加载中</div>}
+      />,
+    );
 
-		// 进入视口
-		act(() => {
-			observerCallback!(
-				[
-					{
-						isIntersecting: true,
-						target: document.createElement("div"),
-					} as unknown as IntersectionObserverEntry,
-				],
-				{} as IntersectionObserver,
-			);
-		});
+    // 进入视口
+    act(() => {
+      observerCallback!(
+        [
+          {
+            isIntersecting: true,
+            target: document.createElement("div"),
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      );
+    });
 
-		const img = screen.getByAltText("测试图片");
-		// 触发 onLoad
-		act(() => {
-			fireEvent.load(img);
-		});
+    const img = screen.getByAltText("测试图片");
+    // 触发 onLoad
+    act(() => {
+      fireEvent.load(img);
+    });
 
-		// 占位符不应该再渲染
-		expect(screen.queryByTestId("placeholder")).not.toBeInTheDocument();
-	});
+    // 占位符不应该再渲染
+    expect(screen.queryByTestId("placeholder")).not.toBeInTheDocument();
+  });
 
-	it("图片加载失败时，应该展示错误占位符", () => {
-		render(
-			<LazyImage
-				src="https://example.com/image4.jpg"
-				alt="测试图片"
-				placeholder={<div data-testid="placeholder">加载中</div>}
-				fallback={<div data-testid="fallback">加载失败</div>}
-			/>,
-		);
+  it("图片加载失败时，应该展示错误占位符", () => {
+    render(
+      <LazyImage
+        src="https://example.com/image4.jpg"
+        alt="测试图片"
+        placeholder={<div data-testid="placeholder">加载中</div>}
+        fallback={<div data-testid="fallback">加载失败</div>}
+      />,
+    );
 
-		// 进入视口
-		act(() => {
-			observerCallback!(
-				[
-					{
-						isIntersecting: true,
-						target: document.createElement("div"),
-					} as unknown as IntersectionObserverEntry,
-				],
-				{} as IntersectionObserver,
-			);
-		});
+    // 进入视口
+    act(() => {
+      observerCallback!(
+        [
+          {
+            isIntersecting: true,
+            target: document.createElement("div"),
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      );
+    });
 
-		const img = screen.getByAltText("测试图片");
-		// 触发 onError
-		act(() => {
-			fireEvent.error(img);
-		});
+    const img = screen.getByAltText("测试图片");
+    // 触发 onError
+    act(() => {
+      fireEvent.error(img);
+    });
 
-		// 占位符不应该渲染
-		expect(screen.queryByTestId("placeholder")).not.toBeInTheDocument();
-		// 错误占位符应该被渲染
-		expect(screen.getByTestId("fallback")).toBeInTheDocument();
-	});
+    // 占位符不应该渲染
+    expect(screen.queryByTestId("placeholder")).not.toBeInTheDocument();
+    // 错误占位符应该被渲染
+    expect(screen.getByTestId("fallback")).toBeInTheDocument();
+  });
 
-	it("当 src 为 http://lain.bgm.tv/ 时，应该自动转换为 https", () => {
-		render(
-			<LazyImage
-				src="http://lain.bgm.tv/pic/cover/l/92/97/975_GFGYI.jpg"
-				alt="bgm 图片"
-			/>,
-		);
+  it("当 src 为 http://lain.bgm.tv/ 时，应该自动转换为 https", () => {
+    render(
+      <LazyImage
+        src="http://lain.bgm.tv/pic/cover/l/92/97/975_GFGYI.jpg"
+        alt="bgm 图片"
+      />,
+    );
 
-		act(() => {
-			observerCallback!(
-				[
-					{
-						isIntersecting: true,
-						target: document.createElement("div"),
-					} as unknown as IntersectionObserverEntry,
-				],
-				{} as IntersectionObserver,
-			);
-		});
+    act(() => {
+      observerCallback!(
+        [
+          {
+            isIntersecting: true,
+            target: document.createElement("div"),
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      );
+    });
 
-		const img = screen.getByAltText("bgm 图片");
-		expect(img).toHaveAttribute(
-			"src",
-			"https://lain.bgm.tv/pic/cover/l/92/97/975_GFGYI.jpg",
-		);
-	});
+    const img = screen.getByAltText("bgm 图片");
+    expect(img).toHaveAttribute(
+      "src",
+      "https://lain.bgm.tv/pic/cover/l/92/97/975_GFGYI.jpg",
+    );
+  });
 
-	it("在不支持 IntersectionObserver 的环境下，应该立即渲染图片", () => {
-		const originalIntersectionObserver = window.IntersectionObserver;
-		Object.defineProperty(window, "IntersectionObserver", {
-			writable: true,
-			value: undefined,
-		});
+  it("在不支持 IntersectionObserver 的环境下，应该立即渲染图片", () => {
+    const originalIntersectionObserver = window.IntersectionObserver;
+    Object.defineProperty(window, "IntersectionObserver", {
+      writable: true,
+      value: undefined,
+    });
 
-		render(
-			<LazyImage src="https://example.com/no-io.jpg" alt="非观察者图片" />,
-		);
+    render(
+      <LazyImage src="https://example.com/no-io.jpg" alt="非观察者图片" />,
+    );
 
-		// 应该能直接在文档里找到该图片且 src 正确
-		const img = screen.getByAltText("非观察者图片");
-		expect(img).toBeInTheDocument();
-		expect(img).toHaveAttribute("src", "https://example.com/no-io.jpg");
+    // 应该能直接在文档里找到该图片且 src 正确
+    const img = screen.getByAltText("非观察者图片");
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("src", "https://example.com/no-io.jpg");
 
-		// 还原 Mock
-		Object.defineProperty(window, "IntersectionObserver", {
-			writable: true,
-			value: originalIntersectionObserver,
-		});
-	});
+    // 还原 Mock
+    Object.defineProperty(window, "IntersectionObserver", {
+      writable: true,
+      value: originalIntersectionObserver,
+    });
+  });
 
-	it("当 isIntersecting 为 false 时，不应该开始加载图片", () => {
-		render(
-			<LazyImage
-				src="https://example.com/not-intersecting.jpg"
-				alt="非相交图片"
-				placeholder={<div data-testid="placeholder">加载中</div>}
-			/>,
-		);
+  it("当 isIntersecting 为 false 时，不应该开始加载图片", () => {
+    render(
+      <LazyImage
+        src="https://example.com/not-intersecting.jpg"
+        alt="非相交图片"
+        placeholder={<div data-testid="placeholder">加载中</div>}
+      />,
+    );
 
-		act(() => {
-			observerCallback!(
-				[
-					{
-						isIntersecting: false,
-						target: document.createElement("div"),
-					} as unknown as IntersectionObserverEntry,
-				],
-				{} as IntersectionObserver,
-			);
-		});
+    act(() => {
+      observerCallback!(
+        [
+          {
+            isIntersecting: false,
+            target: document.createElement("div"),
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      );
+    });
 
-		expect(screen.queryByAltText("非相交图片")).not.toBeInTheDocument();
-	});
+    expect(screen.queryByAltText("非相交图片")).not.toBeInTheDocument();
+  });
 
-	it("图片加载失败且未提供 fallback 时，应该展示默认错误占位符", () => {
-		render(
-			<LazyImage
-				src="https://example.com/image-error-default.jpg"
-				alt="测试错误"
-			/>,
-		);
+  it("图片加载失败且未提供 fallback 时，应该展示默认错误占位符", () => {
+    render(
+      <LazyImage
+        src="https://example.com/image-error-default.jpg"
+        alt="测试错误"
+      />,
+    );
 
-		act(() => {
-			observerCallback!(
-				[
-					{
-						isIntersecting: true,
-						target: document.createElement("div"),
-					} as unknown as IntersectionObserverEntry,
-				],
-				{} as IntersectionObserver,
-			);
-		});
+    act(() => {
+      observerCallback!(
+        [
+          {
+            isIntersecting: true,
+            target: document.createElement("div"),
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      );
+    });
 
-		const img = screen.getByAltText("测试错误");
-		act(() => {
-			fireEvent.error(img);
-		});
+    const img = screen.getByAltText("测试错误");
+    act(() => {
+      fireEvent.error(img);
+    });
 
-		expect(screen.getByText("加载失败")).toBeInTheDocument();
-	});
+    expect(screen.getByText("加载失败")).toBeInTheDocument();
+  });
 });

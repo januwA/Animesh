@@ -7,56 +7,56 @@ import { LocalStorageCollectionRepository } from "@/infrastructure/collection/Lo
 import { FavoriteBadge } from "./FavoriteBadge";
 
 function createContainer(): DIContainer {
-	const collectionRepository = new LocalStorageCollectionRepository();
-	return {
-		collectionRepository,
-	} as unknown as DIContainer;
+  const collectionRepository = new LocalStorageCollectionRepository();
+  return {
+    collectionRepository,
+  } as unknown as DIContainer;
 }
 
 describe("FavoriteBadge 收藏徽标", () => {
-	const subjectId = 101;
+  const subjectId = 101;
 
-	beforeEach(() => {
-		localStorage.clear();
-	});
+  beforeEach(() => {
+    localStorage.clear();
+  });
 
-	it("当未收藏时不应渲染", () => {
-		const container = createContainer();
-		const { container: dom } = render(
-			<DIProvider value={container}>
-				<FavoriteBadge subjectId={subjectId} />
-			</DIProvider>,
-		);
-		expect(dom.querySelector(".h-6.w-6")).toBeNull();
-	});
+  it("当未收藏时不应渲染", () => {
+    const container = createContainer();
+    const { container: dom } = render(
+      <DIProvider value={container}>
+        <FavoriteBadge subjectId={subjectId} />
+      </DIProvider>,
+    );
+    expect(dom.querySelector(".h-6.w-6")).toBeNull();
+  });
 
-	it("当已收藏时应渲染心形图标", () => {
-		localStorage.setItem(
-			COLLECTION_STORAGE_KEY,
-			JSON.stringify({
-				items: [
-					{
-						subjectId,
-						name: "Name",
-						nameCn: "名称",
-						imageUrl: null,
-						rating: null,
-						platform: null,
-						date: null,
-						summary: null,
-						addedAt: Date.now(),
-					},
-				],
-				lastUpdatedAt: Date.now(),
-			}),
-		);
-		const container = createContainer();
-		const { container: dom } = render(
-			<DIProvider value={container}>
-				<FavoriteBadge subjectId={subjectId} />
-			</DIProvider>,
-		);
-		const badge = dom.querySelector(".absolute");
-		expect(badge).toBeInTheDocument();
-	});
+  it("当已收藏时应渲染心形图标", () => {
+    localStorage.setItem(
+      COLLECTION_STORAGE_KEY,
+      JSON.stringify({
+        items: [
+          {
+            subjectId,
+            name: "Name",
+            nameCn: "名称",
+            imageUrl: null,
+            rating: null,
+            platform: null,
+            date: null,
+            summary: null,
+            addedAt: Date.now(),
+          },
+        ],
+        lastUpdatedAt: Date.now(),
+      }),
+    );
+    const container = createContainer();
+    const { container: dom } = render(
+      <DIProvider value={container}>
+        <FavoriteBadge subjectId={subjectId} />
+      </DIProvider>,
+    );
+    const badge = dom.querySelector(".absolute");
+    expect(badge).toBeInTheDocument();
+  });
 });

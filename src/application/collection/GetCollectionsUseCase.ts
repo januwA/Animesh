@@ -2,9 +2,9 @@ import type { CollectionRepository } from "@/domain/collection/CollectionReposit
 import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
 
 export class GetCollectionsUseCase {
-	constructor(private readonly repo: CollectionRepository) {}
+  constructor(private readonly repo: CollectionRepository) {}
 
-	execute(): FavoriteItem[] {
-		return this.repo.getAll();
-	}
+  execute(): FavoriteItem[] {
+    return this.repo.getAll();
+  }
 }

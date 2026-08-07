@@ -14,55 +14,55 @@ const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
 const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
 
 export const routes: RouteObject[] = [
-	{
-		element: <MainLayout />,
-		children: [
-			{
-				path: "torrent",
-				element: <TorrentDetail />,
-			},
-			{
-				path: "subject/:subjectId",
-				element: <SubjectDetail />,
-			},
-			{
-				path: "play/:infoHash/:fileId",
-				element: <Player />,
-			},
-			{
-				path: "live/play",
-				element: <LivePlayer />,
-			},
-			{
-				element: <NavBarLayout />,
-				children: [
-					{
-						path: "",
-						element: <TorrentSearch />,
-					},
-					{
-						path: "calendar",
-						element: <Calendar />,
-					},
-					{
-						path: "collections",
-						element: <Collections />,
-					},
-					{
-						path: "downloads",
-						element: <Downloads />,
-					},
-					{
-						path: "live",
-						element: <Iptv />,
-					},
+  {
+    element: <MainLayout />,
+    children: [
+      {
+        path: "torrent",
+        element: <TorrentDetail />,
+      },
+      {
+        path: "subject/:subjectId",
+        element: <SubjectDetail />,
+      },
+      {
+        path: "play/:infoHash/:fileId",
+        element: <Player />,
+      },
+      {
+        path: "live/play",
+        element: <LivePlayer />,
+      },
+      {
+        element: <NavBarLayout />,
+        children: [
+          {
+            path: "",
+            element: <TorrentSearch />,
+          },
+          {
+            path: "calendar",
+            element: <Calendar />,
+          },
+          {
+            path: "collections",
+            element: <Collections />,
+          },
+          {
+            path: "downloads",
+            element: <Downloads />,
+          },
+          {
+            path: "live",
+            element: <Iptv />,
+          },
 
-					{
-						path: "settings",
-						element: <Settings />,
-					},
-				],
-			},
-		],
-	},
+          {
+            path: "settings",
+            element: <Settings />,
+          },
+        ],
+      },
+    ],
+  },
 ];

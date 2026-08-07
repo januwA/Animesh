@@ -2,9 +2,9 @@ import type { SettingsRepository } from "../../domain/settings/SettingsRepositor
 import type { Settings } from "../../domain/settings/SettingsSchemas";
 
 export class GetSettingsUseCase {
-	constructor(private settingsRepository: SettingsRepository) {}
+  constructor(private settingsRepository: SettingsRepository) {}
 
-	execute(): Promise<Settings> {
-		return this.settingsRepository.getSettings();
-	}
+  execute(): Promise<Settings> {
+    return this.settingsRepository.getSettings();
+  }
 }

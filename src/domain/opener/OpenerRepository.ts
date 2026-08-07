@@ -1,3 +1,3 @@
 export interface OpenerRepository {
-	openUrl(url: string): Promise<void>;
+  openUrl(url: string): Promise<void>;
 }

@@ -8,35 +8,35 @@ import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import { AppNavBar } from "./AppComponents";
 
 describe("AppComponents 组件", () => {
-	it("AppNavBar 应该在 TorrentStatusProvider 下正确渲染", async () => {
-		let resolveUnsubscribe: any;
-		const unsubMock = vi.fn();
-		const promise = new Promise<any>((resolve) => {
-			resolveUnsubscribe = () => resolve(unsubMock);
-		});
+  it("AppNavBar 应该在 TorrentStatusProvider 下正确渲染", async () => {
+    let resolveUnsubscribe: any;
+    const unsubMock = vi.fn();
+    const promise = new Promise<any>((resolve) => {
+      resolveUnsubscribe = () => resolve(unsubMock);
+    });
 
-		const mockContainer = createDIContainerForTest({
-			subscribeTorrentsUseCase: {
-				execute: vi.fn().mockReturnValue(promise),
-			} as any,
-		});
+    const mockContainer = createDIContainerForTest({
+      subscribeTorrentsUseCase: {
+        execute: vi.fn().mockReturnValue(promise),
+      } as any,
+    });
 
-		const { unmount } = render(
-			<DIProvider value={mockContainer}>
-				<TorrentStatusProvider>
-					<AppContextProvider>
-						<MemoryRouter>
-							<AppNavBar />
-						</MemoryRouter>
-					</AppContextProvider>
-				</TorrentStatusProvider>
-			</DIProvider>,
-		);
+    const { unmount } = render(
+      <DIProvider value={mockContainer}>
+        <TorrentStatusProvider>
+          <AppContextProvider>
+            <MemoryRouter>
+              <AppNavBar />
+            </MemoryRouter>
+          </AppContextProvider>
+        </TorrentStatusProvider>
+      </DIProvider>,
+    );
 
-		unmount();
-		resolveUnsubscribe();
+    unmount();
+    resolveUnsubscribe();
 
-		await promise;
-		expect(unsubMock).toHaveBeenCalled();
-	});
+    await promise;
+    expect(unsubMock).toHaveBeenCalled();
+  });
 });

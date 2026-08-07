@@ -1,20 +1,20 @@
 import type { AiConfig, Settings } from "./SettingsSchemas";
 
 export interface SettingsRepository {
-	getSettings(): Promise<Settings>;
-	getDefaultTrackers(): Promise<string[]>;
-	setDownloadDir(dir: string): Promise<void>;
-	setProxy(proxy: string | null): Promise<void>;
-	setTrackers(trackers: string[]): Promise<void>;
-	setTrackerOptions(options: {
-		sourceType: string | null;
-		customUrl: string | null;
-		autoUpdate: boolean | null;
-		lastUpdateTime: number | null;
-	}): Promise<void>;
-	setAiConfigs(configs: AiConfig[] | null): Promise<void>;
-	setMaxDownloadSpeed(speed: number | null): Promise<void>;
-	fetchTrackers(url: string): Promise<string[]>;
-	selectDirectory(): Promise<string | null>;
-	setTheme(theme: string): Promise<void>;
+  getSettings(): Promise<Settings>;
+  getDefaultTrackers(): Promise<string[]>;
+  setDownloadDir(dir: string): Promise<void>;
+  setProxy(proxy: string | null): Promise<void>;
+  setTrackers(trackers: string[]): Promise<void>;
+  setTrackerOptions(options: {
+    sourceType: string | null;
+    customUrl: string | null;
+    autoUpdate: boolean | null;
+    lastUpdateTime: number | null;
+  }): Promise<void>;
+  setAiConfigs(configs: AiConfig[] | null): Promise<void>;
+  setMaxDownloadSpeed(speed: number | null): Promise<void>;
+  fetchTrackers(url: string): Promise<string[]>;
+  selectDirectory(): Promise<string | null>;
+  setTheme(theme: string): Promise<void>;
 }
