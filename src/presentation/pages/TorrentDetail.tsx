@@ -1,5 +1,6 @@
 import { ArrowLeft, FileVideo, Film, Loader2, Play } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
 import { Badge } from "@/presentation/components/ui/badge";
@@ -8,14 +9,49 @@ import { Card, CardContent } from "@/presentation/components/ui/card";
 import { ScrollArea } from "@/presentation/components/ui/scroll-area";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatBytes, formatError } from "@/utils";
+import { InvalidParamsView } from "../components/InvalidParamsView";
+
+const torrentDetailParamsSchema = z
+	.object({
+		magnet: z
+			.string()
+			.default("")
+			.transform((s) => s.trim()),
+		title: z
+			.string()
+			.default("")
+			.transform((s) => s.trim()),
+		infoHash: z
+			.string()
+			.default("")
+			.transform((s) => s.trim()),
+	})
+	.refine((p) => p.magnet !== "" || p.infoHash !== "", {
+		message: "未提供有效的磁力链接或种子 Hash",
+		path: ["source"],
+	});
+
+type TorrentDetailParams = z.infer<typeof torrentDetailParamsSchema>;
 
 export default function TorrentDetail() {
-	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
-	const magnet = searchParams.get("magnet") || "";
-	const title = searchParams.get("title") || "";
-	const infoHash = searchParams.get("infoHash") || "";
-	const hasSource = !!(magnet || infoHash);
+
+	const parsed = torrentDetailParamsSchema.safeParse({
+		magnet: searchParams.get("magnet") ?? "",
+		title: searchParams.get("title") ?? "",
+		infoHash: searchParams.get("infoHash") ?? "",
+	});
+	if (!parsed.success) {
+		return (
+			<InvalidParamsView title="无效的种子详情参数" error={parsed.error} />
+		);
+	}
+
+	return <TorrentDetailView {...parsed.data} />;
+}
+
+function TorrentDetailView({ magnet, title, infoHash }: TorrentDetailParams) {
+	const navigate = useNavigate();
 
 	const { resolveTorrentUseCase } = useDI();
 
@@ -26,18 +62,13 @@ export default function TorrentDetail() {
 	} = useQuery(
 		(ctx) => resolveTorrentUseCase.execute(ctx, { magnet, infoHash, title }),
 		[magnet, infoHash, title, resolveTorrentUseCase],
-		{ enabled: hasSource },
 	);
 
 	const handleBack = () => {
 		navigate(-1);
 	};
 
-	const errorMessage = !hasSource
-		? "未提供有效的磁力链接或种子 Hash"
-		: error
-			? `解析种子失败: ${formatError(error)}`
-			: null;
+	const errorMessage = error ? `解析种子失败: ${formatError(error)}` : null;
 
 	const handleStartPlayback = (fileId: number, fileName: string) => {
 		// v8 ignore next

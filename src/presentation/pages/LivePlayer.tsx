@@ -1,4 +1,4 @@
-import { ArrowLeft, Clipboard, Link2, Loader2, Radio } from "lucide-react";
+import { ArrowLeft, Clipboard, Link2, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { useDI } from "@/di/DIContext";
 import type { ResolvedStreamUrl } from "@/domain/iptv/IptvStreamUrlRepository";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import "@videojs/react/video/skin.css";
 import { createPlayer, liveVideoFeatures, selectError } from "@videojs/react";
 import {
@@ -13,6 +14,8 @@ import {
 	type HlsJsVideoProps,
 } from "@videojs/react/media/hlsjs-video";
 import { VideoSkin } from "@videojs/react/video";
+import { z } from "zod";
+import { InvalidParamsView } from "../components/InvalidParamsView";
 import { LazyImage } from "../components/LazyImage";
 import { MpegtsVideo } from "../components/MpegtsVideo";
 
@@ -61,19 +64,53 @@ function JsLivePlayerErrorMonitor({ onRecover }: { onRecover: () => void }) {
 	return null;
 }
 
-export default function LivePlayer() {
-	const navigate = useNavigate();
-	const [searchParams] = useSearchParams();
-	const url = searchParams.get("url") || "";
-	const name = searchParams.get("name") || "";
-	const logo = searchParams.get("logo") || "";
-	const category = searchParams.get("category") || "";
+const livePlayerParamsSchema = z.object({
+	url: z.string().trim().min(1, "缺少直播流地址参数"),
+	name: z.string().default(""),
+	logo: z.string().default(""),
+	category: z.string().default(""),
+});
 
+export default function LivePlayer() {
+	const [searchParams] = useSearchParams();
+
+	const parsed = livePlayerParamsSchema.safeParse({
+		url: searchParams.get("url") ?? "",
+		name: searchParams.get("name") ?? undefined,
+		logo: searchParams.get("logo") ?? undefined,
+		category: searchParams.get("category") ?? undefined,
+	});
+	if (!parsed.success) {
+		return (
+			<InvalidParamsView title="无效的直播播放参数" error={parsed.error} />
+		);
+	}
+
+	return <LivePlayerView {...parsed.data} />;
+}
+
+function LivePlayerView({
+	url,
+	name,
+	logo,
+	category,
+}: z.infer<typeof livePlayerParamsSchema>) {
+	const navigate = useNavigate();
 	const { resolvePlayableStreamUrlUseCase } = useDI();
-	const [resolvedStream, setResolvedStream] =
-		useState<ResolvedStreamUrl | null>(null);
 	const [reloadKey, setReloadKey] = useState(0);
 	const recoveriesRef = useRef(0);
+
+	const { data: resolvedStream } = useQuery(
+		(_ctx) =>
+			resolvePlayableStreamUrlUseCase.execute(url).catch(
+				() =>
+					({
+						url,
+						kind: "unknown",
+					}) as ResolvedStreamUrl,
+			),
+		[url, resolvePlayableStreamUrlUseCase],
+	);
 
 	const hlsMediaConfig = useMemo<HlsMediaConfig>(
 		() => ({
@@ -105,25 +142,6 @@ export default function LivePlayer() {
 		setReloadKey((key) => key + 1);
 	}, []);
 
-	useEffect(() => {
-		let cancelled = false;
-		if (!url) {
-			setResolvedStream(null);
-			return;
-		}
-		resolvePlayableStreamUrlUseCase
-			.execute(url)
-			.then((resolved) => {
-				if (!cancelled) setResolvedStream(resolved);
-			})
-			.catch(() => {
-				if (!cancelled) setResolvedStream({ url, kind: "unknown" });
-			});
-		return () => {
-			cancelled = true;
-		};
-	}, [url, resolvePlayableStreamUrlUseCase]);
-
 	const handleBack = () => {
 		navigate(-1);
 	};
@@ -151,91 +169,82 @@ export default function LivePlayer() {
 
 			{/* Player Video */}
 			<div className="relative w-full aspect-video max-h-dvh overflow-hidden rounded-xl">
-				{url ? (
-					resolvedStream ? (
-						resolvedStream.kind === "flv" ? (
-							<MpegtsVideo
-								key={reloadKey}
-								src={resolvedStream.url}
-								autoplay
-								onError={handleRecover}
-							/>
-						) : (
-							<JsLivePlayer.Provider>
-								<VideoSkin className="w-full h-full">
-									<HlsJsVideo
-										key={reloadKey}
-										src={resolvedStream.url}
-										streamType="live"
-										config={hlsMediaConfig}
-										playsInline
-									/>
-								</VideoSkin>
-								<JsLivePlayerErrorMonitor onRecover={handleRecover} />
-							</JsLivePlayer.Provider>
-						)
+				{resolvedStream ? (
+					resolvedStream.kind === "flv" ? (
+						<MpegtsVideo
+							key={reloadKey}
+							src={resolvedStream.url}
+							autoplay
+							onError={handleRecover}
+						/>
 					) : (
-						<div className="flex items-center justify-center gap-3 h-full text-muted-foreground">
-							<Loader2 className="h-6 w-6 animate-spin" />
-							<p className="text-sm">正在加载直播源...</p>
-						</div>
+						<JsLivePlayer.Provider>
+							<VideoSkin className="w-full h-full">
+								<HlsJsVideo
+									key={reloadKey}
+									src={resolvedStream.url}
+									streamType="live"
+									config={hlsMediaConfig}
+									playsInline
+								/>
+							</VideoSkin>
+							<JsLivePlayerErrorMonitor onRecover={handleRecover} />
+						</JsLivePlayer.Provider>
 					)
 				) : (
-					<div className="flex flex-col items-center justify-center gap-3 h-full text-muted-foreground">
-						<Radio className="h-10 w-10 text-primary/40" />
-						<p className="text-sm">无效的直播地址</p>
+					<div className="flex items-center justify-center gap-3 h-full text-muted-foreground">
+						<Loader2 className="h-6 w-6 animate-spin" />
+						<p className="text-sm">正在加载直播源...</p>
 					</div>
 				)}
 			</div>
 
 			{/* Channel Info */}
-			{url && (
-				<div className="flex flex-col gap-4">
-					<div className="flex items-start gap-3">
-						{logo && (
-							<div className="h-12 w-12 rounded-lg overflow-hidden bg-muted shrink-0">
-								<LazyImage src={logo} alt={name} />
-							</div>
-						)}
-						<div className="flex flex-col gap-1 min-w-0 flex-1">
-							<h1
-								className="text-xl sm:text-2xl font-bold text-foreground truncate"
-								title={name}
-							>
-								{name || "未命名频道"}
-							</h1>
-							<div className="flex items-center gap-2">
-								{category && <Badge variant="secondary">{category}</Badge>}
-								<span className="text-xs text-muted-foreground">直播</span>
-							</div>
+			<div className="flex flex-col gap-4">
+				<div className="flex items-start gap-3">
+					{logo && (
+						<div className="h-12 w-12 rounded-lg overflow-hidden bg-muted shrink-0">
+							<LazyImage src={logo} alt={name} />
 						</div>
-					</div>
-
-					{/* Raw URL */}
-					<div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-2">
+					)}
+					<div className="flex flex-col gap-1 min-w-0 flex-1">
+						<h1
+							className="text-xl sm:text-2xl font-bold text-foreground truncate"
+							title={name}
+						>
+							{name || "未命名频道"}
+						</h1>
 						<div className="flex items-center gap-2">
-							<Link2 className="h-4 w-4 text-muted-foreground" />
-							<span className="text-xs text-muted-foreground">
-								原始直播源地址
-							</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<p className="flex-1 min-w-0 font-mono text-xs text-muted-foreground break-all">
-								{url}
-							</p>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={handleCopyRawUrl}
-								className="h-8 gap-1 shrink-0 text-muted-foreground hover:text-foreground"
-							>
-								<Clipboard className="h-4 w-4" />
-								复制
-							</Button>
+							{category && <Badge variant="secondary">{category}</Badge>}
+							<span className="text-xs text-muted-foreground">直播</span>
 						</div>
 					</div>
 				</div>
-			)}
+
+				{/* Raw URL */}
+				<div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-2">
+					<div className="flex items-center gap-2">
+						<Link2 className="h-4 w-4 text-muted-foreground" />
+						<span className="text-xs text-muted-foreground">
+							原始直播源地址
+						</span>
+					</div>
+					<div className="flex items-center gap-2">
+						<p className="flex-1 min-w-0 font-mono text-xs text-muted-foreground break-all">
+							{url}
+						</p>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={handleCopyRawUrl}
+							className="h-8 gap-1 shrink-0 text-muted-foreground hover:text-foreground"
+						>
+							<Clipboard className="h-4 w-4" />
+							复制
+						</Button>
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }

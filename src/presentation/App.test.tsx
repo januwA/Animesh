@@ -89,7 +89,11 @@ describe("App 组件", () => {
 			getTorrentStatus: vi.fn(),
 			getSubtitleTracks: vi.fn(),
 			getSubtitleVtt: vi.fn(),
-			subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
+			subscribeTorrents: vi.fn().mockImplementation(async (onUpdate) => {
+				const status = await mockTorrentRepository.getTorrentStatus("");
+				if (status) onUpdate([status]);
+				return () => {};
+			}),
 		};
 
 		mockBangumiRepository = {
@@ -415,21 +419,12 @@ describe("App 组件", () => {
 		const filePlayBtns = screen.getAllByRole("button", { name: "播放" });
 		fireEvent.click(filePlayBtns[0]);
 
-		// 推进第一步：加载 streamUrl 和 activeFileId，但此时 torrentStatus 还是 null
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
-
-		expect(screen.getByText("下载进度: 计算中...")).toBeInTheDocument();
-		expect(screen.getByText("速度: 0 B/s")).toBeInTheDocument();
-		expect(screen.getByText("连接中...")).toBeInTheDocument();
-
-		// 推进 10ms 释放并解决获取初始状态的延时 Promise
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(10);
-		});
-
-		// 此时应该展示播放器和进度条等状态
+		// 播放器展示流地址与全局订阅提供的种子状态
+		for (let i = 0; i < 2; i++) {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(0);
+			});
+		}
 		expect(screen.getByText("下载进度: 40.00%")).toBeInTheDocument();
 		expect(
 			screen.getByText("速度: 24.41 KB/s (连接: 0/0)"),

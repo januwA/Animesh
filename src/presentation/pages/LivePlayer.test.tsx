@@ -96,10 +96,11 @@ describe("LivePlayer 页面组件", () => {
 		);
 	});
 
-	it("当缺少直播地址时，应该显示无效地址提示", () => {
+	it("当缺少直播地址时，应该渲染参数错误提示", () => {
 		renderLivePlayer("?name=CCTV-1");
 
-		expect(screen.getByText("无效的直播地址")).toBeInTheDocument();
+		expect(screen.getByText("无效的直播播放参数")).toBeInTheDocument();
+		expect(screen.getByText("缺少直播流地址参数")).toBeInTheDocument();
 		expect(document.querySelector("video")).not.toBeInTheDocument();
 	});
 

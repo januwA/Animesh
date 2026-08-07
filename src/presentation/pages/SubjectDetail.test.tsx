@@ -781,7 +781,7 @@ describe("SubjectDetail 页面组件", () => {
 		expect(screen.getByText("未来的一集")).toBeInTheDocument();
 	});
 
-	it("当路由中没有 subjectId 时，应该什么都不加载直接返回", async () => {
+	it("当路由中没有 subjectId 时，应该渲染参数错误提示", async () => {
 		mockContainer = createDIContainerForTest({});
 
 		render(
@@ -796,7 +796,27 @@ describe("SubjectDetail 页面组件", () => {
 			</DIProvider>,
 		);
 
-		expect(screen.getByText("加载中...")).toBeInTheDocument();
+		expect(screen.getByText("无效的条目详情参数")).toBeInTheDocument();
+		expect(screen.getByText("缺少条目 ID 参数")).toBeInTheDocument();
+	});
+
+	it("当 subjectId 不是数字时，应该渲染参数错误提示", async () => {
+		mockContainer = createDIContainerForTest({});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/abc"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		expect(screen.getByText("无效的条目详情参数")).toBeInTheDocument();
+		expect(screen.getByText("条目 ID 必须是数字")).toBeInTheDocument();
 	});
 
 	it("在 API 数据加载成功前卸载组件，应该取消请求并不设置组件状态", async () => {

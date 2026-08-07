@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import {
 	Activity,
 	Download,
@@ -43,6 +44,7 @@ import {
 } from "@/presentation/components/ui/field";
 import { Progress } from "@/presentation/components/ui/progress";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
+import { useMutation } from "@/presentation/hooks/useMutation";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
 
 export default function Downloads() {
@@ -50,7 +52,6 @@ export default function Downloads() {
 	const { pauseTorrentUseCase, resumeTorrentUseCase, deleteTorrentUseCase } =
 		useDI();
 	const { torrents, isLoading } = useTorrentStatus();
-	const [isActionPending, setIsActionPending] = useState(false);
 
 	// Deletion target state
 	const [deleteTarget, setDeleteTarget] = useState<TorrentStatusInfo | null>(
@@ -58,53 +59,37 @@ export default function Downloads() {
 	);
 	const [deleteFiles, setDeleteFiles] = useState(false);
 
-	// Pause a download
-	const handlePause = (infoHash: string, name: string) => {
-		setIsActionPending(true);
-		(async () => {
-			try {
-				await pauseTorrentUseCase.execute(infoHash);
-				toast(`已暂停任务: ${name || infoHash.slice(0, 8)}`);
-			} catch (err: unknown) {
-				toast.error(`暂停失败: ${formatError(err)}`);
-			} finally {
-				setIsActionPending(false);
-			}
-		})();
-	};
+	const pause = useMutation(
+		(_ctx: Context, p: { infoHash: string; name: string }) =>
+			pauseTorrentUseCase.execute(p.infoHash),
+		{
+			onSuccess: (_data, p) =>
+				toast(`已暂停任务: ${p.name || p.infoHash.slice(0, 8)}`),
+			onError: (err) => toast.error(`暂停失败: ${formatError(err)}`),
+		},
+	);
 
-	// Resume a download
-	const handleResume = (infoHash: string, name: string) => {
-		setIsActionPending(true);
-		(async () => {
-			try {
-				await resumeTorrentUseCase.execute(infoHash);
-				toast.success(`已开始下载任务: ${name || infoHash.slice(0, 8)}`);
-			} catch (err: unknown) {
-				toast.error(`启动失败: ${formatError(err)}`);
-			} finally {
-				setIsActionPending(false);
-			}
-		})();
-	};
+	const resume = useMutation(
+		(_ctx: Context, p: { infoHash: string; name: string }) =>
+			resumeTorrentUseCase.execute(p.infoHash),
+		{
+			onSuccess: (_data, p) =>
+				toast.success(`已开始下载任务: ${p.name || p.infoHash.slice(0, 8)}`),
+			onError: (err) => toast.error(`启动失败: ${formatError(err)}`),
+		},
+	);
 
-	// Delete a download
-	const handleDelete = () => {
-		// v8 ignore next
-		if (!deleteTarget) return;
-		setIsActionPending(true);
-		(async () => {
-			try {
-				await deleteTorrentUseCase.execute(deleteTarget.info_hash, deleteFiles);
+	const del = useMutation(
+		(_ctx: Context, p: { target: TorrentStatusInfo; deleteFiles: boolean }) =>
+			deleteTorrentUseCase.execute(p.target.info_hash, p.deleteFiles),
+		{
+			onSuccess: () => {
 				toast.success("已删除任务");
 				setDeleteTarget(null);
-			} catch (err: unknown) {
-				toast.error(`删除任务失败: ${formatError(err)}`);
-			} finally {
-				setIsActionPending(false);
-			}
-		})();
-	};
+			},
+			onError: (err) => toast.error(`删除任务失败: ${formatError(err)}`),
+		},
+	);
 
 	const handleViewFiles = (torrent: TorrentStatusInfo) => {
 		navigate(
@@ -159,13 +144,13 @@ export default function Downloads() {
 				<div className="grid gap-4">
 					{[...torrents]
 						.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0))
-						.map((t) => {
-							const progress = t.total_bytes
-								? (t.progress_bytes / t.total_bytes) * 100
+						.map((torrent) => {
+							const progress = torrent.total_bytes
+								? (torrent.progress_bytes / torrent.total_bytes) * 100
 								: 0;
 							return (
 								<Card
-									key={t.info_hash}
+									key={torrent.info_hash}
 									className="bg-card hover:bg-muted/30 border-border transition-all duration-300"
 								>
 									<CardHeader className="p-5 pb-3">
@@ -173,25 +158,25 @@ export default function Downloads() {
 											<div className="flex flex-col gap-1.5 min-w-0 flex-1">
 												<CardTitle
 													className="text-base font-bold text-foreground leading-normal"
-													title={t.name || "正在解析元数据..."}
+													title={torrent.name || "正在解析元数据..."}
 												>
-													{t.name || "正在解析元数据..."}
+													{torrent.name || "正在解析元数据..."}
 												</CardTitle>
 												<div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-muted-foreground">
-													<span>Hash: {t.info_hash}</span>
-													{t.created_at && (
+													<span>Hash: {torrent.info_hash}</span>
+													{torrent.created_at && (
 														<span>
-															创建时间: {formatLocalDate(t.created_at)}
+															创建时间: {formatLocalDate(torrent.created_at)}
 														</span>
 													)}
 												</div>
 											</div>
 											<div className="flex items-center gap-1.5 shrink-0">
-												{t.finished ? (
+												{torrent.finished ? (
 													<Badge className="bg-success/10 text-success border-success/20 text-xs">
 														已完成
 													</Badge>
-												) : t.paused ? (
+												) : torrent.paused ? (
 													<Badge className="bg-warning/10 text-warning border-warning/20 text-xs">
 														已暂停
 													</Badge>
@@ -215,8 +200,10 @@ export default function Downloads() {
 												</span>
 												<span className="flex items-center gap-1.5 text-muted-foreground">
 													<Activity className="h-3.5 w-3.5 text-emerald-400" />
-													网速: {formatBytes(t.download_speed_bytes_per_sec)}/s
-													(同伴: {t.peers_connected}/{t.peers_total})
+													网速:{" "}
+													{formatBytes(torrent.download_speed_bytes_per_sec)}/s
+													(同伴: {torrent.peers_connected}/{torrent.peers_total}
+													)
 												</span>
 											</div>
 											<Progress value={progress} className="h-2" />
@@ -227,10 +214,10 @@ export default function Downloads() {
 											<div className="flex gap-4 text-muted-foreground items-center">
 												<span className="flex items-center gap-1">
 													<HardDrive className="h-3.5 w-3.5" />
-													已下载: {formatBytes(t.progress_bytes)}
+													已下载: {formatBytes(torrent.progress_bytes)}
 												</span>
 												<span>/</span>
-												<span>总大小: {formatBytes(t.total_bytes)}</span>
+												<span>总大小: {formatBytes(torrent.total_bytes)}</span>
 											</div>
 
 											<div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -238,7 +225,7 @@ export default function Downloads() {
 												<Button
 													variant="secondary"
 													size="sm"
-													onClick={() => handleViewFiles(t)}
+													onClick={() => handleViewFiles(torrent)}
 													className="h-8 gap-1 text-xs font-medium"
 												>
 													<FolderOpen className="h-3.5 w-3.5" />
@@ -250,17 +237,26 @@ export default function Downloads() {
 													variant="outline"
 													size="sm"
 													onClick={() => {
-														const nameFallback = t.name || "";
-														if (t.paused) {
-															handleResume(t.info_hash, nameFallback);
+														const nameFallback = torrent.name || "";
+														if (torrent.paused) {
+															resume.execute({
+																infoHash: torrent.info_hash,
+																name: nameFallback,
+															});
 														} else {
-															handlePause(t.info_hash, nameFallback);
+															pause.execute({
+																infoHash: torrent.info_hash,
+																name: nameFallback,
+															});
 														}
 													}}
 													className="h-8 w-8 p-0"
-													title={t.paused ? "开始下载" : "暂停下载"}
+													disabled={
+														torrent.paused ? resume.loading : pause.loading
+													}
+													title={torrent.paused ? "开始下载" : "暂停下载"}
 												>
-													{t.paused ? (
+													{torrent.paused ? (
 														<Play className="h-3.5 w-3.5 fill-current" />
 													) : (
 														<Pause className="h-3.5 w-3.5 fill-current" />
@@ -272,7 +268,7 @@ export default function Downloads() {
 													variant="destructive"
 													size="sm"
 													onClick={() => {
-														setDeleteTarget(t);
+														setDeleteTarget(torrent);
 														setDeleteFiles(false);
 													}}
 													className="h-8 w-8 p-0"
@@ -329,16 +325,19 @@ export default function Downloads() {
 						<Button
 							variant="ghost"
 							onClick={() => setDeleteTarget(null)}
-							disabled={isActionPending}
+							disabled={del.loading}
 						>
 							取消
 						</Button>
 						<Button
 							variant="destructive"
-							onClick={handleDelete}
-							disabled={isActionPending}
+							onClick={() =>
+								deleteTarget &&
+								del.execute({ target: deleteTarget, deleteFiles })
+							}
+							disabled={del.loading}
 						>
-							{isActionPending && <Loader2 className="h-3 w-3 animate-spin" />}
+							{del.loading && <Loader2 className="h-3 w-3 animate-spin" />}
 							确认删除
 						</Button>
 					</DialogFooter>

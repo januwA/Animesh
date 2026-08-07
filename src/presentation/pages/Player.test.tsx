@@ -14,6 +14,7 @@ import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
+import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import Player from "./Player";
 
 // Mock clipboard API
@@ -61,7 +62,7 @@ describe("Player 页面组件", () => {
 				const runInitial = async () => {
 					try {
 						const status = await mockTorrentRepository.getTorrentStatus("");
-						onUpdate([status]);
+						if (status) onUpdate([status]);
 					} catch {}
 				};
 				runInitial();
@@ -69,7 +70,7 @@ describe("Player 页面组件", () => {
 				const interval = setInterval(async () => {
 					try {
 						const status = await mockTorrentRepository.getTorrentStatus("");
-						onUpdate([status]);
+						if (status) onUpdate([status]);
 					} catch {}
 				}, 1500);
 
@@ -96,29 +97,32 @@ describe("Player 页面组件", () => {
 	) => {
 		return render(
 			<DIProvider value={mockContainer}>
-				<AppContextProvider>
-					<MemoryRouter
-						initialEntries={initialEntries}
-						initialIndex={initialEntries.indexOf(initialEntry)}
-					>
-						<LocationTracker />
-						<Routes>
-							<Route path="/" element={<NavBarLayout />}>
-								<Route path="play/:infoHash" element={<Player />} />
-								<Route path="play/:infoHash/:fileId" element={<Player />} />
-								<Route path="torrent" element={<div>Torrent Page</div>} />
-							</Route>
-						</Routes>
-					</MemoryRouter>
-				</AppContextProvider>
+				<TorrentStatusProvider>
+					<AppContextProvider>
+						<MemoryRouter
+							initialEntries={initialEntries}
+							initialIndex={initialEntries.indexOf(initialEntry)}
+						>
+							<LocationTracker />
+							<Routes>
+								<Route path="/" element={<NavBarLayout />}>
+									<Route path="play/:infoHash" element={<Player />} />
+									<Route path="play/:infoHash/:fileId" element={<Player />} />
+									<Route path="torrent" element={<div>Torrent Page</div>} />
+								</Route>
+							</Routes>
+						</MemoryRouter>
+					</AppContextProvider>
+				</TorrentStatusProvider>
 			</DIProvider>,
 		);
 	};
 
-	it("当缺少播放参数时，应该渲染参数错误提示并Toast", async () => {
+	it("当缺少播放参数时，应该渲染参数错误提示", async () => {
 		renderPlayer("/play/invalid");
 
-		expect(toast.error).toHaveBeenCalledWith("无效的视频播放参数");
+		expect(screen.getByText("无效的视频播放参数")).toBeInTheDocument();
+		expect(screen.getByText("文件 ID 必须是数字")).toBeInTheDocument();
 	});
 
 	it("应该成功初始化播放器并加载流地址与初始状态，并启动状态轮询", async () => {
@@ -655,25 +659,11 @@ describe("Player 页面组件", () => {
 		});
 	});
 
-	it("当订阅状态更新且找不到对应种子的状态时，应该不更新 torrentStatus", async () => {
+	it("当订阅状态更新且找不到对应种子的状态时，应该保持 torrentStatus 为空", async () => {
 		vi.useFakeTimers();
-		const mockStatus = {
-			info_hash: "hash123",
-			name: "测试视频",
-			progress_bytes: 400,
-			total_bytes: 1000,
-			finished: false,
-			download_speed_bytes_per_sec: 100,
-			paused: false,
-			peers_connected: 0,
-			peers_total: 0,
-		};
 
 		vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
 			"http://127.0.0.1:12345/stream/hash123/0",
-		);
-		vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-			mockStatus,
 		);
 
 		let triggerUpdate: any;
@@ -694,7 +684,7 @@ describe("Player 页面组件", () => {
 			triggerUpdate([{ info_hash: "other_hash" }]);
 		});
 
-		expect(screen.getByText("下载进度: 40.00%")).toBeInTheDocument();
+		expect(screen.getByText("下载进度: 计算中...")).toBeInTheDocument();
 	});
 
 	it("在播放器初始化抛出错误且组件已卸载时，不应该更新状态或展示 Toast", async () => {

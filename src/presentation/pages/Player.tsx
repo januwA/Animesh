@@ -8,11 +8,10 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { z } from "zod";
 import { useDI } from "@/di/DIContext";
-import type {
-	SubtitleTrackInfo,
-	TorrentStatusInfo,
-} from "@/domain/torrent/TorrentSchemas";
+import type { SubtitleTrackInfo } from "@/domain/torrent/TorrentSchemas";
+import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import { Progress } from "@/presentation/components/ui/progress";
@@ -27,8 +26,17 @@ import { formatBytes, formatError } from "@/utils";
 import "@videojs/react/video/skin.css";
 import { createPlayer, selectError, videoFeatures } from "@videojs/react";
 import { Video, VideoSkin } from "@videojs/react/video";
+import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
+import { useMutation } from "@/presentation/hooks/useMutation";
+import { useQuery } from "@/presentation/hooks/useQuery";
 
 const JsPlayer = createPlayer({ features: videoFeatures });
+
+interface SubtitleVttDto {
+	infoHash: string;
+	fileId: number;
+	trackId: number;
+}
 
 function JsPlayerErrorMonitor() {
 	const errorState = JsPlayer.usePlayer(selectError);
@@ -63,194 +71,133 @@ function JsPlayerErrorMonitor() {
 	return null;
 }
 
-export default function Player() {
-	const navigate = useNavigate();
+const playerParamsSchema = z.object({
+	infoHash: z.string().trim().min(1, "缺少种子哈希参数"),
+	fileId: z.preprocess(
+		(value) =>
+			typeof value === "string" && value !== "" ? Number(value) : value,
+		z.number({ message: "文件 ID 必须是数字" }).int("文件 ID 必须是整数"),
+	),
+	title: z.string().default(""),
+	fileName: z.string().default("正在播放"),
+});
 
+type PlayerParams = z.infer<typeof playerParamsSchema>;
+
+export default function Player() {
 	const { infoHash, fileId } = useParams<{
 		infoHash: string;
 		fileId: string;
 	}>();
 	const [searchParams] = useSearchParams();
-	const title = searchParams.get("title") || "";
-	const fileName = searchParams.get("fileName") || "正在播放";
+
+	const parsed = playerParamsSchema.safeParse({
+		infoHash,
+		fileId,
+		title: searchParams.get("title") ?? undefined,
+		fileName: searchParams.get("fileName") ?? undefined,
+	});
+	if (!parsed.success) {
+		return (
+			<InvalidParamsView title="无效的视频播放参数" error={parsed.error} />
+		);
+	}
+
+	return <PlayerCore {...parsed.data} />;
+}
+
+function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
+	const navigate = useNavigate();
 
 	const {
 		getTorrentStreamUrlUseCase,
-		getTorrentStatusUseCase,
 		getSubtitleTracksUseCase,
 		getSubtitleVttUseCase,
-		subscribeTorrentsUseCase,
-		logger,
 	} = useDI();
-	const playerLogger = useMemo(() => logger.withCategory("Player"), [logger]);
-	const [streamUrl, setStreamUrl] = useState<string | null>(null);
-	const [torrentStatus, setTorrentStatus] = useState<TorrentStatusInfo | null>(
-		null,
-	);
-	const [loading, setLoading] = useState(true);
+	const { torrents } = useTorrentStatus();
+	const torrentStatus = torrents.find((t) => t?.info_hash === infoHash) ?? null;
 
-	const [subtracks, setSubtracks] = useState<SubtitleTrackInfo[]>([]);
+	// Stream URL (one-shot query keyed by infoHash + fileId)
+	const stream = useQuery<string>(
+		(_ctx) => getTorrentStreamUrlUseCase.execute(infoHash, fileId),
+		[infoHash, fileId, getTorrentStreamUrlUseCase],
+		{
+			onError: (error) =>
+				toast.error(`无法获取视频流: ${formatError(error)}`, {
+					duration: 10000,
+				}),
+		},
+	);
+
+	// Subtitle tracks (refetchable as the download progresses)
+	const subtitles = useQuery<SubtitleTrackInfo[]>(
+		(_ctx) => getSubtitleTracksUseCase.execute(infoHash, fileId),
+		[infoHash, fileId, getSubtitleTracksUseCase],
+	);
+	const subtracks = subtitles.data ?? [];
+	const subtitlesReady = subtitles.data !== null;
+
+	// Subtitle VTT sources (lazy per-track load + object URL cleanup)
 	const [subtrackSrcs, setSubtrackSrcs] = useState<Record<number, string>>({});
 	const subtrackSrcsRef = useRef<Record<number, string>>({});
 	const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
-	const [subtitleLoading, setSubtitleLoading] = useState(false);
+
+	const subtitleMutation = useMutation<string, SubtitleVttDto>(
+		(_ctx, dto) => getSubtitleVttUseCase.execute(dto),
+		{
+			onSuccess: (vtt, dto) => {
+				const url = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
+				const next = { ...subtrackSrcsRef.current, [dto.trackId]: url };
+				subtrackSrcsRef.current = next;
+				setSubtrackSrcs(next);
+			},
+			onError: (error) => toast.error(`加载字幕失败: ${formatError(error)}`),
+		},
+	);
+
+	const loadSubtitleVtt = useCallback(
+		(trackId: number) => {
+			if (subtrackSrcsRef.current[trackId]) return;
+			subtitleMutation.execute({
+				infoHash,
+				fileId,
+				trackId,
+			});
+		},
+		[infoHash, fileId, subtitleMutation],
+	);
 
 	// Clean up subtitle object URLs on unmount
 	useEffect(() => {
 		return () => {
-			for (const src of Object.values(subtrackSrcsRef.current)) {
-				if (src) {
-					URL.revokeObjectURL(src);
-				}
+			for (const url of Object.values(subtrackSrcsRef.current)) {
+				if (url) URL.revokeObjectURL(url);
 			}
+			subtrackSrcsRef.current = {};
 		};
 	}, []);
 
-	const loadSubtitleVtt = useCallback(
-		async (trackId: number) => {
-			/* v8 ignore next */
-			if (!infoHash || fileId === undefined) return;
-			try {
-				const parsedFileId = parseInt(fileId, 10);
-				const vttContent = await getSubtitleVttUseCase.execute({
-					infoHash,
-					fileId: parsedFileId,
-					trackId,
-				});
-				const blob = new Blob([vttContent], { type: "text/vtt" });
-				const url = URL.createObjectURL(blob);
-				setSubtrackSrcs((prev) => {
-					const next = { ...prev, [trackId]: url };
-					subtrackSrcsRef.current = next;
-					return next;
-				});
-			} catch (err: unknown) {
-				toast.error(`加载字幕失败: ${formatError(err)}`);
-			}
-		},
-		[infoHash, fileId, getSubtitleVttUseCase],
-	);
+	// Auto-select and load the first subtitle track once available
+	useEffect(() => {
+		if (!subtracks.length || selectedTrackId !== null) return;
+		const first = subtracks[0];
+		setSelectedTrackId(first.id);
+		loadSubtitleVtt(first.id);
+	}, [subtracks, selectedTrackId, loadSubtitleVtt]);
 
 	const handleSubtitleChange = useCallback(
-		async (trackId: string) => {
+		(trackId: string) => {
 			const id = trackId ? parseInt(trackId, 10) : null;
 			setSelectedTrackId(id);
-			if (id !== null && !subtrackSrcsRef.current[id]) {
-				setSubtitleLoading(true);
-				await loadSubtitleVtt(id);
-				setSubtitleLoading(false);
-			}
+			if (id !== null) loadSubtitleVtt(id);
 		},
 		[loadSubtitleVtt],
 	);
 
 	useEffect(() => {
-		if (!infoHash || fileId === undefined) {
-			toast.error("无效的视频播放参数");
-			setLoading(false);
-			return;
-		}
-
-		let active = true;
-		let loadedTracks = false;
-		const parsedFileId = parseInt(fileId, 10);
-		let unsubscribe: (() => void) | null = null;
-
-		const fetchSubtitles = async (isInitial = false) => {
-			try {
-				const tracks = await getSubtitleTracksUseCase.execute(
-					infoHash,
-					parsedFileId,
-				);
-				if (!active) return;
-				setSubtracks(tracks || []);
-				loadedTracks = true;
-				if (tracks && tracks.length > 0) {
-					const first = tracks[0];
-					setSelectedTrackId(first.id);
-					await loadSubtitleVtt(first.id);
-				}
-			} catch (err: unknown) {
-				if (!active) return;
-				playerLogger.warn(
-					isInitial
-						? "Failed to fetch subtitle tracks initially:"
-						: "Failed to fetch subtitle tracks during subscription update:",
-					err,
-				);
-			}
-		};
-
-		const initializePlayback = async () => {
-			try {
-				const url = await getTorrentStreamUrlUseCase.execute(
-					infoHash,
-					parsedFileId,
-				);
-
-				if (!active) return;
-				setStreamUrl(url);
-
-				// Get initial status
-				const initialStatus = await getTorrentStatusUseCase.execute(infoHash);
-				if (!active) return;
-				setTorrentStatus(initialStatus);
-				setLoading(false);
-
-				// Fetch subtitle tracks
-				await fetchSubtitles(true);
-
-				// Start subscription to status stream
-				let isFirstEvent = true;
-				const unsub = await subscribeTorrentsUseCase.execute(async (list) => {
-					if (!active) return;
-					const status = list.find((t) => t && t.info_hash === infoHash);
-					if (status) {
-						setTorrentStatus(status);
-
-						if (isFirstEvent) {
-							isFirstEvent = false;
-							return;
-						}
-
-						// If subtitle tracks haven't been loaded yet, try to load them as download progresses
-						if (!loadedTracks) {
-							await fetchSubtitles(false);
-						}
-					}
-				});
-
-				if (!active) {
-					unsub();
-				} else {
-					unsubscribe = unsub;
-				}
-			} catch (err: unknown) {
-				if (active) {
-					toast.error(`无法获取视频流: ${formatError(err)}`, {
-						duration: 10000,
-					});
-					setLoading(false);
-				}
-			}
-		};
-
-		initializePlayback();
-
-		return () => {
-			active = false;
-			unsubscribe?.();
-		};
-	}, [
-		infoHash,
-		fileId,
-		getTorrentStreamUrlUseCase,
-		getTorrentStatusUseCase,
-		getSubtitleTracksUseCase,
-		subscribeTorrentsUseCase,
-		loadSubtitleVtt,
-		playerLogger,
-	]);
+		if (subtitlesReady || !torrentStatus) return;
+		subtitles.refetch();
+	}, [torrentStatus, subtitlesReady, subtitles.refetch]);
 
 	const handleCopyStreamUrl = async () => {
 		if (!streamUrl) return;
@@ -266,36 +213,38 @@ export default function Player() {
 		navigate(-1);
 	};
 
-	const videoElement =
-		loading ||
-		!streamUrl ||
-		!torrentStatus ||
-		(torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 < 1 ? (
-			<div className="flex items-center justify-center h-full">
-				<Loader2 className="h-10 w-10 text-primary animate-spin" />
-			</div>
-		) : (
-			<JsPlayer.Provider>
-				<VideoSkin className="w-full h-full">
-					<Video src={streamUrl} playsInline>
-						{subtracks
-							.filter((t) => t.id === selectedTrackId)
-							.map((track) => (
-								<track
-									key={track.id}
-									id={track.id.toString()}
-									kind="subtitles"
-									src={subtrackSrcs[track.id] || undefined}
-									srcLang={track.language}
-									label={track.title}
-									default
-								/>
-							))}
-					</Video>
-				</VideoSkin>
-				<JsPlayerErrorMonitor />
-			</JsPlayer.Provider>
-		);
+	const streamUrl = stream.data;
+	const canPlay =
+		!!streamUrl &&
+		!!torrentStatus &&
+		(torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 >= 1;
+
+	const videoElement = canPlay ? (
+		<JsPlayer.Provider>
+			<VideoSkin className="w-full h-full">
+				<Video src={streamUrl} playsInline>
+					{subtracks
+						.filter((t) => t.id === selectedTrackId)
+						.map((track) => (
+							<track
+								key={track.id}
+								id={track.id.toString()}
+								kind="subtitles"
+								src={subtrackSrcs[track.id] || undefined}
+								srcLang={track.language}
+								label={track.title}
+								default
+							/>
+						))}
+				</Video>
+			</VideoSkin>
+			<JsPlayerErrorMonitor />
+		</JsPlayer.Provider>
+	) : (
+		<div className="flex items-center justify-center h-full">
+			<Loader2 className="h-10 w-10 text-primary animate-spin" />
+		</div>
+	);
 
 	return (
 		<div className="w-full flex flex-col gap-4 lg:gap-6 animate-in fade-in duration-300">
@@ -351,7 +300,7 @@ export default function Player() {
 									))}
 								</SelectContent>
 							</Select>
-							{subtitleLoading && (
+							{subtitleMutation.loading && (
 								<Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
 							)}
 						</>

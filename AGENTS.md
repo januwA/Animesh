@@ -4,6 +4,7 @@
 - 处理外部获取的数据（如网络 API 响应、本地文件、Tauri 后端返回的 JSON 对象或浏览器本地缓存等）：
   - 严禁使用 `any`，应将返回值或未知结构数据声明为 `unknown`。
   - 前端一切 `unknown` 的结构数据都必须使用 Zod Schema 进行运行时验证（如 `safeParse`），确保数据完整性并消除类型安全隐患。
+- 页面路由参数（`useParams` 与 `useSearchParams`）必须使用 Zod Schema 进行验证与默认值归一化（如 `safeParse`），验证失败渲染参数错误视图；校验应放在无 hooks 的路由守卫组件中，避免在调用 hooks 之前早返回违反 Rules of Hooks。
 - 界面主题与样式规范：
   - **使用语义化变量**：禁止在表现层组件中使用硬编码的不透明度/色值类（例如 `border-white/5`、`bg-black/10`），而应使用自适应的语义类（如 `border-border`、`bg-secondary`、`bg-muted`），以确保深浅色切换时的可用性。
   - **渐变背景自适应**：全局背景采用双色渐变适配，浅色底使用 `#f8fafc` 搭配微弱渐变，深色底（`.dark body`）使用 `#080a10` 搭配明亮渐变。

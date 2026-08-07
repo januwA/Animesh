@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import type {
 	BangumiCharacter,
@@ -38,6 +39,7 @@ import {
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
+import { InvalidParamsView } from "../components/InvalidParamsView";
 
 /** Deduplicate staff by (id, relation), then group by person ID to collect all roles. */
 function consolidateStaff(persons: BangumiPerson[]) {
@@ -194,8 +196,27 @@ function StaffSkeleton() {
 	);
 }
 
+const subjectParamsSchema = z.object({
+	subjectId: z
+		.string({ message: "缺少条目 ID 参数" })
+		.min(1, "缺少条目 ID 参数")
+		.regex(/^\d+$/, "条目 ID 必须是数字"),
+});
+
 export default function SubjectDetail() {
 	const { subjectId = "" } = useParams<{ subjectId: string }>();
+
+	const parsed = subjectParamsSchema.safeParse({ subjectId });
+	if (!parsed.success) {
+		return (
+			<InvalidParamsView title="无效的条目详情参数" error={parsed.error} />
+		);
+	}
+
+	return <SubjectDetailView {...parsed.data} />;
+}
+
+function SubjectDetailView({ subjectId }: { subjectId: string }) {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const state = location.state as { name?: string; imageUrl?: string } | null;
@@ -214,7 +235,6 @@ export default function SubjectDetail() {
 	const subjectQuery = useQuery(
 		(ctx) => getBangumiSubjectUseCase.execute(ctx, subjectId),
 		[subjectId, getBangumiSubjectUseCase],
-		{ enabled: !!subjectId },
 	);
 	const subject = subjectQuery.data;
 	const error = subjectQuery.error
@@ -227,7 +247,6 @@ export default function SubjectDetail() {
 			return [...data].sort((a, b) => a.sort - b.sort);
 		},
 		[subjectId, getBangumiEpisodesUseCase],
-		{ enabled: !!subjectId },
 	);
 	const episodes = episodesQuery.data ?? [];
 	const episodesLoading = episodesQuery.loading;
@@ -235,7 +254,6 @@ export default function SubjectDetail() {
 	const charactersQuery = useQuery(
 		(ctx) => getBangumiCharactersUseCase.execute(ctx, subjectId),
 		[subjectId, getBangumiCharactersUseCase],
-		{ enabled: !!subjectId },
 	);
 	const characters = charactersQuery.data ?? [];
 	const charactersLoading = charactersQuery.loading;
@@ -243,7 +261,6 @@ export default function SubjectDetail() {
 	const personsQuery = useQuery(
 		(ctx) => getBangumiPersonsUseCase.execute(ctx, subjectId),
 		[subjectId, getBangumiPersonsUseCase],
-		{ enabled: !!subjectId },
 	);
 	const persons = personsQuery.data ?? [];
 	const personsLoading = personsQuery.loading;
