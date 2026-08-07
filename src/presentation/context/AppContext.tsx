@@ -9,7 +9,7 @@ import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 
 export const DEFAULT_IPTV_COUNTRY = "CN";
 export const DEFAULT_IPTV_CATEGORY = "all";
-export const DEFAULT_HOME_SEARCH_ENGINE: TorrentSearchEngine =
+export const DEFAULT_SEARCH_ENGINE: TorrentSearchEngine =
 	TORRENT_SEARCH_ENGINES[0];
 
 interface AppContextType {
@@ -29,14 +29,14 @@ interface AppContextType {
 	setIptvSelectedCategory: (val: string) => void;
 	iptvKeyword: string;
 	setIptvKeyword: (val: string) => void;
-	homeKeyword: string;
-	setHomeKeyword: (val: string) => void;
-	homeSearchEngine: TorrentSearchEngine;
-	setHomeSearchEngine: (val: TorrentSearchEngine) => void;
-	homeResults: AiSearchResultItem[];
-	setHomeResults: (val: AiSearchResultItem[]) => void;
-	homeHasSearched: boolean;
-	setHomeHasSearched: (val: boolean) => void;
+	searchKeyword: string;
+	setSearchKeyword: (val: string) => void;
+	searchEngine: TorrentSearchEngine;
+	setSearchEngine: (val: TorrentSearchEngine) => void;
+	searchResults: AiSearchResultItem[];
+	setSearchResults: (val: AiSearchResultItem[]) => void;
+	searchHasSearched: boolean;
+	setSearchHasSearched: (val: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -61,12 +61,10 @@ export function AppContextProvider({
 		DEFAULT_IPTV_CATEGORY,
 	);
 	const [iptvKeyword, setIptvKeyword] = useState("");
-	const [homeKeyword, setHomeKeyword] = useState("");
-	const [homeSearchEngine, setHomeSearchEngine] = useState(
-		DEFAULT_HOME_SEARCH_ENGINE,
-	);
-	const [homeResults, setHomeResults] = useState<AiSearchResultItem[]>([]);
-	const [homeHasSearched, setHomeHasSearched] = useState(false);
+	const [searchKeyword, setSearchKeyword] = useState("");
+	const [searchEngine, setSearchEngine] = useState(DEFAULT_SEARCH_ENGINE);
+	const [searchResults, setSearchResults] = useState<AiSearchResultItem[]>([]);
+	const [searchHasSearched, setSearchHasSearched] = useState(false);
 
 	return (
 		<AppContext
@@ -87,14 +85,14 @@ export function AppContextProvider({
 				setIptvSelectedCategory,
 				iptvKeyword,
 				setIptvKeyword,
-				homeKeyword,
-				setHomeKeyword,
-				homeSearchEngine,
-				setHomeSearchEngine,
-				homeResults,
-				setHomeResults,
-				homeHasSearched,
-				setHomeHasSearched,
+				searchKeyword,
+				setSearchKeyword,
+				searchEngine,
+				setSearchEngine,
+				searchResults,
+				setSearchResults,
+				searchHasSearched,
+				setSearchHasSearched,
 			}}
 		>
 			{children}

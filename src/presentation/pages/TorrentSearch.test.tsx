@@ -21,7 +21,7 @@ import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
-import Home from "./Home";
+import TorrentSearch from "./TorrentSearch";
 
 // Mock clipboard API
 Object.defineProperty(navigator, "clipboard", {
@@ -86,7 +86,7 @@ const BackButton = () => {
 	);
 };
 
-describe("Home 页面组件", () => {
+describe("TorrentSearch 页面组件", () => {
 	let mockTorrentRepository: TorrentRepository;
 	let mockContainer: DIContainer;
 
@@ -128,7 +128,7 @@ describe("Home 页面组件", () => {
 						{initialRoute === "/" && <LocationTracker />}
 						<Routes>
 							<Route path="/" element={<NavBarLayout />}>
-								<Route index element={<Home />} />
+								<Route index element={<TorrentSearch />} />
 								<Route
 									path="torrent"
 									element={

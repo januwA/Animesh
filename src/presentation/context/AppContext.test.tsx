@@ -36,14 +36,14 @@ function TestComponent() {
 		setIptvSelectedCategory,
 		iptvKeyword,
 		setIptvKeyword,
-		homeKeyword,
-		setHomeKeyword,
-		homeSearchEngine,
-		setHomeSearchEngine,
-		homeResults,
-		setHomeResults,
-		homeHasSearched,
-		setHomeHasSearched,
+		searchKeyword,
+		setSearchKeyword,
+		searchEngine,
+		setSearchEngine,
+		searchResults,
+		setSearchResults,
+		searchHasSearched,
+		setSearchHasSearched,
 	} = useAppContext();
 	return (
 		<div>
@@ -59,11 +59,11 @@ function TestComponent() {
 			</span>
 			<span data-testid="iptv-selected-category">{iptvSelectedCategory}</span>
 			<span data-testid="iptv-keyword">{iptvKeyword}</span>
-			<span data-testid="home-keyword">{homeKeyword}</span>
-			<span data-testid="home-search-engine">{homeSearchEngine}</span>
-			<span data-testid="home-results-length">{homeResults.length}</span>
-			<span data-testid="home-has-searched">
-				{homeHasSearched ? "true" : "false"}
+			<span data-testid="search-keyword">{searchKeyword}</span>
+			<span data-testid="search-engine">{searchEngine}</span>
+			<span data-testid="search-results-length">{searchResults.length}</span>
+			<span data-testid="search-has-searched">
+				{searchHasSearched ? "true" : "false"}
 			</span>
 			<button
 				type="button"
@@ -123,31 +123,31 @@ function TestComponent() {
 			</button>
 			<button
 				type="button"
-				data-testid="set-home-keyword"
-				onClick={() => setHomeKeyword("xxx")}
+				data-testid="set-search-keyword"
+				onClick={() => setSearchKeyword("xxx")}
 			>
-				setHomeKeyword
+				setSearchKeyword
 			</button>
 			<button
 				type="button"
-				data-testid="set-home-search-engine"
-				onClick={() => setHomeSearchEngine("nyaa")}
+				data-testid="set-search-engine"
+				onClick={() => setSearchEngine("nyaa")}
 			>
-				setHomeSearchEngine
+				setSearchEngine
 			</button>
 			<button
 				type="button"
-				data-testid="set-home-results"
-				onClick={() => setHomeResults([mockSearchResult])}
+				data-testid="set-search-results"
+				onClick={() => setSearchResults([mockSearchResult])}
 			>
-				setHomeResults
+				setSearchResults
 			</button>
 			<button
 				type="button"
-				data-testid="set-home-has-searched"
-				onClick={() => setHomeHasSearched(true)}
+				data-testid="set-search-has-searched"
+				onClick={() => setSearchHasSearched(true)}
 			>
-				setHomeHasSearched
+				setSearchHasSearched
 			</button>
 		</div>
 	);
@@ -206,21 +206,21 @@ describe("AppContext 状态上下文", () => {
 			</AppContextProvider>,
 		);
 
-		expect(screen.getByTestId("home-keyword").textContent).toBe("");
-		expect(screen.getByTestId("home-search-engine").textContent).toBe(
+		expect(screen.getByTestId("search-keyword").textContent).toBe("");
+		expect(screen.getByTestId("search-engine").textContent).toBe(
 			TORRENT_SEARCH_ENGINES[0],
 		);
-		expect(screen.getByTestId("home-results-length").textContent).toBe("0");
-		expect(screen.getByTestId("home-has-searched").textContent).toBe("false");
+		expect(screen.getByTestId("search-results-length").textContent).toBe("0");
+		expect(screen.getByTestId("search-has-searched").textContent).toBe("false");
 
-		fireEvent.click(screen.getByTestId("set-home-keyword"));
-		fireEvent.click(screen.getByTestId("set-home-search-engine"));
-		fireEvent.click(screen.getByTestId("set-home-results"));
-		fireEvent.click(screen.getByTestId("set-home-has-searched"));
+		fireEvent.click(screen.getByTestId("set-search-keyword"));
+		fireEvent.click(screen.getByTestId("set-search-engine"));
+		fireEvent.click(screen.getByTestId("set-search-results"));
+		fireEvent.click(screen.getByTestId("set-search-has-searched"));
 
-		expect(screen.getByTestId("home-keyword").textContent).toBe("xxx");
-		expect(screen.getByTestId("home-search-engine").textContent).toBe("nyaa");
-		expect(screen.getByTestId("home-results-length").textContent).toBe("1");
-		expect(screen.getByTestId("home-has-searched").textContent).toBe("true");
+		expect(screen.getByTestId("search-keyword").textContent).toBe("xxx");
+		expect(screen.getByTestId("search-engine").textContent).toBe("nyaa");
+		expect(screen.getByTestId("search-results-length").textContent).toBe("1");
+		expect(screen.getByTestId("search-has-searched").textContent).toBe("true");
 	});
 });

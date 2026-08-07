@@ -313,7 +313,7 @@ function SearchResultCard({
 	);
 }
 
-export default function Home() {
+export default function TorrentSearch() {
 	const navigate = useNavigate();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const {
@@ -323,14 +323,14 @@ export default function Home() {
 	} = useDI();
 
 	const {
-		homeKeyword: keyword,
-		setHomeKeyword: setKeyword,
-		homeSearchEngine: searchEngine,
-		setHomeSearchEngine: setSearchEngine,
-		homeResults: results,
-		setHomeResults: setResults,
-		homeHasSearched: hasSearched,
-		setHomeHasSearched: setHasSearched,
+		searchKeyword,
+		setSearchKeyword,
+		searchEngine,
+		setSearchEngine,
+		searchResults,
+		setSearchResults,
+		searchHasSearched,
+		setSearchHasSearched,
 	} = useAppContext();
 
 	const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
@@ -357,8 +357,8 @@ export default function Home() {
 				: searchTorrentsUseCase.execute(ctx, dto);
 		},
 		{
-			onSuccess: (data) => setResults(data),
-			onError: () => setResults([]),
+			onSuccess: (data) => setSearchResults(data),
+			onError: () => setSearchResults([]),
 		},
 	);
 
@@ -383,7 +383,7 @@ export default function Home() {
 
 	const performSearch = useCallback(
 		(queryText: string) => {
-			setHasSearched(true);
+			setSearchHasSearched(true);
 
 			setHistory((prev) => {
 				const filtered = prev.filter((item) => item !== queryText);
@@ -401,23 +401,28 @@ export default function Home() {
 				aiAlias: selectedAiAlias,
 			});
 		},
-		[searchEngine, selectedAiAlias, searchMutation.execute, setHasSearched],
+		[
+			searchEngine,
+			selectedAiAlias,
+			searchMutation.execute,
+			setSearchHasSearched,
+		],
 	);
 
 	useEffect(() => {
 		if (keywordParam) {
 			const query = keywordParam.trim();
 			if (query) {
-				setKeyword(query);
+				setSearchKeyword(query);
 				setSearchParams({}, { replace: true });
 				performSearch(query);
 			}
 		}
-	}, [keywordParam, setSearchParams, performSearch, setKeyword]);
+	}, [keywordParam, setSearchParams, performSearch, setSearchKeyword]);
 
 	function handleSearch(e: SubmitEvent) {
 		e.preventDefault();
-		const query = keyword.trim();
+		const query = searchKeyword.trim();
 		if (!query) return;
 
 		performSearch(query);
@@ -462,8 +467,8 @@ export default function Home() {
 		<>
 			{/* 搜索区域 */}
 			<SearchForm
-				keyword={keyword}
-				setKeyword={setKeyword}
+				keyword={searchKeyword}
+				setKeyword={setSearchKeyword}
 				loading={searchMutation.loading}
 				onSubmit={handleSearch}
 				searchEngine={searchEngine}
@@ -513,7 +518,7 @@ export default function Home() {
 							key={item}
 							variant="secondary"
 							className="cursor-pointer hover:bg-secondary/80 flex items-center gap-1 px-2.5 py-0.5"
-							onClick={() => setKeyword(item)}
+							onClick={() => setSearchKeyword(item)}
 						>
 							{item}
 							<button
@@ -577,32 +582,32 @@ export default function Home() {
 			{/* 未搜索空状态或结果为空提示 */}
 			{!searchMutation.loading &&
 				!error &&
-				(hasSearched && results.length === 0 ? (
+				(searchHasSearched && searchResults.length === 0 ? (
 					<Empty>
 						<EmptyContent>
 							<EmptyTitle>未找到相关资源</EmptyTitle>
 							<EmptyDescription>请换个关键词试试</EmptyDescription>
 						</EmptyContent>
 					</Empty>
-				) : !hasSearched ? (
+				) : !searchHasSearched ? (
 					<WelcomeGuide />
 				) : null)}
 
 			{/* 搜索结果列表 */}
-			{!searchMutation.loading && !error && results.length > 0 && (
+			{!searchMutation.loading && !error && searchResults.length > 0 && (
 				<section className="w-full flex flex-col gap-4">
 					<div className="flex items-center justify-between border-b border-border pb-2">
 						<div className="results-count text-sm text-muted-foreground">
 							找到{" "}
 							<span className="font-semibold text-primary">
-								{results.length}
+								{searchResults.length}
 							</span>{" "}
 							个资源
 						</div>
 					</div>
 
 					<div className="grid gap-4">
-						{results.map((item, index) => {
+						{searchResults.map((item, index) => {
 							const isBest =
 								selectedAiAlias !== "none" &&
 								index === 0 &&

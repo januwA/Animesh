@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
 import { MainLayout, NavBarLayout } from "./components/Layout";
-import Home from "./pages/Home";
+import TorrentSearch from "./pages/TorrentSearch";
 
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Collections = lazy(() => import("./pages/Collections"));
@@ -38,7 +38,7 @@ export const routes: RouteObject[] = [
 				children: [
 					{
 						path: "",
-						element: <Home />,
+						element: <TorrentSearch />,
 					},
 					{
 						path: "calendar",

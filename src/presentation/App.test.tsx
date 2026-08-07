@@ -19,11 +19,11 @@ import { MainLayout, NavBarLayout } from "./components/Layout";
 import { useAppContext } from "./context/AppContext";
 import Calendar from "./pages/Calendar";
 import Downloads from "./pages/Downloads";
-import Home from "./pages/Home";
 import Player from "./pages/Player";
 import Settings from "./pages/Settings";
 import SubjectDetail from "./pages/SubjectDetail";
 import TorrentDetail from "./pages/TorrentDetail";
+import TorrentSearch from "./pages/TorrentSearch";
 
 const testRoutes = [
 	{
@@ -32,7 +32,7 @@ const testRoutes = [
 			{
 				element: <NavBarLayout />,
 				children: [
-					{ path: "", element: <Home /> },
+					{ path: "", element: <TorrentSearch /> },
 					{ path: "calendar", element: <Calendar /> },
 					{ path: "downloads", element: <Downloads /> },
 					{ path: "settings", element: <Settings /> },
