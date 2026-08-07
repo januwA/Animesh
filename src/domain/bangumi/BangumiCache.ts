@@ -2,7 +2,7 @@ import type { Context } from "ajanuw-context";
 import type {
 	BangumiCalendarDay,
 	BangumiCharacter,
-	BangumiEpisode,
+	BangumiEpisodesPage,
 	BangumiPerson,
 	BangumiSubject,
 } from "./BangumiSchemas";
@@ -21,11 +21,15 @@ export interface BangumiCache {
 	getEpisodes(
 		ctx: Context,
 		subjectId: string,
-	): Promise<BangumiEpisode[] | null>;
+		offset: number,
+		limit: number,
+	): Promise<BangumiEpisodesPage | null>;
 	setEpisodes(
 		ctx: Context,
 		subjectId: string,
-		episodes: BangumiEpisode[],
+		offset: number,
+		limit: number,
+		page: BangumiEpisodesPage,
 	): Promise<void>;
 
 	getPersons(ctx: Context, subjectId: string): Promise<BangumiPerson[] | null>;

@@ -8,8 +8,13 @@ import {
 	Tv,
 	Users,
 } from "lucide-react";
-import { useMemo } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+	useLocation,
+	useNavigate,
+	useParams,
+	useSearchParams,
+} from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import type {
@@ -17,6 +22,7 @@ import type {
 	BangumiEpisode,
 	BangumiPerson,
 } from "@/domain/bangumi/BangumiSchemas";
+import { EpisodePaginationBar } from "@/presentation/components/EpisodePaginationBar";
 import { FavoriteButton } from "@/presentation/components/FavoriteButton";
 import { LazyImage } from "@/presentation/components/LazyImage";
 import { Badge } from "@/presentation/components/ui/badge";
@@ -200,23 +206,58 @@ const subjectParamsSchema = z.object({
 		.regex(/^\d+$/, "条目 ID 必须是数字"),
 });
 
+const pageParamSchema = z
+	.string()
+	.regex(/^\d+$/, "页码必须是数字")
+	.optional()
+	.default("1");
+
+const EPISODES_PAGE_SIZE = 50;
+
 export default function SubjectDetail() {
 	const { subjectId = "" } = useParams<{ subjectId: string }>();
+	const [searchParams] = useSearchParams();
 
-	const parsed = subjectParamsSchema.safeParse({ subjectId });
-	if (!parsed.success) {
+	const subjectResult = subjectParamsSchema.safeParse({ subjectId });
+	const pageResult = pageParamSchema.safeParse(
+		searchParams.get("page") ?? undefined,
+	);
+
+	if (!subjectResult.success) {
 		return (
-			<InvalidParamsView title="无效的条目详情参数" error={parsed.error} />
+			<InvalidParamsView
+				title="无效的条目详情参数"
+				error={subjectResult.error}
+			/>
+		);
+	}
+	if (!pageResult.success) {
+		return (
+			<InvalidParamsView title="无效的条目详情参数" error={pageResult.error} />
 		);
 	}
 
-	return <SubjectDetailView {...parsed.data} />;
+	return (
+		<SubjectDetailView
+			subjectId={subjectResult.data.subjectId}
+			page={Number(pageResult.data)}
+		/>
+	);
 }
 
-function SubjectDetailView({ subjectId }: { subjectId: string }) {
+function SubjectDetailView({
+	subjectId,
+	page,
+}: {
+	subjectId: string;
+	page: number;
+}) {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const state = location.state as { name?: string; imageUrl?: string } | null;
+	const [, setSearchParams] = useSearchParams();
+	const episodesSectionRef = useRef<HTMLDivElement>(null);
+	const [pendingEpisode, setPendingEpisode] = useState<number | null>(null);
 	const {
 		getBangumiSubjectUseCase,
 		getBangumiEpisodesUseCase,
@@ -233,12 +274,21 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 
 	const episodesQuery = useQuery(
 		async (ctx) => {
-			const data = await getBangumiEpisodesUseCase.execute(ctx, subjectId);
-			return [...data].sort((a, b) => a.sort - b.sort);
+			const data = await getBangumiEpisodesUseCase.execute(ctx, {
+				subjectId,
+				offset: (page - 1) * EPISODES_PAGE_SIZE,
+				limit: EPISODES_PAGE_SIZE,
+			});
+			return {
+				items: [...data.items].sort((a, b) => a.sort - b.sort),
+				total: data.total,
+			};
 		},
-		[subjectId, getBangumiEpisodesUseCase],
+		[subjectId, page, getBangumiEpisodesUseCase],
 	);
-	const episodes = episodesQuery.data ?? [];
+	const episodes = episodesQuery.data?.items ?? [];
+	const totalEpisodes = episodesQuery.data?.total ?? 0;
+	const totalPages = Math.max(1, Math.ceil(totalEpisodes / EPISODES_PAGE_SIZE));
 
 	const charactersQuery = useQuery(
 		(ctx) => getBangumiCharactersUseCase.execute(ctx, subjectId),
@@ -294,6 +344,73 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 		}
 		return groups;
 	}, [consolidatedStaff]);
+
+	const changePage = (nextPage: number) => {
+		const clamped = Math.min(Math.max(1, nextPage), totalPages);
+		setSearchParams(
+			(prev) => {
+				const next = new URLSearchParams(prev);
+				next.set("page", String(clamped));
+				return next;
+			},
+			{ replace: true },
+		);
+	};
+
+	const jumpToEpisode = (episodeNumber: number) => {
+		const targetPage = Math.min(
+			Math.max(1, Math.ceil(episodeNumber / EPISODES_PAGE_SIZE)),
+			totalPages,
+		);
+		setPendingEpisode(episodeNumber);
+		changePage(targetPage);
+	};
+
+	const skipFirstScrollRef = useRef(true);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 依赖 page 以在翻页后滚动到列表顶部
+	useEffect(() => {
+		if (skipFirstScrollRef.current) {
+			skipFirstScrollRef.current = false;
+			return;
+		}
+		episodesSectionRef.current?.scrollIntoView({
+			behavior: "smooth",
+			block: "start",
+		});
+	}, [page]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 依赖 episodes 以在目标集渲染后触发 DOM 定位
+	useEffect(() => {
+		if (pendingEpisode == null) return;
+		const target = episodesSectionRef.current?.querySelector(
+			`[data-episode-sort="${pendingEpisode}"]`,
+		);
+		if (!target) return;
+		(target as HTMLElement).scrollIntoView({
+			behavior: "smooth",
+			block: "center",
+		});
+		setPendingEpisode(null);
+	}, [pendingEpisode, episodes]);
+
+	useEffect(() => {
+		if (!episodesQuery.loading && episodesQuery.data && page > totalPages) {
+			setSearchParams(
+				(prev) => {
+					const next = new URLSearchParams(prev);
+					next.set("page", String(totalPages));
+					return next;
+				},
+				{ replace: true },
+			);
+		}
+	}, [
+		page,
+		totalPages,
+		episodesQuery.loading,
+		episodesQuery.data,
+		setSearchParams,
+	]);
 
 	if (subjectQuery.error) {
 		return (
@@ -510,9 +627,14 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 			</div>
 
 			{/* Episodes List */}
-			<div className="flex flex-col gap-4">
+			<div className="flex flex-col gap-4" ref={episodesSectionRef}>
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-bold text-foreground">剧集列表</h2>
+					{totalEpisodes > 0 && (
+						<span className="text-xs text-muted-foreground">
+							共 {totalEpisodes} 集
+						</span>
+					)}
 				</div>
 
 				{episodesQuery.error ? (
@@ -528,53 +650,65 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 						))}
 					</div>
 				) : episodes.length > 0 ? (
-					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-						{episodes.map((ep) => {
-							const isAired = ep.airdate ? todayStr >= ep.airdate : false;
-							return (
-								<button
-									key={ep.id}
-									type="button"
-									onClick={() => handleEpisodeClick(ep)}
-									className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
-										isAired
-											? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
-											: "bg-card border border-border hover:border-primary/30 hover:bg-muted/30"
-									}`}
-								>
-									<div
-										className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
+					<>
+						<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+							{episodes.map((ep) => {
+								const isAired = ep.airdate ? todayStr >= ep.airdate : false;
+								return (
+									<button
+										key={ep.id}
+										type="button"
+										data-episode-sort={ep.sort}
+										onClick={() => handleEpisodeClick(ep)}
+										className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
 											isAired
-												? "bg-primary/15 group-hover:bg-primary/25"
-												: "bg-muted group-hover:bg-primary/10"
+												? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
+												: "bg-card border border-border hover:border-primary/30 hover:bg-muted/30"
 										}`}
 									>
-										<span
-											className={`text-sm font-bold transition-colors ${
+										<div
+											className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
 												isAired
-													? "text-primary"
-													: "text-muted-foreground group-hover:text-primary"
+													? "bg-primary/15 group-hover:bg-primary/25"
+													: "bg-muted group-hover:bg-primary/10"
 											}`}
 										>
-											{String(ep.sort).padStart(2, "0")}
-										</span>
-									</div>
+											<span
+												className={`text-sm font-bold transition-colors ${
+													isAired
+														? "text-primary"
+														: "text-muted-foreground group-hover:text-primary"
+												}`}
+											>
+												{String(ep.sort).padStart(2, "0")}
+											</span>
+										</div>
 
-									<div className="flex-1 min-w-0 flex flex-col gap-1">
-										<div className="flex items-center gap-1.5 justify-between">
-											<h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
-												{ep.name_cn || ep.name}
-											</h3>
+										<div className="flex-1 min-w-0 flex flex-col gap-1">
+											<div className="flex items-center gap-1.5 justify-between">
+												<h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
+													{ep.name_cn || ep.name}
+												</h3>
+											</div>
+											<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+												{ep.duration && <span>时长 {ep.duration}</span>}
+												{ep.airdate && <span>首播 {ep.airdate}</span>}
+											</div>
 										</div>
-										<div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-											{ep.duration && <span>时长 {ep.duration}</span>}
-											{ep.airdate && <span>首播 {ep.airdate}</span>}
-										</div>
-									</div>
-								</button>
-							);
-						})}
-					</div>
+									</button>
+								);
+							})}
+						</div>
+						{totalPages > 1 && (
+							<EpisodePaginationBar
+								page={page}
+								totalPages={totalPages}
+								total={totalEpisodes}
+								onPageChange={changePage}
+								onJumpToEpisode={jumpToEpisode}
+							/>
+						)}
+					</>
 				) : (
 					<Empty className="py-12">
 						<EmptyContent>

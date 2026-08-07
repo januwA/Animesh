@@ -5,7 +5,7 @@ import {
 	BangumiCalendarResponseSchema,
 	type BangumiCharacter,
 	BangumiCharactersResponseSchema,
-	type BangumiEpisode,
+	type BangumiEpisodesPage,
 	BangumiEpisodesResponseSchema,
 	type BangumiPerson,
 	BangumiPersonsResponseSchema,
@@ -65,11 +65,13 @@ export class HttpBangumiRepository implements BangumiRepository {
 	async getEpisodes(
 		ctx: Context,
 		subjectId: string,
-	): Promise<BangumiEpisode[]> {
+		offset: number,
+		limit: number,
+	): Promise<BangumiEpisodesPage> {
 		let data: unknown;
 		try {
-			data = await this.client.getJson<{ data: BangumiEpisode[] }>(
-				`https://api.bgm.tv/v0/episodes?subject_id=${subjectId}&limit=100`,
+			data = await this.client.getJson<unknown>(
+				`https://api.bgm.tv/v0/episodes?subject_id=${subjectId}&limit=${limit}&offset=${offset}`,
 				{ ctx },
 			);
 		} catch (err: unknown) {
@@ -85,7 +87,7 @@ export class HttpBangumiRepository implements BangumiRepository {
 				cause: result.error,
 			});
 		}
-		return result.data.data;
+		return { items: result.data.data, total: result.data.total };
 	}
 
 	async getSubjectPersons(

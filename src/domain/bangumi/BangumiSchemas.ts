@@ -152,6 +152,11 @@ export const BangumiCharacterSchema = z.object({
 export const BangumiPersonsResponseSchema = z.array(BangumiPersonSchema);
 export const BangumiCharactersResponseSchema = z.array(BangumiCharacterSchema);
 
+export const BangumiEpisodesPageSchema = z.object({
+	items: z.array(BangumiEpisodeSchema),
+	total: z.number(),
+});
+
 export type BangumiPerson = z.infer<typeof BangumiPersonSchema>;
 export type BangumiActor = z.infer<typeof BangumiActorSchema>;
 export type BangumiCharacter = z.infer<typeof BangumiCharacterSchema>;
@@ -159,3 +164,4 @@ export type BangumiEpisode = z.infer<typeof BangumiEpisodeSchema>;
 export type BangumiEpisodesResponse = z.infer<
 	typeof BangumiEpisodesResponseSchema
 >;
+export type BangumiEpisodesPage = z.infer<typeof BangumiEpisodesPageSchema>;

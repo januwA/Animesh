@@ -79,6 +79,84 @@ describe("HttpBangumiRepository", () => {
 		await expect(repository.getCalendar(ctx)).rejects.toThrow(Canceled.message);
 	});
 });
+describe("getEpisodes", () => {
+	it("应该按 offset/limit 请求并解析分页剧集数据", async () => {
+		const mockResponse = {
+			data: [
+				{
+					id: 1001,
+					type: 0,
+					sort: 1,
+					name: "First Episode Jp",
+					name_cn: "第一集 中文",
+					duration: "24:00",
+					airdate: "2026-07-01",
+					desc: "第一集的简介内容",
+				},
+				{
+					id: 1002,
+					type: 0,
+					sort: 2,
+					name: "Second Episode Jp",
+					name_cn: "第二集 中文",
+					duration: "24:00",
+					airdate: "2026-07-02",
+					desc: "第二集的简介内容",
+				},
+			],
+			total: 103,
+			limit: 50,
+			offset: 50,
+		};
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => mockResponse,
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		const result = await repository.getEpisodes(Background, "42", 50, 50);
+
+		expect(mockFetch).toHaveBeenCalledWith(
+			"https://api.bgm.tv/v0/episodes?subject_id=42&limit=50&offset=50",
+			expect.anything(),
+		);
+		expect(result.items).toHaveLength(2);
+		expect(result.items[0].name_cn).toBe("第一集 中文");
+		expect(result.total).toBe(103);
+	});
+
+	it("在 API 返回结构不匹配时应抛出错误", async () => {
+		const mockResponse = { invalid: "structure" };
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => mockResponse,
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		await expect(
+			repository.getEpisodes(Background, "42", 0, 50),
+		).rejects.toThrow("Episodes API response structure mismatch");
+	});
+
+	it("在网络请求失败时应抛出带 cause 的错误", async () => {
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: false,
+			status: 500,
+			statusText: "Internal Server Error",
+		} as Response);
+		vi.stubGlobal("fetch", mockFetch);
+
+		const repository = new HttpBangumiRepository(new HttpClient());
+		await expect(
+			repository.getEpisodes(Background, "42", 0, 50),
+		).rejects.toThrow("Failed to fetch episodes");
+	});
+});
+
 describe("getSubjectPersons", () => {
 	it("应该能够成功获取并解析制作人员数据", async () => {
 		const mockResponse = [

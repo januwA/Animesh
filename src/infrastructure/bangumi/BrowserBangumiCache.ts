@@ -6,8 +6,8 @@ import {
 	BangumiCalendarResponseSchema,
 	type BangumiCharacter,
 	BangumiCharactersResponseSchema,
-	type BangumiEpisode,
-	BangumiEpisodeSchema,
+	type BangumiEpisodesPage,
+	BangumiEpisodesPageSchema,
 	type BangumiPerson,
 	BangumiPersonsResponseSchema,
 	type BangumiSubject,
@@ -92,18 +92,29 @@ export class BrowserBangumiCache implements BangumiCache {
 	getEpisodes(
 		_ctx: Context,
 		subjectId: string,
-	): Promise<BangumiEpisode[] | null> {
+		offset: number,
+		limit: number,
+	): Promise<BangumiEpisodesPage | null> {
 		return Promise.resolve(
-			getItem(`bangumi:episodes:${subjectId}`, z.array(BangumiEpisodeSchema)),
+			getItem(
+				`bangumi:episodes:${subjectId}:${offset}:${limit}`,
+				BangumiEpisodesPageSchema,
+			),
 		);
 	}
 
 	setEpisodes(
 		_ctx: Context,
 		subjectId: string,
-		episodes: BangumiEpisode[],
+		offset: number,
+		limit: number,
+		page: BangumiEpisodesPage,
 	): Promise<void> {
-		setItem(`bangumi:episodes:${subjectId}`, episodes, this.ttlMs);
+		setItem(
+			`bangumi:episodes:${subjectId}:${offset}:${limit}`,
+			page,
+			this.ttlMs,
+		);
 		return Promise.resolve();
 	}
 

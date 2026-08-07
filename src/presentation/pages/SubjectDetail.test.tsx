@@ -12,6 +12,7 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type {
 	BangumiEpisode,
+	BangumiEpisodesPage,
 	BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
 import { createDIContainerForTest } from "@/test/test-utils";
@@ -38,14 +39,19 @@ describe("SubjectDetail 页面组件", () => {
 
 	const renderSubjectDetail = (
 		mockSubjectPromise: Promise<BangumiSubject>,
-		mockEpisodesPromise: Promise<BangumiEpisode[]>,
+		mockEpisodesPromise: Promise<BangumiEpisodesPage | BangumiEpisode[]>,
 		openerRepository?: any,
 	) => {
 		mockContainer = createDIContainerForTest({
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(mockSubjectPromise),
-				getEpisodes: vi.fn().mockReturnValue(mockEpisodesPromise),
+				getEpisodes: vi.fn().mockImplementation(async () => {
+					const data = await mockEpisodesPromise;
+					return Array.isArray(data)
+						? { items: data, total: data.length }
+						: data;
+				}),
 			},
 			openerRepository,
 		});
@@ -390,7 +396,9 @@ describe("SubjectDetail 页面组件", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 			},
 		});
 
@@ -500,7 +508,9 @@ describe("SubjectDetail 页面组件", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 			},
 		});
 
@@ -548,7 +558,9 @@ describe("SubjectDetail 页面组件", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(subjectPromise),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 			},
 		});
 
@@ -625,7 +637,9 @@ describe("SubjectDetail 页面组件", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 			},
 		});
 
@@ -708,7 +722,12 @@ describe("SubjectDetail 页面组件", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve(mockEpisodes)),
+				getEpisodes: vi.fn().mockReturnValue(
+					Promise.resolve({
+						items: mockEpisodes,
+						total: mockEpisodes.length,
+					}),
+				),
 			},
 		});
 
@@ -891,7 +910,7 @@ describe("SubjectDetail 页面组件", () => {
 		const getEpisodes = vi
 			.fn()
 			.mockRejectedValueOnce(new Error("Episodes API Error"))
-			.mockResolvedValueOnce([]);
+			.mockResolvedValueOnce({ items: [], total: 0 });
 
 		mockContainer = createDIContainerForTest({
 			bangumiRepository: {
@@ -958,7 +977,7 @@ describe("SubjectDetail 页面组件", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject,
-				getEpisodes: vi.fn().mockResolvedValue([]),
+				getEpisodes: vi.fn().mockResolvedValue({ items: [], total: 0 }),
 			},
 		});
 
@@ -1015,7 +1034,7 @@ describe("SubjectDetail 页面组件", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockResolvedValue(mockSubject),
-				getEpisodes: vi.fn().mockResolvedValue([]),
+				getEpisodes: vi.fn().mockResolvedValue({ items: [], total: 0 }),
 				getSubjectCharacters: vi
 					.fn()
 					.mockRejectedValue(new Error("Characters API Error")),
@@ -1109,7 +1128,9 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 				getSubjectCharacters: vi
 					.fn()
 					.mockReturnValue(Promise.resolve(mockCharacters)),
@@ -1194,7 +1215,9 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 				getSubjectCharacters: vi.fn().mockReturnValue(Promise.resolve([])),
 				getSubjectPersons: vi
 					.fn()
@@ -1255,7 +1278,9 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 				getSubjectCharacters: vi.fn().mockReturnValue(Promise.resolve([])),
 				getSubjectPersons: vi.fn().mockReturnValue(Promise.resolve([])),
 			},
@@ -1401,7 +1426,9 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 				getSubjectCharacters: vi.fn().mockReturnValue(Promise.resolve([])),
 				getSubjectPersons: vi
 					.fn()
@@ -1494,7 +1521,9 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 				getSubjectCharacters: vi
 					.fn()
 					.mockReturnValue(Promise.resolve(mockCharacters)),
@@ -1559,7 +1588,9 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockReturnValue(Promise.resolve(mockSubject)),
-				getEpisodes: vi.fn().mockReturnValue(Promise.resolve([])),
+				getEpisodes: vi
+					.fn()
+					.mockReturnValue(Promise.resolve({ items: [], total: 0 })),
 				getSubjectCharacters: vi
 					.fn()
 					.mockReturnValue(Promise.resolve(mockCharacters)),
@@ -1611,7 +1642,7 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			bangumiRepository: {
 				getCalendar: vi.fn().mockResolvedValue([]),
 				getSubject: vi.fn().mockResolvedValue(mockSubject),
-				getEpisodes: vi.fn().mockResolvedValue([]),
+				getEpisodes: vi.fn().mockResolvedValue({ items: [], total: 0 }),
 				getSubjectCharacters: vi.fn().mockResolvedValue([]),
 				getSubjectPersons: vi
 					.fn()
@@ -1644,5 +1675,279 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 		});
 		expect(screen.getByText("Persons API Error")).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+	});
+});
+
+describe("SubjectDetail 页面 - 剧集分页", () => {
+	let mockContainer: DIContainer;
+
+	const makeSubject = (): BangumiSubject => ({
+		id: 123,
+		name: "Test Anime",
+		name_cn: "分页测试动漫",
+		summary: "简介",
+		images: {
+			large: "http://example.com/large.jpg",
+			common: "",
+			medium: "",
+			small: "",
+			grid: "",
+		},
+		rating: { score: 8.5, rank: 42, total: 100 },
+		collection: { doing: 200 },
+		date: "2026-07-01",
+		eps: 103,
+		platform: "TV",
+	});
+
+	const makeEpisode = (sort: number): BangumiEpisode => ({
+		id: 1000 + sort,
+		type: 0,
+		sort,
+		name: `Episode ${sort}`,
+		name_cn: `第 ${sort} 集`,
+		duration: "24:00",
+		airdate: "2026-07-01",
+		desc: "",
+	});
+
+	const renderPagedSubject = (
+		initialEntries: string[],
+		getEpisodes: (
+			ctx: unknown,
+			subjectId: string,
+			offset: number,
+			limit: number,
+		) => Promise<BangumiEpisodesPage>,
+	) => {
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockResolvedValue(makeSubject()),
+				getEpisodes,
+			},
+		});
+
+		return render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={initialEntries}>
+						<LocationTracker />
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+	};
+
+	beforeEach(() => {
+		currentLocation.current = null;
+		vi.clearAllMocks();
+		vi.spyOn(window, "open").mockImplementation(() => null);
+		vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
+	});
+
+	it("当总集数超过每页数量时，应该显示分页栏并以 offset=0 请求第一页", async () => {
+		const getEpisodes = vi
+			.fn()
+			.mockImplementation(async (_ctx, _id, offset) => {
+				if (offset === 0) {
+					return {
+						items: Array.from({ length: 50 }, (_, i) => makeEpisode(i + 1)),
+						total: 103,
+					};
+				}
+				return { items: [], total: 103 };
+			});
+
+		renderPagedSubject(["/subject/123"], getEpisodes);
+
+		await waitFor(() => {
+			expect(screen.getByText("分页测试动漫")).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText("共 103 集 · 第 1 / 3 页")).toBeInTheDocument();
+		});
+		expect(screen.getByText("第 1 集")).toBeInTheDocument();
+		expect(screen.getByText("第 50 集")).toBeInTheDocument();
+		expect(getEpisodes).toHaveBeenCalledWith(expect.anything(), "123", 0, 50);
+	});
+
+	it("点击页码按钮时，应该以对应 offset 重新请求并渲染该页剧集", async () => {
+		const getEpisodes = vi
+			.fn()
+			.mockImplementation(async (_ctx, _id, offset) => {
+				if (offset === 0) {
+					return {
+						items: Array.from({ length: 50 }, (_, i) => makeEpisode(i + 1)),
+						total: 103,
+					};
+				}
+				return {
+					items: [makeEpisode(51), makeEpisode(52)],
+					total: 103,
+				};
+			});
+
+		renderPagedSubject(["/subject/123"], getEpisodes);
+
+		await waitFor(() => {
+			expect(screen.getByText("第 1 集")).toBeInTheDocument();
+		});
+
+		await userEvent.setup().click(screen.getByRole("button", { name: "2" }));
+
+		await waitFor(() => {
+			expect(getEpisodes).toHaveBeenCalledWith(
+				expect.anything(),
+				"123",
+				50,
+				50,
+			);
+		});
+		await waitFor(() => {
+			expect(screen.getByText("第 51 集")).toBeInTheDocument();
+		});
+		expect(screen.getByText("共 103 集 · 第 2 / 3 页")).toBeInTheDocument();
+	});
+
+	it("在页码跳转输入框输入页码并按回车，应该跳转到指定页", async () => {
+		const getEpisodes = vi
+			.fn()
+			.mockImplementation(async (_ctx, _id, offset) => {
+				if (offset === 100) {
+					return {
+						items: [makeEpisode(101), makeEpisode(102)],
+						total: 103,
+					};
+				}
+				return {
+					items: Array.from({ length: 50 }, (_, i) => makeEpisode(i + 1)),
+					total: 103,
+				};
+			});
+
+		renderPagedSubject(["/subject/123"], getEpisodes);
+
+		await waitFor(() => {
+			expect(screen.getByText("第 1 集")).toBeInTheDocument();
+		});
+
+		await userEvent.setup().type(screen.getByLabelText("跳转页码"), "3{enter}");
+
+		await waitFor(() => {
+			expect(getEpisodes).toHaveBeenCalledWith(
+				expect.anything(),
+				"123",
+				100,
+				50,
+			);
+		});
+		await waitFor(() => {
+			expect(screen.getByText("第 101 集")).toBeInTheDocument();
+		});
+		expect(screen.getByText("共 103 集 · 第 3 / 3 页")).toBeInTheDocument();
+	});
+
+	it("输入集数跳转时，应该跳到对应页并滚动定位到该集", async () => {
+		const getEpisodes = vi
+			.fn()
+			.mockImplementation(async (_ctx, _id, offset) => {
+				if (offset === 100) {
+					return {
+						items: [makeEpisode(101), makeEpisode(102), makeEpisode(123)],
+						total: 103,
+					};
+				}
+				return {
+					items: Array.from({ length: 50 }, (_, i) => makeEpisode(i + 1)),
+					total: 103,
+				};
+			});
+
+		renderPagedSubject(["/subject/123"], getEpisodes);
+
+		await waitFor(() => {
+			expect(screen.getByText("第 1 集")).toBeInTheDocument();
+		});
+
+		await userEvent
+			.setup()
+			.type(screen.getByLabelText("跳转集数"), "123{enter}");
+
+		await waitFor(() => {
+			expect(getEpisodes).toHaveBeenCalledWith(
+				expect.anything(),
+				"123",
+				100,
+				50,
+			);
+		});
+		await waitFor(() => {
+			expect(screen.getByText("第 123 集")).toBeInTheDocument();
+		});
+
+		const episodeCard = screen.getByText("第 123 集").closest("button");
+		expect(episodeCard?.dataset.episodeSort).toBe("123");
+	});
+
+	it("总集数不超过每页数量时，不应该显示分页栏", async () => {
+		const getEpisodes = vi.fn().mockResolvedValue({
+			items: [makeEpisode(1), makeEpisode(2)],
+			total: 2,
+		});
+
+		renderPagedSubject(["/subject/123"], getEpisodes);
+
+		await waitFor(() => {
+			expect(screen.getByText("第 1 集")).toBeInTheDocument();
+		});
+
+		expect(screen.getByText("共 2 集")).toBeInTheDocument();
+		expect(screen.queryByText("跳转页")).not.toBeInTheDocument();
+		expect(screen.queryByText("跳转集")).not.toBeInTheDocument();
+	});
+
+	it("当 page 查询参数超出总页数时，应该自动归一化到最后有效页", async () => {
+		const getEpisodes = vi
+			.fn()
+			.mockImplementation(async (_ctx, _id, offset) => {
+				if (offset === 100) {
+					return {
+						items: [makeEpisode(101), makeEpisode(102)],
+						total: 103,
+					};
+				}
+				return { items: [], total: 103 };
+			});
+
+		renderPagedSubject(["/subject/123?page=99"], getEpisodes);
+
+		await waitFor(() => {
+			expect(screen.getByText("共 103 集 · 第 3 / 3 页")).toBeInTheDocument();
+		});
+		expect(currentLocation.current?.search).toContain("page=3");
+	});
+
+	it("当 page 查询参数非法时，应该渲染参数错误提示", async () => {
+		mockContainer = createDIContainerForTest({});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123?page=abc"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		expect(screen.getByText("无效的条目详情参数")).toBeInTheDocument();
+		expect(screen.getByText("页码必须是数字")).toBeInTheDocument();
 	});
 });

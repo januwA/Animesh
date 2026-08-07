@@ -157,7 +157,7 @@ export function createDIContainerForTest(
 	const bangumiRepo = {
 		getCalendar: async () => [],
 		getSubject: async () => ({}) as any,
-		getEpisodes: async () => [],
+		getEpisodes: async () => ({ items: [], total: 0 }),
 		getSubjectPersons: async () => [],
 		getSubjectCharacters: async () => [],
 		...params.bangumiRepository,

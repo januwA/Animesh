@@ -2,7 +2,7 @@ import type { Context } from "ajanuw-context";
 import type {
 	BangumiCalendarDay,
 	BangumiCharacter,
-	BangumiEpisode,
+	BangumiEpisodesPage,
 	BangumiPerson,
 	BangumiSubject,
 } from "./BangumiSchemas";
@@ -10,7 +10,12 @@ import type {
 export interface BangumiRepository {
 	getCalendar(ctx: Context): Promise<BangumiCalendarDay[]>;
 	getSubject(ctx: Context, subjectId: string): Promise<BangumiSubject>;
-	getEpisodes(ctx: Context, subjectId: string): Promise<BangumiEpisode[]>;
+	getEpisodes(
+		ctx: Context,
+		subjectId: string,
+		offset: number,
+		limit: number,
+	): Promise<BangumiEpisodesPage>;
 	getSubjectPersons(ctx: Context, subjectId: string): Promise<BangumiPerson[]>;
 	getSubjectCharacters(
 		ctx: Context,

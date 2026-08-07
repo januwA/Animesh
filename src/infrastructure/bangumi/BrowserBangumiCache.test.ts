@@ -48,6 +48,11 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
 		},
 	];
 
+	const mockEpisodesPage = {
+		items: mockEpisodes,
+		total: 150,
+	};
+
 	const mockPerson: BangumiPerson = {
 		id: 1,
 		name: "Director",
@@ -173,19 +178,25 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
 		const subjectId = "42";
 
 		it("当没有缓存时，应该返回 null", async () => {
-			const result = await cache.getEpisodes(Background, subjectId);
+			const result = await cache.getEpisodes(Background, subjectId, 0, 50);
 			expect(result).toBeNull();
 		});
 
 		it("当成功缓存且未过期时，应该能够正确读取缓存数据", async () => {
-			await cache.setEpisodes(Background, subjectId, mockEpisodes);
-			const result = await cache.getEpisodes(Background, subjectId);
-			expect(result).toEqual(mockEpisodes);
+			await cache.setEpisodes(Background, subjectId, 0, 50, mockEpisodesPage);
+			const result = await cache.getEpisodes(Background, subjectId, 0, 50);
+			expect(result).toEqual(mockEpisodesPage);
 		});
 
 		it("不同的 subjectId 应该隔离缓存", async () => {
-			await cache.setEpisodes(Background, "1", mockEpisodes);
-			const result = await cache.getEpisodes(Background, "2");
+			await cache.setEpisodes(Background, "1", 0, 50, mockEpisodesPage);
+			const result = await cache.getEpisodes(Background, "2", 0, 50);
+			expect(result).toBeNull();
+		});
+
+		it("不同的 offset/limit 应该隔离缓存", async () => {
+			await cache.setEpisodes(Background, subjectId, 50, 50, mockEpisodesPage);
+			const result = await cache.getEpisodes(Background, subjectId, 0, 50);
 			expect(result).toBeNull();
 		});
 	});
