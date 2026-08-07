@@ -601,38 +601,12 @@ describe("SubjectDetail 页面组件", () => {
 		});
 	});
 
-	it("应该对较长剧情简介展示展开/收起按钮并在点击时正确切换状态", async () => {
-		// Mock scrollHeight and clientHeight to simulate overflow
-		const spyScrollHeight = vi
-			.spyOn(HTMLElement.prototype, "scrollHeight", "get")
-			.mockImplementation(function (this: HTMLElement) {
-				if (
-					this.tagName === "P" &&
-					this.textContent?.includes("这是一个很长很长的剧情简介")
-				) {
-					return 300;
-				}
-				return 0;
-			});
-
-		const spyClientHeight = vi
-			.spyOn(HTMLElement.prototype, "clientHeight", "get")
-			.mockImplementation(function (this: HTMLElement) {
-				if (
-					this.tagName === "P" &&
-					this.textContent?.includes("这是一个很长很长的剧情简介")
-				) {
-					return 100;
-				}
-				return 0;
-			});
-
+	it("应该完整展示剧情简介且不显示展开/收起按钮", async () => {
 		const mockSubject: BangumiSubject = {
 			id: 123,
 			name: "Test Anime Title",
 			name_cn: "测试动漫标题",
-			summary:
-				"这是一个很长很长的剧情简介，超出显示行数限制，需要展示折叠/展开按钮。",
+			summary: "这是一个很长很长的剧情简介，完整展示，不再折叠。",
 			images: {
 				large: "http://example.com/large.jpg",
 				common: "",
@@ -674,27 +648,13 @@ describe("SubjectDetail 页面组件", () => {
 			).toBeInTheDocument();
 		});
 
-		// "展开" button should be present
-		const expandBtn = await screen.findByRole("button", { name: "展开" });
-		expect(expandBtn).toBeInTheDocument();
-
-		// Click "展开"
-		fireEvent.click(expandBtn);
-
-		// "收起" button should now be present
-		const collapseBtn = await screen.findByRole("button", { name: "收起" });
-		expect(collapseBtn).toBeInTheDocument();
-
-		// Click "收起"
-		fireEvent.click(collapseBtn);
-
-		// Should show "展开" again
+		// No expand/collapse button
 		expect(
-			await screen.findByRole("button", { name: "展开" }),
-		).toBeInTheDocument();
-
-		spyScrollHeight.mockRestore();
-		spyClientHeight.mockRestore();
+			screen.queryByRole("button", { name: "展开" }),
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "收起" }),
+		).not.toBeInTheDocument();
 	});
 
 	it("应该能在缺少部分字段（如 platform、rating.total、ep.name_cn、ep.airdate）时正常降级渲染", async () => {
@@ -907,6 +867,182 @@ describe("SubjectDetail 页面组件", () => {
 			`?keyword=${encodeURIComponent("Original Anime Name 01")}`,
 		);
 	});
+
+	it("剧集接口失败时应该显示错误组件，点击重试后重新发起请求", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Retry Anime",
+			name_cn: "重试动漫",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		const getEpisodes = vi
+			.fn()
+			.mockRejectedValueOnce(new Error("Episodes API Error"))
+			.mockResolvedValueOnce([]);
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockResolvedValue(mockSubject),
+				getEpisodes,
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("获取剧集列表失败")).toBeInTheDocument();
+		});
+		expect(screen.getByText("Episodes API Error")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+		await waitFor(() => {
+			expect(getEpisodes).toHaveBeenCalledTimes(2);
+		});
+		await waitFor(() => {
+			expect(screen.getByText("暂无剧集数据")).toBeInTheDocument();
+		});
+	});
+
+	it("主体详情接口失败时，点击重试后应该重新发起请求", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Retry Anime",
+			name_cn: "重试动漫",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		const getSubject = vi
+			.fn()
+			.mockRejectedValueOnce(new Error("Subject Fatal Error"))
+			.mockResolvedValueOnce(mockSubject);
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject,
+				getEpisodes: vi.fn().mockResolvedValue([]),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(
+				screen.getByText("获取动漫详情失败", { exact: false }),
+			).toBeInTheDocument();
+		});
+		expect(screen.getByText("Subject Fatal Error")).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+		await waitFor(() => {
+			expect(getSubject).toHaveBeenCalledTimes(2);
+		});
+		await waitFor(() => {
+			expect(screen.getByText("重试动漫")).toBeInTheDocument();
+		});
+	});
+
+	it("角色接口失败时应该显示错误组件", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Retry Anime",
+			name_cn: "重试动漫",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockResolvedValue(mockSubject),
+				getEpisodes: vi.fn().mockResolvedValue([]),
+				getSubjectCharacters: vi
+					.fn()
+					.mockRejectedValue(new Error("Characters API Error")),
+				getSubjectPersons: vi.fn().mockResolvedValue([]),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
+
+		await waitFor(() => {
+			expect(screen.getByText("获取角色数据失败")).toBeInTheDocument();
+		});
+		expect(screen.getByText("Characters API Error")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+	});
 });
 
 describe("SubjectDetail 页面 - 角色和制作人员", () => {
@@ -998,7 +1134,7 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 		});
 
 		// Characters section should be rendered
-		expect(screen.getByText("角色")).toBeInTheDocument();
+		await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
 		expect(screen.getByText("ヤニねこ")).toBeInTheDocument();
 		expect(screen.getByText("CV: 夏吉ゆうこ")).toBeInTheDocument();
 	});
@@ -1141,6 +1277,7 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			expect(screen.getByText("测试动漫")).toBeInTheDocument();
 		});
 
+		await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
 		expect(screen.getByText("暂无角色数据")).toBeInTheDocument();
 
 		// Switch to staff tab to check staff empty state
@@ -1181,6 +1318,9 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 		// The sections should exist with skeleton loading indicators
 		expect(screen.getByText("角色")).toBeInTheDocument();
 		expect(screen.getByText("制作人员")).toBeInTheDocument();
+
+		// Switch to characters tab to verify characters skeleton exists
+		await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
 		expect(screen.getByTestId("characters-skeleton")).toBeInTheDocument();
 		expect(screen.queryByTestId("staff-skeleton")).not.toBeInTheDocument();
 
@@ -1378,6 +1518,7 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			expect(screen.getByText("测试动漫")).toBeInTheDocument();
 		});
 
+		await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
 		expect(screen.getByText("+1 位声优")).toBeInTheDocument();
 		expect(screen.getByText("CV: 声優A")).toBeInTheDocument();
 	});
@@ -1442,6 +1583,66 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 			expect(screen.getByText("测试动漫")).toBeInTheDocument();
 		});
 
+		await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
 		expect(screen.getByText("ノーイメージ")).toBeInTheDocument();
+	});
+
+	it("制作人员接口失败时应该显示错误组件", async () => {
+		const mockSubject: BangumiSubject = {
+			id: 123,
+			name: "Test Anime",
+			name_cn: "测试动漫",
+			summary: "简介",
+			images: {
+				large: "http://example.com/large.jpg",
+				common: "",
+				medium: "",
+				small: "",
+				grid: "",
+			},
+			rating: { score: 8.5, rank: 42, total: 100 },
+			collection: { doing: 200 },
+			date: "2026-07-01",
+			eps: 12,
+			platform: "TV",
+		};
+
+		mockContainer = createDIContainerForTest({
+			bangumiRepository: {
+				getCalendar: vi.fn().mockResolvedValue([]),
+				getSubject: vi.fn().mockResolvedValue(mockSubject),
+				getEpisodes: vi.fn().mockResolvedValue([]),
+				getSubjectCharacters: vi.fn().mockResolvedValue([]),
+				getSubjectPersons: vi
+					.fn()
+					.mockRejectedValue(new Error("Persons API Error")),
+			},
+		});
+
+		render(
+			<DIProvider value={mockContainer}>
+				<AppContextProvider>
+					<MemoryRouter initialEntries={["/subject/123"]}>
+						<Routes>
+							<Route path="subject/:subjectId" element={<SubjectDetail />} />
+						</Routes>
+					</MemoryRouter>
+				</AppContextProvider>
+			</DIProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("测试动漫")).toBeInTheDocument();
+		});
+
+		await userEvent
+			.setup()
+			.click(screen.getByRole("tab", { name: /制作人员/ }));
+
+		await waitFor(() => {
+			expect(screen.getByText("获取制作人员数据失败")).toBeInTheDocument();
+		});
+		expect(screen.getByText("Persons API Error")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
 	});
 });

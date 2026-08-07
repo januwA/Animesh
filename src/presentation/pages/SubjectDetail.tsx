@@ -1,8 +1,6 @@
 import {
 	ArrowLeft,
 	Calendar,
-	ChevronDown,
-	ChevronUp,
 	Clock,
 	Globe,
 	Loader2,
@@ -10,7 +8,7 @@ import {
 	Tv,
 	Users,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
@@ -37,8 +35,7 @@ import {
 	TabsTrigger,
 } from "@/presentation/components/ui/tabs";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { formatError } from "@/utils";
-import { ErrorBanner } from "../components/AppComponents";
+import { ErrorState } from "../components/ErrorState";
 import { InvalidParamsView } from "../components/InvalidParamsView";
 
 /** Deduplicate staff by (id, relation), then group by person ID to collect all roles. */
@@ -228,18 +225,11 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 		openUrlUseCase,
 	} = useDI();
 
-	const [summaryExpanded, setSummaryExpanded] = useState(false);
-	const [summaryHasMore, setSummaryHasMore] = useState(false);
-	const summaryRef = useRef<HTMLParagraphElement>(null);
-
 	const subjectQuery = useQuery(
 		(ctx) => getBangumiSubjectUseCase.execute(ctx, subjectId),
 		[subjectId, getBangumiSubjectUseCase],
 	);
 	const subject = subjectQuery.data;
-	const error = subjectQuery.error
-		? `获取动漫详情失败: ${formatError(subjectQuery.error)}`
-		: null;
 
 	const episodesQuery = useQuery(
 		async (ctx) => {
@@ -249,45 +239,18 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 		[subjectId, getBangumiEpisodesUseCase],
 	);
 	const episodes = episodesQuery.data ?? [];
-	const episodesLoading = episodesQuery.loading;
 
 	const charactersQuery = useQuery(
 		(ctx) => getBangumiCharactersUseCase.execute(ctx, subjectId),
 		[subjectId, getBangumiCharactersUseCase],
 	);
 	const characters = charactersQuery.data ?? [];
-	const charactersLoading = charactersQuery.loading;
 
 	const personsQuery = useQuery(
 		(ctx) => getBangumiPersonsUseCase.execute(ctx, subjectId),
 		[subjectId, getBangumiPersonsUseCase],
 	);
 	const persons = personsQuery.data ?? [];
-	const personsLoading = personsQuery.loading;
-
-	// Reset summary expansion state when subject changes
-	useEffect(() => {
-		if (subject?.id !== undefined) {
-			setSummaryExpanded(false);
-			setSummaryHasMore(false);
-		} else {
-			setSummaryExpanded(false);
-			setSummaryHasMore(false);
-		}
-	}, [subject?.id]);
-
-	// Check if summary overflows when collapsed
-	useEffect(() => {
-		const element = summaryRef.current;
-		if (!element) return;
-
-		void subject?.summary;
-
-		if (!summaryExpanded) {
-			const hasOverflow = element.scrollHeight > element.clientHeight;
-			setSummaryHasMore(hasOverflow);
-		}
-	}, [subject?.summary, summaryExpanded]);
 
 	const todayStr = useMemo(() => {
 		const today = new Date();
@@ -332,7 +295,7 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 		return groups;
 	}, [consolidatedStaff]);
 
-	if (error) {
+	if (subjectQuery.error) {
 		return (
 			<div className="space-y-4">
 				<Button
@@ -344,7 +307,11 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 					<ArrowLeft className="h-4 w-4" />
 					返回
 				</Button>
-				<ErrorBanner message={error} />
+				<ErrorState
+					title="获取动漫详情失败"
+					message={subjectQuery.error}
+					onRetry={subjectQuery.refetch}
+				/>
 			</div>
 		);
 	}
@@ -542,81 +509,19 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 				</div>
 			</div>
 
-			{/* Synopsis / Summary */}
-			{!subject ? (
-				<Card className="bg-card border border-border rounded-xl">
-					<CardContent className="p-6 space-y-2">
-						<Skeleton className="h-4 w-20" />
-						<div className="space-y-2">
-							<Skeleton className="h-3 w-full" />
-							<Skeleton className="h-3 w-5/6" />
-							<Skeleton className="h-3 w-4/5" />
-						</div>
-					</CardContent>
-				</Card>
-			) : (
-				subject.summary && (
-					<Card className="bg-card border border-border rounded-xl">
-						<CardContent className="p-6 flex flex-col gap-2 relative overflow-hidden">
-							<h2 className="text-sm font-semibold text-muted-foreground">
-								剧情简介
-							</h2>
-							<div className="relative">
-								<p
-									ref={summaryRef}
-									className={`text-sm text-foreground leading-relaxed whitespace-pre-wrap transition-all duration-300 ${
-										!summaryExpanded ? "line-clamp-4" : ""
-									}`}
-								>
-									{subject.summary}
-								</p>
-
-								{/* Gradient Mask for fade-out effect when collapsed and there's overflow */}
-								{!summaryExpanded && summaryHasMore && (
-									<div
-										className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
-										style={{
-											background:
-												"linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0.6) 50%, transparent 100%)",
-										}}
-									/>
-								)}
-							</div>
-
-							{summaryHasMore && (
-								<div className="flex justify-center pt-2">
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={() => setSummaryExpanded(!summaryExpanded)}
-										className="h-8 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 bg-secondary hover:bg-accent px-3 rounded-lg transition-colors"
-									>
-										{summaryExpanded ? (
-											<>
-												<span>收起</span>
-												<ChevronUp className="h-3.5 w-3.5" />
-											</>
-										) : (
-											<>
-												<span>展开</span>
-												<ChevronDown className="h-3.5 w-3.5" />
-											</>
-										)}
-									</Button>
-								</div>
-							)}
-						</CardContent>
-					</Card>
-				)
-			)}
-
 			{/* Episodes List */}
 			<div className="flex flex-col gap-4">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-bold text-foreground">剧集列表</h2>
 				</div>
 
-				{episodesLoading ? (
+				{episodesQuery.error ? (
+					<ErrorState
+						title="获取剧集列表失败"
+						message={episodesQuery.error}
+						onRetry={episodesQuery.refetch}
+					/>
+				) : episodesQuery.loading ? (
 					<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
 						{[1, 2, 3, 4, 5, 6].map((n) => (
 							<Skeleton key={n} className="h-16 rounded-xl" />
@@ -679,12 +584,18 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 				)}
 			</div>
 
-			{/* Characters & Staff Tabs */}
-			<Tabs defaultValue="characters" className="w-full">
+			{/* Content Tabs */}
+			<Tabs defaultValue="summary" className="w-full">
 				<TabsList
 					variant="line"
 					className="w-full justify-start gap-6 bg-transparent rounded-none h-auto p-0 border-b border-border"
 				>
+					<TabsTrigger
+						value="summary"
+						className="flex-1 sm:flex-none px-0 pb-2 rounded-none bg-transparent text-sm font-semibold after:opacity-0 data-active:after:opacity-100 data-active:bg-transparent dark:data-active:bg-transparent"
+					>
+						简介
+					</TabsTrigger>
 					<TabsTrigger
 						value="characters"
 						className="flex-1 sm:flex-none px-0 pb-2 rounded-none bg-transparent text-sm font-semibold after:opacity-0 data-active:after:opacity-100 data-active:bg-transparent dark:data-active:bg-transparent"
@@ -715,8 +626,40 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 					</TabsTrigger>
 				</TabsList>
 
+				<TabsContent value="summary" className="pt-4">
+					{!subject ? (
+						<Card className="bg-card border border-border rounded-xl">
+							<CardContent className="p-6 space-y-2">
+								<Skeleton className="h-4 w-20" />
+								<div className="space-y-2">
+									<Skeleton className="h-3 w-full" />
+									<Skeleton className="h-3 w-5/6" />
+									<Skeleton className="h-3 w-4/5" />
+								</div>
+							</CardContent>
+						</Card>
+					) : (
+						<Card className="bg-card border border-border rounded-xl">
+							<CardContent className="p-6 flex flex-col gap-2">
+								<h2 className="text-sm font-semibold text-muted-foreground">
+									剧情简介
+								</h2>
+								<p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+									{subject.summary}
+								</p>
+							</CardContent>
+						</Card>
+					)}
+				</TabsContent>
+
 				<TabsContent value="characters" className="pt-4">
-					{charactersLoading ? (
+					{charactersQuery.error ? (
+						<ErrorState
+							title="获取角色数据失败"
+							message={charactersQuery.error}
+							onRetry={charactersQuery.refetch}
+						/>
+					) : charactersQuery.loading ? (
 						<CharactersSkeleton />
 					) : characters.length > 0 ? (
 						<div className="flex overflow-x-auto gap-3 pb-2 snap-x scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent -mx-1 px-1">
@@ -736,7 +679,13 @@ function SubjectDetailView({ subjectId }: { subjectId: string }) {
 				</TabsContent>
 
 				<TabsContent value="staff" className="pt-4">
-					{personsLoading ? (
+					{personsQuery.error ? (
+						<ErrorState
+							title="获取制作人员数据失败"
+							message={personsQuery.error}
+							onRetry={personsQuery.refetch}
+						/>
+					) : personsQuery.loading ? (
 						<StaffSkeleton />
 					) : staffGroupedByRole.size > 0 ? (
 						<div className="flex flex-col gap-5">
