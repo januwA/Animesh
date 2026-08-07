@@ -102,6 +102,7 @@ export function AppContextProvider({
 
 export function useAppContext() {
 	const context = use(AppContext);
+	/*v8 ignore next*/
 	if (context === undefined) {
 		throw new Error("useAppContext must be used within an AppContextProvider");
 	}

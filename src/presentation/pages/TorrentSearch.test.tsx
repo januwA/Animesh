@@ -271,9 +271,44 @@ describe("TorrentSearch 页面组件", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("搜索失败，请检查网络或重试", { exact: false }),
+				screen.getByText("搜索失败", { exact: false }),
 			).toBeInTheDocument();
 		});
+	});
+
+	it("当搜索失败时点击重试按钮，应该使用上次关键词重新发起搜索并成功显示结果", async () => {
+		const mockResults = [
+			{
+				title: "xxx 第1集",
+				link: "http://example.com/1",
+				pub_date: "2026-06-23",
+				magnet: "magnet:?xt=urn:btih:TEST1",
+				size: 350000000,
+			},
+		];
+		vi.mocked(mockTorrentRepository.search)
+			.mockRejectedValueOnce("网络请求超时")
+			.mockResolvedValueOnce(mockResults);
+
+		renderHome();
+
+		const input = screen.getByPlaceholderText("输入动漫名称");
+		fireEvent.change(input, { target: { value: "xxx" } });
+		fireEvent.submit(input.closest("form")!);
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+		});
+		expect(
+			screen.getByText("网络请求超时", { exact: false }),
+		).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
+		});
+		expect(mockTorrentRepository.search).toHaveBeenCalledTimes(2);
 	});
 
 	it("当点击复制磁力按钮成功时，应该显示Toast提示", async () => {
@@ -446,7 +481,7 @@ describe("TorrentSearch 页面组件", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("搜索失败，请检查网络或重试", { exact: false }),
+				screen.getByText("搜索失败", { exact: false }),
 			).toBeInTheDocument();
 		});
 	});

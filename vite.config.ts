@@ -63,10 +63,11 @@ export default defineConfig(({ mode }) => {
 					"**/*.test.{ts,tsx}",
 					"**/*.d.ts",
 					"src/presentation/components/ui/**",
+					"src/presentation/App.tsx",
+					"src/presentation/components/MpegtsVideo.tsx",
 					"src/di/**",
 					"src/domain/**",
 					"src/infrastructure/**",
-					"src/presentation/components/MpegtsVideo.tsx",
 				],
 				thresholds: {
 					lines: 100,

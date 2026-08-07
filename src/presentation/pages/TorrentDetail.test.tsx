@@ -161,6 +161,34 @@ describe("TorrentDetail 页面组件", () => {
 		});
 	});
 
+	it("当解析磁力链接失败时点击重试按钮，应该重新发起解析并成功渲染文件列表", async () => {
+		const mockResult = {
+			info_hash: "hash123",
+			name: "测试种子",
+			files: [{ id: 0, name: "file1.mp4", len: 1000 }],
+		};
+		vi.mocked(mockTorrentRepository.addTorrentMagnet)
+			.mockRejectedValueOnce("Resolve timeout")
+			.mockResolvedValueOnce(mockResult);
+
+		renderTorrentDetail("/torrent?magnet=maglink");
+
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+		});
+		expect(
+			screen.getByText("Resolve timeout", { exact: false }),
+		).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: "重试" }));
+
+		await waitFor(() => {
+			expect(screen.getByText("测试种子")).toBeInTheDocument();
+			expect(screen.getByText("file1.mp4")).toBeInTheDocument();
+		});
+		expect(mockTorrentRepository.addTorrentMagnet).toHaveBeenCalledTimes(2);
+	});
+
 	it("应该支持使用 infoHash 获取现有种子的缓存文件列表并渲染", async () => {
 		const mockFiles = [{ id: 0, name: "video.mp4", len: 5000 }];
 
@@ -190,7 +218,7 @@ describe("TorrentDetail 页面组件", () => {
 		});
 	});
 
-	it("应该支持取消或返回操作，并根据是否只有 infoHash 导航到相应的前序页面（包含 Loading、Error 和 Success 状态下的按钮）", async () => {
+	it("应该支持返回操作，并根据是否只有 infoHash 导航到相应的前序页面（包含 Loading、Error 和 Success 状态）", async () => {
 		// 1. Loading with infoHash only (should go to downloads)
 		vi.mocked(mockTorrentRepository.getTorrentFiles).mockImplementation(
 			() => new Promise(() => {}),
@@ -200,10 +228,7 @@ describe("TorrentDetail 页面组件", () => {
 			"/torrent?infoHash=hash123",
 		]);
 
-		const cancelBtn1 = screen.getByRole("button", {
-			name: "取消解析并返回",
-		});
-		fireEvent.click(cancelBtn1);
+		fireEvent.click(screen.getByRole("button", { name: "返回" }));
 		expect(getCurrentLocation()?.pathname).toBe("/downloads");
 
 		render1.unmount();
@@ -218,8 +243,7 @@ describe("TorrentDetail 页面组件", () => {
 			"/torrent?magnet=maglink",
 		]);
 
-		const cancelBtn2 = screen.getByRole("button", { name: "取消解析并返回" });
-		fireEvent.click(cancelBtn2);
+		fireEvent.click(screen.getByRole("button", { name: "返回" }));
 		expect(getCurrentLocation()?.pathname).toBe("/");
 
 		render2.unmount();
@@ -303,9 +327,7 @@ describe("TorrentDetail 页面组件", () => {
 		fireEvent.click(playBtn);
 
 		expect(getCurrentLocation()?.pathname).toBe("/play/hashCached/0");
-		expect(getCurrentLocation()?.search).toContain(
-			"title=%E5%B7%B2%E7%BC%93%E5%AD%98%E7%A7%8D%E5%AD%90",
-		);
+		expect(getCurrentLocation()?.search).toContain("fileName=cached_file.mp4");
 	});
 
 	it("应该对解析和加载种子的非字符串错误正确进行降级处理并显示提示", async () => {
@@ -354,7 +376,7 @@ describe("TorrentDetail 页面组件", () => {
 		expect(getCurrentLocation()?.search).toContain("title=");
 	});
 
-	it("当解析任务不报错但返回空数据时，应该降级显示未知错误", async () => {
+	it("当解析任务不报错但返回空数据时，应该显示未找到种子数据的空状态", async () => {
 		vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValueOnce(
 			null as any,
 		);
@@ -363,8 +385,9 @@ describe("TorrentDetail 页面组件", () => {
 
 		await waitFor(() => {
 			expect(
-				screen.getByText("未知错误", { exact: false }),
+				screen.getByText("未找到种子数据", { exact: false }),
 			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
 		});
 	});
 });

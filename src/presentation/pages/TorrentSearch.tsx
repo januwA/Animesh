@@ -19,6 +19,7 @@ import {
 	type TorrentSearchEngine,
 } from "@/domain/torrent/TorrentEngines";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import { ErrorState } from "@/presentation/components/ErrorState";
 import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
@@ -46,8 +47,7 @@ import {
 import { Separator } from "@/presentation/components/ui/separator";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { formatBytes, formatError, formatLocalDate } from "@/utils";
-import { ErrorBanner } from "../components/AppComponents";
+import { formatBytes, formatLocalDate } from "@/utils";
 import { useAppContext } from "../context/AppContext";
 
 const ENGINE_LABELS: Record<TorrentSearchEngine, string> = {
@@ -362,14 +362,6 @@ export default function TorrentSearch() {
 		},
 	);
 
-	const error = searchMutation.error
-		? `搜索失败，请检查网络或重试: ${formatError(searchMutation.error)}`
-		: null;
-
-	const handleCancelSearch = useCallback(() => {
-		searchMutation.cancel();
-	}, [searchMutation.cancel]);
-
 	const [history, setHistory] = useState<string[]>(() => {
 		try {
 			const raw = localStorage.getItem("animesh_search_history");
@@ -422,10 +414,7 @@ export default function TorrentSearch() {
 
 	function handleSearch(e: SubmitEvent) {
 		e.preventDefault();
-		const query = searchKeyword.trim();
-		if (!query) return;
-
-		performSearch(query);
+		performSearch(searchKeyword.trim());
 	}
 
 	const handleDeleteHistory = (item: string) => {
@@ -560,28 +549,30 @@ export default function TorrentSearch() {
 						<p className="text-xs text-muted-foreground max-w-xs text-center leading-relaxed">
 							正在分析意图，并根据需要在不同搜索引擎间自动检索 Fallback...
 						</p>
-						{handleCancelSearch && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={handleCancelSearch}
-								className="text-xs text-muted-foreground hover:text-foreground mt-2 border-border bg-secondary/50"
-							>
-								取消搜索
-							</Button>
-						)}
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={searchMutation.cancel}
+							className="text-xs text-muted-foreground hover:text-foreground mt-2 border-border bg-secondary/50"
+						>
+							取消搜索
+						</Button>
 					</div>
 				) : (
-					<SearchLoading onCancel={handleCancelSearch} />
+					<SearchLoading onCancel={searchMutation.cancel} />
 				))}
 
-			{error && <ErrorBanner message={error} />}
-
-			{/* 未搜索空状态或结果为空提示 */}
+			{searchMutation.error && (
+				<ErrorState
+					message={searchMutation.error}
+					title="搜索失败"
+					onRetry={() => performSearch(searchKeyword)}
+				/>
+			)}
 
 			{/* 未搜索空状态或结果为空提示 */}
 			{!searchMutation.loading &&
-				!error &&
+				!searchMutation.error &&
 				(searchHasSearched && searchResults.length === 0 ? (
 					<Empty>
 						<EmptyContent>
@@ -594,38 +585,40 @@ export default function TorrentSearch() {
 				) : null)}
 
 			{/* 搜索结果列表 */}
-			{!searchMutation.loading && !error && searchResults.length > 0 && (
-				<section className="w-full flex flex-col gap-4">
-					<div className="flex items-center justify-between border-b border-border pb-2">
-						<div className="results-count text-sm text-muted-foreground">
-							找到{" "}
-							<span className="font-semibold text-primary">
-								{searchResults.length}
-							</span>{" "}
-							个资源
+			{!searchMutation.loading &&
+				!searchMutation.error &&
+				searchResults.length > 0 && (
+					<section className="w-full flex flex-col gap-4">
+						<div className="flex items-center justify-between border-b border-border pb-2">
+							<div className="results-count text-sm text-muted-foreground">
+								找到{" "}
+								<span className="font-semibold text-primary">
+									{searchResults.length}
+								</span>{" "}
+								个资源
+							</div>
 						</div>
-					</div>
 
-					<div className="grid gap-4">
-						{searchResults.map((item, index) => {
-							const isBest =
-								selectedAiAlias !== "none" &&
-								index === 0 &&
-								item.ai_score !== undefined;
-							return (
-								<SearchResultCard
-									key={index.toString()}
-									item={item}
-									index={index}
-									onCopyMagnet={handleCopyMagnet}
-									onPlay={handlePlay}
-									isBestAi={isBest}
-								/>
-							);
-						})}
-					</div>
-				</section>
-			)}
+						<div className="grid gap-4">
+							{searchResults.map((item, index) => {
+								const isBest =
+									selectedAiAlias !== "none" &&
+									index === 0 &&
+									item.ai_score !== undefined;
+								return (
+									<SearchResultCard
+										key={index.toString()}
+										item={item}
+										index={index}
+										onCopyMagnet={handleCopyMagnet}
+										onPlay={handlePlay}
+										isBestAi={isBest}
+									/>
+								);
+							})}
+						</div>
+					</section>
+				)}
 		</>
 	);
 }
