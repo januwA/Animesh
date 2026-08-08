@@ -453,6 +453,7 @@ describe("Iptv 页面组件", () => {
       getChannels: vi.fn().mockReturnValue(new Promise(() => {})),
     });
 
+    expect(screen.getByTestId("channel-grid-skeleton")).toBeInTheDocument();
     expect(
       document.querySelector('[data-slot="skeleton"]'),
     ).toBeInTheDocument();
