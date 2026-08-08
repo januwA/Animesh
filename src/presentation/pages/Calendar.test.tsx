@@ -7,9 +7,10 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { vi } from "vitest";
+import { type Mock, vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
+import type { BangumiRepository } from "@/domain/bangumi/BangumiRepository";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
@@ -35,10 +36,12 @@ describe("Calendar 页面组件", () => {
 
   const renderCalendar = (
     mockCalendarPromise: Promise<BangumiCalendarDay[]>,
+    getCalendarMock?: Mock<BangumiRepository["getCalendar"]>,
   ) => {
     mockContainer = createDIContainerForTest({
       bangumiRepository: {
-        getCalendar: vi.fn().mockReturnValue(mockCalendarPromise),
+        getCalendar:
+          getCalendarMock ?? vi.fn().mockReturnValue(mockCalendarPromise),
       },
     });
 
@@ -90,6 +93,21 @@ describe("Calendar 页面组件", () => {
     });
     expect(screen.getByText("8.5")).toBeInTheDocument();
     expect(screen.getByText("1,200")).toBeInTheDocument();
+  });
+
+  it("当请求进行中时，应该展示日历骨架屏", async () => {
+    let resolvePromise: (value: BangumiCalendarDay[]) => void = () => {};
+    const promise = new Promise<BangumiCalendarDay[]>((resolve) => {
+      resolvePromise = resolve;
+    });
+
+    renderCalendar(promise);
+
+    expect(screen.getByTestId("calendar-skeleton")).toBeInTheDocument();
+
+    await act(async () => {
+      resolvePromise([]);
+    });
   });
 
   it("在 WeeklyCalendar 中，点击不同的星期 tab 应该切换展示的数据且正确排序", async () => {
@@ -191,16 +209,54 @@ describe("Calendar 页面组件", () => {
     expect(currentLocation.current?.pathname).toBe("/subject/1");
   });
 
-  it("当 bangumiRepository 请求失败时，应该显示错误提示", async () => {
+  it("当 bangumiRepository 请求失败时，应该显示错误提示与重试按钮", async () => {
     renderCalendar(Promise.reject(new Error("API error")));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("获取新番日历失败，请检查网络或重试", {
-          exact: false,
-        }),
-      ).toBeInTheDocument();
+      expect(screen.getByText("获取新番日历失败")).toBeInTheDocument();
     });
+    expect(screen.getByText("API error")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /重试/ })).toBeInTheDocument();
+  });
+
+  it("点击重试按钮后，应该重新发起请求并成功展示数据", async () => {
+    const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
+    const mockCalendar = [
+      {
+        weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+        items: [
+          {
+            id: 1,
+            name: "Anime Original Name",
+            name_cn: "重试后动漫",
+            images: { large: "http://example.com/cover.jpg", medium: "" },
+            rating: { score: 8.5 },
+            collection: { doing: 1200 },
+            rank: 1,
+          },
+        ],
+      },
+    ];
+    const getCalendar = vi
+      .fn<BangumiRepository["getCalendar"]>()
+      .mockRejectedValueOnce(new Error("API error"))
+      .mockResolvedValueOnce(mockCalendar as unknown as BangumiCalendarDay[]);
+
+    // 第一个参数为占位 promise，实际由 getCalendarMock 接管
+    renderCalendar(Promise.resolve([]), getCalendar);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /重试/ })).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /重试/ }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("重试后动漫")).toBeInTheDocument();
+    });
+    expect(getCalendar).toHaveBeenCalledTimes(2);
   });
 
   it("当今天没有新番更新数据时，应该显示暂无更新", async () => {

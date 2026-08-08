@@ -1,12 +1,12 @@
 import { Calendar as CalendarIcon, Star, Users } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type {
   BangumiCalendarDay,
   BangumiCalendarItem,
 } from "@/domain/bangumi/BangumiSchemas";
-import { Card, CardContent } from "@/presentation/components/ui/card";
+import { ErrorState } from "@/presentation/components/ErrorState";
 import {
   Empty,
   EmptyContent,
@@ -16,8 +16,6 @@ import {
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { formatError } from "@/utils";
-import { ErrorBanner } from "../components/AppComponents";
 import { FavoriteBadge } from "../components/FavoriteBadge";
 import { LazyImage } from "../components/LazyImage";
 import { useAppContext } from "../context/AppContext";
@@ -32,6 +30,33 @@ function getTodayWeekdayId(): number {
 interface WeeklyCalendarProps {
   calendar: BangumiCalendarDay[];
   onAnimeClick: (item: BangumiCalendarItem) => void;
+}
+
+function CalendarSkeleton() {
+  return (
+    <div className="w-full flex flex-col gap-4" data-testid="calendar-skeleton">
+      <div className="flex gap-1.5">
+        {WEEKDAY_LABELS.map((label) => (
+          <Skeleton key={label} className="h-9 flex-1 rounded-full" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+          <div
+            key={n}
+            className="flex flex-col bg-card border border-border rounded-lg overflow-hidden"
+          >
+            <Skeleton className="aspect-3/4 rounded-none" />
+            <div className="p-2 flex flex-col gap-2 flex-1">
+              <Skeleton className="h-3.5 w-5/6" />
+              <Skeleton className="h-3 w-3/6" />
+              <Skeleton className="h-3 w-2/6 mt-auto" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
@@ -170,19 +195,18 @@ export default function Calendar() {
   const navigate = useNavigate();
   const { getBangumiCalendarUseCase } = useDI();
   const { calendar, setCalendar } = useAppContext();
-  const [error, setError] = useState<string | null>(null);
 
-  const { loading: isLoading } = useQuery(
+  const {
+    loading: isLoading,
+    error,
+    refetch,
+  } = useQuery(
     (ctx) => getBangumiCalendarUseCase.execute(ctx),
     [getBangumiCalendarUseCase, calendar.length, setCalendar],
     {
       enabled: calendar.length === 0,
       onSuccess: (data) => {
-        setError(null);
         setCalendar(data);
-      },
-      onError: (err) => {
-        setError(`获取新番日历失败，请检查网络或重试: ${formatError(err)}`);
       },
     },
   );
@@ -202,25 +226,23 @@ export default function Calendar() {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {isLoading && (
-        <Card className="bg-card border-border py-20">
-          <CardContent className="flex flex-col items-center justify-center gap-4">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <Skeleton className="h-4 w-40" />
-          </CardContent>
-        </Card>
-      )}
-      {error && <ErrorBanner message={error} />}
-      {!isLoading && !error && calendar.length > 0 && (
-        <WeeklyCalendar calendar={calendar} onAnimeClick={handleAnimeClick} />
-      )}
-      {!isLoading && !error && calendar.length === 0 && (
+      {isLoading ? (
+        <CalendarSkeleton />
+      ) : error ? (
+        <ErrorState
+          title="获取新番日历失败"
+          message={error}
+          onRetry={refetch}
+        />
+      ) : calendar.length === 0 ? (
         <Empty>
           <EmptyContent>
             <EmptyTitle>未找到新番数据</EmptyTitle>
             <EmptyDescription>请稍后重试</EmptyDescription>
           </EmptyContent>
         </Empty>
+      ) : (
+        <WeeklyCalendar calendar={calendar} onAnimeClick={handleAnimeClick} />
       )}
     </div>
   );

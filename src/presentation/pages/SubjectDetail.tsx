@@ -719,43 +719,19 @@ function SubjectDetailView({
       </div>
 
       {/* Content Tabs */}
-      <Tabs defaultValue="summary" className="w-full">
-        <TabsList
-          variant="line"
-          className="w-full justify-start gap-6 bg-transparent rounded-none h-auto p-0 border-b border-border"
-        >
-          <TabsTrigger
-            value="summary"
-            className="flex-1 sm:flex-none px-0 pb-2 rounded-none bg-transparent text-sm font-semibold after:opacity-0 data-active:after:opacity-100 data-active:bg-transparent dark:data-active:bg-transparent"
-          >
-            简介
-          </TabsTrigger>
-          <TabsTrigger
-            value="characters"
-            className="flex-1 sm:flex-none px-0 pb-2 rounded-none bg-transparent text-sm font-semibold after:opacity-0 data-active:after:opacity-100 data-active:bg-transparent dark:data-active:bg-transparent"
-          >
+      <Tabs defaultValue="summary">
+        <TabsList>
+          <TabsTrigger value="summary">简介</TabsTrigger>
+          <TabsTrigger value="characters">
             角色
             {characters.length > 0 && (
-              <Badge
-                variant="secondary"
-                className="ml-1 text-xs border-border text-muted-foreground"
-              >
-                {characters.length}
-              </Badge>
+              <Badge variant="secondary">{characters.length}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger
-            value="staff"
-            className="flex-1 sm:flex-none px-0 pb-2 rounded-none bg-transparent text-sm font-semibold after:opacity-0 data-active:after:opacity-100 data-active:bg-transparent dark:data-active:bg-transparent"
-          >
+          <TabsTrigger value="staff">
             制作人员
             {persons.length > 0 && (
-              <Badge
-                variant="secondary"
-                className="ml-1 text-xs border-border text-muted-foreground"
-              >
-                {consolidatedStaff.length}
-              </Badge>
+              <Badge variant="secondary">{consolidatedStaff.length}</Badge>
             )}
           </TabsTrigger>
         </TabsList>
