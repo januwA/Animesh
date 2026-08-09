@@ -6,7 +6,11 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createMemoryRouter,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -88,23 +92,38 @@ describe("Settings 页面组件", () => {
   });
 
   const renderSettings = () => {
-    return render(
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          element: <NavBarLayout />,
+          children: [
+            { index: true, element: <div>Home Page</div> },
+            {
+              path: "settings",
+              element: (
+                <>
+                  <LocationTracker />
+                  <Settings />
+                </>
+              ),
+            },
+          ],
+        },
+      ],
+      { initialEntries: ["/settings"] },
+    );
+
+    render(
       <DIProvider value={mockContainer}>
         <AppContextProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-            <MemoryRouter initialEntries={["/settings"]}>
-              <LocationTracker />
-              <Routes>
-                <Route path="/" element={<NavBarLayout />}>
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-                <Route path="/" element={<div>Home Page</div>} />
-              </Routes>
-            </MemoryRouter>
+            <RouterProvider router={router} />
           </ThemeProvider>
         </AppContextProvider>
       </DIProvider>,
     );
+    return router;
   };
 
   it("应该在加载时渲染加载指示器", async () => {
@@ -803,20 +822,7 @@ describe("Settings 页面组件", () => {
       } as any,
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/settings"]}>
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="settings" element={<Settings />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
-      </DIProvider>,
-    );
+    renderSettings();
 
     await waitFor(() => {
       expect(screen.queryByText("正在加载设置面版...")).not.toBeInTheDocument();
@@ -1347,5 +1353,161 @@ describe("Settings 页面组件", () => {
       "true",
     );
     expect(document.documentElement.dataset.accent).toBe("rose");
+  });
+
+  it("未修改设置时离开页面，不应弹出离开确认对话框", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Home Page")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
+  });
+
+  it("修改设置后离开页面，应弹出离开确认对话框并停留在设置页", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("放弃未保存的更改？")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Home Page")).not.toBeInTheDocument();
+  });
+
+  it("在离开确认对话框点击取消，应关闭对话框并停留在设置页", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("放弃未保存的更改？")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText("Home Page")).not.toBeInTheDocument();
+  });
+
+  it("在离开确认对话框按 Esc 关闭时，应关闭对话框并停留在设置页", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("放弃未保存的更改？")).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText("Home Page")).not.toBeInTheDocument();
+  });
+
+  it("在离开确认对话框点击确认离开，应跳转到目标页面", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("放弃未保存的更改？")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "确认离开" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Home Page")).toBeInTheDocument();
+    });
+  });
+
+  it("修改并保存成功后离开页面，不应弹出离开确认对话框", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        "设置已保存，后续下载任务将使用新路径",
+      );
+    });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Home Page")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
   });
 });

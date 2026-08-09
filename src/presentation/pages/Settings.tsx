@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
+import { useBlocker } from "react-router-dom";
 import { toast } from "sonner";
 import type { SaveSettingsDto } from "@/application/settings/SaveSettingsUseCase";
 import { useDI } from "@/di/DIContext";
@@ -33,6 +34,14 @@ import {
   CardTitle,
 } from "@/presentation/components/ui/card";
 import { Checkbox } from "@/presentation/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/presentation/components/ui/dialog";
 import {
   Empty,
   EmptyContent,
@@ -52,6 +61,41 @@ import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { cn } from "@/presentation/lib/utils";
 import { formatError, formatLocalDate } from "@/utils";
+
+interface AiConfigDraft {
+  alias: string;
+  apiEndpoint: string;
+  apiKey: string;
+  model?: string | null;
+}
+
+interface FormSnapshot {
+  downloadDir: string;
+  proxy: string;
+  trackers: string[];
+  sourceType: TrackerSourceType;
+  customUrl: string;
+  autoUpdate: boolean;
+  lastUpdateTime: number;
+  maxDownloadSpeed: number;
+  aiConfigs: AiConfigDraft[];
+}
+
+function parseTrackersText(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function toAiConfigDrafts(configs: AiConfigDraft[]): AiConfigDraft[] {
+  return configs.map((c) => ({
+    alias: c.alias,
+    apiEndpoint: c.apiEndpoint,
+    apiKey: c.apiKey,
+    model: c.model ?? null,
+  }));
+}
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
@@ -97,6 +141,8 @@ export default function Settings() {
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [modelInput, setModelInput] = useState("");
 
+  const [savedSnapshot, setSavedSnapshot] = useState<FormSnapshot | null>(null);
+
   // Load settings
   const settingsQuery = useQuery(
     () => getSettingsUseCase.execute(),
@@ -121,6 +167,18 @@ export default function Settings() {
           model: c.ai_model,
         }));
         setAiConfigs(loadedConfigs);
+        setSavedSnapshot({
+          downloadDir: settings.download_dir,
+          proxy: settings.proxy || "",
+          trackers: parseTrackersText((settings.trackers || []).join("\n")),
+          sourceType: (settings.tracker_source_type ||
+            "best") as TrackerSourceType,
+          customUrl: settings.tracker_custom_url || "",
+          autoUpdate: settings.tracker_auto_update === true,
+          lastUpdateTime: settings.tracker_last_update_time || 0,
+          maxDownloadSpeed: settings.max_download_speed ?? 0,
+          aiConfigs: toAiConfigDrafts(loadedConfigs),
+        });
       },
       onError: (err) => toast.error(`加载设置失败: ${formatError(err)}`),
     },
@@ -282,7 +340,20 @@ export default function Settings() {
   const saveMutation = useMutation(
     (_ctx, data: SaveSettingsDto) => saveSettingsUseCase.execute(data),
     {
-      onSuccess: () => toast.success("设置已保存，后续下载任务将使用新路径"),
+      onSuccess: () => {
+        toast.success("设置已保存，后续下载任务将使用新路径");
+        setSavedSnapshot({
+          downloadDir,
+          proxy,
+          trackers: parseTrackersText(trackersText),
+          sourceType,
+          customUrl,
+          autoUpdate,
+          lastUpdateTime,
+          maxDownloadSpeed,
+          aiConfigs: toAiConfigDrafts(aiConfigs),
+        });
+      },
       onError: (err) =>
         toast.error(`保存路径失败: ${formatError(err)}`, { duration: 5000 }),
     },
@@ -391,6 +462,25 @@ export default function Settings() {
     }
     setEditingIndex(null);
   };
+
+  const buildSnapshotFromState = (): FormSnapshot => ({
+    downloadDir,
+    proxy,
+    trackers: parseTrackersText(trackersText),
+    sourceType,
+    customUrl,
+    autoUpdate,
+    lastUpdateTime,
+    maxDownloadSpeed,
+    aiConfigs: toAiConfigDrafts(aiConfigs),
+  });
+
+  const isDirty =
+    savedSnapshot !== null &&
+    JSON.stringify(buildSnapshotFromState()) !== JSON.stringify(savedSnapshot);
+
+  const blocker = useBlocker(isDirty);
+  const confirmLeaveOpen = blocker.state === "blocked";
 
   if (loading) {
     return (
@@ -580,7 +670,7 @@ export default function Settings() {
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px] sm:max-w-xs md:max-w-md">
+                    <div className="text-[10px] text-muted-foreground font-mono truncate max-w-50 sm:max-w-xs md:max-w-md">
                       {config.apiEndpoint}
                     </div>
                   </div>
@@ -1069,6 +1159,32 @@ export default function Settings() {
           </CardContent>
         </Card>
       </form>
+
+      <Dialog
+        open={confirmLeaveOpen}
+        onOpenChange={(open) => !open && blocker.reset?.()}
+      >
+        <DialogContent showCloseButton={false} className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>放弃未保存的更改？</DialogTitle>
+            <DialogDescription>
+              当前页面存在未保存的设置，离开后这些修改将丢失。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => blocker.reset?.()}
+            >
+              取消
+            </Button>
+            <Button type="button" onClick={() => blocker.proceed?.()}>
+              确认离开
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
