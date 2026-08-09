@@ -1,5 +1,50 @@
 import { describe, expect, it, vi } from "vitest";
-import { formatBytes, formatError, formatLocalDate } from "./utils";
+import {
+  createThrottleByChange,
+  formatBytes,
+  formatError,
+  formatLocalDate,
+} from "./utils";
+
+describe("节流函数 createThrottleByChange", () => {
+  it("首次执行应该被放行", () => {
+    const throttle = createThrottleByChange<number>(3000);
+    expect(throttle.run(400, 0)).toBe(true);
+  });
+
+  it("在节流间隔内即使 key 变化也不应该放行", () => {
+    const throttle = createThrottleByChange<number>(3000);
+    expect(throttle.run(400, 0)).toBe(true);
+    expect(throttle.run(450, 1000)).toBe(false);
+    expect(throttle.run(500, 2999)).toBe(false);
+  });
+
+  it("到达节流间隔边界时应该放行", () => {
+    const throttle = createThrottleByChange<number>(3000);
+    expect(throttle.run(400, 0)).toBe(true);
+    expect(throttle.run(450, 3000)).toBe(true);
+  });
+
+  it("超过节流间隔但 key 未变化时不应该放行", () => {
+    const throttle = createThrottleByChange<number>(3000);
+    expect(throttle.run(400, 0)).toBe(true);
+    expect(throttle.run(400, 4000)).toBe(false);
+  });
+
+  it("超过节流间隔且 key 变化时应该放行", () => {
+    const throttle = createThrottleByChange<number>(3000);
+    expect(throttle.run(400, 0)).toBe(true);
+    expect(throttle.run(450, 4000)).toBe(true);
+  });
+
+  it("reset 后应该立即放行", () => {
+    const throttle = createThrottleByChange<number>(3000);
+    expect(throttle.run(400, 0)).toBe(true);
+    expect(throttle.run(450, 1000)).toBe(false);
+    throttle.reset();
+    expect(throttle.run(450, 1000)).toBe(true);
+  });
+});
 
 describe("格式化字节大小函数 formatBytes", () => {
   it("应该正确格式化字节数为可读字符串", () => {

@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/presentation/components/ui/select";
-import { formatBytes, formatError } from "@/utils";
+import { createThrottleByChange, formatBytes, formatError } from "@/utils";
 import "@videojs/react/video/skin.css";
 import { createPlayer, selectError, videoFeatures } from "@videojs/react";
 import { Video, VideoSkin } from "@videojs/react/video";
@@ -36,6 +36,12 @@ interface SubtitleVttDto {
   infoHash: string;
   fileId: number;
   trackId: number;
+}
+
+interface SubtitleSource {
+  url: string;
+  loadedAtFraction: number | null;
+  loadedWhenFinished: boolean;
 }
 
 function JsPlayerErrorMonitor() {
@@ -130,74 +136,148 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
   );
 
   // Subtitle tracks (refetchable as the download progresses)
-  const subtitles = useQuery<SubtitleTrackInfo[]>(
+  const subtitleTracksQuery = useQuery<SubtitleTrackInfo[]>(
     (_ctx) => getSubtitleTracksUseCase.execute(infoHash, fileId),
     [infoHash, fileId, getSubtitleTracksUseCase],
   );
-  const subtracks = subtitles.data ?? [];
-  const subtitlesReady = subtitles.data !== null;
+  const subtitleTracks = subtitleTracksQuery.data ?? [];
+  const subtitleTracksReady = subtitleTracksQuery.data !== null;
 
-  // Subtitle VTT sources (lazy per-track load + object URL cleanup)
-  const [subtrackSrcs, setSubtrackSrcs] = useState<Record<number, string>>({});
-  const subtrackSrcsRef = useRef<Record<number, string>>({});
+  // Subtitle VTT sources (lazy per-track load + auto-refresh as download progresses)
+  const [subtitleSources, setSubtitleSources] = useState<
+    Record<number, SubtitleSource>
+  >({});
+  const subtitleSourcesRef = useRef<Record<number, SubtitleSource>>({});
   const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
+  const torrentStatusRef = useRef(torrentStatus);
+  torrentStatusRef.current = torrentStatus;
+  const pendingSubtitleRef = useRef<number | null>(null);
+  const subtitleTracksRetryThrottleRef = useRef(
+    createThrottleByChange<number>(3000),
+  );
 
   const subtitleMutation = useMutation<string, SubtitleVttDto>(
     (_ctx, dto) => getSubtitleVttUseCase.execute(dto),
     {
       onSuccess: (vtt, dto) => {
+        pendingSubtitleRef.current = null;
         const url = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
-        const next = { ...subtrackSrcsRef.current, [dto.trackId]: url };
-        subtrackSrcsRef.current = next;
-        setSubtrackSrcs(next);
+        const prev = subtitleSourcesRef.current[dto.trackId];
+        const status = torrentStatusRef.current;
+        const next = {
+          ...subtitleSourcesRef.current,
+          [dto.trackId]: {
+            url,
+            loadedAtFraction:
+              status && status.total_bytes > 0
+                ? status.progress_bytes / status.total_bytes
+                : null,
+            loadedWhenFinished: status?.finished ?? false,
+          },
+        };
+        subtitleSourcesRef.current = next;
+        setSubtitleSources(next);
+        if (prev?.url) URL.revokeObjectURL(prev.url);
       },
-      onError: (error) => toast.error(`加载字幕失败: ${formatError(error)}`),
+      onError: (error) => {
+        pendingSubtitleRef.current = null;
+        toast.error(`加载字幕失败: ${formatError(error)}`);
+      },
     },
   );
 
   const loadSubtitleVtt = useCallback(
-    (trackId: number) => {
-      if (subtrackSrcsRef.current[trackId]) return;
+    (trackId: number, opts: { force?: boolean } = {}) => {
+      if (!opts.force && subtitleSourcesRef.current[trackId]) return;
+      if (pendingSubtitleRef.current === trackId) return;
+      pendingSubtitleRef.current = trackId;
       subtitleMutation.execute({
         infoHash,
         fileId,
         trackId,
       });
     },
-    [infoHash, fileId, subtitleMutation],
+    [infoHash, fileId, subtitleMutation.execute],
+  );
+
+  const patchSubtitleSource = useCallback(
+    (
+      trackId: number,
+      patch: Partial<
+        Pick<SubtitleSource, "loadedAtFraction" | "loadedWhenFinished">
+      >,
+    ) => {
+      const current = subtitleSourcesRef.current[trackId];
+      const next = {
+        ...subtitleSourcesRef.current,
+        [trackId]: { ...current, ...patch },
+      };
+      subtitleSourcesRef.current = next;
+      setSubtitleSources(next);
+    },
+    [],
   );
 
   // Clean up subtitle object URLs on unmount
   useEffect(() => {
     return () => {
-      for (const url of Object.values(subtrackSrcsRef.current)) {
-        if (url) URL.revokeObjectURL(url);
+      for (const source of Object.values(subtitleSourcesRef.current)) {
+        if (source.url) URL.revokeObjectURL(source.url);
       }
-      subtrackSrcsRef.current = {};
+      subtitleSourcesRef.current = {};
     };
   }, []);
 
   // Auto-select and load the first subtitle track once available
   useEffect(() => {
-    if (!subtracks.length || selectedTrackId !== null) return;
-    const first = subtracks[0];
+    if (!subtitleTracks.length || selectedTrackId !== null) return;
+    const first = subtitleTracks[0];
     setSelectedTrackId(first.id);
     loadSubtitleVtt(first.id);
-  }, [subtracks, selectedTrackId, loadSubtitleVtt]);
+  }, [subtitleTracks, selectedTrackId, loadSubtitleVtt]);
 
   const handleSubtitleChange = useCallback(
     (trackId: string) => {
       const id = trackId ? parseInt(trackId, 10) : null;
       setSelectedTrackId(id);
-      if (id !== null) loadSubtitleVtt(id);
+      if (id !== null) loadSubtitleVtt(id, { force: true });
     },
     [loadSubtitleVtt],
   );
 
+  // Auto-refresh the selected subtitle track as the download progresses
   useEffect(() => {
-    if (subtitlesReady || !torrentStatus) return;
-    subtitles.refetch();
-  }, [torrentStatus, subtitlesReady, subtitles.refetch]);
+    if (selectedTrackId === null) return;
+    const existing = subtitleSourcesRef.current[selectedTrackId];
+    if (!existing || !torrentStatus || torrentStatus.total_bytes <= 0) return;
+
+    const fraction = torrentStatus.progress_bytes / torrentStatus.total_bytes;
+    if (existing.loadedAtFraction === null) {
+      patchSubtitleSource(selectedTrackId, {
+        loadedAtFraction: fraction,
+        loadedWhenFinished: torrentStatus.finished,
+      });
+      return;
+    }
+
+    const needsRefresh =
+      (torrentStatus.finished && !existing.loadedWhenFinished) ||
+      fraction - existing.loadedAtFraction >= 0.1;
+    if (needsRefresh) {
+      loadSubtitleVtt(selectedTrackId, { force: true });
+    }
+  }, [torrentStatus, selectedTrackId, loadSubtitleVtt, patchSubtitleSource]);
+
+  useEffect(() => {
+    if (subtitleTracksReady || !torrentStatus) return;
+
+    if (
+      !subtitleTracksRetryThrottleRef.current.run(torrentStatus.progress_bytes)
+    ) {
+      return;
+    }
+    subtitleTracksQuery.refetch();
+  }, [torrentStatus, subtitleTracksReady, subtitleTracksQuery.refetch]);
 
   const handleCopyStreamUrl = async () => {
     if (!streamUrl) return;
@@ -223,19 +303,22 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
     <JsPlayer.Provider>
       <VideoSkin className="w-full h-full">
         <Video src={streamUrl} playsInline>
-          {subtracks
+          {subtitleTracks
             .filter((t) => t.id === selectedTrackId)
-            .map((track) => (
-              <track
-                key={track.id}
-                id={track.id.toString()}
-                kind="subtitles"
-                src={subtrackSrcs[track.id] || undefined}
-                srcLang={track.language}
-                label={track.title}
-                default
-              />
-            ))}
+            .map((track) => {
+              const source = subtitleSources[track.id];
+              return (
+                <track
+                  key={source?.url ?? track.id}
+                  id={track.id.toString()}
+                  kind="subtitles"
+                  src={source?.url || undefined}
+                  srcLang={track.language}
+                  label={track.title}
+                  default
+                />
+              );
+            })}
         </Video>
       </VideoSkin>
       <JsPlayerErrorMonitor />
@@ -279,7 +362,7 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {subtracks.length > 0 && (
+          {subtitleTracks.length > 0 && (
             <>
               <span className="text-xs text-muted-foreground shrink-0">
                 字幕:
@@ -288,12 +371,12 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
                 value={selectedTrackId?.toString() ?? ""}
                 onValueChange={handleSubtitleChange}
               >
-                <SelectTrigger className="w-40 h-8 text-xs">
+                <SelectTrigger className="text-xs">
                   <SelectValue placeholder="选择字幕" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">关闭</SelectItem>
-                  {subtracks.map((track) => (
+                  {subtitleTracks.map((track) => (
                     <SelectItem key={track.id} value={track.id.toString()}>
                       {track.title || `轨道 ${track.id}`} ({track.language})
                     </SelectItem>

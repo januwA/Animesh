@@ -1,7 +1,9 @@
 use crate::domain::subtitles::{
-    format_vtt_time, strip_ass_tags, SubtitleExtractor, SubtitleTrackInfo,
+    decode_subtitle_bytes, format_vtt_time, strip_ass_tags, SubtitleExtractor, SubtitleTrackInfo,
 };
-use matroska_demuxer::{MatroskaFile, TrackType};
+use matroska_demuxer::{
+    ContentCompAlgo, ContentEncoding, ContentEncodingValue, MatroskaFile, TrackType,
+};
 use std::fs::File;
 use std::io::{BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -135,6 +137,52 @@ pub fn extract_subtitle_tracks_from_reader<R: Read + Seek>(
     Ok(tracks)
 }
 
+fn decompress_by_algo(
+    algo: ContentCompAlgo,
+    settings: Option<&[u8]>,
+    data: &[u8],
+) -> Result<Vec<u8>, String> {
+    match algo {
+        ContentCompAlgo::Zlib => {
+            let mut decoder = flate2::read::ZlibDecoder::new(data);
+            let mut buf = Vec::new();
+            decoder
+                .read_to_end(&mut buf)
+                .map_err(|e| format!("Failed to inflate compressed subtitle frame: {}", e))?;
+            Ok(buf)
+        }
+        ContentCompAlgo::Stripping => {
+            let settings = settings.unwrap_or(&[]);
+            let mut buf = Vec::with_capacity(settings.len() + data.len());
+            buf.extend_from_slice(settings);
+            buf.extend_from_slice(data);
+            Ok(buf)
+        }
+        algo => Err(format!(
+            "Unsupported subtitle content compression algorithm: {:?}",
+            algo
+        )),
+    }
+}
+
+fn decompress_frame_data(encodings: &[ContentEncoding], data: &[u8]) -> Result<Vec<u8>, String> {
+    let mut result = data.to_vec();
+    for encoding in encodings {
+        match encoding.encoding() {
+            ContentEncodingValue::Compression(compression) => {
+                result = decompress_by_algo(compression.algo(), compression.settings(), &result)?
+            }
+            ContentEncodingValue::Encryption(_) => {
+                return Err("Encrypted subtitle tracks are not supported".to_string());
+            }
+            ContentEncodingValue::Unknown => {
+                return Err("Unknown subtitle content encoding".to_string());
+            }
+        }
+    }
+    Ok(result)
+}
+
 pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     reader: R,
     track_id: u64,
@@ -159,6 +207,11 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
         return Err(format!("Unsupported subtitle codec: {}", codec));
     }
 
+    let encodings: Vec<ContentEncoding> = track
+        .content_encodings()
+        .map(|encodings| encodings.to_vec())
+        .unwrap_or_default();
+
     let mut frame = matroska_demuxer::Frame::default();
     let mut cues = Vec::new();
 
@@ -168,16 +221,18 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
             let duration_ms = frame.duration.unwrap_or(3000);
             let end_ms = start_ms + duration_ms;
 
+            let frame_data = decompress_frame_data(&encodings, &frame.data)?;
+
             let raw_text = if codec == "S_TEXT/ASS" || codec == "S_TEXT/SSA" {
-                let s = String::from_utf8_lossy(&frame.data);
+                let s = decode_subtitle_bytes(&frame_data);
                 let parts: Vec<&str> = s.splitn(9, ',').collect();
                 if parts.len() == 9 {
                     parts[8].to_string()
                 } else {
-                    s.into_owned()
+                    s
                 }
             } else {
-                String::from_utf8_lossy(&frame.data).into_owned()
+                decode_subtitle_bytes(&frame_data)
             };
 
             let clean_text = strip_ass_tags(&raw_text);
@@ -228,6 +283,7 @@ impl SubtitleExtractor for MatroskaSubtitleExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
 
     #[test]
     #[allow(non_snake_case)]
@@ -277,5 +333,41 @@ mod tests {
         let result = reader.read(&mut buf);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn 测试_zlib压缩的字幕帧_应解压还原() {
+        let plain = b"Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,Hello";
+        let mut encoder =
+            flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(plain).unwrap();
+        let compressed = encoder.finish().unwrap();
+
+        let result = decompress_by_algo(ContentCompAlgo::Zlib, None, &compressed).unwrap();
+        assert_eq!(result, plain);
+    }
+
+    #[test]
+    fn 测试_header_stripping字幕帧_应还原被剥离的头部() {
+        let stripped_header = b"Dialogue: 0,";
+        let frame_without_header = b"0:00:01.00,0:00:02.00,Default,,0,0,0,,Hello";
+
+        let result = decompress_by_algo(
+            ContentCompAlgo::Stripping,
+            Some(stripped_header),
+            frame_without_header,
+        )
+        .unwrap();
+        assert_eq!(
+            result,
+            b"Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,Hello"
+        );
+    }
+
+    #[test]
+    fn 测试_未压缩字幕帧_应原样返回() {
+        let data = b"Plain subtitle frame";
+        let result = decompress_frame_data(&[], data).unwrap();
+        assert_eq!(result, data);
     }
 }

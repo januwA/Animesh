@@ -11,6 +11,7 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
 import { AppContextProvider } from "../context/AppContext";
@@ -587,6 +588,90 @@ describe("Player 页面组件", () => {
     vi.useRealTimers();
   });
 
+  it("当字幕轨道加载失败时应该节流重试而不是每次状态更新都重试", async () => {
+    vi.useFakeTimers();
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getSubtitleTracks).mockRejectedValue(
+      new Error("Failed to extract tracks"),
+    );
+
+    let triggerUpdate: (torrents: TorrentStatusInfo[]) => void;
+    vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
+      (onUpdate) => {
+        triggerUpdate = onUpdate;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    const makeStatus = (progress: number) => ({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: progress,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 初次挂载会发起一次字幕轨道请求（失败）
+    expect(mockTorrentRepository.getSubtitleTracks).toHaveBeenCalledTimes(1);
+
+    // 第一次状态到达 → 触发一次重试
+    await act(async () => {
+      triggerUpdate([makeStatus(400)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getSubtitleTracks).toHaveBeenCalledTimes(2);
+
+    // 短时间内（未超过节流间隔）推进进度 → 不应重复重试
+    await act(async () => {
+      triggerUpdate([makeStatus(450)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getSubtitleTracks).toHaveBeenCalledTimes(2);
+
+    // 超过节流间隔（3s）且进度有推进 → 再次重试
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    await act(async () => {
+      triggerUpdate([makeStatus(500)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getSubtitleTracks).toHaveBeenCalledTimes(3);
+
+    // 已到节流间隔但进度未推进 → 不重复重试
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    await act(async () => {
+      triggerUpdate([makeStatus(500)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getSubtitleTracks).toHaveBeenCalledTimes(3);
+
+    vi.useRealTimers();
+  });
+
   it("应该针对各种视频加载错误提示正确的错误信息", async () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
@@ -1052,6 +1137,108 @@ describe("Player 页面组件", () => {
     vi.useRealTimers();
   });
 
+  it("字幕仍在加载时自动刷新不应发起重复请求", async () => {
+    vi.useFakeTimers();
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    const status400 = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    };
+    const status600 = {
+      ...status400,
+      progress_bytes: 600,
+    };
+    vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+      { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+    ]);
+
+    const vttResolvers: Array<(value: string) => void> = [];
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          vttResolvers.push(resolve);
+        }),
+    );
+
+    let triggerUpdate: (torrents: TorrentStatusInfo[]) => void;
+    vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
+      (onUpdate) => {
+        triggerUpdate = onUpdate;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 自动加载轨道 1（第一次请求挂起中）
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
+
+    // 第一次请求完成，记录 40% 基线
+    await act(async () => {
+      vttResolvers[0](
+        "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+      );
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    await act(async () => {
+      triggerUpdate([status400]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 进度推进到 60% → 自动刷新，第二次请求挂起
+    await act(async () => {
+      triggerUpdate([status600]);
+    });
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    }
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+
+    // 再次收到进度更新（仍挂起中）→ 不应发起第三次请求
+    await act(async () => {
+      triggerUpdate([{ ...status600, progress_bytes: 650 }]);
+    });
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    }
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+
+    // 完成挂起的第二次请求，避免悬挂副作用
+    await act(async () => {
+      vttResolvers[1](
+        "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+      );
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    vi.useRealTimers();
+  });
+
   it("关闭字幕时应不加载额外 VTT", async () => {
     vi.useFakeTimers();
 
@@ -1097,6 +1284,320 @@ describe("Player 页面组件", () => {
 
     expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
 
+    vi.useRealTimers();
+  });
+
+  it("切回已加载的字幕轨道时应强制重新提取 VTT", async () => {
+    vi.useFakeTimers();
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+    vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+      { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+      { id: 2, language: "chi", title: "Chinese", codec: "S_TEXT/UTF8" },
+    ]);
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+      "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+    );
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 自动加载轨道 1
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledWith(
+      "hash123",
+      0,
+      1,
+    );
+
+    // 切换到轨道 2
+    const trigger = screen.getByRole("combobox");
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    const option2 = screen.getByRole("option", { name: /Chinese/i });
+    await act(async () => {
+      fireEvent.click(option2);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+
+    // 等待下拉菜单关闭动画完成后再重新打开
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+
+    // 切回轨道 1 应强制重新提取（绕过缓存）
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    const option1 = screen.getByRole("option", { name: /English/i });
+    await act(async () => {
+      fireEvent.click(option1);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(3);
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenLastCalledWith(
+      "hash123",
+      0,
+      1,
+    );
+
+    vi.useRealTimers();
+  });
+
+  it("下载进度跨过阈值时应该自动重新提取当前轨道字幕", async () => {
+    vi.useFakeTimers();
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    const status400 = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    };
+    const status600 = {
+      ...status400,
+      progress_bytes: 600,
+    };
+    vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+      { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+    ]);
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+      "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+    );
+
+    let triggerUpdate: (torrents: TorrentStatusInfo[]) => void;
+    vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
+      (onUpdate) => {
+        triggerUpdate = onUpdate;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 先推送 40% 状态，建立字幕加载基线（40%）
+    await act(async () => {
+      triggerUpdate([status400]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
+
+    // 进度从 40% 推进到 60%（超过 10% 阈值）→ 自动重新提取轨道 1
+    await act(async () => {
+      triggerUpdate([status600]);
+    });
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    }
+
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenLastCalledWith(
+      "hash123",
+      0,
+      1,
+    );
+
+    vi.useRealTimers();
+  });
+
+  it("下载完成后应该自动重新提取当前轨道字幕且不会反复刷新", async () => {
+    vi.useFakeTimers();
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    const status400 = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    };
+    const statusFinished = {
+      ...status400,
+      progress_bytes: 1000,
+      finished: true,
+      download_speed_bytes_per_sec: 0,
+    };
+    vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+      { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+    ]);
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+      "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+    );
+
+    let triggerUpdate: (torrents: TorrentStatusInfo[]) => void;
+    vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
+      (onUpdate) => {
+        triggerUpdate = onUpdate;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 先推送 40% 状态，建立字幕加载基线（40%）
+    await act(async () => {
+      triggerUpdate([status400]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
+
+    // 下载完成 → 自动重新提取完整 VTT
+    await act(async () => {
+      triggerUpdate([statusFinished]);
+    });
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    }
+
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenLastCalledWith(
+      "hash123",
+      0,
+      1,
+    );
+
+    // 完成后的再次推送不应触发重复刷新
+    await act(async () => {
+      triggerUpdate([statusFinished]);
+    });
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    }
+
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+
+    vi.useRealTimers();
+  });
+
+  it("重新提取字幕时应撤销旧的 object URL", async () => {
+    vi.useFakeTimers();
+
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    let urlIndex = 0;
+    URL.createObjectURL = vi.fn(() => `blob:mock-url-${++urlIndex}`);
+    URL.revokeObjectURL = vi.fn();
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+    vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+      { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+      { id: 2, language: "chi", title: "Chinese", codec: "S_TEXT/UTF8" },
+    ]);
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+      "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+    );
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 自动加载轨道 1 → 创建 blob:mock-url-1
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+
+    // 切到轨道 2（创建 blob:mock-url-2），再切回轨道 1 → 撤销 blob:mock-url-1
+    const trigger = screen.getByRole("combobox");
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    const option2 = screen.getByRole("option", { name: /Chinese/i });
+    await act(async () => {
+      fireEvent.click(option2);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 等待关闭动画完成，重新打开并切回轨道 1 → 撤销 blob:mock-url-1
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+    const option1 = screen.getByRole("option", { name: /English/i });
+    await act(async () => {
+      fireEvent.click(option1);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-url-1");
+
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
     vi.useRealTimers();
   });
 });
