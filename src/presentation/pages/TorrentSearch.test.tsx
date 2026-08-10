@@ -105,6 +105,7 @@ describe("TorrentSearch 页面组件", () => {
       getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
       getVideoChapters: vi.fn(),
+      getVideoInfo: vi.fn(),
       subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
     };
 

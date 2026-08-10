@@ -41,6 +41,7 @@ import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUs
 import { GetTorrentStatusUseCase } from "../application/torrent/GetTorrentStatusUseCase";
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
 import { GetVideoChaptersUseCase } from "../application/torrent/GetVideoChaptersUseCase";
+import { GetVideoInfoUseCase } from "../application/torrent/GetVideoInfoUseCase";
 import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
@@ -87,6 +88,7 @@ export interface DIContainer {
   getSubtitleTracksUseCase: GetSubtitleTracksUseCase;
   getSubtitleVttUseCase: GetSubtitleVttUseCase;
   getVideoChaptersUseCase: GetVideoChaptersUseCase;
+  getVideoInfoUseCase: GetVideoInfoUseCase;
 
   getSettingsUseCase: GetSettingsUseCase;
   getDefaultTrackersUseCase: GetDefaultTrackersUseCase;
@@ -165,6 +167,7 @@ export function createDefaultDIContainer(): DIContainer {
   const getVideoChaptersUseCase = new GetVideoChaptersUseCase(
     torrentRepository,
   );
+  const getVideoInfoUseCase = new GetVideoInfoUseCase(torrentRepository);
 
   const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
   const getDefaultTrackersUseCase = new GetDefaultTrackersUseCase(
@@ -249,6 +252,7 @@ export function createDefaultDIContainer(): DIContainer {
     getSubtitleTracksUseCase,
     getSubtitleVttUseCase,
     getVideoChaptersUseCase,
+    getVideoInfoUseCase,
 
     getSettingsUseCase,
     getDefaultTrackersUseCase,

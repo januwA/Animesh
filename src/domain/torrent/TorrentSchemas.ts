@@ -47,12 +47,44 @@ export const ChapterInfoSchema = z.object({
   language: z.string().nullable(),
 });
 
+export const VideoTrackInfoSchema = z.object({
+  track_id: z.number(),
+  codec: z.string(),
+  width: z.number(),
+  height: z.number(),
+  language: z.string().nullable(),
+  default: z.boolean(),
+  forced: z.boolean(),
+});
+
+export const AudioTrackInfoSchema = z.object({
+  track_id: z.number(),
+  codec: z.string(),
+  channels: z.number(),
+  sampling_rate: z.number(),
+  language: z.string().nullable(),
+  default: z.boolean(),
+});
+
+export const VideoInfoSchema = z.object({
+  duration_ms: z.number().nullable(),
+  title: z.string().nullable(),
+  date_utc: z.number().nullable(),
+  muxing_app: z.string(),
+  writing_app: z.string(),
+  video_tracks: z.array(VideoTrackInfoSchema),
+  audio_tracks: z.array(AudioTrackInfoSchema),
+});
+
 export type SearchResultItem = z.infer<typeof SearchResultItemSchema>;
 export type FileDetails = z.infer<typeof FileDetailsSchema>;
 export type AddTorrentResult = z.infer<typeof AddTorrentResultSchema>;
 export type TorrentStatusInfo = z.infer<typeof TorrentStatusInfoSchema>;
 export type SubtitleTrackInfo = z.infer<typeof SubtitleTrackInfoSchema>;
 export type ChapterInfo = z.infer<typeof ChapterInfoSchema>;
+export type VideoTrackInfo = z.infer<typeof VideoTrackInfoSchema>;
+export type AudioTrackInfo = z.infer<typeof AudioTrackInfoSchema>;
+export type VideoInfo = z.infer<typeof VideoInfoSchema>;
 
 export interface AiSearchResultItem extends SearchResultItem {
   ai_score?: number;

@@ -7,6 +7,7 @@ import type {
   SearchResultItem,
   SubtitleTrackInfo,
   TorrentStatusInfo,
+  VideoInfo,
 } from "./TorrentSchemas";
 
 export interface TorrentRepository {
@@ -33,6 +34,7 @@ export interface TorrentRepository {
     trackId: number,
   ): Promise<string>;
   getVideoChapters(infoHash: string, fileId: number): Promise<ChapterInfo[]>;
+  getVideoInfo(infoHash: string, fileId: number): Promise<VideoInfo>;
   subscribeTorrents(
     onUpdate: (torrents: TorrentStatusInfo[]) => void,
   ): Promise<() => void>;

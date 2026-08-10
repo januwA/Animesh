@@ -1,6 +1,6 @@
 use crate::domain::subtitles::{
-    decode_subtitle_bytes, format_vtt_time, strip_ass_tags, ChapterInfo, SubtitleExtractor,
-    SubtitleTrackInfo,
+    decode_subtitle_bytes, format_vtt_time, strip_ass_tags, AudioTrackInfo, ChapterInfo,
+    SubtitleExtractor, SubtitleTrackInfo, VideoInfo, VideoTrackInfo,
 };
 use matroska_demuxer::{
     ContentCompAlgo, ContentEncoding, ContentEncodingValue, MatroskaFile, TrackType,
@@ -400,6 +400,92 @@ pub fn extract_video_chapters(path: &Path) -> Result<Vec<ChapterInfo>, String> {
     extract_video_chapters_from_reader(reader, true)
 }
 
+const fn date_utc_ns_to_unix_secs(ns_since_2001: i64) -> i64 {
+    // Matroska DateUTC 以自 2001-01-01T00:00:00 UTC 起算的纳秒数存储。
+    const NANOS_PER_SEC: i64 = 1_000_000_000;
+    // 2001-01-01T00:00:00Z 与 Unix 纪元(1970-01-01)之间的秒数。
+    const UNIX_SECS_AT_2001: i64 = 978_307_200;
+    ns_since_2001 / NANOS_PER_SEC + UNIX_SECS_AT_2001
+}
+
+const fn duration_ns_to_ms(ns: Option<f64>) -> Option<u64> {
+    let Some(ns) = ns else {
+        return None;
+    };
+    if ns <= 0.0 {
+        return Some(0);
+    }
+    Some(ns as u64 / 1_000_000)
+}
+
+pub fn extract_video_info_from_reader<R: Read + Seek>(
+    reader: R,
+    skip_check: bool,
+) -> Result<VideoInfo, String> {
+    let checked_reader = if skip_check {
+        ZeroCheckReader::new_skip_check(reader)
+    } else {
+        ZeroCheckReader::new(reader)
+    };
+    let mkv =
+        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+
+    let info = mkv.info();
+    let mut video_tracks = Vec::new();
+    let mut audio_tracks = Vec::new();
+    for track in mkv.tracks() {
+        let track_id = track.track_number().get();
+        let codec = track.codec_id().to_string();
+        let language = track.language().map(|s| s.to_string());
+        let default = track.flag_default();
+        let forced = track.flag_forced();
+        match track.track_type() {
+            TrackType::Video => {
+                if let Some(video) = track.video() {
+                    video_tracks.push(VideoTrackInfo {
+                        track_id,
+                        codec,
+                        width: video.pixel_width().get() as u32,
+                        height: video.pixel_height().get() as u32,
+                        language,
+                        default,
+                        forced,
+                    });
+                }
+            }
+            TrackType::Audio => {
+                if let Some(audio) = track.audio() {
+                    audio_tracks.push(AudioTrackInfo {
+                        track_id,
+                        codec,
+                        channels: audio.channels().get(),
+                        sampling_rate: audio.sampling_frequency().round().max(0.0) as u64,
+                        language,
+                        default,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(VideoInfo {
+        duration_ms: duration_ns_to_ms(info.duration()),
+        title: info.title().map(|s| s.to_string()),
+        date_utc: info.date_utc().map(date_utc_ns_to_unix_secs),
+        muxing_app: info.muxing_app().to_string(),
+        writing_app: info.writing_app().to_string(),
+        video_tracks,
+        audio_tracks,
+    })
+}
+
+pub fn extract_video_info(path: &Path) -> Result<VideoInfo, String> {
+    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
+    let reader = BufReader::new(file);
+    extract_video_info_from_reader(reader, true)
+}
+
 pub struct MatroskaSubtitleExtractor;
 
 impl SubtitleExtractor for MatroskaSubtitleExtractor {
@@ -652,6 +738,67 @@ mod tests {
         assert_eq!(chapters[0].end_ms, Some(1000));
         assert_eq!(chapters[0].title, "Opening");
         assert_eq!(chapters[0].language.as_deref(), Some("eng"));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_提取非存在文件的媒体信息_应返回错误() {
+        let path = Path::new("non_existent_file.mkv");
+        let result = extract_video_info(path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to open file"));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_提取无效格式文件的媒体信息_应返回解析错误() {
+        let temp_path = std::env::temp_dir().join("invalid_mkv_test_info.mkv");
+        std::fs::write(&temp_path, b"invalid mkv data").unwrap();
+
+        let result = extract_video_info(&temp_path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to parse MKV"));
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn 测试_读取合法MKV_应解析出视频轨道与封装信息() {
+        let mkv = build_test_mkv(false);
+        let result = extract_video_info_from_reader(std::io::Cursor::new(mkv), true);
+        assert!(result.is_ok());
+        let info = result.unwrap();
+
+        assert_eq!(info.duration_ms, None);
+        assert_eq!(info.title, None);
+        assert_eq!(info.date_utc, None);
+        assert_eq!(info.muxing_app, "test");
+        assert_eq!(info.writing_app, "test");
+
+        assert_eq!(info.video_tracks.len(), 1);
+        assert_eq!(info.video_tracks[0].track_id, 1);
+        assert_eq!(info.video_tracks[0].codec, "V_MPEG4/ISO/AVC");
+        assert_eq!(info.video_tracks[0].width, 1);
+        assert_eq!(info.video_tracks[0].height, 1);
+
+        assert!(info.audio_tracks.is_empty());
+    }
+
+    #[test]
+    fn 测试_date_utc纳秒转Unix秒() {
+        // 2001-01-01T00:00:00Z 本身
+        assert_eq!(date_utc_ns_to_unix_secs(0), 978_307_200);
+        // 2001-01-01T00:00:01Z
+        assert_eq!(date_utc_ns_to_unix_secs(1_000_000_000), 978_307_201);
+    }
+
+    #[test]
+    fn 测试_时长纳秒转毫秒() {
+        assert_eq!(duration_ns_to_ms(None), None);
+        assert_eq!(duration_ns_to_ms(Some(0.0)), Some(0));
+        assert_eq!(duration_ns_to_ms(Some(1_000_000.0)), Some(1));
+        assert_eq!(duration_ns_to_ms(Some(6_001_000_000.0)), Some(6001));
+        assert_eq!(duration_ns_to_ms(Some(-5.0)), Some(0));
     }
 
     // EBML 编码辅助函数与最小合法 MKV 构造器

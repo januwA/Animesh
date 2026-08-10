@@ -25,6 +25,7 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
       getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
       getVideoChapters: vi.fn(),
+      getVideoInfo: vi.fn(),
       subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
     };
 

@@ -17,6 +17,39 @@ pub struct ChapterInfo {
     pub language: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct VideoInfo {
+    pub duration_ms: Option<u64>,
+    pub title: Option<String>,
+    /// Unix 时间戳（秒）。源数据为纳秒级自 2001-01-01 起算。
+    pub date_utc: Option<i64>,
+    pub muxing_app: String,
+    pub writing_app: String,
+    pub video_tracks: Vec<VideoTrackInfo>,
+    pub audio_tracks: Vec<AudioTrackInfo>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct VideoTrackInfo {
+    pub track_id: u64,
+    pub codec: String,
+    pub width: u32,
+    pub height: u32,
+    pub language: Option<String>,
+    pub default: bool,
+    pub forced: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AudioTrackInfo {
+    pub track_id: u64,
+    pub codec: String,
+    pub channels: u64,
+    pub sampling_rate: u64,
+    pub language: Option<String>,
+    pub default: bool,
+}
+
 pub trait SubtitleExtractor: Send + Sync {
     fn extract_subtitle_tracks(&self, path: &Path) -> Result<Vec<SubtitleTrackInfo>, String>;
     fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String>;

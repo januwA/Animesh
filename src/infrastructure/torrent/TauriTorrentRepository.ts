@@ -16,6 +16,8 @@ import {
   SubtitleTrackInfoSchema,
   type TorrentStatusInfo,
   TorrentStatusInfoSchema,
+  type VideoInfo,
+  VideoInfoSchema,
 } from "../../domain/torrent/TorrentSchemas";
 
 const sessionId = crypto.randomUUID();
@@ -163,6 +165,20 @@ export class TauriTorrentRepository implements TorrentRepository {
     const result = z.array(ChapterInfoSchema).safeParse(raw);
     if (!result.success) {
       throw new Error("torrent_get_video_chapters API structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  async getVideoInfo(infoHash: string, fileId: number): Promise<VideoInfo> {
+    const raw = await invoke<unknown>("torrent_get_video_info", {
+      infoHash,
+      fileId,
+    });
+    const result = VideoInfoSchema.safeParse(raw);
+    if (!result.success) {
+      throw new Error("torrent_get_video_info API structure mismatch", {
         cause: result.error,
       });
     }

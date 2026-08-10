@@ -1,4 +1,4 @@
-use crate::domain::subtitles::{ChapterInfo, SubtitleTrackInfo};
+use crate::domain::subtitles::{ChapterInfo, SubtitleTrackInfo, VideoInfo};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::RwLock;
@@ -13,6 +13,7 @@ pub struct SubtitleCache {
     tracks: RwLock<HashMap<String, CachedEntry<Vec<SubtitleTrackInfo>>>>,
     vtt: RwLock<HashMap<String, CachedEntry<String>>>,
     chapters: RwLock<HashMap<String, CachedEntry<Vec<ChapterInfo>>>>,
+    info: RwLock<HashMap<String, CachedEntry<VideoInfo>>>,
     failures: RwLock<HashMap<String, CachedFailure>>,
 }
 
@@ -134,6 +135,37 @@ impl SubtitleCache {
         }
     }
 
+    pub fn get_video_info(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+        file_path: &Path,
+    ) -> Option<VideoInfo> {
+        let key = format!("{}:{}", info_hash, file_id);
+        let cache = self.info.read().ok()?;
+        let entry = cache.get(&key)?;
+        if file_fingerprint(file_path) == Some((entry.mtime, entry.len)) {
+            Some(entry.data.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn set_video_info(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+        file_path: &Path,
+        data: VideoInfo,
+    ) {
+        if let Some((mtime, len)) = file_fingerprint(file_path) {
+            let key = format!("{}:{}", info_hash, file_id);
+            if let Ok(mut cache) = self.info.write() {
+                cache.insert(key, CachedEntry { mtime, len, data });
+            }
+        }
+    }
+
     /// 记录一次解析失败。仅当文件指纹有效时记录，方便冷却失效判断。
     pub fn set_failure(&self, key: &str, file_path: &Path, error: String, now: Option<SystemTime>) {
         let Some((mtime, len)) = file_fingerprint(file_path) else {
@@ -228,6 +260,38 @@ mod tests {
             .write_all(b"123456789")
             .unwrap();
         assert_eq!(cache.get_tracks("hash", 0, &temp_path), None);
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_媒体信息缓存文件长度变化后应失效() {
+        let cache = SubtitleCache::new();
+        let temp_path = std::env::temp_dir().join("subtitle_cache_test_info_len.mkv");
+        std::fs::File::create(&temp_path)
+            .unwrap()
+            .write_all(b"12345")
+            .unwrap();
+
+        let info = VideoInfo {
+            duration_ms: Some(6000),
+            title: Some("Movie".to_string()),
+            date_utc: Some(978_307_200),
+            muxing_app: "mkvmerge".to_string(),
+            writing_app: "libebml".to_string(),
+            video_tracks: vec![],
+            audio_tracks: vec![],
+        };
+        cache.set_video_info("hash", 0, &temp_path, info.clone());
+        assert_eq!(cache.get_video_info("hash", 0, &temp_path), Some(info));
+
+        // 文件增长 → len 变化 → 缓存失效
+        std::fs::File::create(&temp_path)
+            .unwrap()
+            .write_all(b"123456789")
+            .unwrap();
+        assert_eq!(cache.get_video_info("hash", 0, &temp_path), None);
 
         let _ = std::fs::remove_file(&temp_path);
     }

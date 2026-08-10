@@ -60,6 +60,7 @@ describe("Player 页面组件", () => {
       getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
       getVideoChapters: vi.fn(),
+      getVideoInfo: vi.fn(),
       subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
         const runInitial = async () => {
           try {
@@ -1657,5 +1658,500 @@ describe("Player 页面组件", () => {
     });
 
     expect(screen.queryByText("章节")).not.toBeInTheDocument();
+  });
+
+  it("点击章节项时应该调用播放器跳转到对应时间", async () => {
+    vi.useFakeTimers();
+    const mockStatus = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    };
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+      mockStatus,
+    );
+    vi.mocked(mockTorrentRepository.getVideoChapters).mockResolvedValue([
+      { start_ms: 0, end_ms: 3661000, title: "开场", language: "chi" },
+      { start_ms: 3661000, end_ms: null, title: "正片", language: "jpn" },
+    ]);
+
+    renderPlayer(
+      "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mkv",
+    );
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(screen.getByText("正片")).toBeInTheDocument();
+
+    const vjsMock = (globalThis as any).__vjsMock;
+    const seekSpy = vi.spyOn(vjsMock, "seek");
+
+    const chapterButton = screen.getByText("正片").closest("button");
+    expect(chapterButton).not.toBeNull();
+
+    act(() => {
+      fireEvent.click(chapterButton!);
+    });
+
+    expect(seekSpy).toHaveBeenCalledWith(3661);
+  });
+
+  it("当章节跳转失败时，应该显示错误提示", async () => {
+    vi.useFakeTimers();
+    const mockStatus = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    };
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+      mockStatus,
+    );
+    vi.mocked(mockTorrentRepository.getVideoChapters).mockResolvedValue([
+      { start_ms: 0, end_ms: 3661000, title: "开场", language: "chi" },
+    ]);
+
+    renderPlayer(
+      "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mkv",
+    );
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    const vjsMock = (globalThis as any).__vjsMock;
+    const originalSeek = vjsMock.seek;
+    vjsMock.seek = vi.fn().mockRejectedValue(new Error("seek failed"));
+
+    const chapterButton = screen.getByText("开场").closest("button");
+    expect(chapterButton).not.toBeNull();
+
+    act(() => {
+      fireEvent.click(chapterButton!);
+    });
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith("跳转到章节失败");
+
+    vjsMock.seek = originalSeek;
+    vi.useRealTimers();
+  });
+
+  it("获取到媒体信息时应该渲染媒体信息区块", async () => {
+    vi.useFakeTimers();
+    const mockStatus = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    };
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+      mockStatus,
+    );
+    vi.mocked(mockTorrentRepository.getVideoInfo).mockResolvedValue({
+      duration_ms: 6001_000,
+      title: "测试电影",
+      date_utc: 978_307_200,
+      muxing_app: "mkvmerge",
+      writing_app: "libebml",
+      video_tracks: [
+        {
+          track_id: 1,
+          codec: "V_MPEG4/ISO/AVC",
+          width: 1920,
+          height: 1080,
+          language: "und",
+          default: true,
+          forced: false,
+        },
+      ],
+      audio_tracks: [
+        {
+          track_id: 2,
+          codec: "A_AAC",
+          channels: 2,
+          sampling_rate: 48000,
+          language: "jpn",
+          default: true,
+        },
+      ],
+    });
+
+    renderPlayer(
+      "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mkv",
+    );
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(mockTorrentRepository.getVideoInfo).toHaveBeenCalledWith(
+      "hash123",
+      0,
+    );
+    expect(screen.getByText("媒体信息")).toBeInTheDocument();
+    expect(screen.getByText("时长")).toBeInTheDocument();
+    expect(screen.getByText("01:40:01")).toBeInTheDocument();
+    expect(screen.getByText("标题: 测试电影")).toBeInTheDocument();
+    expect(screen.getByText("V_MPEG4/ISO/AVC 1920x1080")).toBeInTheDocument();
+    expect(screen.getByText("A_AAC 2ch 48000Hz")).toBeInTheDocument();
+  });
+
+  it("当媒体信息包含空值字段时，应该显示未知或无的回退文本", async () => {
+    vi.useFakeTimers();
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+    vi.mocked(mockTorrentRepository.getVideoInfo).mockResolvedValue({
+      duration_ms: null,
+      title: "",
+      date_utc: null,
+      muxing_app: "",
+      writing_app: "",
+      video_tracks: [],
+      audio_tracks: [],
+    });
+
+    renderPlayer(
+      "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mkv",
+    );
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(screen.getByText("媒体信息")).toBeInTheDocument();
+    expect(screen.getAllByText("未知").length).toBeGreaterThanOrEqual(3);
+    expect(screen.queryByText("标题:")).not.toBeInTheDocument();
+  });
+
+  it("在章节信息尚未就绪时，应该随状态更新节流重试获取章节", async () => {
+    vi.useFakeTimers();
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getVideoInfo).mockResolvedValue(
+      null as any,
+    );
+
+    vi.mocked(mockTorrentRepository.getVideoChapters).mockRejectedValue(
+      new Error("chapters not ready"),
+    );
+
+    let triggerUpdate: (torrents: TorrentStatusInfo[]) => void;
+    vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
+      (onUpdate) => {
+        triggerUpdate = onUpdate;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    const makeStatus = (progress: number) => ({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: progress,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(mockTorrentRepository.getVideoChapters).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      triggerUpdate([makeStatus(400)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getVideoChapters).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      triggerUpdate([makeStatus(450)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getVideoChapters).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    await act(async () => {
+      triggerUpdate([makeStatus(500)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getVideoChapters).toHaveBeenCalledTimes(3);
+
+    vi.useRealTimers();
+  });
+
+  it("在媒体信息尚未就绪时，应该随状态更新节流重试获取媒体信息", async () => {
+    vi.useFakeTimers();
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getVideoChapters).mockResolvedValue([]);
+
+    vi.mocked(mockTorrentRepository.getVideoInfo).mockRejectedValue(
+      new Error("video info not ready"),
+    );
+
+    let triggerUpdate: (torrents: TorrentStatusInfo[]) => void;
+    vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
+      (onUpdate) => {
+        triggerUpdate = onUpdate;
+        return Promise.resolve(() => {});
+      },
+    );
+
+    const makeStatus = (progress: number) => ({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: progress,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(mockTorrentRepository.getVideoInfo).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      triggerUpdate([makeStatus(400)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getVideoInfo).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      triggerUpdate([makeStatus(450)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getVideoInfo).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    await act(async () => {
+      triggerUpdate([makeStatus(500)]);
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getVideoInfo).toHaveBeenCalledTimes(3);
+
+    vi.useRealTimers();
+  });
+
+  it("当字幕轨道标题为空时，应该回退显示轨道编号", async () => {
+    vi.useFakeTimers();
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+    vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+      { id: 7, language: "eng", title: "", codec: "S_TEXT/UTF8" },
+    ]);
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+      "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello\n",
+    );
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    const trigger = screen.getByRole("combobox");
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+
+    expect(screen.getAllByText("轨道 7 (eng)").length).toBeGreaterThanOrEqual(
+      1,
+    );
+
+    vi.useRealTimers();
+  });
+
+  it("当字幕正在加载时，应该显示加载旋转图标", async () => {
+    vi.useFakeTimers();
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+    vi.mocked(mockTorrentRepository.getSubtitleTracks).mockResolvedValue([
+      { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+    ]);
+
+    let resolveVtt: (value: string) => void;
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveVtt = resolve;
+        }),
+    );
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    const spinner = document.querySelector(".animate-spin");
+    expect(spinner).toBeTruthy();
+
+    await act(async () => {
+      resolveVtt!("WEBVTT");
+    });
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    vi.useRealTimers();
+  });
+
+  it("当创建时间为空时，应该显示未知", async () => {
+    vi.useFakeTimers();
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    });
+    vi.mocked(mockTorrentRepository.getVideoInfo).mockResolvedValue({
+      duration_ms: 60000,
+      title: "",
+      date_utc: null,
+      muxing_app: "mkvmerge",
+      writing_app: "libebml",
+      video_tracks: [
+        {
+          track_id: 1,
+          codec: "V_MPEG4/ISO/AVC",
+          width: 1920,
+          height: 1080,
+          language: "und",
+          default: true,
+          forced: false,
+        },
+      ],
+      audio_tracks: [
+        {
+          track_id: 2,
+          codec: "A_AAC",
+          channels: 2,
+          sampling_rate: 48000,
+          language: "jpn",
+          default: true,
+        },
+      ],
+    });
+
+    renderPlayer("/play/hash123/0?fileName=test.mp4");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(screen.getByText("媒体信息")).toBeInTheDocument();
+    const unknownTexts = screen.getAllByText("未知");
+    expect(unknownTexts.length).toBeGreaterThanOrEqual(1);
+
+    vi.useRealTimers();
   });
 });

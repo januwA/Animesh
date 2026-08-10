@@ -15,6 +15,8 @@ import {
   SubtitleTrackInfoSchema,
   type TorrentStatusInfo,
   TorrentStatusInfoSchema,
+  type VideoInfo,
+  VideoInfoSchema,
 } from "../../domain/torrent/TorrentSchemas";
 import { HttpClient } from "../http/HttpClient";
 
@@ -205,6 +207,19 @@ export class HttpTorrentRepository implements TorrentRepository {
     const result = z.array(ChapterInfoSchema).safeParse(raw);
     if (!result.success) {
       throw new Error("torrent_get_video_chapters API structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  async getVideoInfo(infoHash: string, fileId: number): Promise<VideoInfo> {
+    const raw = await this.httpClient.getJson<unknown>(
+      `${baseUrl}/torrents/${infoHash}/files/${fileId}/info`,
+    );
+    const result = VideoInfoSchema.safeParse(raw);
+    if (!result.success) {
+      throw new Error("torrent_get_video_info API structure mismatch", {
         cause: result.error,
       });
     }
