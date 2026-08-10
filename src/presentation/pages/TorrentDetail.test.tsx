@@ -42,6 +42,7 @@ describe("TorrentDetail 页面组件", () => {
       getTorrentStatus: vi.fn(),
       getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
+      getVideoChapters: vi.fn(),
       subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
     };
 

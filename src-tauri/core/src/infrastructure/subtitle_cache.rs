@@ -1,4 +1,4 @@
-use crate::domain::subtitles::SubtitleTrackInfo;
+use crate::domain::subtitles::{ChapterInfo, SubtitleTrackInfo};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::RwLock;
@@ -12,6 +12,7 @@ const FAILURE_COOLDOWN: Duration = Duration::from_secs(30);
 pub struct SubtitleCache {
     tracks: RwLock<HashMap<String, CachedEntry<Vec<SubtitleTrackInfo>>>>,
     vtt: RwLock<HashMap<String, CachedEntry<String>>>,
+    chapters: RwLock<HashMap<String, CachedEntry<Vec<ChapterInfo>>>>,
     failures: RwLock<HashMap<String, CachedFailure>>,
 }
 
@@ -97,6 +98,37 @@ impl SubtitleCache {
         if let Some((mtime, len)) = file_fingerprint(file_path) {
             let key = format!("{}:{}:{}", info_hash, file_id, track_id);
             if let Ok(mut cache) = self.vtt.write() {
+                cache.insert(key, CachedEntry { mtime, len, data });
+            }
+        }
+    }
+
+    pub fn get_chapters(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+        file_path: &Path,
+    ) -> Option<Vec<ChapterInfo>> {
+        let key = format!("{}:{}", info_hash, file_id);
+        let cache = self.chapters.read().ok()?;
+        let entry = cache.get(&key)?;
+        if file_fingerprint(file_path) == Some((entry.mtime, entry.len)) {
+            Some(entry.data.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn set_chapters(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+        file_path: &Path,
+        data: Vec<ChapterInfo>,
+    ) {
+        if let Some((mtime, len)) = file_fingerprint(file_path) {
+            let key = format!("{}:{}", info_hash, file_id);
+            if let Ok(mut cache) = self.chapters.write() {
                 cache.insert(key, CachedEntry { mtime, len, data });
             }
         }

@@ -6,6 +6,8 @@ import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
   type AddTorrentResult,
   AddTorrentResultSchema,
+  type ChapterInfo,
+  ChapterInfoSchema,
   type FileDetails,
   FileDetailsSchema,
   type SearchResultItem,
@@ -148,6 +150,23 @@ export class TauriTorrentRepository implements TorrentRepository {
       fileId,
       trackId,
     });
+  }
+
+  async getVideoChapters(
+    infoHash: string,
+    fileId: number,
+  ): Promise<ChapterInfo[]> {
+    const raw = await invoke<unknown>("torrent_get_video_chapters", {
+      infoHash,
+      fileId,
+    });
+    const result = z.array(ChapterInfoSchema).safeParse(raw);
+    if (!result.success) {
+      throw new Error("torrent_get_video_chapters API structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 
   async subscribeTorrents(

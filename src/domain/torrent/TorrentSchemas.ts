@@ -40,11 +40,19 @@ export const SubtitleTrackInfoSchema = z.object({
   codec: z.string(),
 });
 
+export const ChapterInfoSchema = z.object({
+  start_ms: z.number(),
+  end_ms: z.number().nullable(),
+  title: z.string(),
+  language: z.string().nullable(),
+});
+
 export type SearchResultItem = z.infer<typeof SearchResultItemSchema>;
 export type FileDetails = z.infer<typeof FileDetailsSchema>;
 export type AddTorrentResult = z.infer<typeof AddTorrentResultSchema>;
 export type TorrentStatusInfo = z.infer<typeof TorrentStatusInfoSchema>;
 export type SubtitleTrackInfo = z.infer<typeof SubtitleTrackInfoSchema>;
+export type ChapterInfo = z.infer<typeof ChapterInfoSchema>;
 
 export interface AiSearchResultItem extends SearchResultItem {
   ai_score?: number;

@@ -74,6 +74,22 @@ export function formatLocalDate(
   return `${year}-${month}-${day} ${timeStr}`;
 }
 
+function padTimePart(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** 将毫秒时长格式化为 HH:mm:ss（无效或负数输入归一化为 00:00:00） */
+export function formatPlaybackTime(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "00:00:00";
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${padTimePart(hours)}:${padTimePart(minutes)}:${padTimePart(
+    seconds,
+  )}`;
+}
+
 export function formatError(err: unknown): string {
   if (err instanceof Error) {
     const messages: string[] = [err.message];

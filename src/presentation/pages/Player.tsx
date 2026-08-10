@@ -10,7 +10,10 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
-import type { SubtitleTrackInfo } from "@/domain/torrent/TorrentSchemas";
+import type {
+  ChapterInfo,
+  SubtitleTrackInfo,
+} from "@/domain/torrent/TorrentSchemas";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
@@ -22,7 +25,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/presentation/components/ui/select";
-import { createThrottleByChange, formatBytes, formatError } from "@/utils";
+import {
+  createThrottleByChange,
+  formatBytes,
+  formatError,
+  formatPlaybackTime,
+} from "@/utils";
 import "@videojs/react/video/skin.css";
 import { createPlayer, selectError, videoFeatures } from "@videojs/react";
 import { Video, VideoSkin } from "@videojs/react/video";
@@ -119,6 +127,7 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
     getTorrentStreamUrlUseCase,
     getSubtitleTracksUseCase,
     getSubtitleVttUseCase,
+    getVideoChaptersUseCase,
   } = useDI();
   const { torrents } = useTorrentStatus();
   const torrentStatus = torrents.find((t) => t?.info_hash === infoHash) ?? null;
@@ -143,6 +152,14 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
   const subtitleTracks = subtitleTracksQuery.data ?? [];
   const subtitleTracksReady = subtitleTracksQuery.data !== null;
 
+  // Video chapters (refetchable as the download progresses)
+  const chaptersQuery = useQuery<ChapterInfo[]>(
+    (_ctx) => getVideoChaptersUseCase.execute(infoHash, fileId),
+    [infoHash, fileId, getVideoChaptersUseCase],
+  );
+  const chapters = chaptersQuery.data ?? [];
+  const chaptersReady = chaptersQuery.data !== null;
+
   // Subtitle VTT sources (lazy per-track load + auto-refresh as download progresses)
   const [subtitleSources, setSubtitleSources] = useState<
     Record<number, SubtitleSource>
@@ -155,6 +172,7 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
   const subtitleTracksRetryThrottleRef = useRef(
     createThrottleByChange<number>(3000),
   );
+  const chaptersRetryThrottleRef = useRef(createThrottleByChange<number>(3000));
 
   const subtitleMutation = useMutation<string, SubtitleVttDto>(
     (_ctx, dto) => getSubtitleVttUseCase.execute(dto),
@@ -279,6 +297,15 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
     subtitleTracksQuery.refetch();
   }, [torrentStatus, subtitleTracksReady, subtitleTracksQuery.refetch]);
 
+  useEffect(() => {
+    if (chaptersReady || !torrentStatus) return;
+
+    if (!chaptersRetryThrottleRef.current.run(torrentStatus.progress_bytes)) {
+      return;
+    }
+    chaptersQuery.refetch();
+  }, [torrentStatus, chaptersReady, chaptersQuery.refetch]);
+
   const handleCopyStreamUrl = async () => {
     if (!streamUrl) return;
     try {
@@ -400,6 +427,31 @@ function PlayerCore({ infoHash, fileId, title, fileName }: PlayerParams) {
           </Button>
         </div>
       </div>
+
+      {/* Chapters */}
+      {chapters.length > 0 && (
+        <div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-foreground">章节</h2>
+          <div className="flex flex-col divide-y divide-border">
+            {chapters.map((chapter, index) => (
+              <div
+                key={chapter.start_ms}
+                className="flex items-baseline justify-between gap-3 py-1.5"
+              >
+                <span className="text-sm text-foreground wrap-break-word">
+                  <span className="text-muted-foreground mr-2">
+                    {index + 1}
+                  </span>
+                  {chapter.title}
+                </span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">
+                  {formatPlaybackTime(chapter.start_ms)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Progress & Stats */}
       <div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-4">

@@ -5,6 +5,8 @@ import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
   type AddTorrentResult,
   AddTorrentResultSchema,
+  type ChapterInfo,
+  ChapterInfoSchema,
   type FileDetails,
   FileDetailsSchema,
   type SearchResultItem,
@@ -191,6 +193,22 @@ export class HttpTorrentRepository implements TorrentRepository {
       `${baseUrl}/torrents/${infoHash}/files/${fileId}/subtitles/${trackId}`,
     );
     return response.text();
+  }
+
+  async getVideoChapters(
+    infoHash: string,
+    fileId: number,
+  ): Promise<ChapterInfo[]> {
+    const raw = await this.httpClient.getJson<unknown>(
+      `${baseUrl}/torrents/${infoHash}/files/${fileId}/chapters`,
+    );
+    const result = z.array(ChapterInfoSchema).safeParse(raw);
+    if (!result.success) {
+      throw new Error("torrent_get_video_chapters API structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 
   async subscribeTorrents(

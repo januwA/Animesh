@@ -59,6 +59,7 @@ describe("Player 页面组件", () => {
       getTorrentStatus: vi.fn(),
       getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
+      getVideoChapters: vi.fn(),
       subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
         const runInitial = async () => {
           try {
@@ -1599,5 +1600,62 @@ describe("Player 页面组件", () => {
     URL.createObjectURL = originalCreateObjectURL;
     URL.revokeObjectURL = originalRevokeObjectURL;
     vi.useRealTimers();
+  });
+
+  it("当获取到章节信息时，应该正确渲染章节列表并格式化时间", async () => {
+    vi.useFakeTimers();
+    const mockStatus = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+    };
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
+      mockStatus,
+    );
+    vi.mocked(mockTorrentRepository.getVideoChapters).mockResolvedValue([
+      { start_ms: 0, end_ms: 3661000, title: "开场", language: "chi" },
+      { start_ms: 3661000, end_ms: null, title: "正片", language: "jpn" },
+    ]);
+
+    renderPlayer(
+      "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mkv",
+    );
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(mockTorrentRepository.getVideoChapters).toHaveBeenCalledWith(
+      "hash123",
+      0,
+    );
+    expect(screen.getByText("章节")).toBeInTheDocument();
+    expect(screen.getByText("开场")).toBeInTheDocument();
+    expect(screen.getByText("正片")).toBeInTheDocument();
+    expect(screen.getByText("01:01:01")).toBeInTheDocument();
+    expect(screen.queryByText("章节")).toBeInTheDocument();
+  });
+
+  it("当章节信息为空或加载中时，不应该渲染章节区块", async () => {
+    vi.useFakeTimers();
+    vi.mocked(mockTorrentRepository.getVideoChapters).mockResolvedValue([]);
+
+    renderPlayer("/play/hash123/0");
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(screen.queryByText("章节")).not.toBeInTheDocument();
   });
 });

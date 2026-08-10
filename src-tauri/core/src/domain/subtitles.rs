@@ -9,9 +9,18 @@ pub struct SubtitleTrackInfo {
     pub codec: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ChapterInfo {
+    pub start_ms: u64,
+    pub end_ms: Option<u64>,
+    pub title: String,
+    pub language: Option<String>,
+}
+
 pub trait SubtitleExtractor: Send + Sync {
     fn extract_subtitle_tracks(&self, path: &Path) -> Result<Vec<SubtitleTrackInfo>, String>;
     fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String>;
+    fn extract_video_chapters(&self, path: &Path) -> Result<Vec<ChapterInfo>, String>;
 }
 
 pub fn strip_ass_tags(text: &str) -> String {

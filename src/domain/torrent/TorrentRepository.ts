@@ -2,6 +2,7 @@ import type { Context } from "ajanuw-context";
 import type { TorrentSearchEngine } from "./TorrentEngines";
 import type {
   AddTorrentResult,
+  ChapterInfo,
   FileDetails,
   SearchResultItem,
   SubtitleTrackInfo,
@@ -31,6 +32,7 @@ export interface TorrentRepository {
     fileId: number,
     trackId: number,
   ): Promise<string>;
+  getVideoChapters(infoHash: string, fileId: number): Promise<ChapterInfo[]>;
   subscribeTorrents(
     onUpdate: (torrents: TorrentStatusInfo[]) => void,
   ): Promise<() => void>;

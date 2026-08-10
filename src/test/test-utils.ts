@@ -27,6 +27,7 @@ import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseC
 import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUseCase";
 import { GetTorrentStatusUseCase } from "../application/torrent/GetTorrentStatusUseCase";
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
+import { GetVideoChaptersUseCase } from "../application/torrent/GetVideoChaptersUseCase";
 import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
@@ -86,6 +87,7 @@ export interface CreateContainerParamsForTest {
   getTorrentStreamUrlUseCase?: GetTorrentStreamUrlUseCase;
   getSubtitleTracksUseCase?: GetSubtitleTracksUseCase;
   getSubtitleVttUseCase?: GetSubtitleVttUseCase;
+  getVideoChaptersUseCase?: GetVideoChaptersUseCase;
 
   getSettingsUseCase?: GetSettingsUseCase;
   getDefaultTrackersUseCase?: GetDefaultTrackersUseCase;
@@ -134,6 +136,7 @@ export function createDIContainerForTest(
     getTorrentStatus: async () => ({}) as any,
     getSubtitleTracks: async () => [],
     getSubtitleVtt: async () => "",
+    getVideoChapters: async () => [],
     subscribeTorrents: async (onUpdate: (list: any[]) => void) => {
       onUpdate([]);
       return () => {};
@@ -270,6 +273,8 @@ export function createDIContainerForTest(
     new GetSubtitleTracksUseCase(torrentRepo);
   const getSubtitleVttUseCase =
     params.getSubtitleVttUseCase || new GetSubtitleVttUseCase(torrentRepo);
+  const getVideoChaptersUseCase =
+    params.getVideoChaptersUseCase || new GetVideoChaptersUseCase(torrentRepo);
 
   const getSettingsUseCase =
     params.getSettingsUseCase || new GetSettingsUseCase(settingsRepo);
@@ -365,6 +370,7 @@ export function createDIContainerForTest(
     getTorrentStreamUrlUseCase,
     getSubtitleTracksUseCase,
     getSubtitleVttUseCase,
+    getVideoChaptersUseCase,
 
     getSettingsUseCase,
     getDefaultTrackersUseCase,

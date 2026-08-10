@@ -1,5 +1,6 @@
 use crate::domain::subtitles::{
-    decode_subtitle_bytes, format_vtt_time, strip_ass_tags, SubtitleExtractor, SubtitleTrackInfo,
+    decode_subtitle_bytes, format_vtt_time, strip_ass_tags, ChapterInfo, SubtitleExtractor,
+    SubtitleTrackInfo,
 };
 use matroska_demuxer::{
     ContentCompAlgo, ContentEncoding, ContentEncodingValue, MatroskaFile, TrackType,
@@ -345,6 +346,60 @@ pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> Result<String, String
     extract_subtitle_vtt_from_reader(reader, track_id, true)
 }
 
+pub fn extract_video_chapters_from_reader<R: Read + Seek>(
+    reader: R,
+    skip_check: bool,
+) -> Result<Vec<ChapterInfo>, String> {
+    let checked_reader = if skip_check {
+        ZeroCheckReader::new_skip_check(reader)
+    } else {
+        ZeroCheckReader::new(reader)
+    };
+    let mkv =
+        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+
+    let mut chapters = Vec::new();
+    let Some(editions) = mkv.chapters() else {
+        return Ok(chapters);
+    };
+    for edition in editions {
+        for atom in edition.chapter_atoms() {
+            let start_ms = atom.time_start() / 1_000_000;
+            let end_ms = atom.time_end().map(|ns| ns / 1_000_000);
+            // 优先选择语言为中文/日文的显示名，否则取第一个
+            let display = atom
+                .displays()
+                .iter()
+                .find(|d| {
+                    matches!(
+                        d.language(),
+                        Some("chi") | Some("zho") | Some("jpn") | Some("ja")
+                    )
+                })
+                .or_else(|| atom.displays().first());
+            let (title, language) = match display {
+                Some(d) => (d.string().to_string(), d.language().map(|s| s.to_string())),
+                None => (String::new(), None),
+            };
+            if !title.is_empty() {
+                chapters.push(ChapterInfo {
+                    start_ms,
+                    end_ms,
+                    title,
+                    language,
+                });
+            }
+        }
+    }
+    Ok(chapters)
+}
+
+pub fn extract_video_chapters(path: &Path) -> Result<Vec<ChapterInfo>, String> {
+    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
+    let reader = BufReader::new(file);
+    extract_video_chapters_from_reader(reader, true)
+}
+
 pub struct MatroskaSubtitleExtractor;
 
 impl SubtitleExtractor for MatroskaSubtitleExtractor {
@@ -354,6 +409,10 @@ impl SubtitleExtractor for MatroskaSubtitleExtractor {
 
     fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String> {
         extract_subtitle_vtt(path, track_id)
+    }
+
+    fn extract_video_chapters(&self, path: &Path) -> Result<Vec<ChapterInfo>, String> {
+        extract_video_chapters(path)
     }
 }
 
@@ -549,5 +608,149 @@ mod tests {
         let cues = split_ass_frame_cues(&frames);
         assert_eq!(cues.len(), 1);
         assert_eq!(cues[0].text, "Hello");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_提取非存在文件的章节_应返回错误() {
+        let extractor = MatroskaSubtitleExtractor;
+        let path = Path::new("non_existent_file.mkv");
+        let result = extractor.extract_video_chapters(path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to open file"));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_提取无效格式文件的章节_应返回解析错误() {
+        let temp_path = std::env::temp_dir().join("invalid_mkv_test_chapters.mkv");
+        std::fs::write(&temp_path, b"invalid mkv data").unwrap();
+
+        let result = extract_video_chapters(&temp_path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to parse MKV"));
+
+        let _ = std::fs::remove_file(&temp_path);
+    }
+
+    #[test]
+    fn 测试_读取不含章节元素的合法MKV_应返回空章节列表() {
+        let mkv = build_test_mkv(false);
+        let result = extract_video_chapters_from_reader(std::io::Cursor::new(mkv), true);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Vec::<ChapterInfo>::new());
+    }
+
+    #[test]
+    fn 测试_读取含章节元素的合法MKV_应解析出章节时间与标题() {
+        let mkv = build_test_mkv(true);
+        let result = extract_video_chapters_from_reader(std::io::Cursor::new(mkv), true);
+        assert!(result.is_ok());
+        let chapters = result.unwrap();
+        assert_eq!(chapters.len(), 1);
+        assert_eq!(chapters[0].start_ms, 0);
+        assert_eq!(chapters[0].end_ms, Some(1000));
+        assert_eq!(chapters[0].title, "Opening");
+        assert_eq!(chapters[0].language.as_deref(), Some("eng"));
+    }
+
+    // EBML 编码辅助函数与最小合法 MKV 构造器
+    fn ebml_master(id: &[u8], payload: &[u8]) -> Vec<u8> {
+        let mut out = id.to_vec();
+        let len = payload.len();
+        if len < 0x80 {
+            out.push(0x80 | len as u8);
+        } else if len < 0x4000 {
+            out.push(0x40 | (len >> 8) as u8);
+            out.push(len as u8);
+        } else if len < 0x200000 {
+            out.push(0x20 | (len >> 16) as u8);
+            out.push((len >> 8) as u8);
+            out.push(len as u8);
+        }
+        out.extend_from_slice(payload);
+        out
+    }
+
+    fn ebml_uint(id: &[u8], value: u64) -> Vec<u8> {
+        let bytes = value.to_be_bytes();
+        let start = bytes.iter().position(|&b| b != 0).unwrap_or(7);
+        let mut out = id.to_vec();
+        out.push(0x80 | (8 - start) as u8);
+        out.extend_from_slice(&bytes[start..]);
+        out
+    }
+
+    fn ebml_str(id: &[u8], s: &str) -> Vec<u8> {
+        let mut out = id.to_vec();
+        out.push(0x80 | s.len() as u8);
+        out.extend_from_slice(s.as_bytes());
+        out
+    }
+
+    fn build_test_mkv(with_chapters: bool) -> Vec<u8> {
+        let ebml = ebml_master(
+            &[0x1A, 0x45, 0xDF, 0xA3],
+            &[
+                ebml_uint(&[0x42, 0x86], 1),
+                ebml_uint(&[0x42, 0xF7], 1),
+                ebml_str(&[0x42, 0x82], "matroska"),
+                ebml_uint(&[0x42, 0x87], 4),
+                ebml_uint(&[0x42, 0x85], 2),
+            ]
+            .concat(),
+        );
+
+        let info = ebml_master(
+            &[0x15, 0x49, 0xA9, 0x66],
+            &[
+                ebml_uint(&[0x2A, 0xD7, 0xB1], 1_000_000),
+                ebml_str(&[0x4D, 0x80], "test"),
+                ebml_str(&[0x57, 0x41], "test"),
+            ]
+            .concat(),
+        );
+
+        let video = ebml_master(
+            &[0xE0],
+            &[ebml_uint(&[0xB0], 1), ebml_uint(&[0xBA], 1)].concat(),
+        );
+        let track_entry = ebml_master(
+            &[0xAE],
+            &[
+                ebml_uint(&[0xD7], 1),
+                ebml_uint(&[0x73, 0xC5], 1),
+                ebml_uint(&[0x83], 1),
+                ebml_str(&[0x86], "V_MPEG4/ISO/AVC"),
+                video,
+            ]
+            .concat(),
+        );
+        let tracks = ebml_master(&[0x16, 0x54, 0xAE, 0x6B], &track_entry);
+
+        let cluster = vec![0x1F, 0x43, 0xB6, 0x75, 0x80];
+
+        let mut segment_payload = vec![info, tracks, cluster].concat();
+        if with_chapters {
+            let chapter_display = ebml_master(
+                &[0x80],
+                &[ebml_str(&[0x85], "Opening"), ebml_str(&[0x43, 0x7C], "eng")].concat(),
+            );
+            let chapter_atom = ebml_master(
+                &[0xB6],
+                &[
+                    ebml_uint(&[0x73, 0xC4], 1),
+                    ebml_uint(&[0x91], 0),
+                    ebml_uint(&[0x92], 1_000_000_000),
+                    chapter_display,
+                ]
+                .concat(),
+            );
+            let edition = ebml_master(&[0x45, 0xB9], &chapter_atom);
+            segment_payload.extend(ebml_master(&[0x10, 0x43, 0xA7, 0x70], &edition));
+        }
+
+        let segment = ebml_master(&[0x18, 0x53, 0x80, 0x67], &segment_payload);
+        [ebml, segment].concat()
     }
 }
