@@ -245,6 +245,18 @@ fn is_drawing_frame(raw: &str) -> bool {
     raw.contains("\\p1") || raw.contains("\\p2") || raw.contains("\\p3") || raw.contains("\\p4")
 }
 
+/// 按 (开始时间, 结束时间, 文本) 精确去重字幕 cue。
+///
+/// 部分压制组（如 LoliHouse）会把同一句歌词按多个样式图层写入多条
+/// `Dialogue`（本质是叠加渲染的描边/模糊图层），转成纯文本 VTT 后这些
+/// 图层文本完全相同，若不去重会在同一时刻重复显示多份相同字幕。
+fn dedupe_subtitle_cues(cues: Vec<SubtitleCue>) -> Vec<SubtitleCue> {
+    let mut seen = std::collections::HashSet::new();
+    cues.into_iter()
+        .filter(|cue| seen.insert((cue.start_ms, cue.end_ms, cue.text.clone())))
+        .collect()
+}
+
 pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     reader: R,
     track_id: u64,
@@ -305,7 +317,7 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
             .collect()
     };
 
-    let mut sorted = cues;
+    let mut sorted = dedupe_subtitle_cues(cues);
     sorted.sort_by_key(|c| c.start_ms);
     if sorted.is_empty() {
         log::warn!(
@@ -682,6 +694,68 @@ mod tests {
         let cues = split_ass_frame_cues(&frames);
         assert_eq!(cues.len(), 1);
         assert_eq!(cues[0].text, "Hello");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_去重_相同时间相同文本的多个ASS样式图层_只保留一条() {
+        let frames = vec![
+            (
+                64040u64,
+                133470u64,
+                "1,0,OP_CHS,,0,0,0,,{\\bord8\\3c&H353433&\\1a&HFF&}即使我们转世重生  也注定会再次相遇"
+                    .to_string(),
+            ),
+            (
+                64040u64,
+                133470u64,
+                "4,0,OP_CHS,,0,0,0,,即使我们转世重生  也注定会再次相遇".to_string(),
+            ),
+            (
+                64040u64,
+                133470u64,
+                "2,0,OP_CHS_S,,0,0,0,,{\\blur5}即使我们转世重生  也注定会再次相遇"
+                    .to_string(),
+            ),
+        ];
+        let cues = dedupe_subtitle_cues(split_ass_frame_cues(&frames));
+        assert_eq!(cues.len(), 1);
+        assert_eq!(cues[0].start_ms, 64040);
+        assert_eq!(cues[0].end_ms, 133470);
+        assert_eq!(cues[0].text, "即使我们转世重生  也注定会再次相遇");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_去重_日文与中文同时间不同文本_各自保留() {
+        let frames = vec![
+            (
+                64040u64,
+                133470u64,
+                "1,0,OP_JP,,0,0,0,,{\\blur5}僕らは生まれ変わっても　めぐり逢っちゃうのさ"
+                    .to_string(),
+            ),
+            (
+                64040u64,
+                133470u64,
+                "4,0,OP_CHS,,0,0,0,,即使我们转世重生  也注定会再次相遇".to_string(),
+            ),
+        ];
+        let cues = dedupe_subtitle_cues(split_ass_frame_cues(&frames));
+        assert_eq!(cues.len(), 2);
+        assert_eq!(cues[0].text, "僕らは生まれ変わっても　めぐり逢っちゃうのさ");
+        assert_eq!(cues[1].text, "即使我们转世重生  也注定会再次相遇");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_去重_相同文本不同时间段_不合并() {
+        let frames = vec![
+            (1000u64, 3000u64, "4,0,Default,,0,0,0,,你好".to_string()),
+            (4000u64, 6000u64, "4,0,Default,,0,0,0,,你好".to_string()),
+        ];
+        let cues = dedupe_subtitle_cues(split_ass_frame_cues(&frames));
+        assert_eq!(cues.len(), 2);
     }
 
     #[test]
