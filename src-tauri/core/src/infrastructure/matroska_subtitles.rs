@@ -183,6 +183,67 @@ fn decompress_frame_data(encodings: &[ContentEncoding], data: &[u8]) -> Result<V
     Ok(result)
 }
 
+struct SubtitleCue {
+    start_ms: u64,
+    end_ms: u64,
+    text: String,
+}
+
+fn split_ass_frame_cues(frames: &[(u64, u64, String)]) -> Vec<SubtitleCue> {
+    frames
+        .iter()
+        .filter(|(_, _, raw)| !is_drawing_frame(raw))
+        .map(|(start_ms, end_ms, raw)| {
+            let text = strip_ass_tags(ass_text_field(raw)).trim().to_string();
+            SubtitleCue {
+                start_ms: *start_ms,
+                end_ms: *end_ms,
+                text,
+            }
+        })
+        .filter(|cue| !cue.text.is_empty())
+        .collect()
+}
+
+/// 切分出 ASS 帧行的文本字段。
+///
+/// 标准 ASS 事件 = 10 个字段：`Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text`，
+/// 文本前有 9 个字段分隔逗号；本项目的 MKV 帧被剥离了 `Dialogue: ` 前缀，只有 9 个字段，
+/// 文本前有 8 个逗号。override 块 `{...}` 内可能含逗号（如 `\fad(0,200)`、`\pos(1041,862)`），
+/// 这些逗号不能被当作字段分隔符。
+fn ass_text_field(raw: &str) -> &str {
+    let starts_with_type =
+        raw.trim_start().starts_with("Dialogue:") || raw.trim_start().starts_with("Comment:");
+    let field_sep_count = if starts_with_type { 9 } else { 8 };
+
+    let mut brace_depth = 0u32;
+    let mut top_level_commas = 0u32;
+    let mut split_at = None;
+    for (i, c) in raw.char_indices() {
+        match c {
+            '{' => brace_depth += 1,
+            '}' => brace_depth = brace_depth.saturating_sub(1),
+            ',' if brace_depth == 0 => {
+                top_level_commas += 1;
+                if top_level_commas == field_sep_count {
+                    split_at = Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    match split_at {
+        Some(i) => &raw[i + 1..],
+        None => raw,
+    }
+}
+
+/// 判断该帧是否为纯矢量绘图（ASS `\p1`..`\p4` 绘制模式），
+/// 这类帧转成 VTT 文本只会输出 `m 50 0 l ...` 之类的绘图指令，应整体丢弃。
+fn is_drawing_frame(raw: &str) -> bool {
+    raw.contains("\\p1") || raw.contains("\\p2") || raw.contains("\\p3") || raw.contains("\\p4")
+}
+
 pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     reader: R,
     track_id: u64,
@@ -211,46 +272,62 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
         .content_encodings()
         .map(|encodings| encodings.to_vec())
         .unwrap_or_default();
+    let is_ass = codec == "S_TEXT/ASS" || codec == "S_TEXT/SSA";
 
+    let mut frames: Vec<(u64, u64, String)> = Vec::new();
     let mut frame = matroska_demuxer::Frame::default();
-    let mut cues = Vec::new();
-
     while let Ok(true) = mkv.next_frame(&mut frame) {
-        if frame.track == track_id {
-            let start_ms = frame.timestamp;
-            let duration_ms = frame.duration.unwrap_or(3000);
-            let end_ms = start_ms + duration_ms;
-
-            let frame_data = decompress_frame_data(&encodings, &frame.data)?;
-
-            let raw_text = if codec == "S_TEXT/ASS" || codec == "S_TEXT/SSA" {
-                let s = decode_subtitle_bytes(&frame_data);
-                let parts: Vec<&str> = s.splitn(9, ',').collect();
-                if parts.len() == 9 {
-                    parts[8].to_string()
-                } else {
-                    s
-                }
-            } else {
-                decode_subtitle_bytes(&frame_data)
-            };
-
-            let clean_text = strip_ass_tags(&raw_text);
-            cues.push((start_ms, end_ms, clean_text));
+        if frame.track != track_id {
+            continue;
         }
+        let start_ms = frame.timestamp;
+        let duration_ms = frame.duration.unwrap_or(3000);
+        let end_ms = start_ms + duration_ms;
+        let frame_data = decompress_frame_data(&encodings, &frame.data)?;
+        frames.push((start_ms, end_ms, decode_subtitle_bytes(&frame_data)));
+    }
+    log::info!("字幕提取: track_id={} 收集到 {} 帧", track_id, frames.len());
+
+    let cues = if is_ass {
+        let cues = split_ass_frame_cues(&frames);
+        log::info!("ASS 帧拆分解析完成，共 {} 条", cues.len());
+        cues
+    } else {
+        frames
+            .iter()
+            .map(|(start_ms, end_ms, text)| SubtitleCue {
+                start_ms: *start_ms,
+                end_ms: *end_ms,
+                text: text.trim().to_string(),
+            })
+            .filter(|cue| !cue.text.is_empty())
+            .collect()
+    };
+
+    let mut sorted = cues;
+    sorted.sort_by_key(|c| c.start_ms);
+    if sorted.is_empty() {
+        log::warn!(
+            "字幕提取结果为空: track_id={} codec={} 帧数={}",
+            track_id,
+            codec,
+            frames.len()
+        );
     }
 
-    cues.sort_by_key(|c| c.0);
-
     let mut vtt = String::from("WEBVTT\n\n");
-    for (i, (start, end, text)) in cues.into_iter().enumerate() {
+    for (i, (start, end, text)) in sorted
+        .into_iter()
+        .map(|c| (c.start_ms, c.end_ms, c.text))
+        .enumerate()
+    {
         vtt.push_str(&format!("{}\n", i + 1));
         vtt.push_str(&format!(
             "{} --> {}\n",
             format_vtt_time(start),
             format_vtt_time(end)
         ));
-        vtt.push_str(&format!("{}\n\n", text.trim()));
+        vtt.push_str(&format!("{}\n\n", text));
     }
 
     Ok(vtt)
@@ -369,5 +446,108 @@ mod tests {
         let data = b"Plain subtitle frame";
         let result = decompress_frame_data(&[], data).unwrap();
         assert_eq!(result, data);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_帧拆分_标准ASS对话行_取文本并清理标签() {
+        let frames = vec![(
+            1000u64,
+            3000u64,
+            "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,{\\pos(10,10)}Hello".to_string(),
+        )];
+        let cues = split_ass_frame_cues(&frames);
+        assert_eq!(cues.len(), 1);
+        assert_eq!(cues[0].start_ms, 1000);
+        assert_eq!(cues[0].end_ms, 3000);
+        assert_eq!(cues[0].text, "Hello");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_帧拆分_文本含逗号时完整保留() {
+        let frames = vec![(
+            1000u64,
+            3000u64,
+            "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,Hello, world, again".to_string(),
+        )];
+        let cues = split_ass_frame_cues(&frames);
+        assert_eq!(cues.len(), 1);
+        assert_eq!(cues[0].text, "Hello, world, again");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_帧拆分_非标准帧_未分到文本字段时保留原文() {
+        let frames = vec![(1000u64, 3000u64, "Plain frame text".to_string())];
+        let cues = split_ass_frame_cues(&frames);
+        assert_eq!(cues.len(), 1);
+        assert_eq!(cues[0].text, "Plain frame text");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_帧拆分_九字段无前缀帧_取最后字段并按帧时间() {
+        let frames = vec![(
+            1600u64,
+            4000u64,
+            "1,0,Default,,0,0,0,,我的名字是花织米蒂娅".to_string(),
+        )];
+        let cues = split_ass_frame_cues(&frames);
+        assert_eq!(cues.len(), 1);
+        assert_eq!(cues[0].start_ms, 1600);
+        assert_eq!(cues[0].end_ms, 4000);
+        assert_eq!(cues[0].text, "我的名字是花织米蒂娅");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_帧拆分_空文本帧应被过滤() {
+        let frames = vec![
+            (1000u64, 3000u64, "1,0,Default,,0,0,0,,".to_string()),
+            (4000u64, 6000u64, "  ".to_string()),
+        ];
+        let cues = split_ass_frame_cues(&frames);
+        assert!(cues.is_empty());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_帧拆分_override块内逗号_不切断文本() {
+        let frames = vec![(
+            1000u64,
+            3000u64,
+            "1,0,Default,,0,0,0,,{\\fad(0,200)\\pos(960,30)}本字幕由{\\c&HFF110F&}喵萌奶茶屋制作"
+                .to_string(),
+        )];
+        let cues = split_ass_frame_cues(&frames);
+        assert_eq!(cues.len(), 1);
+        assert_eq!(cues[0].text, "本字幕由喵萌奶茶屋制作");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_帧拆分_纯矢量绘图帧_应丢弃() {
+        let frames = vec![(
+            1000u64,
+            3000u64,
+            "1,0,Default,,0,0,0,,{\\fscx43.87\\fscy43.87\\an7\\p1\\pos(714.8,813.2)}m 50 0 l 63.6 28 50 50 m 100 50 l 72 63 50 50{\\p0}".to_string(),
+        )];
+        let cues = split_ass_frame_cues(&frames);
+        assert!(cues.is_empty());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_帧拆分_标准Dialogue行_override块内逗号_不切断文本() {
+        let frames = vec![(
+            1000u64,
+            3000u64,
+            "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,{\\fad(0,200)\\pos(960,30)}Hello"
+                .to_string(),
+        )];
+        let cues = split_ass_frame_cues(&frames);
+        assert_eq!(cues.len(), 1);
+        assert_eq!(cues[0].text, "Hello");
     }
 }

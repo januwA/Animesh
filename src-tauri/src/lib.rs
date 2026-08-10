@@ -3,7 +3,12 @@ use animesh_core::torrent::{AddTorrentResult, TorrentStatusInfo};
 use animesh_core::torrent_manager::TorrentManager;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tauri::Manager;
+
+/// 单个字幕解析任务的执行超时。文件过大或未下载完成时解析可能极慢，
+/// 超时后及时返回并进入失败冷却，避免阻塞线程被长期占用。
+const SUBTITLE_PARSE_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub fn trace_log(msg: &str) {
     log::info!("[TRACE] {}", msg);
@@ -327,26 +332,63 @@ async fn torrent_get_subtitle_tracks(
 
     let cache = manager.subtitle_cache.clone();
     let cache_path = path.clone();
+    let failure_key = format!("{}:{}", info_hash, file_id);
+    if let Some(error) = cache.get_failure(&failure_key, &cache_path, None) {
+        trace_log(&format!(
+            "torrent_get_subtitle_tracks failure cached, info_hash: {}, file_id: {}",
+            info_hash, file_id
+        ));
+        return Err(error);
+    }
     if let Some(tracks) = cache.get_tracks(info_hash, file_id, &cache_path) {
+        trace_log(&format!(
+            "torrent_get_subtitle_tracks cache hit, info_hash: {}, file_id: {}",
+            info_hash, file_id
+        ));
         return Ok(tracks);
     }
 
-    match tokio::task::spawn_blocking(move || {
+    let parse = tokio::task::spawn_blocking(move || {
         let file = std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
         let reader = std::io::BufReader::new(file);
         animesh_core::subtitles::extract_subtitle_tracks_from_reader(reader, true)
-    })
-    .await
-    {
-        Ok(Ok(tracks)) => {
+    });
+
+    match tokio::time::timeout(SUBTITLE_PARSE_TIMEOUT, parse).await {
+        Ok(Ok(Ok(tracks))) => {
+            trace_log(&format!(
+                "torrent_get_subtitle_tracks extracted {} tracks, info_hash: {}, file_id: {}",
+                tracks.len(),
+                info_hash,
+                file_id
+            ));
             cache.set_tracks(info_hash, file_id, &cache_path, tracks.clone());
             Ok(tracks)
         }
-        Ok(Err(e)) => Err(format!(
-            "Failed to extract tracks (possibly file is incomplete): {}",
-            e
-        )),
-        Err(e) => Err(format!("Task spawn error: {}", e)),
+        Ok(Ok(Err(e))) => {
+            log::error!(
+                "torrent_get_subtitle_tracks extraction failed, info_hash: {}, file_id: {}: {}",
+                info_hash,
+                file_id,
+                e
+            );
+            cache.set_failure(&failure_key, &cache_path, e.clone(), None);
+            Err(format!(
+                "Failed to extract tracks (possibly file is incomplete): {}",
+                e
+            ))
+        }
+        Ok(Err(e)) => Err(format!("Task spawn error: {}", e)),
+        Err(_) => {
+            log::error!(
+                "torrent_get_subtitle_tracks extraction timed out, info_hash: {}, file_id: {}",
+                info_hash,
+                file_id
+            );
+            let message = "Failed to extract tracks: parse timed out".to_string();
+            cache.set_failure(&failure_key, &cache_path, message.clone(), None);
+            Err(message)
+        }
     }
 }
 
@@ -377,21 +419,61 @@ async fn torrent_get_subtitle_vtt(
 
     let cache = manager.subtitle_cache.clone();
     let cache_path = path.clone();
+    let failure_key = format!("{}:{}:{}", info_hash, file_id, track_id);
+    if let Some(error) = cache.get_failure(&failure_key, &cache_path, None) {
+        trace_log(&format!(
+            "torrent_get_subtitle_vtt failure cached, info_hash: {}, file_id: {}, track_id: {}",
+            info_hash, file_id, track_id
+        ));
+        return Err(error);
+    }
     if let Some(vtt) = cache.get_vtt(info_hash, file_id, track_id, &cache_path) {
+        trace_log(&format!(
+            "torrent_get_subtitle_vtt cache hit, info_hash: {}, file_id: {}, track_id: {}",
+            info_hash, file_id, track_id
+        ));
         return Ok(vtt);
     }
 
-    match tokio::task::spawn_blocking(move || {
+    let parse = tokio::task::spawn_blocking(move || {
         animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
-    })
-    .await
-    {
-        Ok(Ok(vtt)) => {
+    });
+
+    match tokio::time::timeout(SUBTITLE_PARSE_TIMEOUT, parse).await {
+        Ok(Ok(Ok(vtt))) => {
+            trace_log(&format!(
+                "torrent_get_subtitle_vtt extracted vtt length={}, info_hash: {}, file_id: {}, track_id: {}",
+                vtt.len(),
+                info_hash,
+                file_id,
+                track_id
+            ));
             cache.set_vtt(info_hash, file_id, track_id, &cache_path, vtt.clone());
             Ok(vtt)
         }
-        Ok(Err(e)) => Err(e),
-        Err(e) => Err(format!("Task spawn error: {}", e)),
+        Ok(Ok(Err(e))) => {
+            log::error!(
+                "torrent_get_subtitle_vtt extraction failed, info_hash: {}, file_id: {}, track_id: {}: {}",
+                info_hash,
+                file_id,
+                track_id,
+                e
+            );
+            cache.set_failure(&failure_key, &cache_path, e.clone(), None);
+            Err(e)
+        }
+        Ok(Err(e)) => Err(format!("Task spawn error: {}", e)),
+        Err(_) => {
+            log::error!(
+                "torrent_get_subtitle_vtt extraction timed out, info_hash: {}, file_id: {}, track_id: {}",
+                info_hash,
+                file_id,
+                track_id
+            );
+            let message = "Failed to extract vtt: parse timed out".to_string();
+            cache.set_failure(&failure_key, &cache_path, message.clone(), None);
+            Err(message)
+        }
     }
 }
 
