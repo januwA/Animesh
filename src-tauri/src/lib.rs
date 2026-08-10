@@ -8,7 +8,7 @@ use tauri::Manager;
 
 /// 单个字幕解析任务的执行超时。文件过大或未下载完成时解析可能极慢，
 /// 超时后及时返回并进入失败冷却，避免阻塞线程被长期占用。
-const SUBTITLE_PARSE_TIMEOUT: Duration = Duration::from_secs(60);
+const PARSE_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub fn trace_log(msg: &str) {
     log::info!("[TRACE] {}", msg);
@@ -354,7 +354,7 @@ async fn torrent_get_subtitle_tracks(
         animesh_core::subtitles::extract_subtitle_tracks_from_reader(reader, true)
     });
 
-    match tokio::time::timeout(SUBTITLE_PARSE_TIMEOUT, parse).await {
+    match tokio::time::timeout(PARSE_TIMEOUT, parse).await {
         Ok(Ok(Ok(tracks))) => {
             trace_log(&format!(
                 "torrent_get_subtitle_tracks extracted {} tracks, info_hash: {}, file_id: {}",
@@ -439,7 +439,7 @@ async fn torrent_get_subtitle_vtt(
         animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
     });
 
-    match tokio::time::timeout(SUBTITLE_PARSE_TIMEOUT, parse).await {
+    match tokio::time::timeout(PARSE_TIMEOUT, parse).await {
         Ok(Ok(Ok(vtt))) => {
             trace_log(&format!(
                 "torrent_get_subtitle_vtt extracted vtt length={}, info_hash: {}, file_id: {}, track_id: {}",
@@ -520,7 +520,7 @@ async fn torrent_get_video_chapters(
     let parse =
         tokio::task::spawn_blocking(move || animesh_core::subtitles::extract_video_chapters(&path));
 
-    match tokio::time::timeout(SUBTITLE_PARSE_TIMEOUT, parse).await {
+    match tokio::time::timeout(PARSE_TIMEOUT, parse).await {
         Ok(Ok(Ok(chapters))) => {
             trace_log(&format!(
                 "torrent_get_video_chapters extracted {} chapters, info_hash: {}, file_id: {}",
@@ -596,7 +596,7 @@ async fn torrent_get_video_info(
     let parse =
         tokio::task::spawn_blocking(move || animesh_core::subtitles::extract_video_info(&path));
 
-    match tokio::time::timeout(SUBTITLE_PARSE_TIMEOUT, parse).await {
+    match tokio::time::timeout(PARSE_TIMEOUT, parse).await {
         Ok(Ok(Ok(info))) => {
             cache.set_video_info(info_hash, file_id, &cache_path, info.clone());
             Ok(info)

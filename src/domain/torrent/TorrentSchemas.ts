@@ -67,8 +67,6 @@ export const AudioTrackInfoSchema = z.object({
 });
 
 export const VideoInfoSchema = z.object({
-  duration_ms: z.number().nullable(),
-  title: z.string().nullable(),
   date_utc: z.number().nullable(),
   muxing_app: z.string(),
   writing_app: z.string(),

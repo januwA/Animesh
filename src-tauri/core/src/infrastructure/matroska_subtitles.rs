@@ -408,16 +408,6 @@ const fn date_utc_ns_to_unix_secs(ns_since_2001: i64) -> i64 {
     ns_since_2001 / NANOS_PER_SEC + UNIX_SECS_AT_2001
 }
 
-const fn duration_ns_to_ms(ns: Option<f64>) -> Option<u64> {
-    let Some(ns) = ns else {
-        return None;
-    };
-    if ns <= 0.0 {
-        return Some(0);
-    }
-    Some(ns as u64 / 1_000_000)
-}
-
 pub fn extract_video_info_from_reader<R: Read + Seek>(
     reader: R,
     skip_check: bool,
@@ -470,8 +460,6 @@ pub fn extract_video_info_from_reader<R: Read + Seek>(
     }
 
     Ok(VideoInfo {
-        duration_ms: duration_ns_to_ms(info.duration()),
-        title: info.title().map(|s| s.to_string()),
         date_utc: info.date_utc().map(date_utc_ns_to_unix_secs),
         muxing_app: info.muxing_app().to_string(),
         writing_app: info.writing_app().to_string(),
@@ -769,8 +757,6 @@ mod tests {
         assert!(result.is_ok());
         let info = result.unwrap();
 
-        assert_eq!(info.duration_ms, None);
-        assert_eq!(info.title, None);
         assert_eq!(info.date_utc, None);
         assert_eq!(info.muxing_app, "test");
         assert_eq!(info.writing_app, "test");
@@ -790,15 +776,6 @@ mod tests {
         assert_eq!(date_utc_ns_to_unix_secs(0), 978_307_200);
         // 2001-01-01T00:00:01Z
         assert_eq!(date_utc_ns_to_unix_secs(1_000_000_000), 978_307_201);
-    }
-
-    #[test]
-    fn 测试_时长纳秒转毫秒() {
-        assert_eq!(duration_ns_to_ms(None), None);
-        assert_eq!(duration_ns_to_ms(Some(0.0)), Some(0));
-        assert_eq!(duration_ns_to_ms(Some(1_000_000.0)), Some(1));
-        assert_eq!(duration_ns_to_ms(Some(6_001_000_000.0)), Some(6001));
-        assert_eq!(duration_ns_to_ms(Some(-5.0)), Some(0));
     }
 
     // EBML 编码辅助函数与最小合法 MKV 构造器

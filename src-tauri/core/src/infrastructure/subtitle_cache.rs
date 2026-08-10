@@ -275,8 +275,6 @@ mod tests {
             .unwrap();
 
         let info = VideoInfo {
-            duration_ms: Some(6000),
-            title: Some("Movie".to_string()),
             date_utc: Some(978_307_200),
             muxing_app: "mkvmerge".to_string(),
             writing_app: "libebml".to_string(),

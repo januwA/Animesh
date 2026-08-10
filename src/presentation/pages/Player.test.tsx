@@ -1782,8 +1782,6 @@ describe("Player 页面组件", () => {
       mockStatus,
     );
     vi.mocked(mockTorrentRepository.getVideoInfo).mockResolvedValue({
-      duration_ms: 6001_000,
-      title: "测试电影",
       date_utc: 978_307_200,
       muxing_app: "mkvmerge",
       writing_app: "libebml",
@@ -1823,9 +1821,6 @@ describe("Player 页面组件", () => {
       0,
     );
     expect(screen.getByText("媒体信息")).toBeInTheDocument();
-    expect(screen.getByText("时长")).toBeInTheDocument();
-    expect(screen.getByText("01:40:01")).toBeInTheDocument();
-    expect(screen.getByText("标题: 测试电影")).toBeInTheDocument();
     expect(screen.getByText("V_MPEG4/ISO/AVC 1920x1080")).toBeInTheDocument();
     expect(screen.getByText("A_AAC 2ch 48000Hz")).toBeInTheDocument();
   });
@@ -1847,8 +1842,6 @@ describe("Player 页面组件", () => {
       peers_total: 0,
     });
     vi.mocked(mockTorrentRepository.getVideoInfo).mockResolvedValue({
-      duration_ms: null,
-      title: "",
       date_utc: null,
       muxing_app: "",
       writing_app: "",
@@ -2114,8 +2107,6 @@ describe("Player 页面组件", () => {
       peers_total: 0,
     });
     vi.mocked(mockTorrentRepository.getVideoInfo).mockResolvedValue({
-      duration_ms: 60000,
-      title: "",
       date_utc: null,
       muxing_app: "mkvmerge",
       writing_app: "libebml",

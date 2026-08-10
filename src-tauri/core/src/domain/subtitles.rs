@@ -19,8 +19,6 @@ pub struct ChapterInfo {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct VideoInfo {
-    pub duration_ms: Option<u64>,
-    pub title: Option<String>,
     /// Unix 时间戳（秒）。源数据为纳秒级自 2001-01-01 起算。
     pub date_utc: Option<i64>,
     pub muxing_app: String,

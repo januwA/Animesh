@@ -440,18 +440,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
               <Card className="bg-muted/50 border-border">
                 <CardContent className="flex flex-col items-center justify-center p-3">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-                    时长
-                  </span>
-                  <span className="text-sm font-semibold whitespace-nowrap">
-                    {videoInfo.duration_ms !== null
-                      ? formatPlaybackTime(videoInfo.duration_ms)
-                      : "未知"}
-                  </span>
-                </CardContent>
-              </Card>
-              <Card className="bg-muted/50 border-border">
-                <CardContent className="flex flex-col items-center justify-center p-3">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
                     创建时间
                   </span>
                   <span className="text-xs sm:text-sm font-semibold text-center">
@@ -497,21 +485,15 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
                     封装工具
                   </span>
-                  <span
-                    className="text-xs sm:text-sm font-semibold text-center break-all"
-                    title={`Muxing: ${videoInfo.muxing_app}\nWriting: ${videoInfo.writing_app}`}
-                  >
+                  <span className="text-xs sm:text-sm font-semibold text-center break-all">
                     {videoInfo.muxing_app || "未知"}
+                  </span>
+                  <span className="text-xs sm:text-sm font-semibold text-center break-all">
+                    {videoInfo.writing_app || "未知"}
                   </span>
                 </CardContent>
               </Card>
             </div>
-
-            {videoInfo.title && (
-              <p className="text-sm text-muted-foreground break-words">
-                标题: {videoInfo.title}
-              </p>
-            )}
           </div>
         )}
 
