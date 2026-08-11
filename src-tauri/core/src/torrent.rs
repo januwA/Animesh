@@ -10,14 +10,14 @@ pub struct FileDetails {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AddTorrentResult {
     pub info_hash: String,
-    pub name: Option<String>,
+    pub name: String,
     pub files: Vec<FileDetails>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TorrentStatusInfo {
     pub info_hash: String,
-    pub name: Option<String>,
+    pub name: String,
     pub progress_bytes: u64,
     pub total_bytes: u64,
     pub finished: bool,

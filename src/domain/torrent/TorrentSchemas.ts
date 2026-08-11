@@ -15,13 +15,13 @@ export const FileDetailsSchema = z.object({
 
 export const AddTorrentResultSchema = z.object({
   info_hash: z.string(),
-  name: z.string().nullable(),
+  name: z.string(),
   files: z.array(FileDetailsSchema),
 });
 
 export const TorrentStatusInfoSchema = z.object({
   info_hash: z.string(),
-  name: z.string().nullable(),
+  name: z.string(),
   progress_bytes: z.number(),
   total_bytes: z.number(),
   finished: z.boolean(),

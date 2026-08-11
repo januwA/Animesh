@@ -397,7 +397,7 @@ describe("Downloads 页面组件", () => {
     const mockTorrents = [
       {
         info_hash: "hash111",
-        name: null,
+        name: "",
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,

@@ -26,12 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/presentation/components/ui/select";
-import {
-  createThrottleByChange,
-  formatBytes,
-  formatError,
-  formatPlaybackTime,
-} from "@/utils";
+import { formatBytes, formatError, formatPlaybackTime } from "@/utils";
 import "@videojs/react/video/skin.css";
 import {
   createPlayer,
@@ -105,6 +100,11 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   } = useDI();
   const { torrents } = useTorrentStatus();
   const torrentStatus = torrents.find((t) => t?.info_hash === infoHash) ?? null;
+  // 下载进度百分比
+  const downloadProgress =
+    torrentStatus && torrentStatus.total_bytes > 0
+      ? (torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100
+      : 0;
 
   // Stream URL (one-shot query keyed by infoHash + fileId)
   const stream = useQuery<string>(
@@ -151,10 +151,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   const torrentStatusRef = useRef(torrentStatus);
   torrentStatusRef.current = torrentStatus;
   const pendingSubtitleRef = useRef<number | null>(null);
-  const subtitleTracksRetryThrottleRef = useRef(
-    createThrottleByChange<number>(3000),
-  );
-  const chaptersRetryThrottleRef = useRef(createThrottleByChange<number>(3000));
 
   const subtitleMutation = useMutation<string, SubtitleVttDto>(
     (_ctx, dto) => getSubtitleVttUseCase.execute(dto),
@@ -249,53 +245,45 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   useEffect(() => {
     if (selectedTrackId === null) return;
     const existing = subtitleSourcesRef.current[selectedTrackId];
-    if (!existing || !torrentStatus || torrentStatus.total_bytes <= 0) return;
+    if (!existing || downloadProgress <= 0) return;
 
-    const fraction = torrentStatus.progress_bytes / torrentStatus.total_bytes;
+    const fraction = downloadProgress / 100;
     if (existing.loadedAtFraction === null) {
       patchSubtitleSource(selectedTrackId, {
         loadedAtFraction: fraction,
-        loadedWhenFinished: torrentStatus.finished,
+        loadedWhenFinished: torrentStatus?.finished,
       });
       return;
     }
 
     const needsRefresh =
-      (torrentStatus.finished && !existing.loadedWhenFinished) ||
+      (torrentStatus?.finished && !existing.loadedWhenFinished) ||
       fraction - existing.loadedAtFraction >= 0.1;
     if (needsRefresh) {
       loadSubtitleVtt(selectedTrackId, { force: true });
     }
-  }, [torrentStatus, selectedTrackId, loadSubtitleVtt, patchSubtitleSource]);
+  }, [
+    downloadProgress,
+    torrentStatus?.finished,
+    selectedTrackId,
+    loadSubtitleVtt,
+    patchSubtitleSource,
+  ]);
 
   useEffect(() => {
-    if (subtitleTracksReady || !torrentStatus) return;
-
-    if (
-      !subtitleTracksRetryThrottleRef.current.run(torrentStatus.progress_bytes)
-    ) {
-      return;
-    }
-    subtitleTracksQuery.refetch();
-  }, [torrentStatus, subtitleTracksReady, subtitleTracksQuery.refetch]);
-
-  useEffect(() => {
-    if (chaptersReady || !torrentStatus) return;
-
-    if (!chaptersRetryThrottleRef.current.run(torrentStatus.progress_bytes)) {
-      return;
-    }
-    chaptersQuery.refetch();
-  }, [torrentStatus, chaptersReady, chaptersQuery.refetch]);
-
-  useEffect(() => {
-    if (videoInfoReady || !torrentStatus) return;
-
-    if (!chaptersRetryThrottleRef.current.run(torrentStatus.progress_bytes)) {
-      return;
-    }
-    videoInfoQuery.refetch();
-  }, [torrentStatus, videoInfoReady, videoInfoQuery.refetch]);
+    if (downloadProgress <= 0 || downloadProgress >= 100) return;
+    if (!videoInfoReady) videoInfoQuery.refetch();
+    if (!chaptersReady) chaptersQuery.refetch();
+    if (!subtitleTracksReady) subtitleTracksQuery.refetch();
+  }, [
+    downloadProgress,
+    videoInfoReady,
+    videoInfoQuery.refetch,
+    subtitleTracksReady,
+    subtitleTracksQuery.refetch,
+    chaptersReady,
+    chaptersQuery.refetch,
+  ]);
 
   const handleCopyStreamUrl = async () => {
     if (!streamUrl) return;
@@ -312,10 +300,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   };
 
   const streamUrl = stream.data;
-  const canPlay =
-    !!streamUrl &&
-    !!torrentStatus &&
-    (torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100 >= 1;
+  const canPlay = !!streamUrl && !!torrentStatus && downloadProgress >= 1;
 
   return (
     <JsPlayer.Provider>
@@ -365,14 +350,12 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <h1
-              className="text-xl sm:text-2xl font-bold text-foreground break-words"
+              className="text-xl sm:text-2xl font-bold text-foreground wrap-break-word"
               title={fileName}
             >
               {fileName}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              来自种子: {title || "未命名种子"}
-            </p>
+            <p className="text-sm text-muted-foreground">来自种子: {title}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -505,7 +488,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                 <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary animate-pulse" />
                 下载进度:{" "}
                 {torrentStatus
-                  ? `${((torrentStatus.progress_bytes / torrentStatus.total_bytes) * 100).toFixed(2)}%`
+                  ? `${downloadProgress.toFixed(2)}%`
                   : "计算中..."}
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -517,12 +500,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
               </span>
             </div>
             <Progress
-              value={
-                torrentStatus
-                  ? (torrentStatus.progress_bytes / torrentStatus.total_bytes) *
-                    100
-                  : 0
-              }
+              value={torrentStatus ? downloadProgress : 0}
               className="h-2"
             />
           </div>

@@ -133,7 +133,7 @@ function TorrentDetailView({ magnet, title, infoHash }: TorrentDetailParams) {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
             <div className="space-y-1 flex-1 min-w-0">
               <h2 className="text-lg sm:text-xl font-bold break-all text-foreground">
-                {torrent.name || "未命名种子"}
+                {torrent.name}
               </h2>
               <p className="text-xs text-muted-foreground font-mono break-all">
                 Hash: {torrent.info_hash}

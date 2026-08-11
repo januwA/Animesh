@@ -101,7 +101,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         .map_err(|e| format!("解析种子失败: {}", e))?;
 
         let info_hash = format_hash(&handle.info_hash().0);
-        let name = handle.name();
+        let name = handle.name().unwrap_or_default();
 
         let files = handle
             .with_metadata(|meta| {
@@ -152,7 +152,7 @@ impl TorrentRepository for RqbitTorrentRepository {
 
         Some(TorrentStatusInfo {
             info_hash: info_hash_hex.to_string(),
-            name: torrent.name(),
+            name: torrent.name().unwrap_or_default(),
             progress_bytes: stats.progress_bytes,
             total_bytes: stats.total_bytes,
             finished,
@@ -191,7 +191,7 @@ impl TorrentRepository for RqbitTorrentRepository {
                         && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
                 TorrentStatusInfo {
                     info_hash: hex,
-                    name: torrent.name(),
+                    name: torrent.name().unwrap_or_default(),
                     progress_bytes: stats.progress_bytes,
                     total_bytes: stats.total_bytes,
                     finished,

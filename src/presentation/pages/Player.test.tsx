@@ -590,7 +590,7 @@ describe("Player 页面组件", () => {
     vi.useRealTimers();
   });
 
-  it("当字幕轨道加载失败时应该节流重试而不是每次状态更新都重试", async () => {
+  it("当字幕轨道尚未就绪时应该随每次状态更新重试", async () => {
     vi.useFakeTimers();
 
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
@@ -638,33 +638,9 @@ describe("Player 页面组件", () => {
     });
     expect(mockTorrentRepository.getSubtitleTracks).toHaveBeenCalledTimes(2);
 
-    // 短时间内（未超过节流间隔）推进进度 → 不应重复重试
+    // 每次状态更新都会触发重试
     await act(async () => {
       triggerUpdate([makeStatus(450)]);
-    });
-    await act(async () => {
-      await vi.runOnlyPendingTimersAsync();
-    });
-    expect(mockTorrentRepository.getSubtitleTracks).toHaveBeenCalledTimes(2);
-
-    // 超过节流间隔（3s）且进度有推进 → 再次重试
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    await act(async () => {
-      triggerUpdate([makeStatus(500)]);
-    });
-    await act(async () => {
-      await vi.runOnlyPendingTimersAsync();
-    });
-    expect(mockTorrentRepository.getSubtitleTracks).toHaveBeenCalledTimes(3);
-
-    // 已到节流间隔但进度未推进 → 不重复重试
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    await act(async () => {
-      triggerUpdate([makeStatus(500)]);
     });
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1862,7 +1838,7 @@ describe("Player 页面组件", () => {
     expect(screen.queryByText("标题:")).not.toBeInTheDocument();
   });
 
-  it("在章节信息尚未就绪时，应该随状态更新节流重试获取章节", async () => {
+  it("在章节信息尚未就绪时，应该随每次状态更新重试获取章节", async () => {
     vi.useFakeTimers();
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
@@ -1917,23 +1893,12 @@ describe("Player 页面组件", () => {
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
-    expect(mockTorrentRepository.getVideoChapters).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    await act(async () => {
-      triggerUpdate([makeStatus(500)]);
-    });
-    await act(async () => {
-      await vi.runOnlyPendingTimersAsync();
-    });
     expect(mockTorrentRepository.getVideoChapters).toHaveBeenCalledTimes(3);
 
     vi.useRealTimers();
   });
 
-  it("在媒体信息尚未就绪时，应该随状态更新节流重试获取媒体信息", async () => {
+  it("在媒体信息尚未就绪时，应该随每次状态更新重试获取媒体信息", async () => {
     vi.useFakeTimers();
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
@@ -1982,17 +1947,6 @@ describe("Player 页面组件", () => {
 
     await act(async () => {
       triggerUpdate([makeStatus(450)]);
-    });
-    await act(async () => {
-      await vi.runOnlyPendingTimersAsync();
-    });
-    expect(mockTorrentRepository.getVideoInfo).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
-    });
-    await act(async () => {
-      triggerUpdate([makeStatus(500)]);
     });
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
