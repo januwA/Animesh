@@ -1,7 +1,10 @@
 import {
+  ChevronDown,
+  ChevronsUpDown,
   Clock,
   ExternalLink,
   Globe,
+  Layers,
   Loader2,
   Magnet,
   Play,
@@ -9,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import type { SubmitEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
@@ -30,6 +33,11 @@ import {
   CardTitle,
 } from "@/presentation/components/ui/card";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/presentation/components/ui/collapsible";
+import {
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -46,8 +54,55 @@ import {
 import { Separator } from "@/presentation/components/ui/separator";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
+import { cn } from "@/presentation/lib/utils";
 import { formatLocalDate } from "@/utils";
 import { useAppContext } from "../context/AppContext";
+
+// 未在标题中显式标注字幕组前缀的结果归入该组，并恒排最末
+const UNKNOWN_GROUP_LABEL = "未标注";
+
+// 提取标题开头的发布组/字幕组名称（支持 [..] 与 【..】），无前缀返回 null
+function extractReleaseGroup(title: string): string | null {
+  const match = /^(?:\[([^\]]+)\]|【([^】]+)】)\s*/.exec(title);
+  return match ? (match[1] ?? match[2]) : null;
+}
+
+interface TorrentResultGroup {
+  name: string;
+  startIndex: number;
+  items: AiSearchResultItem[];
+}
+
+// 将搜索结果按字幕组分组：数量降序、同数量保持首现顺序、未标注组恒排最后；组内保持原相对顺序
+function groupTorrentResults(
+  results: AiSearchResultItem[],
+): TorrentResultGroup[] {
+  const groups = new Map<string, AiSearchResultItem[]>();
+  for (const item of results) {
+    const name = extractReleaseGroup(item.title) ?? UNKNOWN_GROUP_LABEL;
+    const list = groups.get(name);
+    if (list) {
+      list.push(item);
+    } else {
+      groups.set(name, [item]);
+    }
+  }
+
+  const sortedEntries = Array.from(groups.entries()).sort(
+    ([nameA, itemsA], [nameB, itemsB]) => {
+      if (nameA === UNKNOWN_GROUP_LABEL) return 1;
+      if (nameB === UNKNOWN_GROUP_LABEL) return -1;
+      return itemsB.length - itemsA.length;
+    },
+  );
+
+  let startIndex = 0;
+  return sortedEntries.map(([name, items]) => {
+    const group = { name, startIndex, items };
+    startIndex += items.length;
+    return group;
+  });
+}
 
 const ENGINE_LABELS: Record<TorrentSearchEngine, string> = {
   dmhy: "动漫花园",
@@ -308,6 +363,70 @@ function SearchResultCard({
   );
 }
 
+// 按字幕组分组的可折叠结果区
+interface SearchResultGroupProps {
+  group: TorrentResultGroup;
+  open: boolean;
+  onOpenChange: () => void;
+  onCopyMagnet: (magnet: string) => void;
+  onPlay: (magnet: string, title: string) => void;
+  showBestAi: boolean;
+}
+
+function SearchResultGroup({
+  group,
+  open,
+  onOpenChange,
+  onCopyMagnet,
+  onPlay,
+  showBestAi,
+}: SearchResultGroupProps) {
+  return (
+    <Collapsible open={open} onOpenChange={onOpenChange}>
+      <CollapsibleTrigger asChild>
+        <Button
+          variant="ghost"
+          data-testid={`group-trigger-${group.name}`}
+          className="w-full justify-between gap-2 rounded-xl bg-card/60 border border-border px-3.5 py-2.5 h-auto hover:bg-accent/10 hover:border-muted-foreground/30 transition-all duration-300 cursor-pointer"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground min-w-0">
+            <Layers className="h-4 w-4 text-primary shrink-0" />
+            <span className="truncate">{group.name}</span>
+          </span>
+          <span className="flex items-center gap-2 shrink-0">
+            <Badge variant="secondary">{group.items.length} 个</Badge>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-300",
+                open && "rotate-180",
+              )}
+            />
+          </span>
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-3">
+        <div className="grid gap-4">
+          {group.items.map((item, innerIndex) => {
+            const flatIndex = group.startIndex + innerIndex;
+            const isBest =
+              showBestAi && flatIndex === 0 && item.ai_score !== undefined;
+            return (
+              <SearchResultCard
+                key={flatIndex.toString()}
+                item={item}
+                index={flatIndex}
+                onCopyMagnet={onCopyMagnet}
+                onPlay={onPlay}
+                isBestAi={isBest}
+              />
+            );
+          })}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 export default function TorrentSearch() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -365,6 +484,47 @@ export default function TorrentSearch() {
       return [];
     }
   });
+
+  const groups = useMemo(
+    () => groupTorrentResults(searchResults),
+    [searchResults],
+  );
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  // 仅当搜索结果集合变化（新一次搜索）时重置为全部展开
+  const prevResultsRef = useRef(searchResults);
+  useEffect(() => {
+    if (prevResultsRef.current !== searchResults) {
+      prevResultsRef.current = searchResults;
+      setCollapsedGroups(new Set());
+    }
+  }, [searchResults]);
+
+  const allGroupsCollapsed =
+    groups.length > 0 && collapsedGroups.size === groups.length;
+
+  const toggleGroup = (name: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  };
+
+  const collapseAllGroups = () => {
+    setCollapsedGroups(new Set(groups.map((g) => g.name)));
+  };
+
+  const expandAllGroups = () => {
+    setCollapsedGroups(new Set());
+  };
 
   const keywordParam = searchParams.get("keyword");
 
@@ -590,27 +750,38 @@ export default function TorrentSearch() {
                 <span className="font-semibold text-primary">
                   {searchResults.length}
                 </span>{" "}
-                个资源
+                个资源，共{" "}
+                <span className="font-semibold text-primary">
+                  {groups.length}
+                </span>{" "}
+                个字幕组
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="toggle-all-groups"
+                onClick={
+                  allGroupsCollapsed ? expandAllGroups : collapseAllGroups
+                }
+                className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+              >
+                <ChevronsUpDown className="h-3.5 w-3.5" />
+                {allGroupsCollapsed ? "全部展开" : "全部折叠"}
+              </Button>
             </div>
 
-            <div className="grid gap-4">
-              {searchResults.map((item, index) => {
-                const isBest =
-                  selectedAiAlias !== "none" &&
-                  index === 0 &&
-                  item.ai_score !== undefined;
-                return (
-                  <SearchResultCard
-                    key={index.toString()}
-                    item={item}
-                    index={index}
-                    onCopyMagnet={handleCopyMagnet}
-                    onPlay={handlePlay}
-                    isBestAi={isBest}
-                  />
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              {groups.map((group) => (
+                <SearchResultGroup
+                  key={group.name}
+                  group={group}
+                  open={!collapsedGroups.has(group.name)}
+                  onOpenChange={() => toggleGroup(group.name)}
+                  onCopyMagnet={handleCopyMagnet}
+                  onPlay={handlePlay}
+                  showBestAi={selectedAiAlias !== "none"}
+                />
+              ))}
             </div>
           </section>
         )}
