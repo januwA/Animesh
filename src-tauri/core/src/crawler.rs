@@ -46,7 +46,6 @@ pub fn parse_dmhy_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
             link: item.link,
             pub_date: item.pub_date,
             magnet: item.enclosure.url,
-            size: item.enclosure.length,
         })
         .collect();
 
@@ -68,33 +67,6 @@ pub struct BangumiMoeTorrent {
     #[serde(rename = "infoHash")]
     pub info_hash: Option<String>,
     pub size: Option<String>,
-}
-
-fn parse_size_to_bytes(size_str: &str) -> Option<u64> {
-    let size_str = size_str.trim();
-    if size_str.is_empty() {
-        return None;
-    }
-    let mut num_str = String::new();
-    let mut unit_str = String::new();
-    for c in size_str.chars() {
-        if c.is_ascii_digit() || c == '.' {
-            num_str.push(c);
-        } else if c.is_alphabetic() {
-            unit_str.push(c);
-        }
-    }
-    let val: f64 = num_str.parse().ok()?;
-    let unit = unit_str.trim().to_uppercase();
-    let multiplier = match unit.as_str() {
-        "KB" | "K" | "KIB" => 1024.0,
-        "MB" | "M" | "MIB" => 1024.0 * 1024.0,
-        "GB" | "G" | "GIB" => 1024.0 * 1024.0 * 1024.0,
-        "TB" | "T" | "TIB" => 1024.0 * 1024.0 * 1024.0 * 1024.0,
-        "B" => 1.0,
-        _ => 1.0,
-    };
-    Some((val * multiplier) as u64)
 }
 
 pub fn parse_bangumi_moe_json(json_data: &str) -> Result<Vec<SearchResultItem>, String> {
@@ -119,7 +91,6 @@ pub fn parse_bangumi_moe_json(json_data: &str) -> Result<Vec<SearchResultItem>, 
                 link: format!("https://bangumi.moe/torrent/{}", item.id),
                 pub_date: item.publish_time,
                 magnet,
-                size: item.size.as_deref().and_then(parse_size_to_bytes),
             }
         })
         .collect();
@@ -189,7 +160,6 @@ pub fn parse_mikan_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> 
                 link: item.link,
                 pub_date: item.torrent.pub_date,
                 magnet,
-                size: item.enclosure.length,
             }
         })
         .collect();
@@ -238,7 +208,6 @@ pub fn parse_acgrip_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String>
             link: item.link,
             pub_date: item.pub_date,
             magnet: item.enclosure.url,
-            size: item.content_length,
         })
         .collect();
 
@@ -289,7 +258,6 @@ pub fn parse_anibt_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> 
             link: item.link,
             pub_date: item.pub_date,
             magnet: item.torrent.magnet_uri,
-            size: item.torrent.content_length,
         })
         .collect();
 
@@ -340,7 +308,6 @@ pub fn parse_nyaa_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
                 link: item.link,
                 pub_date: item.pub_date,
                 magnet,
-                size: parse_size_to_bytes(&item.size),
             }
         })
         .collect();
@@ -351,31 +318,6 @@ pub fn parse_nyaa_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_parse_size_to_bytes() {
-        assert_eq!(
-            parse_size_to_bytes("557.33 MB"),
-            Some((557.33 * 1024.0 * 1024.0) as u64)
-        );
-        assert_eq!(
-            parse_size_to_bytes("1.2 GB"),
-            Some((1.2 * 1024.0 * 1024.0 * 1024.0) as u64)
-        );
-        assert_eq!(parse_size_to_bytes("100 KB"), Some(100 * 1024));
-        assert_eq!(parse_size_to_bytes(" 500 B "), Some(500));
-        assert_eq!(parse_size_to_bytes(""), None);
-        assert_eq!(parse_size_to_bytes("100 B"), Some(100));
-        assert_eq!(parse_size_to_bytes("100 XYZ"), Some(100));
-        assert_eq!(
-            parse_size_to_bytes("438.3 MiB"),
-            Some((438.3 * 1024.0 * 1024.0) as u64)
-        );
-        assert_eq!(
-            parse_size_to_bytes("1.5 GiB"),
-            Some((1.5 * 1024.0 * 1024.0 * 1024.0) as u64)
-        );
-    }
 
     #[test]
     fn test_parse_bangumi_moe_json_mock() {
@@ -405,7 +347,6 @@ mod tests {
             item.magnet,
             "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff&tr=http://tr.bangumi.moe:6969/announce&tr=udp://tr.bangumi.moe:6969/announce&tr=https://tr.bangumi.moe:9696/announce"
         );
-        assert_eq!(item.size, Some((557.33 * 1024.0 * 1024.0) as u64));
     }
 
     #[test]
@@ -430,7 +371,6 @@ mod tests {
         assert_eq!(item.link, "http://share.dmhy.org/topics/view/635711.html");
         assert_eq!(item.pub_date, "Mon, 23 Jun 2026 12:00:00 +0800");
         assert_eq!(item.magnet, "magnet:?xt=urn:btih:TESTMAGNET");
-        assert_eq!(item.size, Some(350000000));
     }
 
     #[test]
@@ -504,7 +444,6 @@ mod tests {
             item.magnet,
             "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff"
         );
-        assert_eq!(item.size, Some(557318144));
     }
 
     #[test]
@@ -537,7 +476,6 @@ mod tests {
             item.magnet,
             "magnet:?xt=urn:btih:02884c75f52f499ba9eafb31004526bfd7ec8c1b"
         );
-        assert_eq!(item.size, Some((438.3 * 1024.0 * 1024.0) as u64));
     }
 
     #[test]
@@ -580,7 +518,6 @@ mod tests {
         assert_eq!(item.link, "https://acg.rip/t/355679");
         assert_eq!(item.pub_date, "Fri, 05 Jun 2026 08:15:41 -0700");
         assert_eq!(item.magnet, "https://acg.rip/t/355679.torrent");
-        assert_eq!(item.size, Some(875401216));
     }
 
     #[test]
@@ -630,7 +567,6 @@ mod tests {
             item.magnet,
             "magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e&dn=test&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce"
         );
-        assert_eq!(item.size, Some(123456789));
     }
 
     #[test]

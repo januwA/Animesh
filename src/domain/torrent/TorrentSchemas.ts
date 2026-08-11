@@ -5,7 +5,6 @@ export const SearchResultItemSchema = z.object({
   link: z.string(),
   pub_date: z.string(),
   magnet: z.string(),
-  size: z.number().nullable(),
 });
 
 export const FileDetailsSchema = z.object({

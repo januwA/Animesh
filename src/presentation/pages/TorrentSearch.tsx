@@ -2,7 +2,6 @@ import {
   Clock,
   ExternalLink,
   Globe,
-  HardDrive,
   Loader2,
   Magnet,
   Play,
@@ -47,7 +46,7 @@ import {
 import { Separator } from "@/presentation/components/ui/separator";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { formatBytes, formatLocalDate } from "@/utils";
+import { formatLocalDate } from "@/utils";
 import { useAppContext } from "../context/AppContext";
 
 const ENGINE_LABELS: Record<TorrentSearchEngine, string> = {
@@ -269,10 +268,6 @@ function SearchResultCard({
           <div className="flex items-center gap-1.5">
             <Clock className="h-3.5 w-3.5" />
             <span>{formatLocalDate(item.pub_date)}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <HardDrive className="h-3.5 w-3.5" />
-            <span>{formatBytes(item.size)}</span>
           </div>
         </div>
       </CardContent>

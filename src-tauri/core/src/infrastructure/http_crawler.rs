@@ -323,7 +323,6 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].title, "[jibaketa合成] xxx - 10 END");
         assert_eq!(results[0].magnet, "https://acg.rip/t/355679.torrent");
-        assert_eq!(results[0].size, Some(875401216));
     }
 
     #[tokio::test]
@@ -363,6 +362,5 @@ mod tests {
             results[0].magnet,
             "magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e"
         );
-        assert_eq!(results[0].size, Some(123456789));
     }
 }

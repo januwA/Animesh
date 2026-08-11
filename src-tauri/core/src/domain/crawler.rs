@@ -6,7 +6,6 @@ pub struct SearchResultItem {
     pub link: String,
     pub pub_date: String,
     pub magnet: String,
-    pub size: Option<u64>,
 }
 
 #[async_trait::async_trait]
