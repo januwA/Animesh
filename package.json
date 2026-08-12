@@ -37,6 +37,7 @@
     "@tauri-apps/plugin-window-state": "^2",
     "@videojs/react": "10.0.0-beta.25",
     "ajanuw-context": "^1.0.0",
+    "ajanuw-duration": "^0.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.13",

@@ -1,4 +1,5 @@
 import { Background } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IptvChannel, IptvCountry } from "@/domain/iptv/IptvSchemas";
 import { InMemoryCacheStore } from "@/test/InMemoryCacheStore";
@@ -91,13 +92,13 @@ describe("BrowserIptvCache 浏览器缓存实现", () => {
       expect(await cache.getChannels(Background, "cn")).toEqual(mockChannels);
     });
 
-    it("当缓存已过期（超过12小时）时，应该返回 null 并清除缓存", async () => {
+    it("当缓存已过期，应该返回 null 并清除缓存", async () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       const now = Date.now();
       vi.setSystemTime(now);
 
       await cache.setChannels(Background, "CN", mockChannels);
-      vi.setSystemTime(now + 12 * 60 * 60 * 1000 + 1);
+      vi.setSystemTime(now + new Duration({ hours: 12 }).inMilliseconds + 1);
 
       const result = await cache.getChannels(Background, "CN");
       expect(result).toBeNull();

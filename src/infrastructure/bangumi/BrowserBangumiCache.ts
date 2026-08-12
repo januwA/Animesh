@@ -1,4 +1,5 @@
 import type { Context } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
 import {
   type BangumiCalendarDay,
@@ -15,8 +16,7 @@ import {
 import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 
 export class BrowserBangumiCache implements BangumiCache {
-  private readonly ttlMs = 12 * 60 * 60 * 1000; // 12 hours
-  private readonly ttl1MMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+  private readonly ttl1MMs = new Duration({ days: 30 }).inMilliseconds;
 
   constructor(private readonly store: CacheStore) {}
 
@@ -28,7 +28,11 @@ export class BrowserBangumiCache implements BangumiCache {
   }
 
   setCalendar(_ctx: Context, calendar: BangumiCalendarDay[]): Promise<void> {
-    return this.store.setItem("bangumi:calendar", calendar, this.ttlMs);
+    return this.store.setItem(
+      "bangumi:calendar",
+      calendar,
+      new Duration({ days: 7 }).inMilliseconds,
+    );
   }
 
   getSubject(_ctx: Context, subjectId: string): Promise<BangumiSubject | null> {
@@ -72,7 +76,7 @@ export class BrowserBangumiCache implements BangumiCache {
     return this.store.setItem(
       `bangumi:episodes:${subjectId}:${offset}:${limit}`,
       page,
-      this.ttlMs,
+      new Duration({ days: 1 }).inMilliseconds,
     );
   }
 

@@ -1,4 +1,5 @@
 import { Background } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   BangumiCalendarDay,
@@ -95,14 +96,14 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
       expect(result).toEqual(mockCalendar);
     });
 
-    it("当缓存已过期（超过12小时）时，应该返回 null 并清除缓存", async () => {
+    it("当缓存已过期时，应该返回 null 并清除缓存", async () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       const now = Date.now();
       vi.setSystemTime(now);
 
       await cache.setCalendar(Background, mockCalendar);
 
-      vi.setSystemTime(now + 12 * 60 * 60 * 1000 + 1);
+      vi.setSystemTime(now + new Duration({ days: 7 }).inMilliseconds + 1);
 
       const result = await cache.getCalendar(Background);
       expect(result).toBeNull();
