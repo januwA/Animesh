@@ -19,6 +19,8 @@ pub struct Item {
     pub link: String,
     #[serde(rename = "pubDate", default)]
     pub pub_date: String,
+    #[serde(rename = "description", default)]
+    pub description: String,
     pub enclosure: Enclosure,
 }
 
@@ -46,6 +48,7 @@ pub fn parse_dmhy_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
             link: item.link,
             pub_date: item.pub_date,
             magnet: item.enclosure.url,
+            description: item.description,
         })
         .collect();
 
@@ -67,6 +70,8 @@ pub struct BangumiMoeTorrent {
     #[serde(rename = "infoHash")]
     pub info_hash: Option<String>,
     pub size: Option<String>,
+    #[serde(default)]
+    pub description: String,
 }
 
 pub fn parse_bangumi_moe_json(json_data: &str) -> Result<Vec<SearchResultItem>, String> {
@@ -91,6 +96,7 @@ pub fn parse_bangumi_moe_json(json_data: &str) -> Result<Vec<SearchResultItem>, 
                 link: format!("https://bangumi.moe/torrent/{}", item.id),
                 pub_date: item.publish_time,
                 magnet,
+                description: item.description,
             }
         })
         .collect();
@@ -127,6 +133,8 @@ pub struct MikanChannel {
 pub struct MikanItem {
     pub title: String,
     pub link: String,
+    #[serde(rename = "description", default)]
+    pub description: String,
     pub torrent: MikanTorrent,
     pub enclosure: Enclosure,
 }
@@ -160,6 +168,7 @@ pub fn parse_mikan_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> 
                 link: item.link,
                 pub_date: item.torrent.pub_date,
                 magnet,
+                description: item.description,
             }
         })
         .collect();
@@ -186,6 +195,8 @@ pub struct AcgRipItem {
     pub link: String,
     #[serde(rename = "pubDate", default)]
     pub pub_date: String,
+    #[serde(rename = "description", default)]
+    pub description: String,
     #[serde(rename = "contentLength", default)]
     pub content_length: Option<u64>,
     pub enclosure: Enclosure,
@@ -208,6 +219,7 @@ pub fn parse_acgrip_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String>
             link: item.link,
             pub_date: item.pub_date,
             magnet: item.enclosure.url,
+            description: item.description,
         })
         .collect();
 
@@ -233,6 +245,8 @@ pub struct AnibtItem {
     pub link: String,
     #[serde(rename = "pubDate", default)]
     pub pub_date: String,
+    #[serde(rename = "description", default)]
+    pub description: String,
     pub torrent: AnibtTorrent,
 }
 
@@ -258,6 +272,7 @@ pub fn parse_anibt_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> 
             link: item.link,
             pub_date: item.pub_date,
             magnet: item.torrent.magnet_uri,
+            description: item.description,
         })
         .collect();
 
@@ -283,6 +298,8 @@ pub struct NyaaItem {
     pub link: String,
     #[serde(rename = "pubDate", default)]
     pub pub_date: String,
+    #[serde(rename = "description", default)]
+    pub description: String,
     #[serde(rename = "infoHash")]
     pub info_hash: String,
     #[serde(rename = "size")]
@@ -308,6 +325,7 @@ pub fn parse_nyaa_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
                 link: item.link,
                 pub_date: item.pub_date,
                 magnet,
+                description: item.description,
             }
         })
         .collect();
@@ -329,7 +347,8 @@ mod tests {
                     "publish_time": "2026-06-22T03:00:58.506Z",
                     "magnet": "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff",
                     "infoHash": "9e7a29997087a067e5e0b6fa50653288bd2aabff",
-                    "size": "557.33 MB"
+                    "size": "557.33 MB",
+                    "description": "EP 179 1080P 简体内封"
                 }
             ]
         }"#;
@@ -347,10 +366,45 @@ mod tests {
             item.magnet,
             "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff&tr=http://tr.bangumi.moe:6969/announce&tr=udp://tr.bangumi.moe:6969/announce&tr=https://tr.bangumi.moe:9696/announce"
         );
+        assert_eq!(item.description, "EP 179 1080P 简体内封");
     }
 
     #[test]
     fn test_parse_dmhy_rss_mock() {
+        let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>动漫花园 -- xxx</title>
+    <item>
+      <title>[神楽坂 まひろ] xxx - 9 (1080P HEVC MKV)</title>
+      <link>http://share.dmhy.org/topics/view/635711.html</link>
+      <pubDate>Mon, 23 Jun 2026 12:00:00 +0800</pubDate>
+      <description><![CDATA[<p>EP 9 1080P HEVC 内封字幕</p>]]></description>
+      <enclosure url="magnet:?xt=urn:btih:TESTMAGNET" length="350000000" type="application/x-bittorrent" />
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_dmhy_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        let item = &items[0];
+        assert_eq!(item.title, "[神楽坂 まひろ] xxx - 9 (1080P HEVC MKV)");
+        assert_eq!(item.link, "http://share.dmhy.org/topics/view/635711.html");
+        assert_eq!(item.pub_date, "Mon, 23 Jun 2026 12:00:00 +0800");
+        assert_eq!(item.magnet, "magnet:?xt=urn:btih:TESTMAGNET");
+        assert_eq!(item.description, "<p>EP 9 1080P HEVC 内封字幕</p>");
+    }
+
+    #[test]
+    fn test_parse_dmhy_rss_invalid() {
+        let invalid_xml = "<invalid>";
+        let result = parse_dmhy_rss(invalid_xml);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Failed to deserialize"));
+    }
+
+    #[test]
+    fn 测试_解析dmhy_rss_缺少description时默认为空字符串() {
         let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
   <channel>
@@ -365,20 +419,7 @@ mod tests {
 </rss>"#;
 
         let items = parse_dmhy_rss(mock_xml).unwrap();
-        assert_eq!(items.len(), 1);
-        let item = &items[0];
-        assert_eq!(item.title, "[神楽坂 まひろ] xxx - 9 (1080P HEVC MKV)");
-        assert_eq!(item.link, "http://share.dmhy.org/topics/view/635711.html");
-        assert_eq!(item.pub_date, "Mon, 23 Jun 2026 12:00:00 +0800");
-        assert_eq!(item.magnet, "magnet:?xt=urn:btih:TESTMAGNET");
-    }
-
-    #[test]
-    fn test_parse_dmhy_rss_invalid() {
-        let invalid_xml = "<invalid>";
-        let result = parse_dmhy_rss(invalid_xml);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to deserialize"));
+        assert_eq!(items[0].description, "");
     }
 
     #[test]
@@ -410,6 +451,8 @@ mod tests {
             .magnet
             .contains("magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff"));
         assert!(results[1].magnet.is_empty());
+        assert!(results[0].description.is_empty());
+        assert!(results[1].description.is_empty());
     }
 
     #[test]
@@ -421,6 +464,7 @@ mod tests {
     <item>
       <title>[黒ネズミたち] xxx - 179</title>
       <link>https://mikanani.me/Home/Episode/9e7a29997087a067e5e0b6fa50653288bd2aabff</link>
+      <description><![CDATA[<p>EP 179 1080P 内封字幕</p>]]></description>
       <torrent xmlns="https://mikanani.me/0.1/">
         <link>https://mikanani.me/Home/Episode/9e7a29997087a067e5e0b6fa50653288bd2aabff</link>
         <contentLength>557318144</contentLength>
@@ -444,6 +488,7 @@ mod tests {
             item.magnet,
             "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff"
         );
+        assert_eq!(item.description, "<p>EP 179 1080P 内封字幕</p>");
     }
 
     #[test]
@@ -459,6 +504,7 @@ mod tests {
       <pubDate>Sat, 20 Jun 2026 14:23:11 -0000</pubDate>
       <nyaa:infoHash>02884c75f52f499ba9eafb31004526bfd7ec8c1b</nyaa:infoHash>
       <nyaa:size>438.3 MiB</nyaa:size>
+      <description><![CDATA[<a href="https://nyaa.si/view/2123662">#2123662 | [FSP DN] xxx</a> | 438.3 MiB | Anime - Raw | 02884c75f52f499ba9eafb31004526bfd7ec8c1b]]></description>
     </item>
   </channel>
 </rss>"#;
@@ -475,6 +521,10 @@ mod tests {
         assert_eq!(
             item.magnet,
             "magnet:?xt=urn:btih:02884c75f52f499ba9eafb31004526bfd7ec8c1b"
+        );
+        assert_eq!(
+            item.description,
+            "<a href=\"https://nyaa.si/view/2123662\">#2123662 | [FSP DN] xxx</a> | 438.3 MiB | Anime - Raw | 02884c75f52f499ba9eafb31004526bfd7ec8c1b"
         );
     }
 
@@ -505,6 +555,7 @@ mod tests {
       <pubDate>Fri, 05 Jun 2026 08:15:41 -0700</pubDate>
       <link>https://acg.rip/t/355679</link>
       <guid>https://acg.rip/t/355679</guid>
+      <description><![CDATA[<p>YLJ字幕社 1080P 内封字幕 合集</p>]]></description>
       <enclosure url="https://acg.rip/t/355679.torrent" type="application/x-bittorrent"/>
       <torrent:contentLength>875401216</torrent:contentLength>
     </item>
@@ -518,6 +569,7 @@ mod tests {
         assert_eq!(item.link, "https://acg.rip/t/355679");
         assert_eq!(item.pub_date, "Fri, 05 Jun 2026 08:15:41 -0700");
         assert_eq!(item.magnet, "https://acg.rip/t/355679.torrent");
+        assert_eq!(item.description, "<p>YLJ字幕社 1080P 内封字幕 合集</p>");
     }
 
     #[test]
@@ -539,6 +591,7 @@ mod tests {
       <link>https://anibt.net/release/rel_pGPUDY2z9WX_</link>
       <guid isPermaLink="false">rel_pGPUDY2z9WX_</guid>
       <pubDate>Fri, 17 Jul 2026 02:27:06 +0800</pubDate>
+      <description><![CDATA[<p>喵萌奶茶屋 1080P 简繁日内封字幕</p>]]></description>
       <anibt:type>anime</anibt:type>
       <anibt:releaseId>rel_pGPUDY2z9WX_</anibt:releaseId>
       <torrent xmlns="https://anibt.moe/xmlns/0.1/">
@@ -567,6 +620,7 @@ mod tests {
             item.magnet,
             "magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e&dn=test&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce"
         );
+        assert_eq!(item.description, "<p>喵萌奶茶屋 1080P 简繁日内封字幕</p>");
     }
 
     #[test]

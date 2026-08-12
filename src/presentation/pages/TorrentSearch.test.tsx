@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import {
   act,
   fireEvent,
@@ -160,6 +161,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -184,6 +186,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -283,6 +286,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -318,6 +322,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -355,6 +360,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -391,6 +397,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -427,6 +434,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -493,6 +501,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://bangumi.moe/torrent/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TESTBM",
+        description: "",
         size: 500000000,
       },
     ];
@@ -525,6 +534,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://mikanani.me/Home/Episode/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TESTMIKAN",
+        description: "",
         size: 600000000,
       },
     ];
@@ -557,6 +567,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://nyaa.si/view/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TESTNYAA",
+        description: "",
         size: 700000000,
       },
     ];
@@ -589,6 +600,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://acg.rip/t/1",
         pub_date: "2026-06-23",
         magnet: "https://acg.rip/t/1.torrent",
+        description: "",
         size: 800000000,
       },
     ];
@@ -621,6 +633,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://anibt.net/release/rel_1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TESTANIBT",
+        description: "",
         size: 900000000,
       },
     ];
@@ -898,6 +911,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-07-10",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 1500000000,
         ai_score: 95,
         ai_reason: "匹配 1080p 清晰度与简中字幕",
@@ -907,6 +921,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/2",
         pub_date: "2026-07-10",
         magnet: "magnet:?xt=urn:btih:TEST2",
+        description: "",
         size: 800000000,
         ai_score: 75,
         ai_reason: "匹配 720p 资源",
@@ -949,7 +964,7 @@ describe("TorrentSearch 页面组件", () => {
         screen.getByText("匹配 1080p 清晰度与简中字幕"),
       ).toBeInTheDocument();
       expect(screen.getByText("AI 推荐：昨日青空 720p")).toBeInTheDocument();
-      expect(screen.getByText("🤖 AI 评分过滤")).toBeInTheDocument();
+      expect(screen.getByText("AI 评分过滤")).toBeInTheDocument();
       expect(screen.getByText("匹配度: 75分")).toBeInTheDocument();
     });
 
@@ -965,6 +980,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/b1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:B1",
+        description: "",
         size: 100,
       },
       {
@@ -972,6 +988,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/a1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:A1",
+        description: "",
         size: 100,
       },
       {
@@ -979,6 +996,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/a2",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:A2",
+        description: "",
         size: 100,
       },
       {
@@ -986,6 +1004,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/a3",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:A3",
+        description: "",
         size: 100,
       },
     ];
@@ -1016,6 +1035,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/x1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:X1",
+        description: "",
         size: 100,
       },
       {
@@ -1023,6 +1043,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/x2",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:X2",
+        description: "",
         size: 100,
       },
       {
@@ -1030,6 +1051,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/gx1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:GX1",
+        description: "",
         size: 100,
       },
     ];
@@ -1059,6 +1081,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/gx1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:GX1",
+        description: "",
         size: 100,
       },
       {
@@ -1066,6 +1089,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/x1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:X1",
+        description: "",
         size: 100,
       },
     ];
@@ -1094,6 +1118,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/z1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:Z1",
+        description: "",
         size: 100,
       },
       {
@@ -1101,6 +1126,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/an1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:AN1",
+        description: "",
         size: 100,
       },
     ];
@@ -1129,6 +1155,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/a1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:A1",
+        description: "",
         size: 100,
       },
       {
@@ -1136,6 +1163,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/a2",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:A2",
+        description: "",
         size: 100,
       },
       {
@@ -1143,6 +1171,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/b1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:B1",
+        description: "",
         size: 100,
       },
     ];
@@ -1169,6 +1198,108 @@ describe("TorrentSearch 页面组件", () => {
     expect(screen.getByText(/某番 02/)).toBeInTheDocument();
   });
 
+  it("当结果包含 description 时，默认折叠展示，点击可展开查看全文，且 HTML 被正确渲染", async () => {
+    const mockResults = [
+      {
+        title: "xxx 第1集",
+        link: "http://example.com/1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "<p>1080P 简体内封字幕，共 13 集合集</p>",
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "xxx" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("torrent-desc-toggle-0")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText("1080P 简体内封字幕，共 13 集合集"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("torrent-desc-toggle-0"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("1080P 简体内封字幕，共 13 集合集"),
+      ).toBeInTheDocument();
+    });
+    // 原始 HTML 标签不应作为文本暴露
+    expect(
+      screen.queryByText("<p>1080P 简体内封字幕，共 13 集合集</p>"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("渲染 description 时应该剥离 script 等危险标签", async () => {
+    const mockResults = [
+      {
+        title: "xxx 第1集",
+        link: "http://example.com/1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:TEST1",
+        description:
+          "<p>安全描述</p><script>window.__xss_injected = true</script>",
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "xxx" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("torrent-desc-toggle-0")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("torrent-desc-toggle-0"));
+
+    await waitFor(() => {
+      expect(screen.getByText("安全描述")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId("torrent-desc-toggle-0")?.parentElement,
+    ).not.toHaveTextContent("__xss_injected");
+    expect(
+      screen.queryByText("window.__xss_injected = true"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("当结果 description 为空时，不应渲染描述折叠区", async () => {
+    const mockResults = [
+      {
+        title: "xxx 第1集",
+        link: "http://example.com/1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "xxx" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("torrent-desc-toggle-0"),
+    ).not.toBeInTheDocument();
+  });
+
   it("点击全部折叠按钮应该折叠所有组，再次点击全部展开应该恢复", async () => {
     const mockResults = [
       {
@@ -1176,6 +1307,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/a1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:A1",
+        description: "",
         size: 100,
       },
       {
@@ -1183,6 +1315,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/b1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:B1",
+        description: "",
         size: 100,
       },
     ];

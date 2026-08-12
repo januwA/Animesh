@@ -19,6 +19,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       link: "http://example.com/1",
       pub_date: "2026-07-10",
       magnet: "magnet:?xt=urn:btih:1",
+      description: "",
       size: 1024 * 1024 * 1500,
     },
     {
@@ -26,6 +27,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       link: "http://example.com/2",
       pub_date: "2026-07-10",
       magnet: "magnet:?xt=urn:btih:2",
+      description: "",
       size: 1024 * 1024 * 800,
     },
     {
@@ -33,6 +35,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       link: "http://example.com/3",
       pub_date: "2026-07-10",
       magnet: "magnet:?xt=urn:btih:3",
+      description: "",
       size: null,
     },
   ];

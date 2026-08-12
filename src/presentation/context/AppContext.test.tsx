@@ -15,6 +15,7 @@ const mockSearchResult = {
   link: "http://example.com/1",
   pub_date: "2026-06-23",
   magnet: "magnet:?xt=urn:btih:TEST1",
+  description: "",
   size: 350000000,
 };
 
