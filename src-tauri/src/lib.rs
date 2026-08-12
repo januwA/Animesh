@@ -6,10 +6,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::Manager;
 
-/// 单个字幕解析任务的执行超时。文件过大或未下载完成时解析可能极慢，
-/// 超时后及时返回并进入失败冷却，避免阻塞线程被长期占用。
-const PARSE_TIMEOUT: Duration = Duration::from_secs(60);
-
 pub fn trace_log(msg: &str) {
     log::info!("[TRACE] {}", msg);
 }
@@ -302,94 +298,16 @@ fn torrent_get_files(
 }
 
 #[tauri::command]
-async fn torrent_get_subtitle_tracks(
+async fn torrent_get_video_metadata(
     info_hash: &str,
     file_id: usize,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<Vec<animesh_core::subtitles::SubtitleTrackInfo>, String> {
+) -> Result<animesh_core::subtitles::VideoMetadata, String> {
     trace_log(&format!(
-        "Entering torrent_get_subtitle_tracks command, info_hash: {}, file_id: {}",
+        "Entering torrent_get_video_metadata command, info_hash: {}, file_id: {}",
         info_hash, file_id
     ));
-    let files = manager
-        .get_torrent_files(info_hash)
-        .ok_or_else(|| "Torrent not found".to_string())?;
-    let file_details = files
-        .iter()
-        .find(|f| f.id == file_id)
-        .ok_or_else(|| "File not found".to_string())?;
-
-    let name_lower = file_details.name.to_lowercase();
-    if !name_lower.ends_with(".mkv") {
-        return Ok(Vec::new());
-    }
-
-    let download_dir = manager.get_download_dir();
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err("Video file not downloaded or doesn't exist yet".to_string());
-    }
-
-    let cache = manager.subtitle_cache.clone();
-    let cache_path = path.clone();
-    let failure_key = format!("{}:{}", info_hash, file_id);
-    if let Some(error) = cache.get_failure(&failure_key, &cache_path, None) {
-        trace_log(&format!(
-            "torrent_get_subtitle_tracks failure cached, info_hash: {}, file_id: {}",
-            info_hash, file_id
-        ));
-        return Err(error);
-    }
-    if let Some(tracks) = cache.get_tracks(info_hash, file_id, &cache_path) {
-        trace_log(&format!(
-            "torrent_get_subtitle_tracks cache hit, info_hash: {}, file_id: {}",
-            info_hash, file_id
-        ));
-        return Ok(tracks);
-    }
-
-    let parse = tokio::task::spawn_blocking(move || {
-        let file = std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
-        let reader = std::io::BufReader::new(file);
-        animesh_core::subtitles::extract_subtitle_tracks_from_reader(reader, true)
-    });
-
-    match tokio::time::timeout(PARSE_TIMEOUT, parse).await {
-        Ok(Ok(Ok(tracks))) => {
-            trace_log(&format!(
-                "torrent_get_subtitle_tracks extracted {} tracks, info_hash: {}, file_id: {}",
-                tracks.len(),
-                info_hash,
-                file_id
-            ));
-            cache.set_tracks(info_hash, file_id, &cache_path, tracks.clone());
-            Ok(tracks)
-        }
-        Ok(Ok(Err(e))) => {
-            log::error!(
-                "torrent_get_subtitle_tracks extraction failed, info_hash: {}, file_id: {}: {}",
-                info_hash,
-                file_id,
-                e
-            );
-            cache.set_failure(&failure_key, &cache_path, e.clone(), None);
-            Err(format!(
-                "Failed to extract tracks (possibly file is incomplete): {}",
-                e
-            ))
-        }
-        Ok(Err(e)) => Err(format!("Task spawn error: {}", e)),
-        Err(_) => {
-            log::error!(
-                "torrent_get_subtitle_tracks extraction timed out, info_hash: {}, file_id: {}",
-                info_hash,
-                file_id
-            );
-            let message = "Failed to extract tracks: parse timed out".to_string();
-            cache.set_failure(&failure_key, &cache_path, message.clone(), None);
-            Err(message)
-        }
-    }
+    manager.get_video_metadata(info_hash, file_id).await
 }
 
 #[tauri::command]
@@ -438,8 +356,7 @@ async fn torrent_get_subtitle_vtt(
     let parse = tokio::task::spawn_blocking(move || {
         animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
     });
-
-    match tokio::time::timeout(PARSE_TIMEOUT, parse).await {
+    match tokio::time::timeout(Duration::from_secs(15), parse).await {
         Ok(Ok(Ok(vtt))) => {
             trace_log(&format!(
                 "torrent_get_subtitle_vtt extracted vtt length={}, info_hash: {}, file_id: {}, track_id: {}",
@@ -471,154 +388,6 @@ async fn torrent_get_subtitle_vtt(
                 track_id
             );
             let message = "Failed to extract vtt: parse timed out".to_string();
-            cache.set_failure(&failure_key, &cache_path, message.clone(), None);
-            Err(message)
-        }
-    }
-}
-
-#[tauri::command]
-async fn torrent_get_video_chapters(
-    info_hash: &str,
-    file_id: usize,
-    manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<Vec<animesh_core::subtitles::ChapterInfo>, String> {
-    trace_log(&format!(
-        "Entering torrent_get_video_chapters command, info_hash: {}, file_id: {}",
-        info_hash, file_id
-    ));
-    let download_dir = manager.get_download_dir();
-    let files = manager
-        .get_torrent_files(info_hash)
-        .ok_or_else(|| "Torrent not found".to_string())?;
-    let file_details = files
-        .iter()
-        .find(|f| f.id == file_id)
-        .ok_or_else(|| "File not found".to_string())?;
-
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err("Video file not downloaded or doesn't exist yet".to_string());
-    }
-
-    let cache = manager.subtitle_cache.clone();
-    let cache_path = path.clone();
-    let failure_key = format!("{}:{}:chapters", info_hash, file_id);
-    if let Some(error) = cache.get_failure(&failure_key, &cache_path, None) {
-        return Err(error);
-    }
-    if let Some(chapters) = cache.get_chapters(info_hash, file_id, &cache_path) {
-        trace_log(&format!(
-            "torrent_get_video_chapters cache hit, info_hash: {}, file_id: {}, chapters: {}",
-            info_hash,
-            file_id,
-            chapters.len()
-        ));
-        return Ok(chapters);
-    }
-
-    let parse =
-        tokio::task::spawn_blocking(move || animesh_core::subtitles::extract_video_chapters(&path));
-
-    match tokio::time::timeout(PARSE_TIMEOUT, parse).await {
-        Ok(Ok(Ok(chapters))) => {
-            trace_log(&format!(
-                "torrent_get_video_chapters extracted {} chapters, info_hash: {}, file_id: {}",
-                chapters.len(),
-                info_hash,
-                file_id
-            ));
-            cache.set_chapters(info_hash, file_id, &cache_path, chapters.clone());
-            Ok(chapters)
-        }
-        Ok(Ok(Err(e))) => {
-            log::error!(
-                "torrent_get_video_chapters extraction failed, info_hash: {}, file_id: {}: {}",
-                info_hash,
-                file_id,
-                e
-            );
-            cache.set_failure(&failure_key, &cache_path, e.clone(), None);
-            Err(e)
-        }
-        Ok(Err(e)) => Err(format!("Task spawn error: {}", e)),
-        Err(_) => {
-            log::error!(
-                "torrent_get_video_chapters extraction timed out, info_hash: {}, file_id: {}",
-                info_hash,
-                file_id
-            );
-            let message = "Failed to extract chapters: parse timed out".to_string();
-            cache.set_failure(&failure_key, &cache_path, message.clone(), None);
-            Err(message)
-        }
-    }
-}
-
-#[tauri::command]
-async fn torrent_get_video_info(
-    info_hash: &str,
-    file_id: usize,
-    manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<animesh_core::subtitles::VideoInfo, String> {
-    trace_log(&format!(
-        "Entering torrent_get_video_info command, info_hash: {}, file_id: {}",
-        info_hash, file_id
-    ));
-    let download_dir = manager.get_download_dir();
-    let files = manager
-        .get_torrent_files(info_hash)
-        .ok_or_else(|| "Torrent not found".to_string())?;
-    let file_details = files
-        .iter()
-        .find(|f| f.id == file_id)
-        .ok_or_else(|| "File not found".to_string())?;
-
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err("Video file not downloaded or doesn't exist yet".to_string());
-    }
-
-    let cache = manager.subtitle_cache.clone();
-    let cache_path = path.clone();
-    let failure_key = format!("{}:{}:info", info_hash, file_id);
-    if let Some(error) = cache.get_failure(&failure_key, &cache_path, None) {
-        return Err(error);
-    }
-    if let Some(info) = cache.get_video_info(info_hash, file_id, &cache_path) {
-        trace_log(&format!(
-            "torrent_get_video_info cache hit, info_hash: {}, file_id: {}",
-            info_hash, file_id
-        ));
-        return Ok(info);
-    }
-
-    let parse =
-        tokio::task::spawn_blocking(move || animesh_core::subtitles::extract_video_info(&path));
-
-    match tokio::time::timeout(PARSE_TIMEOUT, parse).await {
-        Ok(Ok(Ok(info))) => {
-            cache.set_video_info(info_hash, file_id, &cache_path, info.clone());
-            Ok(info)
-        }
-        Ok(Ok(Err(e))) => {
-            log::error!(
-                "torrent_get_video_info extraction failed, info_hash: {}, file_id: {}: {}",
-                info_hash,
-                file_id,
-                e
-            );
-            cache.set_failure(&failure_key, &cache_path, e.clone(), None);
-            Err(e)
-        }
-        Ok(Err(e)) => Err(format!("Task spawn error: {}", e)),
-        Err(_) => {
-            log::error!(
-                "torrent_get_video_info extraction timed out, info_hash: {}, file_id: {}",
-                info_hash,
-                file_id
-            );
-            let message = "Failed to extract video info: parse timed out".to_string();
             cache.set_failure(&failure_key, &cache_path, message.clone(), None);
             Err(message)
         }
@@ -954,10 +723,8 @@ pub fn run() {
             settings_set_ai_configs,
             settings_set_max_download_speed,
             select_directory,
-            torrent_get_subtitle_tracks,
+            torrent_get_video_metadata,
             torrent_get_subtitle_vtt,
-            torrent_get_video_chapters,
-            torrent_get_video_info,
             ai_chat_request
         ])
         .run(tauri::generate_context!())

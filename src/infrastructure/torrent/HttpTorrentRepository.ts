@@ -5,18 +5,14 @@ import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
   type AddTorrentResult,
   AddTorrentResultSchema,
-  type ChapterInfo,
-  ChapterInfoSchema,
   type FileDetails,
   FileDetailsSchema,
   type SearchResultItem,
   SearchResultItemSchema,
-  type SubtitleTrackInfo,
-  SubtitleTrackInfoSchema,
   type TorrentStatusInfo,
   TorrentStatusInfoSchema,
-  type VideoInfo,
-  VideoInfoSchema,
+  type VideoMetadata,
+  VideoMetadataSchema,
 } from "../../domain/torrent/TorrentSchemas";
 import { HttpClient } from "../http/HttpClient";
 
@@ -170,16 +166,16 @@ export class HttpTorrentRepository implements TorrentRepository {
     return result.data;
   }
 
-  async getSubtitleTracks(
+  async getVideoMetadata(
     infoHash: string,
     fileId: number,
-  ): Promise<SubtitleTrackInfo[]> {
+  ): Promise<VideoMetadata> {
     const raw = await this.httpClient.getJson<unknown>(
-      `${baseUrl}/torrents/${infoHash}/files/${fileId}/subtitles`,
+      `${baseUrl}/torrents/${infoHash}/files/${fileId}/metadata`,
     );
-    const result = z.array(SubtitleTrackInfoSchema).safeParse(raw);
+    const result = VideoMetadataSchema.safeParse(raw);
     if (!result.success) {
-      throw new Error("torrent_get_subtitle_tracks API structure mismatch", {
+      throw new Error("torrent_get_video_metadata API structure mismatch", {
         cause: result.error,
       });
     }
@@ -195,35 +191,6 @@ export class HttpTorrentRepository implements TorrentRepository {
       `${baseUrl}/torrents/${infoHash}/files/${fileId}/subtitles/${trackId}`,
     );
     return response.text();
-  }
-
-  async getVideoChapters(
-    infoHash: string,
-    fileId: number,
-  ): Promise<ChapterInfo[]> {
-    const raw = await this.httpClient.getJson<unknown>(
-      `${baseUrl}/torrents/${infoHash}/files/${fileId}/chapters`,
-    );
-    const result = z.array(ChapterInfoSchema).safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_get_video_chapters API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
-  }
-
-  async getVideoInfo(infoHash: string, fileId: number): Promise<VideoInfo> {
-    const raw = await this.httpClient.getJson<unknown>(
-      `${baseUrl}/torrents/${infoHash}/files/${fileId}/info`,
-    );
-    const result = VideoInfoSchema.safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_get_video_info API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
   }
 
   async subscribeTorrents(

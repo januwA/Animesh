@@ -120,8 +120,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/torrents/:hash/resume", post(torrent_resume_handler))
         .route("/torrents/:hash", delete(torrent_delete_handler))
         .route(
-            "/torrents/:hash/files/:id/subtitles",
-            get(torrent_get_subtitle_tracks_handler),
+            "/torrents/:hash/files/:id/metadata",
+            get(torrent_get_video_metadata_handler),
         )
         .route(
             "/torrents/:hash/files/:id/subtitles/:track_id",
@@ -373,61 +373,16 @@ async fn torrent_delete_handler(
     Ok(StatusCode::OK)
 }
 
-async fn torrent_get_subtitle_tracks_handler(
+async fn torrent_get_video_metadata_handler(
     State(state): State<Arc<AppState>>,
     Path((info_hash, file_id)): Path<(String, usize)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let files = state
+    let metadata = state
         .manager
-        .get_torrent_files(&info_hash)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
-    let file_details = files
-        .iter()
-        .find(|f| f.id == file_id)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "File not found".to_string()))?;
-
-    let name_lower = file_details.name.to_lowercase();
-    if !name_lower.ends_with(".mkv") {
-        return Ok(axum::Json(
-            Vec::<animesh_core::subtitles::SubtitleTrackInfo>::new(),
-        ));
-    }
-
-    let download_dir = state.manager.get_download_dir();
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err((
-            StatusCode::NOT_FOUND,
-            "Video file not downloaded or doesn't exist yet".to_string(),
-        ));
-    }
-
-    let cache = state.manager.subtitle_cache.clone();
-    let cache_path = path.clone();
-    if let Some(tracks) = cache.get_tracks(&info_hash, file_id, &cache_path) {
-        return Ok(axum::Json(tracks));
-    }
-
-    match tokio::task::spawn_blocking(move || {
-        let file = std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
-        let reader = std::io::BufReader::new(file);
-        animesh_core::subtitles::extract_subtitle_tracks_from_reader(reader, true)
-    })
-    .await
-    {
-        Ok(Ok(tracks)) => {
-            cache.set_tracks(&info_hash, file_id, &cache_path, tracks.clone());
-            Ok(axum::Json(tracks))
-        }
-        Ok(Err(e)) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to extract tracks: {}", e),
-        )),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Task spawn error: {}", e),
-        )),
-    }
+        .get_video_metadata(&info_hash, file_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    Ok(axum::Json(metadata))
 }
 
 async fn torrent_get_subtitle_vtt_handler(

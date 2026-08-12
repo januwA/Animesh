@@ -36,7 +36,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
         getTorrentFiles: vi.fn().mockRejectedValue(new Error("Mock error")),
         getTorrentStatus: vi.fn().mockResolvedValue({}),
         getTorrentStreamUrl: vi.fn().mockResolvedValue(""),
-        getSubtitleTracks: vi.fn().mockResolvedValue([]),
+        getSubtitleVtt: vi.fn().mockResolvedValue(""),
         subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
       },
       settingsRepository: {

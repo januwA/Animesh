@@ -6,18 +6,14 @@ import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
   type AddTorrentResult,
   AddTorrentResultSchema,
-  type ChapterInfo,
-  ChapterInfoSchema,
   type FileDetails,
   FileDetailsSchema,
   type SearchResultItem,
   SearchResultItemSchema,
-  type SubtitleTrackInfo,
-  SubtitleTrackInfoSchema,
   type TorrentStatusInfo,
   TorrentStatusInfoSchema,
-  type VideoInfo,
-  VideoInfoSchema,
+  type VideoMetadata,
+  VideoMetadataSchema,
 } from "../../domain/torrent/TorrentSchemas";
 
 const sessionId = crypto.randomUUID();
@@ -125,17 +121,17 @@ export class TauriTorrentRepository implements TorrentRepository {
     return result.data;
   }
 
-  async getSubtitleTracks(
+  async getVideoMetadata(
     infoHash: string,
     fileId: number,
-  ): Promise<SubtitleTrackInfo[]> {
-    const raw = await invoke<unknown>("torrent_get_subtitle_tracks", {
+  ): Promise<VideoMetadata> {
+    const raw = await invoke<unknown>("torrent_get_video_metadata", {
       infoHash,
       fileId,
     });
-    const result = z.array(SubtitleTrackInfoSchema).safeParse(raw);
+    const result = VideoMetadataSchema.safeParse(raw);
     if (!result.success) {
-      throw new Error("torrent_get_subtitle_tracks API structure mismatch", {
+      throw new Error("torrent_get_video_metadata API structure mismatch", {
         cause: result.error,
       });
     }
@@ -152,37 +148,6 @@ export class TauriTorrentRepository implements TorrentRepository {
       fileId,
       trackId,
     });
-  }
-
-  async getVideoChapters(
-    infoHash: string,
-    fileId: number,
-  ): Promise<ChapterInfo[]> {
-    const raw = await invoke<unknown>("torrent_get_video_chapters", {
-      infoHash,
-      fileId,
-    });
-    const result = z.array(ChapterInfoSchema).safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_get_video_chapters API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
-  }
-
-  async getVideoInfo(infoHash: string, fileId: number): Promise<VideoInfo> {
-    const raw = await invoke<unknown>("torrent_get_video_info", {
-      infoHash,
-      fileId,
-    });
-    const result = VideoInfoSchema.safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_get_video_info API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
   }
 
   async subscribeTorrents(

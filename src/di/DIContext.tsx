@@ -35,13 +35,11 @@ import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
-import { GetSubtitleTracksUseCase } from "../application/torrent/GetSubtitleTracksUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
 import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUseCase";
 import { GetTorrentStatusUseCase } from "../application/torrent/GetTorrentStatusUseCase";
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
-import { GetVideoChaptersUseCase } from "../application/torrent/GetVideoChaptersUseCase";
-import { GetVideoInfoUseCase } from "../application/torrent/GetVideoInfoUseCase";
+import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
 import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
@@ -85,10 +83,8 @@ export interface DIContainer {
   resolveTorrentUseCase: ResolveTorrentUseCase;
   getTorrentStatusUseCase: GetTorrentStatusUseCase;
   getTorrentStreamUrlUseCase: GetTorrentStreamUrlUseCase;
-  getSubtitleTracksUseCase: GetSubtitleTracksUseCase;
   getSubtitleVttUseCase: GetSubtitleVttUseCase;
-  getVideoChaptersUseCase: GetVideoChaptersUseCase;
-  getVideoInfoUseCase: GetVideoInfoUseCase;
+  getVideoMetadataUseCase: GetVideoMetadataUseCase;
 
   getSettingsUseCase: GetSettingsUseCase;
   getDefaultTrackersUseCase: GetDefaultTrackersUseCase;
@@ -160,14 +156,10 @@ export function createDefaultDIContainer(): DIContainer {
   const getTorrentStreamUrlUseCase = new GetTorrentStreamUrlUseCase(
     torrentRepository,
   );
-  const getSubtitleTracksUseCase = new GetSubtitleTracksUseCase(
-    torrentRepository,
-  );
   const getSubtitleVttUseCase = new GetSubtitleVttUseCase(torrentRepository);
-  const getVideoChaptersUseCase = new GetVideoChaptersUseCase(
+  const getVideoMetadataUseCase = new GetVideoMetadataUseCase(
     torrentRepository,
   );
-  const getVideoInfoUseCase = new GetVideoInfoUseCase(torrentRepository);
 
   const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
   const getDefaultTrackersUseCase = new GetDefaultTrackersUseCase(
@@ -249,10 +241,8 @@ export function createDefaultDIContainer(): DIContainer {
     resolveTorrentUseCase,
     getTorrentStatusUseCase,
     getTorrentStreamUrlUseCase,
-    getSubtitleTracksUseCase,
     getSubtitleVttUseCase,
-    getVideoChaptersUseCase,
-    getVideoInfoUseCase,
+    getVideoMetadataUseCase,
 
     getSettingsUseCase,
     getDefaultTrackersUseCase,

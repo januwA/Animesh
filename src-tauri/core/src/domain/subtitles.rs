@@ -48,10 +48,17 @@ pub struct AudioTrackInfo {
     pub default: bool,
 }
 
+/// 一次打开文件同时提取的字幕轨道、视频信息与章节。
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct VideoMetadata {
+    pub tracks: Vec<SubtitleTrackInfo>,
+    pub chapters: Vec<ChapterInfo>,
+    pub video_info: VideoInfo,
+}
+
 pub trait SubtitleExtractor: Send + Sync {
-    fn extract_subtitle_tracks(&self, path: &Path) -> Result<Vec<SubtitleTrackInfo>, String>;
+    fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, String>;
     fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String>;
-    fn extract_video_chapters(&self, path: &Path) -> Result<Vec<ChapterInfo>, String>;
 }
 
 pub fn strip_ass_tags(text: &str) -> String {

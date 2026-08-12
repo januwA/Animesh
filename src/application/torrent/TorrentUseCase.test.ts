@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import { AddTorrentMagnetUseCase } from "./AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "./DeleteTorrentUseCase";
-import { GetSubtitleTracksUseCase } from "./GetSubtitleTracksUseCase";
 import { GetSubtitleVttUseCase } from "./GetSubtitleVttUseCase";
 import { GetTorrentFilesUseCase } from "./GetTorrentFilesUseCase";
 import { GetTorrentStatusUseCase } from "./GetTorrentStatusUseCase";
 import { GetTorrentStreamUrlUseCase } from "./GetTorrentStreamUrlUseCase";
+import { GetVideoMetadataUseCase } from "./GetVideoMetadataUseCase";
 import { ListTorrentsUseCase } from "./ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "./PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "./ResolveTorrentUseCase";
@@ -25,7 +25,7 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     getTorrentFiles: vi.fn(),
     getTorrentStreamUrl: vi.fn(),
     getTorrentStatus: vi.fn(),
-    getSubtitleTracks: vi.fn(),
+    getVideoMetadata: vi.fn(),
     getSubtitleVtt: vi.fn(),
     subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
   } as unknown as TorrentRepository;
@@ -123,14 +123,19 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     expect(result).toBe("http://localhost:8080/stream/123/1");
   });
 
-  it("GetSubtitleTracksUseCase 应该正确调用 repository 的 getSubtitleTracks 方法", async () => {
-    const useCase = new GetSubtitleTracksUseCase(mockRepo);
-    vi.mocked(mockRepo.getSubtitleTracks).mockResolvedValueOnce([
-      { id: 1, lang: "chi" } as any,
-    ]);
+  it("GetVideoMetadataUseCase 应该正确调用 repository 的 getVideoMetadata 方法", async () => {
+    const useCase = new GetVideoMetadataUseCase(mockRepo);
+    const mockMetadata = {
+      tracks: [{ id: 1, language: "chi" }],
+      chapters: [],
+      video_info: { video_tracks: [], audio_tracks: [] },
+    };
+    vi.mocked(mockRepo.getVideoMetadata).mockResolvedValueOnce(
+      mockMetadata as any,
+    );
     const results = await useCase.execute("123", 1);
-    expect(mockRepo.getSubtitleTracks).toHaveBeenCalledWith("123", 1);
-    expect(results).toEqual([{ id: 1, lang: "chi" }]);
+    expect(mockRepo.getVideoMetadata).toHaveBeenCalledWith("123", 1);
+    expect(results).toEqual(mockMetadata);
   });
 
   it("GetSubtitleVttUseCase 应该正确调用 repository 的 getSubtitleVtt 方法", async () => {

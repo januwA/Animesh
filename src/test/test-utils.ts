@@ -22,13 +22,11 @@ import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
-import { GetSubtitleTracksUseCase } from "../application/torrent/GetSubtitleTracksUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
 import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUseCase";
 import { GetTorrentStatusUseCase } from "../application/torrent/GetTorrentStatusUseCase";
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
-import { GetVideoChaptersUseCase } from "../application/torrent/GetVideoChaptersUseCase";
-import { GetVideoInfoUseCase } from "../application/torrent/GetVideoInfoUseCase";
+import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
 import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
@@ -86,10 +84,8 @@ export interface CreateContainerParamsForTest {
   resolveTorrentUseCase?: ResolveTorrentUseCase;
   getTorrentStatusUseCase?: GetTorrentStatusUseCase;
   getTorrentStreamUrlUseCase?: GetTorrentStreamUrlUseCase;
-  getSubtitleTracksUseCase?: GetSubtitleTracksUseCase;
   getSubtitleVttUseCase?: GetSubtitleVttUseCase;
-  getVideoChaptersUseCase?: GetVideoChaptersUseCase;
-  getVideoInfoUseCase?: GetVideoInfoUseCase;
+  getVideoMetadataUseCase?: GetVideoMetadataUseCase;
 
   getSettingsUseCase?: GetSettingsUseCase;
   getDefaultTrackersUseCase?: GetDefaultTrackersUseCase;
@@ -136,9 +132,18 @@ export function createDIContainerForTest(
     getTorrentFiles: async () => [],
     getTorrentStreamUrl: async () => "",
     getTorrentStatus: async () => ({}) as any,
-    getSubtitleTracks: async () => [],
     getSubtitleVtt: async () => "",
-    getVideoChapters: async () => [],
+    getVideoMetadata: async () => ({
+      tracks: [],
+      chapters: [],
+      video_info: {
+        date_utc: null,
+        muxing_app: "",
+        writing_app: "",
+        video_tracks: [],
+        audio_tracks: [],
+      },
+    }),
     subscribeTorrents: async (onUpdate: (list: any[]) => void) => {
       onUpdate([]);
       return () => {};
@@ -270,15 +275,10 @@ export function createDIContainerForTest(
   const getTorrentStreamUrlUseCase =
     params.getTorrentStreamUrlUseCase ||
     new GetTorrentStreamUrlUseCase(torrentRepo);
-  const getSubtitleTracksUseCase =
-    params.getSubtitleTracksUseCase ||
-    new GetSubtitleTracksUseCase(torrentRepo);
   const getSubtitleVttUseCase =
     params.getSubtitleVttUseCase || new GetSubtitleVttUseCase(torrentRepo);
-  const getVideoChaptersUseCase =
-    params.getVideoChaptersUseCase || new GetVideoChaptersUseCase(torrentRepo);
-  const getVideoInfoUseCase =
-    params.getVideoInfoUseCase || new GetVideoInfoUseCase(torrentRepo);
+  const getVideoMetadataUseCase =
+    params.getVideoMetadataUseCase || new GetVideoMetadataUseCase(torrentRepo);
 
   const getSettingsUseCase =
     params.getSettingsUseCase || new GetSettingsUseCase(settingsRepo);
@@ -372,10 +372,8 @@ export function createDIContainerForTest(
     resolveTorrentUseCase,
     getTorrentStatusUseCase,
     getTorrentStreamUrlUseCase,
-    getSubtitleTracksUseCase,
     getSubtitleVttUseCase,
-    getVideoChaptersUseCase,
-    getVideoInfoUseCase,
+    getVideoMetadataUseCase,
 
     getSettingsUseCase,
     getDefaultTrackersUseCase,

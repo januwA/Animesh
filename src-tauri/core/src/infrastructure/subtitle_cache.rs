@@ -1,4 +1,3 @@
-use crate::domain::subtitles::{ChapterInfo, SubtitleTrackInfo, VideoInfo};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::RwLock;
@@ -10,10 +9,7 @@ const FAILURE_COOLDOWN: Duration = Duration::from_secs(30);
 
 #[derive(Default)]
 pub struct SubtitleCache {
-    tracks: RwLock<HashMap<String, CachedEntry<Vec<SubtitleTrackInfo>>>>,
     vtt: RwLock<HashMap<String, CachedEntry<String>>>,
-    chapters: RwLock<HashMap<String, CachedEntry<Vec<ChapterInfo>>>>,
-    info: RwLock<HashMap<String, CachedEntry<VideoInfo>>>,
     failures: RwLock<HashMap<String, CachedFailure>>,
 }
 
@@ -38,37 +34,6 @@ fn file_fingerprint(path: &Path) -> Option<(SystemTime, u64)> {
 impl SubtitleCache {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn get_tracks(
-        &self,
-        info_hash: &str,
-        file_id: usize,
-        file_path: &Path,
-    ) -> Option<Vec<SubtitleTrackInfo>> {
-        let key = format!("{}:{}", info_hash, file_id);
-        let cache = self.tracks.read().ok()?;
-        let entry = cache.get(&key)?;
-        if file_fingerprint(file_path) == Some((entry.mtime, entry.len)) {
-            Some(entry.data.clone())
-        } else {
-            None
-        }
-    }
-
-    pub fn set_tracks(
-        &self,
-        info_hash: &str,
-        file_id: usize,
-        file_path: &Path,
-        data: Vec<SubtitleTrackInfo>,
-    ) {
-        if let Some((mtime, len)) = file_fingerprint(file_path) {
-            let key = format!("{}:{}", info_hash, file_id);
-            if let Ok(mut cache) = self.tracks.write() {
-                cache.insert(key, CachedEntry { mtime, len, data });
-            }
-        }
     }
 
     pub fn get_vtt(
@@ -99,68 +64,6 @@ impl SubtitleCache {
         if let Some((mtime, len)) = file_fingerprint(file_path) {
             let key = format!("{}:{}:{}", info_hash, file_id, track_id);
             if let Ok(mut cache) = self.vtt.write() {
-                cache.insert(key, CachedEntry { mtime, len, data });
-            }
-        }
-    }
-
-    pub fn get_chapters(
-        &self,
-        info_hash: &str,
-        file_id: usize,
-        file_path: &Path,
-    ) -> Option<Vec<ChapterInfo>> {
-        let key = format!("{}:{}", info_hash, file_id);
-        let cache = self.chapters.read().ok()?;
-        let entry = cache.get(&key)?;
-        if file_fingerprint(file_path) == Some((entry.mtime, entry.len)) {
-            Some(entry.data.clone())
-        } else {
-            None
-        }
-    }
-
-    pub fn set_chapters(
-        &self,
-        info_hash: &str,
-        file_id: usize,
-        file_path: &Path,
-        data: Vec<ChapterInfo>,
-    ) {
-        if let Some((mtime, len)) = file_fingerprint(file_path) {
-            let key = format!("{}:{}", info_hash, file_id);
-            if let Ok(mut cache) = self.chapters.write() {
-                cache.insert(key, CachedEntry { mtime, len, data });
-            }
-        }
-    }
-
-    pub fn get_video_info(
-        &self,
-        info_hash: &str,
-        file_id: usize,
-        file_path: &Path,
-    ) -> Option<VideoInfo> {
-        let key = format!("{}:{}", info_hash, file_id);
-        let cache = self.info.read().ok()?;
-        let entry = cache.get(&key)?;
-        if file_fingerprint(file_path) == Some((entry.mtime, entry.len)) {
-            Some(entry.data.clone())
-        } else {
-            None
-        }
-    }
-
-    pub fn set_video_info(
-        &self,
-        info_hash: &str,
-        file_id: usize,
-        file_path: &Path,
-        data: VideoInfo,
-    ) {
-        if let Some((mtime, len)) = file_fingerprint(file_path) {
-            let key = format!("{}:{}", info_hash, file_id);
-            if let Ok(mut cache) = self.info.write() {
                 cache.insert(key, CachedEntry { mtime, len, data });
             }
         }
@@ -211,7 +114,7 @@ mod tests {
 
     #[test]
     #[allow(non_snake_case)]
-    fn 测试_文件长度变化后缓存应失效() {
+    fn 测试_文件长度变化后VTT缓存应失效() {
         let cache = SubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_test_len.mkv");
         std::fs::File::create(&temp_path)
@@ -237,65 +140,6 @@ mod tests {
 
     #[test]
     #[allow(non_snake_case)]
-    fn 测试_字幕轨道缓存文件长度变化后应失效() {
-        let cache = SubtitleCache::new();
-        let temp_path = std::env::temp_dir().join("subtitle_cache_test_tracks_len.mkv");
-        std::fs::File::create(&temp_path)
-            .unwrap()
-            .write_all(b"12345")
-            .unwrap();
-
-        let tracks = vec![SubtitleTrackInfo {
-            id: 1,
-            language: "eng".to_string(),
-            title: "English".to_string(),
-            codec: "S_TEXT/UTF8".to_string(),
-        }];
-        cache.set_tracks("hash", 0, &temp_path, tracks.clone());
-        assert_eq!(cache.get_tracks("hash", 0, &temp_path), Some(tracks));
-
-        // 文件增长 → len 变化 → 缓存失效
-        std::fs::File::create(&temp_path)
-            .unwrap()
-            .write_all(b"123456789")
-            .unwrap();
-        assert_eq!(cache.get_tracks("hash", 0, &temp_path), None);
-
-        let _ = std::fs::remove_file(&temp_path);
-    }
-
-    #[test]
-    #[allow(non_snake_case)]
-    fn 测试_媒体信息缓存文件长度变化后应失效() {
-        let cache = SubtitleCache::new();
-        let temp_path = std::env::temp_dir().join("subtitle_cache_test_info_len.mkv");
-        std::fs::File::create(&temp_path)
-            .unwrap()
-            .write_all(b"12345")
-            .unwrap();
-
-        let info = VideoInfo {
-            date_utc: Some(978_307_200),
-            muxing_app: "mkvmerge".to_string(),
-            writing_app: "libebml".to_string(),
-            video_tracks: vec![],
-            audio_tracks: vec![],
-        };
-        cache.set_video_info("hash", 0, &temp_path, info.clone());
-        assert_eq!(cache.get_video_info("hash", 0, &temp_path), Some(info));
-
-        // 文件增长 → len 变化 → 缓存失效
-        std::fs::File::create(&temp_path)
-            .unwrap()
-            .write_all(b"123456789")
-            .unwrap();
-        assert_eq!(cache.get_video_info("hash", 0, &temp_path), None);
-
-        let _ = std::fs::remove_file(&temp_path);
-    }
-
-    #[test]
-    #[allow(non_snake_case)]
     fn 测试_冷却期内命中失败缓存() {
         let cache = SubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_hit.mkv");
@@ -306,13 +150,13 @@ mod tests {
 
         let now = std::time::SystemTime::now();
         cache.set_failure(
-            "hash:0",
+            "hash:0:1",
             &temp_path,
             "Failed to parse MKV: CantFindCluster".to_string(),
             Some(now),
         );
         assert_eq!(
-            cache.get_failure("hash:0", &temp_path, Some(now)),
+            cache.get_failure("hash:0:1", &temp_path, Some(now)),
             Some("Failed to parse MKV: CantFindCluster".to_string())
         );
 
@@ -330,9 +174,12 @@ mod tests {
             .unwrap();
 
         let now = std::time::SystemTime::now();
-        cache.set_failure("hash:0", &temp_path, "boom".to_string(), Some(now));
+        cache.set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now));
         let expired = now + FAILURE_COOLDOWN + std::time::Duration::from_secs(1);
-        assert_eq!(cache.get_failure("hash:0", &temp_path, Some(expired)), None);
+        assert_eq!(
+            cache.get_failure("hash:0:1", &temp_path, Some(expired)),
+            None
+        );
 
         let _ = std::fs::remove_file(&temp_path);
     }
@@ -348,14 +195,14 @@ mod tests {
             .unwrap();
 
         let now = std::time::SystemTime::now();
-        cache.set_failure("hash:0", &temp_path, "boom".to_string(), Some(now));
+        cache.set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now));
 
         // 文件增长 → len 变化 → 冷却失效，允许重新解析
         std::fs::File::create(&temp_path)
             .unwrap()
             .write_all(b"incomplete-more-data")
             .unwrap();
-        assert_eq!(cache.get_failure("hash:0", &temp_path, Some(now)), None);
+        assert_eq!(cache.get_failure("hash:0:1", &temp_path, Some(now)), None);
 
         let _ = std::fs::remove_file(&temp_path);
     }
@@ -371,8 +218,8 @@ mod tests {
             .unwrap();
 
         let now = std::time::SystemTime::now();
-        cache.set_failure("hash:0", &temp_path, "boom".to_string(), Some(now));
-        assert_eq!(cache.get_failure("hash:1", &temp_path, Some(now)), None);
+        cache.set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now));
+        assert_eq!(cache.get_failure("hash:0:2", &temp_path, Some(now)), None);
 
         let _ = std::fs::remove_file(&temp_path);
     }

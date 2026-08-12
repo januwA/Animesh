@@ -2,12 +2,10 @@ import type { Context } from "ajanuw-context";
 import type { TorrentSearchEngine } from "./TorrentEngines";
 import type {
   AddTorrentResult,
-  ChapterInfo,
   FileDetails,
   SearchResultItem,
-  SubtitleTrackInfo,
   TorrentStatusInfo,
-  VideoInfo,
+  VideoMetadata,
 } from "./TorrentSchemas";
 
 export interface TorrentRepository {
@@ -24,17 +22,12 @@ export interface TorrentRepository {
   getTorrentFiles(infoHash: string): Promise<FileDetails[]>;
   getTorrentStreamUrl(infoHash: string, fileId: number): Promise<string>;
   getTorrentStatus(infoHash: string): Promise<TorrentStatusInfo>;
-  getSubtitleTracks(
-    infoHash: string,
-    fileId: number,
-  ): Promise<SubtitleTrackInfo[]>;
+  getVideoMetadata(infoHash: string, fileId: number): Promise<VideoMetadata>;
   getSubtitleVtt(
     infoHash: string,
     fileId: number,
     trackId: number,
   ): Promise<string>;
-  getVideoChapters(infoHash: string, fileId: number): Promise<ChapterInfo[]>;
-  getVideoInfo(infoHash: string, fileId: number): Promise<VideoInfo>;
   subscribeTorrents(
     onUpdate: (torrents: TorrentStatusInfo[]) => void,
   ): Promise<() => void>;

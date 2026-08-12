@@ -1,6 +1,6 @@
 use crate::domain::subtitles::{
     decode_subtitle_bytes, format_vtt_time, strip_ass_tags, AudioTrackInfo, ChapterInfo,
-    SubtitleExtractor, SubtitleTrackInfo, VideoInfo, VideoTrackInfo,
+    SubtitleExtractor, SubtitleTrackInfo, VideoInfo, VideoMetadata, VideoTrackInfo,
 };
 use matroska_demuxer::{
     ContentCompAlgo, ContentEncoding, ContentEncodingValue, MatroskaFile, TrackType,
@@ -107,18 +107,8 @@ impl<R: Seek> Seek for ZeroCheckReader<R> {
     }
 }
 
-pub fn extract_subtitle_tracks_from_reader<R: Read + Seek>(
-    reader: R,
-    skip_check: bool,
-) -> Result<Vec<SubtitleTrackInfo>, String> {
-    let checked_reader = if skip_check {
-        ZeroCheckReader::new_skip_check(reader)
-    } else {
-        ZeroCheckReader::new(reader)
-    };
-    let mkv =
-        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
-
+/// 从已打开的 MKV 中收集可播放的字幕轨道。
+fn collect_subtitle_tracks<R: Read + Seek>(mkv: &MatroskaFile<R>) -> Vec<SubtitleTrackInfo> {
     let mut tracks = Vec::new();
     for track in mkv.tracks() {
         if track.track_type() == TrackType::Subtitle {
@@ -135,7 +125,7 @@ pub fn extract_subtitle_tracks_from_reader<R: Read + Seek>(
             }
         }
     }
-    Ok(tracks)
+    tracks
 }
 
 fn decompress_by_algo(
@@ -346,33 +336,17 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     Ok(vtt)
 }
 
-pub fn extract_subtitle_tracks(path: &Path) -> Result<Vec<SubtitleTrackInfo>, String> {
-    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
-    let reader = BufReader::new(file);
-    extract_subtitle_tracks_from_reader(reader, true)
-}
-
 pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> Result<String, String> {
     let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
     let reader = BufReader::new(file);
     extract_subtitle_vtt_from_reader(reader, track_id, true)
 }
 
-pub fn extract_video_chapters_from_reader<R: Read + Seek>(
-    reader: R,
-    skip_check: bool,
-) -> Result<Vec<ChapterInfo>, String> {
-    let checked_reader = if skip_check {
-        ZeroCheckReader::new_skip_check(reader)
-    } else {
-        ZeroCheckReader::new(reader)
-    };
-    let mkv =
-        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
-
+/// 从已打开的 MKV 中收集章节信息。
+fn collect_chapters<R: Read + Seek>(mkv: &MatroskaFile<R>) -> Vec<ChapterInfo> {
     let mut chapters = Vec::new();
     let Some(editions) = mkv.chapters() else {
-        return Ok(chapters);
+        return chapters;
     };
     for edition in editions {
         for atom in edition.chapter_atoms() {
@@ -403,13 +377,7 @@ pub fn extract_video_chapters_from_reader<R: Read + Seek>(
             }
         }
     }
-    Ok(chapters)
-}
-
-pub fn extract_video_chapters(path: &Path) -> Result<Vec<ChapterInfo>, String> {
-    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
-    let reader = BufReader::new(file);
-    extract_video_chapters_from_reader(reader, true)
+    chapters
 }
 
 const fn date_utc_ns_to_unix_secs(ns_since_2001: i64) -> i64 {
@@ -420,18 +388,8 @@ const fn date_utc_ns_to_unix_secs(ns_since_2001: i64) -> i64 {
     ns_since_2001 / NANOS_PER_SEC + UNIX_SECS_AT_2001
 }
 
-pub fn extract_video_info_from_reader<R: Read + Seek>(
-    reader: R,
-    skip_check: bool,
-) -> Result<VideoInfo, String> {
-    let checked_reader = if skip_check {
-        ZeroCheckReader::new_skip_check(reader)
-    } else {
-        ZeroCheckReader::new(reader)
-    };
-    let mkv =
-        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
-
+/// 从已打开的 MKV 中收集媒体信息（创建时间、封装工具、音视频轨道）。
+fn collect_video_info<R: Read + Seek>(mkv: &MatroskaFile<R>) -> VideoInfo {
     let info = mkv.info();
     let mut video_tracks = Vec::new();
     let mut audio_tracks = Vec::new();
@@ -471,34 +429,50 @@ pub fn extract_video_info_from_reader<R: Read + Seek>(
         }
     }
 
-    Ok(VideoInfo {
+    VideoInfo {
         date_utc: info.date_utc().map(date_utc_ns_to_unix_secs),
         muxing_app: info.muxing_app().to_string(),
         writing_app: info.writing_app().to_string(),
         video_tracks,
         audio_tracks,
+    }
+}
+
+/// 一次打开文件同时提取字幕轨道、媒体信息与章节。
+pub fn extract_video_metadata_from_reader<R: Read + Seek>(
+    reader: R,
+    skip_check: bool,
+) -> Result<VideoMetadata, String> {
+    let checked_reader = if skip_check {
+        ZeroCheckReader::new_skip_check(reader)
+    } else {
+        ZeroCheckReader::new(reader)
+    };
+    let mkv =
+        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+
+    Ok(VideoMetadata {
+        tracks: collect_subtitle_tracks(&mkv),
+        chapters: collect_chapters(&mkv),
+        video_info: collect_video_info(&mkv),
     })
 }
 
-pub fn extract_video_info(path: &Path) -> Result<VideoInfo, String> {
+pub fn extract_video_metadata(path: &Path) -> Result<VideoMetadata, String> {
     let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
     let reader = BufReader::new(file);
-    extract_video_info_from_reader(reader, true)
+    extract_video_metadata_from_reader(reader, true)
 }
 
 pub struct MatroskaSubtitleExtractor;
 
 impl SubtitleExtractor for MatroskaSubtitleExtractor {
-    fn extract_subtitle_tracks(&self, path: &Path) -> Result<Vec<SubtitleTrackInfo>, String> {
-        extract_subtitle_tracks(path)
+    fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, String> {
+        extract_video_metadata(path)
     }
 
     fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String> {
         extract_subtitle_vtt(path, track_id)
-    }
-
-    fn extract_video_chapters(&self, path: &Path) -> Result<Vec<ChapterInfo>, String> {
-        extract_video_chapters(path)
     }
 }
 
@@ -509,10 +483,10 @@ mod tests {
 
     #[test]
     #[allow(non_snake_case)]
-    fn 测试_提取非存在文件的字幕轨道_应返回错误() {
+    fn 测试_提取非存在文件的元数据_应返回错误() {
         let extractor = MatroskaSubtitleExtractor;
         let path = Path::new("non_existent_file.mkv");
-        let result = extractor.extract_subtitle_tracks(path);
+        let result = extractor.extract_video_metadata(path);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Failed to open file"));
     }
@@ -529,14 +503,14 @@ mod tests {
 
     #[test]
     #[allow(non_snake_case)]
-    fn 测试_提取无效格式文件的字幕_应返回解析错误() {
+    fn 测试_提取无效格式文件的元数据_应返回解析错误() {
         let extractor = MatroskaSubtitleExtractor;
         let temp_path = std::env::temp_dir().join("invalid_mkv_test_matroska.mkv");
         std::fs::write(&temp_path, b"invalid mkv data").unwrap();
 
-        let result_tracks = extractor.extract_subtitle_tracks(&temp_path);
-        assert!(result_tracks.is_err());
-        assert!(result_tracks.unwrap_err().contains("Failed to parse MKV"));
+        let result_metadata = extractor.extract_video_metadata(&temp_path);
+        assert!(result_metadata.is_err());
+        assert!(result_metadata.unwrap_err().contains("Failed to parse MKV"));
 
         let result_vtt = extractor.extract_subtitle_vtt(&temp_path, 1);
         assert!(result_vtt.is_err());
@@ -759,78 +733,16 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 测试_提取非存在文件的章节_应返回错误() {
-        let extractor = MatroskaSubtitleExtractor;
-        let path = Path::new("non_existent_file.mkv");
-        let result = extractor.extract_video_chapters(path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to open file"));
-    }
-
-    #[test]
-    #[allow(non_snake_case)]
-    fn 测试_提取无效格式文件的章节_应返回解析错误() {
-        let temp_path = std::env::temp_dir().join("invalid_mkv_test_chapters.mkv");
-        std::fs::write(&temp_path, b"invalid mkv data").unwrap();
-
-        let result = extract_video_chapters(&temp_path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to parse MKV"));
-
-        let _ = std::fs::remove_file(&temp_path);
-    }
-
-    #[test]
-    fn 测试_读取不含章节元素的合法MKV_应返回空章节列表() {
+    fn 测试_读取合法MKV_应解析出字幕轨道_媒体信息_与空章节() {
         let mkv = build_test_mkv(false);
-        let result = extract_video_chapters_from_reader(std::io::Cursor::new(mkv), true);
+        let result = extract_video_metadata_from_reader(std::io::Cursor::new(mkv), true);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Vec::<ChapterInfo>::new());
-    }
+        let metadata = result.unwrap();
 
-    #[test]
-    fn 测试_读取含章节元素的合法MKV_应解析出章节时间与标题() {
-        let mkv = build_test_mkv(true);
-        let result = extract_video_chapters_from_reader(std::io::Cursor::new(mkv), true);
-        assert!(result.is_ok());
-        let chapters = result.unwrap();
-        assert_eq!(chapters.len(), 1);
-        assert_eq!(chapters[0].start_ms, 0);
-        assert_eq!(chapters[0].end_ms, Some(1000));
-        assert_eq!(chapters[0].title, "Opening");
-        assert_eq!(chapters[0].language.as_deref(), Some("eng"));
-    }
+        assert!(metadata.tracks.is_empty());
+        assert_eq!(metadata.chapters, Vec::<ChapterInfo>::new());
 
-    #[test]
-    #[allow(non_snake_case)]
-    fn 测试_提取非存在文件的媒体信息_应返回错误() {
-        let path = Path::new("non_existent_file.mkv");
-        let result = extract_video_info(path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to open file"));
-    }
-
-    #[test]
-    #[allow(non_snake_case)]
-    fn 测试_提取无效格式文件的媒体信息_应返回解析错误() {
-        let temp_path = std::env::temp_dir().join("invalid_mkv_test_info.mkv");
-        std::fs::write(&temp_path, b"invalid mkv data").unwrap();
-
-        let result = extract_video_info(&temp_path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to parse MKV"));
-
-        let _ = std::fs::remove_file(&temp_path);
-    }
-
-    #[test]
-    fn 测试_读取合法MKV_应解析出视频轨道与封装信息() {
-        let mkv = build_test_mkv(false);
-        let result = extract_video_info_from_reader(std::io::Cursor::new(mkv), true);
-        assert!(result.is_ok());
-        let info = result.unwrap();
-
+        let info = metadata.video_info;
         assert_eq!(info.date_utc, None);
         assert_eq!(info.muxing_app, "test");
         assert_eq!(info.writing_app, "test");
@@ -842,6 +754,22 @@ mod tests {
         assert_eq!(info.video_tracks[0].height, 1);
 
         assert!(info.audio_tracks.is_empty());
+    }
+
+    #[test]
+    fn 测试_读取含章节元素的合法MKV_应解析出章节时间与标题() {
+        let mkv = build_test_mkv(true);
+        let result = extract_video_metadata_from_reader(std::io::Cursor::new(mkv), true);
+        assert!(result.is_ok());
+        let metadata = result.unwrap();
+
+        assert_eq!(metadata.chapters.len(), 1);
+        assert_eq!(metadata.chapters[0].start_ms, 0);
+        assert_eq!(metadata.chapters[0].end_ms, Some(1000));
+        assert_eq!(metadata.chapters[0].title, "Opening");
+        assert_eq!(metadata.chapters[0].language.as_deref(), Some("eng"));
+
+        assert_eq!(metadata.video_info.muxing_app, "test");
     }
 
     #[test]

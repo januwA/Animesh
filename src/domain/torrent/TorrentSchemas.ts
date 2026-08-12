@@ -73,6 +73,12 @@ export const VideoInfoSchema = z.object({
   audio_tracks: z.array(AudioTrackInfoSchema),
 });
 
+export const VideoMetadataSchema = z.object({
+  tracks: z.array(SubtitleTrackInfoSchema),
+  chapters: z.array(ChapterInfoSchema),
+  video_info: VideoInfoSchema,
+});
+
 export type SearchResultItem = z.infer<typeof SearchResultItemSchema>;
 export type FileDetails = z.infer<typeof FileDetailsSchema>;
 export type AddTorrentResult = z.infer<typeof AddTorrentResultSchema>;
@@ -82,6 +88,7 @@ export type ChapterInfo = z.infer<typeof ChapterInfoSchema>;
 export type VideoTrackInfo = z.infer<typeof VideoTrackInfoSchema>;
 export type AudioTrackInfo = z.infer<typeof AudioTrackInfoSchema>;
 export type VideoInfo = z.infer<typeof VideoInfoSchema>;
+export type VideoMetadata = z.infer<typeof VideoMetadataSchema>;
 
 export interface AiSearchResultItem extends SearchResultItem {
   ai_score?: number;

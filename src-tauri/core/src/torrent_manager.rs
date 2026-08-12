@@ -1,4 +1,5 @@
 use crate::domain::crawler::CrawlerRepository;
+use crate::domain::subtitles::VideoMetadata;
 use crate::domain::torrent::TorrentRepository;
 use crate::hls_proxy::{self, HlsProxyState};
 use crate::infrastructure::subtitle_cache::SubtitleCache;
@@ -510,6 +511,32 @@ impl TorrentManager {
 
     pub fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
         self.torrent_repo.get_torrent_files(info_hash_hex)
+    }
+
+    /// 提取视频元数据（字幕轨道、媒体信息、章节）。
+    pub async fn get_video_metadata(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+    ) -> Result<VideoMetadata, String> {
+        let download_dir = self.get_download_dir();
+        let files = self
+            .get_torrent_files(info_hash)
+            .ok_or_else(|| "Torrent not found".to_string())?;
+        let file_details = files
+            .iter()
+            .find(|f| f.id == file_id)
+            .ok_or_else(|| "File not found".to_string())?;
+
+        let path = PathBuf::from(download_dir).join(&file_details.name);
+        if !path.exists() {
+            return Err("Video file not downloaded or doesn't exist yet".to_string());
+        }
+        if !file_details.name.to_lowercase().ends_with(".mkv") {
+            return Err("Unsupported video format, metadata extraction requires MKV".to_string());
+        }
+
+        crate::infrastructure::matroska_subtitles::extract_video_metadata(&path)
     }
 
     pub fn get_stream_url(&self, info_hash_hex: &str, file_id: usize) -> String {

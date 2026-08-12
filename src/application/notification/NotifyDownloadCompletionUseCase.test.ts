@@ -22,10 +22,8 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
       deleteTorrent: vi.fn(),
       getTorrentStreamUrl: vi.fn(),
       getTorrentStatus: vi.fn(),
-      getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
-      getVideoChapters: vi.fn(),
-      getVideoInfo: vi.fn(),
+      getVideoMetadata: vi.fn(),
       subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
     };
 

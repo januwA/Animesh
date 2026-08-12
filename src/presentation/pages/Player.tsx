@@ -12,8 +12,7 @@ import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import type {
   ChapterInfo,
-  SubtitleTrackInfo,
-  VideoInfo,
+  VideoMetadata,
 } from "@/domain/torrent/TorrentSchemas";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Button } from "@/presentation/components/ui/button";
@@ -93,10 +92,8 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
 
   const {
     getTorrentStreamUrlUseCase,
-    getSubtitleTracksUseCase,
+    getVideoMetadataUseCase,
     getSubtitleVttUseCase,
-    getVideoChaptersUseCase,
-    getVideoInfoUseCase,
   } = useDI();
   const { torrents } = useTorrentStatus();
   const torrentStatus = torrents.find((t) => t?.info_hash === infoHash) ?? null;
@@ -107,7 +104,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
       : 0;
 
   // Stream URL (one-shot query keyed by infoHash + fileId)
-  const stream = useQuery<string>(
+  const streamUrlQuery = useQuery<string>(
     (_ctx) => getTorrentStreamUrlUseCase.execute(infoHash, fileId),
     [infoHash, fileId, getTorrentStreamUrlUseCase],
     {
@@ -118,29 +115,44 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     },
   );
 
-  // Subtitle tracks (refetchable as the download progresses)
-  const subtitleTracksQuery = useQuery<SubtitleTrackInfo[]>(
-    (_ctx) => getSubtitleTracksUseCase.execute(infoHash, fileId),
-    [infoHash, fileId, getSubtitleTracksUseCase],
+  // Video metadata (subtitle tracks + chapters + video info), single query.
+  // The backend single-flights concurrent attempts, so polling is cheap.
+  const metadataQuery = useQuery<VideoMetadata>(
+    (_ctx) => getVideoMetadataUseCase.execute(infoHash, fileId),
+    [infoHash, fileId, getVideoMetadataUseCase],
   );
-  const subtitleTracks = subtitleTracksQuery.data ?? [];
-  const subtitleTracksReady = subtitleTracksQuery.data !== null;
+  const metadata = metadataQuery.data;
 
-  // Video chapters (refetchable as the download progresses)
-  const chaptersQuery = useQuery<ChapterInfo[]>(
-    (_ctx) => getVideoChaptersUseCase.execute(infoHash, fileId),
-    [infoHash, fileId, getVideoChaptersUseCase],
-  );
-  const chapters = chaptersQuery.data ?? [];
-  const chaptersReady = chaptersQuery.data !== null;
+  // 每 10 秒轮询一次元数据，直到解析成功或下载已完成或遇到不支持的格式
+  const isUnsupported =
+    metadataQuery.error?.message.includes("Unsupported video format") ?? false;
+  useEffect(() => {
+    if (metadata || torrentStatus?.finished || isUnsupported) return;
+    const timer = setInterval(() => metadataQuery.refetch(), 10_000);
+    return () => clearInterval(timer);
+  }, [metadata, torrentStatus?.finished, isUnsupported, metadataQuery.refetch]);
 
-  // Video info (metadata, refetchable as the download progresses)
-  const videoInfoQuery = useQuery<VideoInfo>(
-    (_ctx) => getVideoInfoUseCase.execute(infoHash, fileId),
-    [infoHash, fileId, getVideoInfoUseCase],
-  );
-  const videoInfo = videoInfoQuery.data;
-  const videoInfoReady = videoInfoQuery.data !== null;
+  // 下载进度达到 100% 且尚未有元数据且无永久错误时，立即刷新一次
+  useEffect(() => {
+    if (
+      downloadProgress >= 100 &&
+      !metadata &&
+      !metadataQuery.error &&
+      !metadataQuery.loading
+    ) {
+      metadataQuery.refetch();
+    }
+  }, [
+    downloadProgress,
+    metadata,
+    metadataQuery.error,
+    metadataQuery.loading,
+    metadataQuery.refetch,
+  ]);
+
+  const subtitleTracks = metadata?.tracks ?? [];
+  const chapters = metadata?.chapters ?? [];
+  const videoInfo = metadata?.video_info ?? null;
 
   // Subtitle VTT sources (lazy per-track load + auto-refresh as download progresses)
   const [subtitleSources, setSubtitleSources] = useState<
@@ -270,21 +282,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     patchSubtitleSource,
   ]);
 
-  useEffect(() => {
-    if (downloadProgress <= 0 || downloadProgress >= 100) return;
-    if (!videoInfoReady) videoInfoQuery.refetch();
-    if (!chaptersReady) chaptersQuery.refetch();
-    if (!subtitleTracksReady) subtitleTracksQuery.refetch();
-  }, [
-    downloadProgress,
-    videoInfoReady,
-    videoInfoQuery.refetch,
-    subtitleTracksReady,
-    subtitleTracksQuery.refetch,
-    chaptersReady,
-    chaptersQuery.refetch,
-  ]);
-
   const handleCopyStreamUrl = async () => {
     if (!streamUrl) return;
     try {
@@ -299,7 +296,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     navigate(-1);
   };
 
-  const streamUrl = stream.data;
+  const streamUrl = streamUrlQuery.data;
   const canPlay = !!streamUrl && !!torrentStatus && downloadProgress >= 1;
 
   return (
