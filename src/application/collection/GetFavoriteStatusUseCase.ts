@@ -3,7 +3,7 @@ import type { CollectionRepository } from "@/domain/collection/CollectionReposit
 export class GetFavoriteStatusUseCase {
   constructor(private readonly repo: CollectionRepository) {}
 
-  execute(subjectId: number): boolean {
+  async execute(subjectId: number): Promise<boolean> {
     return this.repo.isFavorited(subjectId);
   }
 }

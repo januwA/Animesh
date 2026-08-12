@@ -1,4 +1,4 @@
-import { LocalStorageCollectionRepository } from "../infrastructure/collection/LocalStorageCollectionRepository";
+import { IndexedDbCollectionRepository } from "../infrastructure/collection/IndexedDbCollectionRepository";
 import { HttpIptvRepository } from "../infrastructure/iptv/HttpIptvRepository";
 import { WebIptvStreamUrlRepository } from "../infrastructure/iptv/WebIptvStreamUrlRepository";
 import { WebNotificationRepository } from "../infrastructure/notification/WebNotificationRepository";
@@ -12,6 +12,6 @@ export const SettingsRepositoryImpl = HttpSettingsRepository;
 export const NotificationRepositoryImpl = WebNotificationRepository;
 export const OpenerRepositoryImpl = WebOpenerRepository;
 export const UpdateRepositoryImpl = WebUpdateRepository;
-export const CollectionRepositoryImpl = LocalStorageCollectionRepository;
+export const CollectionRepositoryImpl = IndexedDbCollectionRepository;
 export const IptvRepositoryImpl = HttpIptvRepository;
 export const IptvStreamUrlRepositoryImpl = WebIptvStreamUrlRepository;

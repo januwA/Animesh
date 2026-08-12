@@ -4,7 +4,7 @@ import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
 export class GetCollectionsUseCase {
   constructor(private readonly repo: CollectionRepository) {}
 
-  execute(): FavoriteItem[] {
+  async execute(): Promise<FavoriteItem[]> {
     return this.repo.getAll();
   }
 }

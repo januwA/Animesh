@@ -207,10 +207,10 @@ export function createDIContainerForTest(
   } as NotificationRepository;
 
   const collectionRepo = {
-    getAll: () => [],
-    isFavorited: () => false,
-    add: () => {},
-    remove: () => {},
+    getAll: async () => [],
+    isFavorited: async () => false,
+    add: async () => {},
+    remove: async () => {},
     ...params.collectionRepository,
   } as CollectionRepository;
 

@@ -56,6 +56,7 @@ import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepo
 import { HttpClient } from "../infrastructure/http/HttpClient";
 import { BrowserIptvCache } from "../infrastructure/iptv/BrowserIptvCache";
 import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
+import { IndexedDbCacheStore } from "../infrastructure/storage/IndexedDbCacheStore";
 
 export interface DIContainer {
   notificationRepository: NotificationRepository;
@@ -106,12 +107,13 @@ export interface DIContainer {
 
 export function createDefaultDIContainer(): DIContainer {
   const isTauri = import.meta.env.MODE !== "web";
+  const cacheStore = new IndexedDbCacheStore();
   const logger = new ConsoleLogger("App");
   const torrentRepository = new TorrentRepositoryImpl();
   const settingsRepository = new SettingsRepositoryImpl();
   const httpClient = new HttpClient();
   const bangumiRepository = new HttpBangumiRepository(httpClient);
-  const collectionRepository = new CollectionRepositoryImpl();
+  const collectionRepository = new CollectionRepositoryImpl(cacheStore);
   const notificationRepository = new NotificationRepositoryImpl();
   const openerRepository = new OpenerRepositoryImpl();
   const updateRepository = new UpdateRepositoryImpl(openerRepository);
@@ -161,7 +163,7 @@ export function createDefaultDIContainer(): DIContainer {
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
 
-  const bangumiCache = new BrowserBangumiCache();
+  const bangumiCache = new BrowserBangumiCache(cacheStore);
   const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
     bangumiRepository,
     bangumiCache,
@@ -182,7 +184,7 @@ export function createDefaultDIContainer(): DIContainer {
     bangumiRepository,
     bangumiCache,
   );
-  const iptvCache = new BrowserIptvCache();
+  const iptvCache = new BrowserIptvCache(cacheStore);
   const iptvRepository = new IptvRepositoryImpl(httpClient);
   const getIptvCountriesUseCase = new GetIptvCountriesUseCase(
     iptvRepository,

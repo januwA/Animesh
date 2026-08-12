@@ -1,6 +1,7 @@
 import { Heart } from "lucide-react";
 import { useState } from "react";
 import { useDI } from "@/di/DIContext";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { Button } from "./ui/button";
 
 export interface FavoriteButtonSubject {
@@ -19,21 +20,31 @@ export function FavoriteButton({
   showLabel = true,
 }: FavoriteButtonProps) {
   const { collectionRepository } = useDI();
-  const [favorited, setFavorited] = useState(() =>
-    collectionRepository.isFavorited(subject.subjectId),
-  );
 
-  const handleClick = () => {
-    if (favorited) {
-      collectionRepository.remove(subject.subjectId);
-    } else {
-      collectionRepository.add({
+  const { data, loading, refetch } = useQuery(
+    () => collectionRepository.isFavorited(subject.subjectId),
+    [collectionRepository, subject.subjectId],
+    {
+      onSuccess: () => setOptimistic(null),
+    },
+  );
+  const [optimistic, setOptimistic] = useState<boolean | null>(null);
+  const favorited = optimistic ?? data ?? false;
+  const ready = !loading;
+
+  const handleClick = async () => {
+    const next = !favorited;
+    setOptimistic(next);
+    if (next) {
+      await collectionRepository.add({
         subjectId: subject.subjectId,
         name: subject.name,
         imageUrl: subject.imageUrl,
       });
+    } else {
+      await collectionRepository.remove(subject.subjectId);
     }
-    setFavorited(!favorited);
+    refetch();
   };
 
   return (
@@ -41,6 +52,7 @@ export function FavoriteButton({
       variant="ghost"
       size="sm"
       onClick={handleClick}
+      aria-label={ready ? (favorited ? "已收藏" : "收藏") : "收藏"}
       // style-ignore
       className={`gap-1.5 transition-all ${
         favorited
@@ -53,7 +65,9 @@ export function FavoriteButton({
         className={`h-4 w-4 transition-all ${favorited ? "fill-current" : ""}`}
       />
       {showLabel && (
-        <span className="text-xs">{favorited ? "已收藏" : "收藏"}</span>
+        <span className="text-xs">
+          {ready ? (favorited ? "已收藏" : "收藏") : "收藏"}
+        </span>
       )}
     </Button>
   );

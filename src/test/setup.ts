@@ -1,5 +1,10 @@
 import "@testing-library/jest-dom";
+import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
+
+afterEach(() => {
+  cleanup();
+});
 
 // Mock fetch globally to prevent network calls in tests
 globalThis.fetch = vi.fn().mockImplementation(() =>

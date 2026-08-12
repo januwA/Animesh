@@ -1,4 +1,4 @@
-import { LocalStorageCollectionRepository } from "../infrastructure/collection/LocalStorageCollectionRepository";
+import { IndexedDbCollectionRepository } from "../infrastructure/collection/IndexedDbCollectionRepository";
 import { HttpIptvRepository } from "../infrastructure/iptv/HttpIptvRepository";
 import { TauriIptvStreamUrlRepository } from "../infrastructure/iptv/TauriIptvStreamUrlRepository";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
@@ -12,6 +12,6 @@ export const SettingsRepositoryImpl = TauriSettingsRepository;
 export const NotificationRepositoryImpl = TauriNotificationRepository;
 export const OpenerRepositoryImpl = TauriOpenerRepository;
 export const UpdateRepositoryImpl = GithubUpdateRepository;
-export const CollectionRepositoryImpl = LocalStorageCollectionRepository;
+export const CollectionRepositoryImpl = IndexedDbCollectionRepository;
 export const IptvRepositoryImpl = HttpIptvRepository;
 export const IptvStreamUrlRepositoryImpl = TauriIptvStreamUrlRepository;

@@ -1,5 +1,6 @@
 import { Heart } from "lucide-react";
 import { useDI } from "@/di/DIContext";
+import { useQuery } from "@/presentation/hooks/useQuery";
 
 interface FavoriteBadgeProps {
   subjectId: number;
@@ -7,8 +8,12 @@ interface FavoriteBadgeProps {
 
 export function FavoriteBadge({ subjectId }: FavoriteBadgeProps) {
   const { collectionRepository } = useDI();
+  const { data: favorited } = useQuery(
+    () => collectionRepository.isFavorited(subjectId),
+    [collectionRepository, subjectId],
+  );
 
-  if (!collectionRepository.isFavorited(subjectId)) {
+  if (!favorited) {
     return null;
   }
 

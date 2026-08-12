@@ -1,21 +1,22 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
-import { COLLECTION_STORAGE_KEY } from "@/domain/collection/CollectionSchemas";
-import { LocalStorageCollectionRepository } from "@/infrastructure/collection/LocalStorageCollectionRepository";
+import { IndexedDbCollectionRepository } from "@/infrastructure/collection/IndexedDbCollectionRepository";
+import { InMemoryCacheStore } from "@/test/InMemoryCacheStore";
 import Collections from "./Collections";
 
 function createContainer(): DIContainer {
-  const collectionRepository = new LocalStorageCollectionRepository();
+  const collectionRepository = new IndexedDbCollectionRepository(
+    new InMemoryCacheStore(),
+  );
   return {
     collectionRepository,
   } as unknown as DIContainer;
 }
 
-function renderWithProvider() {
-  const container = createContainer();
+function renderWithProvider(container: DIContainer) {
   return render(
     <DIProvider value={container}>
       <MemoryRouter>
@@ -26,92 +27,85 @@ function renderWithProvider() {
 }
 
 describe("Collections 收藏页面", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it("空状态应显示提示信息和导航按钮", () => {
-    renderWithProvider();
-    expect(screen.getByText("还没有收藏任何条目")).toBeInTheDocument();
+  it("空状态应显示提示信息和导航按钮", async () => {
+    const container = createContainer();
+    renderWithProvider(container);
+    expect(await screen.findByText("还没有收藏任何条目")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "去新番日历看看" }),
     ).toBeInTheDocument();
   });
 
-  it("有收藏时应显示收藏条目", () => {
-    localStorage.setItem(
-      COLLECTION_STORAGE_KEY,
-      JSON.stringify({
-        items: [
-          {
-            subjectId: 101,
-            name: "测试动画",
-            imageUrl: null,
-            platform: "TV",
-            date: "2026-07-01",
-            addedAt: Date.now(),
-          },
-        ],
-        lastUpdatedAt: Date.now(),
-      }),
+  it("有收藏时应显示收藏条目", async () => {
+    const container = createContainer();
+    await (container.collectionRepository as IndexedDbCollectionRepository).add(
+      {
+        subjectId: 101,
+        name: "测试动画",
+        imageUrl: null,
+      },
     );
-    renderWithProvider();
-    expect(screen.getByText("测试动画")).toBeInTheDocument();
+    const { container: dom } = render(
+      <DIProvider value={container}>
+        <MemoryRouter>
+          <Collections />
+        </MemoryRouter>
+      </DIProvider>,
+    );
+    await waitFor(() => {
+      expect(dom.textContent).toContain("测试动画");
+    });
   });
 
-  it("应显示页面标题'我的收藏'", () => {
-    renderWithProvider();
-    expect(screen.getByText("我的收藏")).toBeInTheDocument();
-  });
-
-  it("点击空状态导航按钮应跳转到日历页", () => {
-    renderWithProvider();
+  it("点击空状态导航按钮应跳转到日历页", async () => {
+    const container = createContainer();
+    renderWithProvider(container);
+    expect(await screen.findByText("我的收藏")).toBeInTheDocument();
+    await screen.findByText("还没有收藏任何条目");
     fireEvent.click(screen.getByRole("button", { name: "去新番日历看看" }));
   });
 
-  it("应展示有封面的收藏条目且点击可触发导航", () => {
-    localStorage.setItem(
-      COLLECTION_STORAGE_KEY,
-      JSON.stringify({
-        items: [
-          {
-            subjectId: 201,
-            name: "带封面动画",
-            imageUrl: "https://example.com/cover.jpg",
-            date: "2026-07-01",
-            addedAt: Date.now(),
-          },
-        ],
-        lastUpdatedAt: Date.now(),
-      }),
+  it("应展示有封面的收藏条目且点击可触发导航", async () => {
+    const container = createContainer();
+    await (container.collectionRepository as IndexedDbCollectionRepository).add(
+      {
+        subjectId: 201,
+        name: "带封面动画",
+        imageUrl: "https://example.com/cover.jpg",
+      },
     );
-    renderWithProvider();
-    expect(screen.getByText("带封面动画")).toBeInTheDocument();
+    const { container: dom } = render(
+      <DIProvider value={container}>
+        <MemoryRouter>
+          <Collections />
+        </MemoryRouter>
+      </DIProvider>,
+    );
+    await waitFor(() => {
+      expect(dom.textContent).toContain("带封面动画");
+    });
     fireEvent.click(screen.getByTitle("详情: 带封面动画"));
   });
 
-  it("中文名为空时应回退显示英文名", () => {
-    localStorage.setItem(
-      COLLECTION_STORAGE_KEY,
-      JSON.stringify({
-        items: [
-          {
-            subjectId: 401,
-            name: "EnglishName",
-            nameCn: "",
-            imageUrl: null,
-            rating: null,
-            platform: "TV",
-            date: "2026-07-01",
-            summary: "",
-            addedAt: Date.now(),
-          },
-        ],
-        lastUpdatedAt: Date.now(),
-      }),
+  it("中文名为空时应回退显示英文名", async () => {
+    const container = createContainer();
+    await (container.collectionRepository as IndexedDbCollectionRepository).add(
+      {
+        subjectId: 401,
+        name: "EnglishName",
+        imageUrl: null,
+      },
     );
-    renderWithProvider();
-    expect(screen.getByText("EnglishName")).toBeInTheDocument();
+    const { container: dom } = render(
+      <DIProvider value={container}>
+        <MemoryRouter>
+          <Collections />
+        </MemoryRouter>
+      </DIProvider>,
+    );
+    await waitFor(() => {
+      expect(dom.textContent).toContain("EnglishName");
+    });
     fireEvent.click(screen.getByTitle("详情: EnglishName"));
   });
 });
