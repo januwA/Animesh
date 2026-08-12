@@ -152,6 +152,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
@@ -178,6 +179,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
     vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
@@ -213,6 +215,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hash222",
@@ -224,6 +227,7 @@ describe("Downloads 页面组件", () => {
         paused: true,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hash333",
@@ -235,6 +239,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hash444",
@@ -246,6 +251,7 @@ describe("Downloads 页面组件", () => {
         paused: true,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
@@ -333,6 +339,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
@@ -368,6 +375,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
@@ -403,6 +411,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hash222",
@@ -414,6 +423,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
@@ -508,6 +518,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hashZeroTotal",
@@ -519,6 +530,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
@@ -547,6 +559,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
@@ -587,6 +600,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
         created_at: 1719816000000, // 2026-07-01 12:00:00 UTC (roughly)
       },
       {
@@ -599,6 +613,7 @@ describe("Downloads 页面组件", () => {
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
         created_at: 1719819600000, // 2026-07-01 13:00:00 UTC (roughly)
       },
     ];

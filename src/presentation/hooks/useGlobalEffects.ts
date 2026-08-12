@@ -1,6 +1,5 @@
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
-import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 
@@ -8,7 +7,6 @@ export function useGlobalEffects() {
   const {
     notificationRepository,
     notifyDownloadCompletionUseCase,
-    autoUpdateTrackersUseCase,
     setThemeUseCase,
   } = useDI();
   const { resolvedTheme } = useTheme();
@@ -36,17 +34,4 @@ export function useGlobalEffects() {
     if (isLoading) return;
     notifyDownloadCompletionUseCase.execute(torrents);
   }, [torrents, isLoading, notifyDownloadCompletionUseCase]);
-
-  // 自动更新 Tracker
-  useEffect(() => {
-    const updateTrackers = async () => {
-      try {
-        const count = await autoUpdateTrackersUseCase.execute();
-        if (count !== null && count > 0) {
-          toast.success(`自动更新 Tracker 列表成功，已同步 ${count} 个服务器`);
-        }
-      } catch {}
-    };
-    updateTrackers();
-  }, [autoUpdateTrackersUseCase]);
 }

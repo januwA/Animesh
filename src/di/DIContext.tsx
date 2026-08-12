@@ -25,13 +25,10 @@ import { GetIptvCountriesUseCase } from "../application/iptv/GetIptvCountriesUse
 import { ResolvePlayableStreamUrlUseCase } from "../application/iptv/ResolvePlayableStreamUrlUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
-import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
-import { GetDefaultTrackersUseCase } from "../application/settings/GetDefaultTrackersUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
-import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
@@ -87,11 +84,8 @@ export interface DIContainer {
   getVideoMetadataUseCase: GetVideoMetadataUseCase;
 
   getSettingsUseCase: GetSettingsUseCase;
-  getDefaultTrackersUseCase: GetDefaultTrackersUseCase;
   saveSettingsUseCase: SaveSettingsUseCase;
   selectDirectoryUseCase: SelectDirectoryUseCase;
-  syncTrackersUseCase: SyncTrackersUseCase;
-  autoUpdateTrackersUseCase: AutoUpdateTrackersUseCase;
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
   aiClient: AiClient;
@@ -162,15 +156,8 @@ export function createDefaultDIContainer(): DIContainer {
   );
 
   const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
-  const getDefaultTrackersUseCase = new GetDefaultTrackersUseCase(
-    settingsRepository,
-  );
   const saveSettingsUseCase = new SaveSettingsUseCase(settingsRepository);
   const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
-  const syncTrackersUseCase = new SyncTrackersUseCase(settingsRepository);
-  const autoUpdateTrackersUseCase = new AutoUpdateTrackersUseCase(
-    settingsRepository,
-  );
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
 
@@ -245,11 +232,8 @@ export function createDefaultDIContainer(): DIContainer {
     getVideoMetadataUseCase,
 
     getSettingsUseCase,
-    getDefaultTrackersUseCase,
     saveSettingsUseCase,
     selectDirectoryUseCase,
-    syncTrackersUseCase,
-    autoUpdateTrackersUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,
     aiClient,

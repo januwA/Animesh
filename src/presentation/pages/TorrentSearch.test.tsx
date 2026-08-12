@@ -894,7 +894,6 @@ describe("TorrentSearch 页面组件", () => {
     // Mock getSettingsUseCase 返回配置好的 AI 选项，使 UI 中的 AI 开关得以显示
     vi.spyOn(mockContainer.getSettingsUseCase, "execute").mockResolvedValue({
       download_dir: "/mock",
-      trackers: [],
       ai_configs: [
         {
           alias: "Test AI",

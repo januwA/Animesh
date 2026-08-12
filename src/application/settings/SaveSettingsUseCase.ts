@@ -3,11 +3,6 @@ import type { SettingsRepository } from "../../domain/settings/SettingsRepositor
 export interface SaveSettingsDto {
   downloadDir: string;
   proxy: string | null;
-  trackers: string[];
-  trackerSourceType?: string | null;
-  trackerCustomUrl?: string | null;
-  trackerAutoUpdate?: boolean | null;
-  trackerLastUpdateTime?: number | null;
   aiConfigs?:
     | {
         alias: string;
@@ -25,13 +20,6 @@ export class SaveSettingsUseCase {
   async execute(dto: SaveSettingsDto): Promise<void> {
     await this.settingsRepository.setDownloadDir(dto.downloadDir);
     await this.settingsRepository.setProxy(dto.proxy);
-    await this.settingsRepository.setTrackers(dto.trackers);
-    await this.settingsRepository.setTrackerOptions({
-      sourceType: dto.trackerSourceType ?? null,
-      customUrl: dto.trackerCustomUrl ?? null,
-      autoUpdate: dto.trackerAutoUpdate ?? null,
-      lastUpdateTime: dto.trackerLastUpdateTime ?? null,
-    });
     if (dto.aiConfigs !== undefined) {
       const configs = dto.aiConfigs
         ? dto.aiConfigs.map((c) => ({

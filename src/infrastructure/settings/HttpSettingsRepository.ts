@@ -4,7 +4,6 @@ import {
   type Settings,
   SettingsSchema,
 } from "../../domain/settings/SettingsSchemas";
-import { parseTrackers } from "../../domain/settings/TrackerSettings";
 import { HttpClient } from "../http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
@@ -32,12 +31,6 @@ export class HttpSettingsRepository implements SettingsRepository {
     return result.data;
   }
 
-  async getDefaultTrackers(): Promise<string[]> {
-    return this.httpClient.getJson<string[]>(
-      `${baseUrl}/settings/default-trackers`,
-    );
-  }
-
   async setDownloadDir(dir: string): Promise<void> {
     await this.httpClient.request(`${baseUrl}/settings/download-dir`, {
       method: "PUT",
@@ -55,36 +48,6 @@ export class HttpSettingsRepository implements SettingsRepository {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ proxy }),
-    });
-  }
-
-  async setTrackers(trackers: string[]): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/trackers`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ trackers }),
-    });
-  }
-
-  async setTrackerOptions(options: {
-    sourceType: string | null;
-    customUrl: string | null;
-    autoUpdate: boolean | null;
-    lastUpdateTime: number | null;
-  }): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/tracker-options`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        source_type: options.sourceType,
-        custom_url: options.customUrl,
-        auto_update: options.autoUpdate,
-        last_update_time: options.lastUpdateTime,
-      }),
     });
   }
 
@@ -106,22 +69,6 @@ export class HttpSettingsRepository implements SettingsRepository {
       },
       body: JSON.stringify({ max_speed: speed }),
     });
-  }
-
-  async fetchTrackers(url: string): Promise<string[]> {
-    if (!url) {
-      throw new Error("Tracker URL 不能为空");
-    }
-    const response = await fetch(url).catch((err) => {
-      throw new Error("获取 Tracker 列表网络连接失败", { cause: err });
-    });
-    if (!response.ok) {
-      throw new Error(
-        `获取 Tracker 列表失败: HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-    const text = await response.text();
-    return parseTrackers(text);
   }
 
   async selectDirectory(): Promise<string | null> {

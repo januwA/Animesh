@@ -1,7 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
 import { MemoryRouter } from "react-router-dom";
-import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
 import { DIProvider } from "@/di/DIContext";
 import { TorrentStatusProvider } from "@/presentation/context/TorrentStatusContext";
@@ -59,36 +58,6 @@ describe("useGlobalEffects", () => {
 
     await waitFor(() => {
       expect(mockExecute).toHaveBeenCalled();
-    });
-  });
-
-  it("当自动更新 Tracker 成功返回数量时应该弹出 Toast 提示", async () => {
-    const mockAutoUpdateExecute = vi.fn().mockResolvedValue(5);
-    renderHook(() => useGlobalEffects(), {
-      wrapper: createWrapper({
-        autoUpdateTrackersUseCase: { execute: mockAutoUpdateExecute } as any,
-      }),
-    });
-
-    await waitFor(() => {
-      expect(toast.success).toHaveBeenCalledWith(
-        expect.stringContaining("自动更新 Tracker 列表成功，已同步"),
-      );
-    });
-  });
-
-  it("当自动更新 Tracker 发生异常时应该安全捕获不崩溃", async () => {
-    const mockAutoUpdateExecute = vi
-      .fn()
-      .mockRejectedValue(new Error("Sync failed"));
-    renderHook(() => useGlobalEffects(), {
-      wrapper: createWrapper({
-        autoUpdateTrackersUseCase: { execute: mockAutoUpdateExecute } as any,
-      }),
-    });
-
-    await waitFor(() => {
-      expect(mockAutoUpdateExecute).toHaveBeenCalled();
     });
   });
 });

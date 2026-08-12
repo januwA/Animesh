@@ -10,7 +10,6 @@ use std::path::PathBuf;
 pub struct RqbitTorrentRepository {
     session: Arc<Session>,
     get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
-    get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
     persistence_dir: PathBuf,
     start_time: std::time::Instant,
 }
@@ -19,13 +18,11 @@ impl RqbitTorrentRepository {
     pub fn new(
         session: Arc<Session>,
         get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
-        get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
         persistence_dir: PathBuf,
     ) -> Self {
         Self {
             session,
             get_download_dir_fn,
-            get_trackers_fn,
             persistence_dir,
             start_time: std::time::Instant::now(),
         }
@@ -78,12 +75,9 @@ impl TorrentRepository for RqbitTorrentRepository {
             ..Default::default()
         };
 
-        let trackers = (self.get_trackers_fn)();
-        let magnet_with_trackers = append_default_trackers(magnet, &trackers);
-
         let response = self
             .session
-            .add_torrent(AddTorrent::from_url(&magnet_with_trackers), Some(options))
+            .add_torrent(AddTorrent::from_url(magnet), Some(options))
             .await
             .map_err(|e| format!("Failed to add torrent: {}", e))?;
 
@@ -150,6 +144,13 @@ impl TorrentRepository for RqbitTorrentRepository {
         let finished = stats.finished
             || (is_startup && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
 
+        let trackers = torrent
+            .shared()
+            .trackers
+            .iter()
+            .map(|u| u.to_string())
+            .collect::<Vec<_>>();
+
         Some(TorrentStatusInfo {
             info_hash: info_hash_hex.to_string(),
             name: torrent.name().unwrap_or_default(),
@@ -161,6 +162,7 @@ impl TorrentRepository for RqbitTorrentRepository {
             peers_connected,
             peers_total,
             created_at,
+            trackers,
         })
     }
 
@@ -189,6 +191,12 @@ impl TorrentRepository for RqbitTorrentRepository {
                 let finished = stats.finished
                     || (is_startup
                         && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
+                let trackers = torrent
+                    .shared()
+                    .trackers
+                    .iter()
+                    .map(|u| u.to_string())
+                    .collect::<Vec<_>>();
                 TorrentStatusInfo {
                     info_hash: hex,
                     name: torrent.name().unwrap_or_default(),
@@ -200,6 +208,7 @@ impl TorrentRepository for RqbitTorrentRepository {
                     peers_connected,
                     peers_total,
                     created_at,
+                    trackers,
                 }
             })
             .collect()
@@ -290,55 +299,5 @@ impl TorrentRepository for RqbitTorrentRepository {
     fn set_max_download_speed(&self, bytes_per_sec: Option<u32>) {
         let bps = bytes_per_sec.and_then(NonZeroU32::new);
         self.session.ratelimits.set_download_bps(bps);
-    }
-}
-
-fn append_default_trackers(magnet: &str, default_trackers: &[String]) -> String {
-    let mut magnet_with_trackers = magnet.to_string();
-
-    for tracker in default_trackers {
-        let encoded_tracker = urlencoding::encode(tracker);
-        // Only append if the tracker is not already present (both in raw and encoded form)
-        if !magnet.contains(tracker) && !magnet.contains(&encoded_tracker.to_string()) {
-            if !magnet_with_trackers.contains('?') {
-                magnet_with_trackers.push('?');
-            } else if !magnet_with_trackers.ends_with('&') && !magnet_with_trackers.ends_with('?') {
-                magnet_with_trackers.push('&');
-            }
-            magnet_with_trackers.push_str("tr=");
-            magnet_with_trackers.push_str(&encoded_tracker);
-        }
-    }
-
-    magnet_with_trackers
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[allow(non_snake_case)]
-    fn 测试_追加默认Tracker_应成功() {
-        let raw_magnet = "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff";
-        let default_trackers = vec![
-            "udp://tracker.opentrackr.org:1337/announce".to_string(),
-            "http://tracker.gbitt.info:80/announce".to_string(),
-        ];
-        let with_trackers = append_default_trackers(raw_magnet, &default_trackers);
-
-        assert!(with_trackers.contains("tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce"));
-        assert!(with_trackers.contains("tr=http%3A%2F%2Ftracker.gbitt.info%3A80%2Fannounce"));
-
-        // If it already has trackers, it shouldn't duplicate
-        let raw_magnet_2 = format!(
-            "{}&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce",
-            raw_magnet
-        );
-        let with_trackers_2 = append_default_trackers(&raw_magnet_2, &default_trackers);
-
-        // Count occurrences of opentrackr
-        let occurrences = with_trackers_2.matches("tracker.opentrackr.org").count();
-        assert_eq!(occurrences, 1);
     }
 }

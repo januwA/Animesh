@@ -73,11 +73,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let settings = animesh_core::torrent_manager::AppSettings {
             download_dir: download_dir.to_string_lossy().to_string(),
             proxy: None,
-            trackers: Some(animesh_core::torrent_manager::get_default_trackers()),
-            tracker_source_type: None,
-            tracker_custom_url: None,
-            tracker_auto_update: None,
-            tracker_last_update_time: None,
             ai_configs: None,
             max_download_speed: None,
         };
@@ -129,19 +124,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route("/settings", get(settings_get_handler))
         .route(
-            "/settings/default-trackers",
-            get(settings_get_default_trackers_handler),
-        )
-        .route(
             "/settings/download-dir",
             put(settings_set_download_dir_handler),
         )
         .route("/settings/proxy", put(settings_set_proxy_handler))
-        .route("/settings/trackers", put(settings_set_trackers_handler))
-        .route(
-            "/settings/tracker-options",
-            put(settings_set_tracker_options_handler),
-        )
         .route("/settings/ai-configs", put(settings_set_ai_configs_handler))
         .route(
             "/settings/max-download-speed",
@@ -440,13 +426,6 @@ async fn settings_get_handler(
     Ok(axum::Json(settings))
 }
 
-async fn settings_get_default_trackers_handler() -> Result<impl IntoResponse, (StatusCode, String)>
-{
-    Ok(axum::Json(
-        animesh_core::torrent_manager::get_default_trackers(),
-    ))
-}
-
 #[derive(serde::Deserialize)]
 struct SetDownloadDirInput {
     dir: String,
@@ -475,46 +454,6 @@ async fn settings_set_proxy_handler(
     state
         .manager
         .set_proxy(payload.proxy)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    Ok(StatusCode::OK)
-}
-
-#[derive(serde::Deserialize)]
-struct SetTrackersInput {
-    trackers: Vec<String>,
-}
-
-async fn settings_set_trackers_handler(
-    State(state): State<Arc<AppState>>,
-    axum::Json(payload): axum::Json<SetTrackersInput>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    state
-        .manager
-        .set_trackers(payload.trackers)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    Ok(StatusCode::OK)
-}
-
-#[derive(serde::Deserialize)]
-struct SetTrackerOptionsInput {
-    source_type: Option<String>,
-    custom_url: Option<String>,
-    auto_update: Option<bool>,
-    last_update_time: Option<i64>,
-}
-
-async fn settings_set_tracker_options_handler(
-    State(state): State<Arc<AppState>>,
-    axum::Json(payload): axum::Json<SetTrackerOptionsInput>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    state
-        .manager
-        .set_tracker_options(
-            payload.source_type,
-            payload.custom_url,
-            payload.auto_update,
-            payload.last_update_time,
-        )
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }

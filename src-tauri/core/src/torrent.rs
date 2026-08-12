@@ -26,6 +26,8 @@ pub struct TorrentStatusInfo {
     pub peers_connected: u32,
     pub peers_total: u32,
     pub created_at: u64,
+    #[serde(default)]
+    pub trackers: Vec<String>,
 }
 
 pub fn format_hash(bytes: &[u8; 20]) -> String {

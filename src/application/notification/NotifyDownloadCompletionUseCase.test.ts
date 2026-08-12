@@ -50,6 +50,7 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
@@ -72,6 +73,7 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
       paused: false,
       peers_connected: 1,
       peers_total: 1,
+      trackers: [],
     };
 
     vi.mocked(mockTorrentRepository.listTorrents).mockImplementation(
@@ -113,6 +115,7 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
       paused: false,
       peers_connected: 0,
       peers_total: 0,
+      trackers: [],
     };
 
     vi.mocked(mockTorrentRepository.listTorrents).mockImplementation(
@@ -164,6 +167,7 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
       paused: false,
       peers_connected: 1,
       peers_total: 1,
+      trackers: [],
     };
 
     vi.mocked(mockTorrentRepository.listTorrents).mockImplementation(

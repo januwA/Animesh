@@ -12,13 +12,10 @@ import { GetIptvCountriesUseCase } from "../application/iptv/GetIptvCountriesUse
 import { ResolvePlayableStreamUrlUseCase } from "../application/iptv/ResolvePlayableStreamUrlUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
-import { AutoUpdateTrackersUseCase } from "../application/settings/AutoUpdateTrackersUseCase";
-import { GetDefaultTrackersUseCase } from "../application/settings/GetDefaultTrackersUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
-import { SyncTrackersUseCase } from "../application/settings/SyncTrackersUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
@@ -88,11 +85,8 @@ export interface CreateContainerParamsForTest {
   getVideoMetadataUseCase?: GetVideoMetadataUseCase;
 
   getSettingsUseCase?: GetSettingsUseCase;
-  getDefaultTrackersUseCase?: GetDefaultTrackersUseCase;
   saveSettingsUseCase?: SaveSettingsUseCase;
   selectDirectoryUseCase?: SelectDirectoryUseCase;
-  syncTrackersUseCase?: SyncTrackersUseCase;
-  autoUpdateTrackersUseCase?: AutoUpdateTrackersUseCase;
   verifyAiConnectionUseCase?: VerifyAiConnectionUseCase;
   setThemeUseCase?: SetThemeUseCase;
   aiClient?: AiClient;
@@ -152,13 +146,10 @@ export function createDIContainerForTest(
   } as unknown as TorrentRepository;
 
   const settingsRepo = {
-    getSettings: async () => ({ download_dir: "", trackers: [] }),
+    getSettings: async () => ({ download_dir: "" }),
     setDownloadDir: async () => {},
     setProxy: async () => {},
-    setTrackers: async () => {},
-    setTrackerOptions: async () => {},
     setAiOptions: async () => {},
-    fetchTrackers: async () => [],
     selectDirectory: async () => null,
     setTheme: async () => {},
     ...params.settingsRepository,
@@ -282,18 +273,10 @@ export function createDIContainerForTest(
 
   const getSettingsUseCase =
     params.getSettingsUseCase || new GetSettingsUseCase(settingsRepo);
-  const getDefaultTrackersUseCase =
-    params.getDefaultTrackersUseCase ||
-    new GetDefaultTrackersUseCase(settingsRepo);
   const saveSettingsUseCase =
     params.saveSettingsUseCase || new SaveSettingsUseCase(settingsRepo);
   const selectDirectoryUseCase =
     params.selectDirectoryUseCase || new SelectDirectoryUseCase(settingsRepo);
-  const syncTrackersUseCase =
-    params.syncTrackersUseCase || new SyncTrackersUseCase(settingsRepo);
-  const autoUpdateTrackersUseCase =
-    params.autoUpdateTrackersUseCase ||
-    new AutoUpdateTrackersUseCase(settingsRepo);
   const aiClient = params.aiClient || new FetchAiClient(new HttpClient());
   const verifyAiConnectionUseCase =
     params.verifyAiConnectionUseCase || new VerifyAiConnectionUseCase(aiClient);
@@ -376,11 +359,8 @@ export function createDIContainerForTest(
     getVideoMetadataUseCase,
 
     getSettingsUseCase,
-    getDefaultTrackersUseCase,
     saveSettingsUseCase,
     selectDirectoryUseCase,
-    syncTrackersUseCase,
-    autoUpdateTrackersUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,
     aiClient,

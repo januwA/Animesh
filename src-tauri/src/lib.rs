@@ -495,24 +495,6 @@ fn settings_get(
 }
 
 #[tauri::command]
-fn settings_get_default_trackers() -> Vec<String> {
-    animesh_core::torrent_manager::get_default_trackers()
-}
-
-#[tauri::command]
-fn settings_set_tracker_options(
-    source_type: Option<String>,
-    custom_url: Option<String>,
-    auto_update: Option<bool>,
-    last_update_time: Option<i64>,
-    manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager
-        .set_tracker_options(source_type, custom_url, auto_update, last_update_time)
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 fn settings_set_download_dir(
     dir: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
@@ -528,14 +510,6 @@ fn settings_set_proxy(
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), String> {
     manager.set_proxy(proxy).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn settings_set_trackers(
-    trackers: Vec<String>,
-    manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager.set_trackers(trackers).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -672,11 +646,6 @@ pub fn run() {
                 let settings = animesh_core::torrent_manager::AppSettings {
                     download_dir: download_dir.to_string_lossy().to_string(),
                     proxy: None,
-                    trackers: Some(animesh_core::torrent_manager::get_default_trackers()),
-                    tracker_source_type: None,
-                    tracker_custom_url: None,
-                    tracker_auto_update: None,
-                    tracker_last_update_time: None,
                     ai_configs: None,
                     max_download_speed: None,
                 };
@@ -715,11 +684,8 @@ pub fn run() {
             torrent_subscribe,
             torrent_unsubscribe,
             settings_get,
-            settings_get_default_trackers,
             settings_set_download_dir,
             settings_set_proxy,
-            settings_set_trackers,
-            settings_set_tracker_options,
             settings_set_ai_configs,
             settings_set_max_download_speed,
             select_directory,

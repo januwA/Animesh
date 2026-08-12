@@ -555,6 +555,27 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
               </CardContent>
             </Card>
           </div>
+
+          {/* Tracker 列表 */}
+          <div className="flex flex-col gap-2">
+            <h3 className="text-xs font-semibold text-foreground">
+              Tracker 服务器
+            </h3>
+            {torrentStatus && torrentStatus.trackers.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {torrentStatus.trackers.map((tracker) => (
+                  <span
+                    key={tracker}
+                    className="font-mono text-muted-foreground bg-secondary/50 border border-border rounded-full px-2 py-0.5 wrap-break-word"
+                  >
+                    {tracker}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">暂无 Tracker 信息</p>
+            )}
+          </div>
         </div>
       </div>
 

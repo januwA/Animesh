@@ -1,14 +1,12 @@
 import {
   Bot,
   Check,
-  Download,
   Folder,
   Gauge,
   Globe,
   HardDrive,
   Info,
   Lightbulb,
-  Link2,
   Loader2,
   Palette,
   RefreshCw,
@@ -22,10 +20,6 @@ import { toast } from "sonner";
 import type { SaveSettingsDto } from "@/application/settings/SaveSettingsUseCase";
 import { useDI } from "@/di/DIContext";
 import { SettingsFormSchema } from "@/domain/settings/SettingsSchemas";
-import {
-  getTrackerUrl,
-  type TrackerSourceType,
-} from "@/domain/settings/TrackerSettings";
 import { Button } from "@/presentation/components/ui/button";
 import {
   Card,
@@ -33,7 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
-import { Checkbox } from "@/presentation/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -48,7 +41,6 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Input } from "@/presentation/components/ui/input";
-import { Textarea } from "@/presentation/components/ui/textarea";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -60,7 +52,7 @@ import {
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { cn } from "@/presentation/lib/utils";
-import { formatError, formatLocalDate } from "@/utils";
+import { formatError } from "@/utils";
 
 interface AiConfigDraft {
   alias: string;
@@ -72,20 +64,8 @@ interface AiConfigDraft {
 interface FormSnapshot {
   downloadDir: string;
   proxy: string;
-  trackers: string[];
-  sourceType: TrackerSourceType;
-  customUrl: string;
-  autoUpdate: boolean;
-  lastUpdateTime: number;
   maxDownloadSpeed: number;
   aiConfigs: AiConfigDraft[];
-}
-
-function parseTrackersText(text: string): string[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
 }
 
 function toAiConfigDrafts(configs: AiConfigDraft[]): AiConfigDraft[] {
@@ -102,10 +82,8 @@ export default function Settings() {
   const { accent, setAccent } = useAccentTheme();
   const {
     getSettingsUseCase,
-    getDefaultTrackersUseCase,
     saveSettingsUseCase,
     selectDirectoryUseCase,
-    syncTrackersUseCase,
     checkUpdateUseCase,
     getCurrentVersionUseCase,
     openUpdateUrlUseCase,
@@ -120,11 +98,6 @@ export default function Settings() {
 
   const [downloadDir, setDownloadDir] = useState("");
   const [proxy, setProxy] = useState("");
-  const [trackersText, setTrackersText] = useState("");
-  const [sourceType, setSourceType] = useState<TrackerSourceType>("best");
-  const [customUrl, setCustomUrl] = useState("");
-  const [autoUpdate, setAutoUpdate] = useState(false);
-  const [lastUpdateTime, setLastUpdateTime] = useState(0);
   const [maxDownloadSpeed, setMaxDownloadSpeed] = useState(0);
 
   const [aiConfigs, setAiConfigs] = useState<
@@ -151,13 +124,6 @@ export default function Settings() {
       onSuccess: (settings) => {
         setDownloadDir(settings.download_dir);
         setProxy(settings.proxy || "");
-        setTrackersText((settings.trackers || []).join("\n"));
-        setSourceType(
-          (settings.tracker_source_type || "best") as TrackerSourceType,
-        );
-        setCustomUrl(settings.tracker_custom_url || "");
-        setAutoUpdate(settings.tracker_auto_update === true);
-        setLastUpdateTime(settings.tracker_last_update_time || 0);
         setMaxDownloadSpeed(settings.max_download_speed ?? 0);
 
         const loadedConfigs = (settings.ai_configs || []).map((c) => ({
@@ -170,12 +136,6 @@ export default function Settings() {
         setSavedSnapshot({
           downloadDir: settings.download_dir,
           proxy: settings.proxy || "",
-          trackers: parseTrackersText((settings.trackers || []).join("\n")),
-          sourceType: (settings.tracker_source_type ||
-            "best") as TrackerSourceType,
-          customUrl: settings.tracker_custom_url || "",
-          autoUpdate: settings.tracker_auto_update === true,
-          lastUpdateTime: settings.tracker_last_update_time || 0,
           maxDownloadSpeed: settings.max_download_speed ?? 0,
           aiConfigs: toAiConfigDrafts(loadedConfigs),
         });
@@ -242,53 +202,6 @@ export default function Settings() {
     });
   };
 
-  const currentUrl = getTrackerUrl(sourceType, customUrl);
-
-  // Tracker sync
-  const syncMutation = useMutation(
-    (_ctx, params: { url: string; mode: "replace" | "append" }) =>
-      syncTrackersUseCase.execute(params.url),
-    {
-      onSuccess: (fetched, params) => {
-        if (fetched.length === 0) {
-          toast.warning("未获取到有效的 Tracker 地址");
-          return;
-        }
-
-        if (params.mode === "replace") {
-          setTrackersText(fetched.join("\n"));
-          toast.success(
-            `同步成功：已替换为最新的 ${fetched.length} 个 Tracker，请保存设置`,
-          );
-        } else {
-          const currentTrackers = trackersText
-            .split("\n")
-            .map((t) => t.trim())
-            .filter((t) => t.length > 0);
-          const merged = Array.from(new Set([...currentTrackers, ...fetched]));
-          setTrackersText(merged.join("\n"));
-          const addedCount = merged.length - currentTrackers.length;
-          toast.success(
-            `同步成功：已追加 ${addedCount} 个新 Tracker (共计 ${merged.length} 个)，请保存设置`,
-          );
-        }
-
-        setLastUpdateTime(Date.now());
-      },
-      onError: (err) => toast.error(`同步 Tracker 失败: ${formatError(err)}`),
-    },
-  );
-  const syncing = syncMutation.loading;
-
-  const handleSync = (mode: "replace" | "append") => {
-    if (sourceType === "custom" && !customUrl) {
-      toast.warning("请输入自定义 Tracker 列表 URL");
-      return;
-    }
-
-    syncMutation.execute({ url: getTrackerUrl(sourceType, customUrl), mode });
-  };
-
   // Check update
   const checkUpdateMutation = useMutation(() => checkUpdateUseCase.execute(), {
     onSuccess: (result) => {
@@ -323,19 +236,6 @@ export default function Settings() {
     selectDirMutation.execute();
   };
 
-  // Reset to default trackers
-  const resetTrackersMutation = useMutation(
-    () => getDefaultTrackersUseCase.execute(),
-    {
-      onSuccess: (defaults) => {
-        setTrackersText(defaults.join("\n"));
-        toast.success("已重置为默认 Tracker 列表，点击保存生效");
-      },
-      onError: (err) =>
-        toast.error(`获取默认 Tracker 列表失败: ${formatError(err)}`),
-    },
-  );
-
   // Save settings
   const saveMutation = useMutation(
     (_ctx, data: SaveSettingsDto) => saveSettingsUseCase.execute(data),
@@ -345,11 +245,6 @@ export default function Settings() {
         setSavedSnapshot({
           downloadDir,
           proxy,
-          trackers: parseTrackersText(trackersText),
-          sourceType,
-          customUrl,
-          autoUpdate,
-          lastUpdateTime,
           maxDownloadSpeed,
           aiConfigs: toAiConfigDrafts(aiConfigs),
         });
@@ -363,19 +258,9 @@ export default function Settings() {
   const handleSave = (e: React.SubmitEvent) => {
     e.preventDefault();
 
-    const parsedTrackers = trackersText
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
     const validation = SettingsFormSchema.safeParse({
       downloadDir,
       proxy,
-      trackers: parsedTrackers,
-      trackerSourceType: sourceType,
-      trackerCustomUrl: customUrl,
-      trackerAutoUpdate: autoUpdate,
-      trackerLastUpdateTime: lastUpdateTime,
       aiConfigs,
       maxDownloadSpeed: maxDownloadSpeed || null,
     });
@@ -466,11 +351,6 @@ export default function Settings() {
   const buildSnapshotFromState = (): FormSnapshot => ({
     downloadDir,
     proxy,
-    trackers: parseTrackersText(trackersText),
-    sourceType,
-    customUrl,
-    autoUpdate,
-    lastUpdateTime,
     maxDownloadSpeed,
     aiConfigs: toAiConfigDrafts(aiConfigs),
   });
@@ -986,175 +866,6 @@ export default function Settings() {
                   );
                 })}
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border shadow-sm">
-          <CardHeader className="p-5">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <Link2 className="h-4 w-4 text-primary" />
-              BT Trackers 设置 (加速磁力解析与下载)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
-            {/* Tracker Online Sync & Enhancement Section */}
-            <div className="border border-border bg-secondary/30 rounded-lg p-4 flex flex-col gap-4 mb-6">
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Globe className="h-3.5 w-3.5 text-primary" />
-                  在线同步与自动更新 (ngosang/trackerslist)
-                </h4>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                  每日自动同步
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Left side: Configs */}
-                <div className="flex flex-col gap-3.5">
-                  {/* Source Type Selection */}
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-[11px] text-muted-foreground font-medium">
-                      选择列表源
-                    </span>
-                    <ToggleGroup
-                      type="single"
-                      value={sourceType}
-                      onValueChange={(v) =>
-                        v && setSourceType(v as TrackerSourceType)
-                      }
-                      size="sm"
-                      variant="outline"
-                      className="flex-wrap"
-                    >
-                      <ToggleGroupItem value="best">
-                        最优列表 (推荐)
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="all">完整列表</ToggleGroupItem>
-                      <ToggleGroupItem value="best_ip">最优 IP</ToggleGroupItem>
-                      <ToggleGroupItem value="all_ip">完整 IP</ToggleGroupItem>
-                      <ToggleGroupItem value="custom">自定义</ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-
-                  {/* Auto Update Checkbox */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <Checkbox
-                      id="auto-update-checkbox"
-                      checked={autoUpdate}
-                      onCheckedChange={(checked) =>
-                        setAutoUpdate(checked === true)
-                      }
-                    />
-                    <label
-                      htmlFor="auto-update-checkbox"
-                      className="text-[11px] text-foreground font-medium cursor-pointer select-none"
-                    >
-                      启动时自动更新 (每24小时)
-                    </label>
-                  </div>
-                </div>
-
-                {/* Right side: Input URL & Sync actions */}
-                <div className="flex flex-col justify-between gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label
-                      htmlFor="tracker-url-input"
-                      className="text-[11px] text-muted-foreground font-medium"
-                    >
-                      {sourceType === "custom"
-                        ? "自定义 URL 地址"
-                        : "当前解析同步地址"}
-                    </label>
-                    <Input
-                      id="tracker-url-input"
-                      value={sourceType === "custom" ? customUrl : currentUrl}
-                      onChange={(e) => {
-                        setCustomUrl(e.target.value);
-                      }}
-                      disabled={sourceType !== "custom"}
-                      placeholder="引导地址例如 https://example.com/trackers.txt"
-                      className="bg-secondary/30 border-border text-foreground py-2 text-[11px] h-8"
-                    />
-                  </div>
-
-                  {/* Sync actions */}
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={syncing}
-                        onClick={() => handleSync("replace")}
-                        className="flex-1 text-[11px] h-8.5 font-medium gap-1.5"
-                      >
-                        {syncing ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-3.5 w-3.5" />
-                        )}
-                        立即同步并替换
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={syncing}
-                        onClick={() => handleSync("append")}
-                        className="flex-1 text-[11px] h-8.5 font-medium gap-1.5 border-border bg-secondary/50 text-foreground hover:bg-secondary"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        追加同步
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground/80 px-0.5">
-                      <span>最后更新时间：</span>
-                      <span className="font-mono">
-                        {lastUpdateTime
-                          ? formatLocalDate(lastUpdateTime)
-                          : "从未更新"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor="trackers-input"
-                  className="text-muted-foreground font-medium"
-                >
-                  Tracker 服务器列表 (每行一个)
-                </label>
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  onClick={() => resetTrackersMutation.execute()}
-                  className="text-[11px]"
-                >
-                  重置为默认值
-                </Button>
-              </div>
-              <Textarea
-                id="trackers-input"
-                value={trackersText}
-                onChange={(e) => setTrackersText(e.target.value)}
-                placeholder="请输入 Tracker 地址，每行输入一个"
-                rows={8}
-                className="bg-secondary/30 text-xs"
-              />
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
-                <Lightbulb className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
-                <span>
-                  提示：添加高质量的公网 Tracker
-                  可以极大地加快纯净磁力链接的解析速度，并帮助你更快地连接到
-                  Peers。
-                </span>
-              </p>
             </div>
           </CardContent>
         </Card>

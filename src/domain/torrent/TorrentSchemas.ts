@@ -31,6 +31,7 @@ export const TorrentStatusInfoSchema = z.object({
   peers_connected: z.number(),
   peers_total: z.number(),
   created_at: z.number().optional(),
+  trackers: z.array(z.string()).default([]),
 });
 
 export const SubtitleTrackInfoSchema = z.object({
