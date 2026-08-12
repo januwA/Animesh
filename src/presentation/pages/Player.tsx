@@ -17,6 +17,12 @@ import type {
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
+import {
+  Item,
+  ItemContent,
+  ItemGroup,
+  ItemTitle,
+} from "@/presentation/components/ui/item";
 import { Progress } from "@/presentation/components/ui/progress";
 import {
   Select,
@@ -562,16 +568,17 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
               Tracker 服务器
             </h3>
             {torrentStatus && torrentStatus.trackers.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
+              <ItemGroup>
                 {torrentStatus.trackers.map((tracker) => (
-                  <span
-                    key={tracker}
-                    className="font-mono text-muted-foreground bg-secondary/50 border border-border rounded-full px-2 py-0.5 wrap-break-word"
-                  >
-                    {tracker}
-                  </span>
+                  <Item key={tracker} variant="outline" size="sm">
+                    <ItemContent>
+                      <ItemTitle className="truncate font-mono">
+                        {tracker}
+                      </ItemTitle>
+                    </ItemContent>
+                  </Item>
                 ))}
-              </div>
+              </ItemGroup>
             ) : (
               <p className="text-xs text-muted-foreground">暂无 Tracker 信息</p>
             )}

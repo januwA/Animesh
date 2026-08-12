@@ -30,6 +30,7 @@
     "includes": [
       "**",
       "!!src-tauri",
+      "!!src/presentation/components/ui",
       "!!public",
       "!!scripts",
       "!!.agents",
