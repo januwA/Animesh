@@ -11,37 +11,37 @@
   color: var(--foreground);
   background-color: var(--background);
 
-  --background: oklch(0.99 0.005 240);
-  --foreground: oklch(0.25 0.02 240);
-  --card: oklch(1 0 0 / 70%);
-  --card-foreground: oklch(0.25 0.02 240);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.02 240);
-  --secondary: oklch(0.95 0.01 240);
-  --secondary-foreground: oklch(0.25 0.02 240);
-  --muted: oklch(0.94 0.01 240);
-  --muted-foreground: oklch(0.5 0.015 240);
-  --destructive: oklch(0.6 0.18 25);
-  --border: oklch(0.91 0.01 240);
-  --input: oklch(0.91 0.01 240);
-  --chart-2: oklch(0.65 0.15 190);
-  --chart-3: oklch(0.6 0.15 150);
-  --chart-4: oklch(0.55 0.18 340);
-  --chart-5: oklch(0.7 0.15 70);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.98 0.005 240);
-  --sidebar-foreground: oklch(0.25 0.02 240);
-  --sidebar-border: oklch(0.91 0.01 240);
+  --popover-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-border: oklch(0.922 0 0);
 
   /* 品牌主色：由 --brand-hue 驱动，可通过 data-accent 属性切换 */
   --brand-hue: 245;
 
   --primary: oklch(0.58 0.18 var(--brand-hue));
-  --primary-foreground: oklch(0.985 0.005 240);
+  --primary-foreground: oklch(0.985 0 0);
   --ring: var(--primary);
   --accent: oklch(0.94 0.02 var(--brand-hue));
   --accent-foreground: var(--primary);
-  --chart-1: var(--primary);
+  --chart-1: oklch(0.87 0 0);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: var(--accent);
@@ -133,38 +133,38 @@ body {
 }
 
 .dark {
-  --background: oklch(0.08 0.01 240);
+  --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.12 0.01 240 / 70%);
+  --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.12 0.01 240);
+  --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.18 0.02 240);
+  --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.16 0.02 240);
+  --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.1 0.01 240);
+  --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-border: oklch(1 0 0 / 10%);
 
   /* 品牌主色：默认深色靛蓝，可被 data-accent 属性覆盖 */
   --brand-hue: 240;
 
   --primary: oklch(0.6 0.18 var(--brand-hue));
-  --primary-foreground: oklch(0.08 0.01 240);
+  --primary-foreground: oklch(0.985 0 0);
   --ring: var(--primary);
   --accent: oklch(0.2 0.03 var(--brand-hue));
   --accent-foreground: oklch(0.985 0 0);
   --chart-1: oklch(0.87 0 0);
   --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--accent-foreground);
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: var(--accent);
   --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-ring: var(--ring);
@@ -197,6 +197,34 @@ body {
   html {
     @apply font-sans;
   }
+}
+
+/* 全局滚动条美化：Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent)
+    transparent;
+}
+
+/* 全局滚动条美化：WebKit/Chromium */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  background-color: color-mix(in oklab, var(--foreground) 18%, transparent);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklab, var(--foreground) 30%, transparent);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* View Transitions 动画时长与缓动定制 */

@@ -8,4 +8,9 @@
 - 界面主题与样式规范：
   - **使用语义化变量**：禁止在表现层组件中使用硬编码的不透明度/色值类（例如 `border-white/5`、`bg-black/10`），而应使用自适应的语义类（如 `border-border`、`bg-secondary`、`bg-muted`），以确保深浅色切换时的可用性。
   - **渐变背景自适应**：全局背景采用双色渐变适配，浅色底使用 `#f8fafc` 搭配微弱渐变，深色底（`.dark body`）使用 `#080a10` 搭配明亮渐变。
+- 主题（theme）设置：
+  - 主题由 shadcn preset 驱动（当前为 `b0`：nova 风格 + neutral 中性色），`light`/`dark` 的全部色板变量定义在 `src/presentation/App.css` 的 `:root` 与 `.dark` 中，由 shadcn 上游维护，**不要手动改色值**。
+  - 更新主题使用 `npx shadcn@latest apply b0 --only theme`；`npx shadcn@latest preset resolve --json` 可查看当前 preset。
+  - 品牌主色（primary/accent/ring）由 `--brand-hue` 驱动，通过 `html[data-accent]` 属性切换（预设在 App.css 的 `:root[data-accent=...]`，逻辑在 `src/presentation/hooks/useAccentTheme.ts`），改品牌色只动 `--brand-hue`，不动 preset 色板。
+  - 深/浅色模式通过 `.dark` class 切换（`@custom-variant dark`），新增颜色一律使用语义变量，禁止出现 `dark:` 硬编码色值。
 

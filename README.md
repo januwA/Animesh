@@ -151,14 +151,7 @@ To avoid generating unsigned packages (`-unsigned.apk`) on every release build (
      ```
 
 2. **Gradle error: `Unsupported class file major version 69` (Java 25 conflict)**
-   - **Cause**: Your system's default JDK version is too high (e.g., JDK 25), and the current Gradle 8.14.3 cannot recognize bytecode from that Java version.
-   - **Solution**: Configure a compatible Java version (e.g., JDK 21) for local Gradle. Do not modify property files inside the project directory to avoid affecting CI builds. Instead, create or edit the **global** Gradle configuration file in your user home directory:
-     - Windows: `C:\Users\<username>\.gradle\gradle.properties`
-     - macOS/Linux: `~/.gradle/gradle.properties`
-     And set it to the JDK (JBR) bundled with Android Studio (Windows example):
-     ```properties
-     org.gradle.java.home=C:\\Program Files\\Android\\Android Studio\\jbr
-     ```
+   - Install a JDK that matches the Gradle version in `src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties`. For example, for gradle-8.14.3, install JDK 21
 
 ## Web Mode & Server Deployment
 
