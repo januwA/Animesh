@@ -34,6 +34,7 @@ describe("Settings 页面组件", () => {
       setProxy: vi.fn(),
       setAiConfigs: vi.fn(),
       setMaxDownloadSpeed: vi.fn(),
+      setMaxUploadSpeed: vi.fn(),
       selectDirectory: vi.fn(),
       setTheme: vi.fn(),
     };
@@ -161,7 +162,7 @@ describe("Settings 页面组件", () => {
       target: { value: "socks5://127.0.0.1:1080" },
     });
 
-    const speedInput = screen.getByPlaceholderText("0");
+    const speedInput = screen.getByLabelText("后台下载速度限制");
     fireEvent.change(speedInput, { target: { value: "2048" } });
 
     const saveBtn = screen.getByRole("button", { name: "保存设置" });
@@ -181,6 +182,46 @@ describe("Settings 页面组件", () => {
     expect(toast.success).toHaveBeenCalledWith(
       "设置已保存，后续下载任务将使用新路径",
     );
+  });
+
+  it("应该支持修改后台上传速度限制并在保存时调用 setMaxUploadSpeed", async () => {
+    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+      download_dir: "C:\\Downloads",
+      max_upload_speed: 512,
+    });
+
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("后台上传速度限制")).toHaveValue(512);
+    });
+
+    const uploadInput = screen.getByLabelText("后台上传速度限制");
+    fireEvent.change(uploadInput, { target: { value: "1024" } });
+
+    const saveBtn = screen.getByRole("button", { name: "保存设置" });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockSettingsRepository.setMaxUploadSpeed).toHaveBeenCalledWith(
+        1024,
+      );
+      expect(mockSettingsRepository.setDownloadDir).toHaveBeenCalledWith(
+        "C:\\Downloads",
+      );
+    });
+  });
+
+  it("当载入设置未含上传限制时，上传速度限制应该默认为 0", async () => {
+    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+      download_dir: "C:\\Downloads",
+    });
+
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("后台上传速度限制")).toHaveValue(0);
+    });
   });
 
   it("当保存下载目录为空时，应该拦截并提示不能为空", async () => {

@@ -21,4 +21,6 @@ pub trait TorrentRepository: Send + Sync {
     ) -> Result<Box<dyn AsyncReadSeek>, String>;
 
     fn set_max_download_speed(&self, bytes_per_sec: Option<u32>);
+
+    fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>);
 }

@@ -22,6 +22,7 @@ pub struct TorrentStatusInfo {
     pub total_bytes: u64,
     pub finished: bool,
     pub download_speed_bytes_per_sec: u64,
+    pub upload_speed_bytes_per_sec: u64,
     pub paused: bool,
     pub peers_connected: u32,
     pub peers_total: u32,

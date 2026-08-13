@@ -11,6 +11,8 @@ describe("Settings 相关的 UseCase 业务编排", () => {
     setDownloadDir: vi.fn(),
     setProxy: vi.fn(),
     setAiConfigs: vi.fn(),
+    setMaxDownloadSpeed: vi.fn(),
+    setMaxUploadSpeed: vi.fn(),
     selectDirectory: vi.fn(),
     setTheme: vi.fn(),
   };
@@ -125,6 +127,29 @@ describe("Settings 相关的 UseCase 业务编排", () => {
       aiConfigs: null,
     });
     expect(rawMockRepo.setAiConfigs).toHaveBeenCalledWith(null);
+  });
+
+  it("SaveSettingsUseCase 应该调用 setMaxUploadSpeed 方法（含 0/空值归一化）", async () => {
+    const useCase = new SaveSettingsUseCase(mockRepo);
+    vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
+    vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
+    await useCase.execute({
+      downloadDir: "/mock/dir2",
+      proxy: null,
+      maxUploadSpeed: 256,
+    });
+    expect(rawMockRepo.setMaxUploadSpeed).toHaveBeenCalledWith(256);
+  });
+
+  it("SaveSettingsUseCase 未提供 maxUploadSpeed 时不应该调用 setMaxUploadSpeed", async () => {
+    const useCase = new SaveSettingsUseCase(mockRepo);
+    vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
+    vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
+    await useCase.execute({
+      downloadDir: "/mock/dir2",
+      proxy: null,
+    });
+    expect(rawMockRepo.setMaxUploadSpeed).not.toHaveBeenCalled();
   });
 
   it("SetThemeUseCase 应该调用 repository 里的 setTheme 方法", async () => {

@@ -65,6 +65,7 @@ interface FormSnapshot {
   downloadDir: string;
   proxy: string;
   maxDownloadSpeed: number;
+  maxUploadSpeed: number;
   aiConfigs: AiConfigDraft[];
 }
 
@@ -99,6 +100,7 @@ export default function Settings() {
   const [downloadDir, setDownloadDir] = useState("");
   const [proxy, setProxy] = useState("");
   const [maxDownloadSpeed, setMaxDownloadSpeed] = useState(0);
+  const [maxUploadSpeed, setMaxUploadSpeed] = useState(0);
 
   const [aiConfigs, setAiConfigs] = useState<
     {
@@ -125,6 +127,7 @@ export default function Settings() {
         setDownloadDir(settings.download_dir);
         setProxy(settings.proxy || "");
         setMaxDownloadSpeed(settings.max_download_speed ?? 0);
+        setMaxUploadSpeed(settings.max_upload_speed ?? 0);
 
         const loadedConfigs = (settings.ai_configs || []).map((c) => ({
           alias: c.alias,
@@ -137,6 +140,7 @@ export default function Settings() {
           downloadDir: settings.download_dir,
           proxy: settings.proxy || "",
           maxDownloadSpeed: settings.max_download_speed ?? 0,
+          maxUploadSpeed: settings.max_upload_speed ?? 0,
           aiConfigs: toAiConfigDrafts(loadedConfigs),
         });
       },
@@ -246,6 +250,7 @@ export default function Settings() {
           downloadDir,
           proxy,
           maxDownloadSpeed,
+          maxUploadSpeed,
           aiConfigs: toAiConfigDrafts(aiConfigs),
         });
       },
@@ -263,6 +268,7 @@ export default function Settings() {
       proxy,
       aiConfigs,
       maxDownloadSpeed: maxDownloadSpeed || null,
+      maxUploadSpeed: maxUploadSpeed || null,
     });
 
     if (!validation.success) {
@@ -352,6 +358,7 @@ export default function Settings() {
     downloadDir,
     proxy,
     maxDownloadSpeed,
+    maxUploadSpeed,
     aiConfigs: toAiConfigDrafts(aiConfigs),
   });
 
@@ -437,7 +444,7 @@ export default function Settings() {
                     </Button>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex flex-col gap-1.5">
+                <p className="text-muted-foreground/70 leading-relaxed mt-1 flex flex-col gap-1.5">
                   {isMobile ? (
                     <span className="flex items-center gap-1">
                       <Info className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -478,13 +485,37 @@ export default function Settings() {
                     KB/s
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
+                <p className="text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
                   <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                  <span>
-                    限制 BT
-                    后台下载的速率，避免占用全部网络带宽影响日常使用。设为 0
-                    表示不限速。
+                  <span>限制 BT 后台下载的速率。设为 0 表示不限速。</span>
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-3 border-t border-border">
+                <label
+                  htmlFor="max-upload-speed-input"
+                  className="text-muted-foreground font-medium flex items-center gap-1.5"
+                >
+                  <Gauge className="h-3.5 w-3.5 text-primary" />
+                  后台上传速度限制
+                </label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    id="max-upload-speed-input"
+                    type="number"
+                    min={0}
+                    value={maxUploadSpeed}
+                    onChange={(e) => setMaxUploadSpeed(Number(e.target.value))}
+                    placeholder="0"
+                    className="sm:w-28"
+                  />
+                  <span className="text-xs text-muted-foreground font-medium">
+                    KB/s
                   </span>
+                </div>
+                <p className="text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
+                  <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                  <span>限制 BT 后台做种上传的速率。设为 0 表示不限速。</span>
                 </p>
               </div>
             </CardContent>
@@ -514,7 +545,7 @@ export default function Settings() {
                   placeholder="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:7890 (留空则不使用代理)"
                   className="bg-secondary/30 border-border text-foreground py-5 text-xs"
                 />
-                <p className="text-[11px] text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
+                <p className="text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
                   <Lightbulb className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
                   <span>
                     提示：部分地区可能有网络问题 搜索无结果，可配置代理。支持
@@ -822,7 +853,7 @@ export default function Settings() {
           </CardHeader>
           <CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
             <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] text-muted-foreground font-medium">
+              <span className="text-muted-foreground font-medium">
                 选择界面主题
               </span>
               <ToggleGroup
@@ -839,7 +870,7 @@ export default function Settings() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <span className="text-[11px] text-muted-foreground font-medium">
+              <span className="text-muted-foreground font-medium">
                 选择主色调
               </span>
               <div className="flex items-center gap-2.5">

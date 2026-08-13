@@ -1,6 +1,5 @@
 import type { Context } from "ajanuw-context";
 import {
-  Activity,
   Download,
   FolderOpen,
   HardDrive,
@@ -8,6 +7,7 @@ import {
   Pause,
   Play,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -198,12 +198,18 @@ export default function Downloads() {
                           <Download className="h-3.5 w-3.5 text-primary" />
                           进度: {progress.toFixed(2)}%
                         </span>
-                        <span className="flex items-center gap-1.5 text-muted-foreground">
-                          <Activity className="h-3.5 w-3.5 text-emerald-400" />
-                          网速:{" "}
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          下载:{" "}
                           {formatBytes(torrent.download_speed_bytes_per_sec)}/s
-                          (同伴: {torrent.peers_connected}/{torrent.peers_total}
-                          )
+                        </span>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Upload className="h-3.5 w-3.5 text-info" />
+                          上传:{" "}
+                          {formatBytes(torrent.upload_speed_bytes_per_sec)}/s
+                          <span className="text-info/80">
+                            (同伴: {torrent.peers_connected}/
+                            {torrent.peers_total})
+                          </span>
                         </span>
                       </div>
                       <Progress value={progress} className="h-2" />

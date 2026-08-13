@@ -46,6 +46,8 @@ pub struct AppSettings {
     pub ai_configs: Option<Vec<AiConfig>>,
     #[serde(default)]
     pub max_download_speed: Option<u32>,
+    #[serde(default)]
+    pub max_upload_speed: Option<u32>,
 }
 
 #[derive(Clone)]
@@ -60,6 +62,7 @@ impl TorrentManager {
         settings_path: PathBuf,
         proxy: Option<String>,
         max_download_speed: Option<u32>,
+        max_upload_speed: Option<u32>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let persistence_dir = settings_path
             .parent()
@@ -142,6 +145,14 @@ impl TorrentManager {
             }
         }
 
+        // Apply upload speed limit
+        if let Some(speed_kbps) = max_upload_speed {
+            if speed_kbps > 0 {
+                let bytes_per_sec = speed_kbps.saturating_mul(1024);
+                torrent_repo.set_max_upload_speed(Some(bytes_per_sec));
+            }
+        }
+
         let client = Arc::new(crate::infrastructure::http_client::ReqwestHttpClient);
         let crawler_repo =
             Arc::new(crate::infrastructure::http_crawler::HttpCrawlerRepository::new(client));
@@ -181,6 +192,7 @@ impl TorrentManager {
                 proxy: self.get_proxy(),
                 ai_configs: None,
                 max_download_speed: None,
+                max_upload_speed: None,
             })
         } else {
             AppSettings {
@@ -188,6 +200,7 @@ impl TorrentManager {
                 proxy: self.get_proxy(),
                 ai_configs: None,
                 max_download_speed: None,
+                max_upload_speed: None,
             }
         };
         settings.download_dir = dir;
@@ -215,6 +228,7 @@ impl TorrentManager {
                 proxy: proxy.clone(),
                 ai_configs: None,
                 max_download_speed: None,
+                max_upload_speed: None,
             })
         } else {
             AppSettings {
@@ -222,6 +236,7 @@ impl TorrentManager {
                 proxy: proxy.clone(),
                 ai_configs: None,
                 max_download_speed: None,
+                max_upload_speed: None,
             }
         };
         settings.proxy = proxy.clone();
@@ -244,6 +259,7 @@ impl TorrentManager {
                 proxy: self.get_proxy(),
                 ai_configs: None,
                 max_download_speed: None,
+                max_upload_speed: None,
             })
         }
     }
@@ -261,6 +277,7 @@ impl TorrentManager {
             proxy: self.get_proxy(),
             ai_configs: None,
             max_download_speed: None,
+            max_upload_speed: None,
         });
 
         settings.ai_configs = configs;
@@ -278,30 +295,42 @@ impl TorrentManager {
         &self,
         max_speed: Option<u32>,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        // Convert KB/s to bytes/s (0/None = unlimited) and apply to session
+        self.torrent_repo
+            .set_max_download_speed(speed_kbps_to_bytes_per_sec(max_speed));
+        self.update_settings(|s| s.max_download_speed = max_speed)
+    }
+
+    pub fn get_max_upload_speed(&self) -> Option<u32> {
+        self.get_settings().ok().and_then(|s| s.max_upload_speed)
+    }
+
+    pub fn set_max_upload_speed(
+        &self,
+        max_speed: Option<u32>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.torrent_repo
+            .set_max_upload_speed(speed_kbps_to_bytes_per_sec(max_speed));
+        self.update_settings(|s| s.max_upload_speed = max_speed)
+    }
+
+    /// 将设置持久化到 settings.json，未修改的字段保持原值。
+    fn update_settings(
+        &self,
+        apply: impl FnOnce(&mut AppSettings),
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(parent) = self.settings_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
 
-        // Convert KB/s to bytes/s (0/None = unlimited)
-        let bytes_per_sec = max_speed.and_then(|kbps| {
-            if kbps == 0 {
-                None
-            } else {
-                Some(kbps.saturating_mul(1024))
-            }
-        });
-
-        // Apply to session
-        self.torrent_repo.set_max_download_speed(bytes_per_sec);
-
-        // Persist to settings
         let mut settings = self.get_settings().unwrap_or_else(|_| AppSettings {
             download_dir: self.get_download_dir(),
             proxy: self.get_proxy(),
             ai_configs: None,
             max_download_speed: None,
+            max_upload_speed: None,
         });
-        settings.max_download_speed = max_speed;
+        apply(&mut settings);
 
         let file = std::fs::File::create(&self.settings_path)?;
         serde_json::to_writer_pretty(file, &settings)?;
@@ -375,6 +404,17 @@ impl TorrentManager {
             host, self.port, info_hash_hex, file_id
         )
     }
+}
+
+/// 将 KB/s 限速值转换为 bytes/s，0 或 None 表示不限速。
+fn speed_kbps_to_bytes_per_sec(speed_kbps: Option<u32>) -> Option<u32> {
+    speed_kbps.and_then(|kbps| {
+        if kbps == 0 {
+            None
+        } else {
+            Some(kbps.saturating_mul(1024))
+        }
+    })
 }
 
 fn select_best_local_ip(interfaces: Vec<(String, std::net::IpAddr)>) -> Option<String> {
@@ -563,7 +603,7 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path, None, None).await;
+        let manager = TorrentManager::new(dir, settings_path, None, None, None).await;
         if let Err(e) = &manager {
             panic!("Manager initialization failed: {:?}", e);
         }
@@ -623,7 +663,7 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_settings_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None, None)
+        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None, None, None)
             .await
             .unwrap();
 
@@ -658,7 +698,7 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_control_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path, None, None)
+        let manager = TorrentManager::new(dir, settings_path, None, None, None)
             .await
             .unwrap();
 
@@ -695,7 +735,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_proxy_{}", nanos));
         std::fs::create_dir_all(&dir).unwrap();
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path.clone(), None, None)
+        let manager = TorrentManager::new(dir, settings_path.clone(), None, None, None)
             .await
             .unwrap();
 
@@ -714,6 +754,54 @@ mod tests {
         let content = std::fs::read_to_string(&settings_path).unwrap();
         let parsed: AppSettings = serde_json::from_str(&content).unwrap();
         assert_eq!(parsed.proxy, Some(proxy_str));
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_上传速度限制_逻辑() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("animesh_test_manager_upload_{}", nanos));
+        std::fs::create_dir_all(&dir).unwrap();
+        let settings_path = dir.join("settings.json");
+        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None, None, None)
+            .await
+            .unwrap();
+
+        // 验证初始上传速度限制为空
+        assert_eq!(manager.get_max_upload_speed(), None);
+
+        // 修改上传速度限制
+        manager.set_max_upload_speed(Some(128)).unwrap();
+
+        // 验证内存更新
+        assert_eq!(manager.get_max_upload_speed(), Some(128));
+
+        // 验证设置文件被写入
+        assert!(settings_path.exists());
+        let content = std::fs::read_to_string(&settings_path).unwrap();
+        let parsed: AppSettings = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed.max_upload_speed, Some(128));
+
+        // 验证 0 表示不限速并持久化为 0
+        manager.set_max_upload_speed(Some(0)).unwrap();
+        assert_eq!(manager.get_max_upload_speed(), Some(0));
+
+        // 验证 None 直接清除限制
+        manager.set_max_upload_speed(None).unwrap();
+        assert_eq!(manager.get_max_upload_speed(), None);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_将KB每秒限制转换为bytes每秒() {
+        assert_eq!(speed_kbps_to_bytes_per_sec(None), None);
+        assert_eq!(speed_kbps_to_bytes_per_sec(Some(0)), None);
+        assert_eq!(speed_kbps_to_bytes_per_sec(Some(128)), Some(128 * 1024));
+        assert_eq!(speed_kbps_to_bytes_per_sec(Some(u32::MAX)), Some(u32::MAX));
     }
 
     #[test]

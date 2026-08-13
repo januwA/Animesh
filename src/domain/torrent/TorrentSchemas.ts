@@ -27,6 +27,7 @@ export const TorrentStatusInfoSchema = z.object({
   total_bytes: z.number(),
   finished: z.boolean(),
   download_speed_bytes_per_sec: z.number(),
+  upload_speed_bytes_per_sec: z.number(),
   paused: z.boolean(),
   peers_connected: z.number(),
   peers_total: z.number(),

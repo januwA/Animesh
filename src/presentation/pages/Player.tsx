@@ -1,10 +1,4 @@
-import {
-  Activity,
-  ArrowLeft,
-  Clipboard,
-  Download,
-  Loader2,
-} from "lucide-react";
+import { ArrowLeft, Clipboard, Download, Loader2, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -495,10 +489,17 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                   : "计算中..."}
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
-                <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
-                速度:{" "}
+                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
+                下载:{" "}
                 {torrentStatus
-                  ? `${formatBytes(torrentStatus.download_speed_bytes_per_sec)}/s (连接: ${torrentStatus.peers_connected}/${torrentStatus.peers_total})`
+                  ? `${formatBytes(torrentStatus.download_speed_bytes_per_sec)}/s`
+                  : "0 B/s"}
+              </span>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-info" />
+                上传:{" "}
+                {torrentStatus
+                  ? `${formatBytes(torrentStatus.upload_speed_bytes_per_sec)}/s (连接: ${torrentStatus.peers_connected}/${torrentStatus.peers_total})`
                   : "0 B/s"}
               </span>
             </div>

@@ -36,6 +36,12 @@ export class TauriSettingsRepository implements SettingsRepository {
     });
   }
 
+  async setMaxUploadSpeed(speed: number | null): Promise<void> {
+    return invoke<void>("settings_set_max_upload_speed", {
+      maxSpeed: speed,
+    });
+  }
+
   async selectDirectory(): Promise<string | null> {
     return invoke<string | null>("select_directory");
   }

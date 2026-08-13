@@ -83,6 +83,28 @@ describe("基础设施层 TauriSettingsRepository", () => {
     });
   });
 
+  describe("setMaxUploadSpeed 方法", () => {
+    it("应该正确调用后端的 settings_set_max_upload_speed 命令", async () => {
+      mockInvoke.mockResolvedValueOnce(undefined);
+
+      await repository.setMaxUploadSpeed(256);
+
+      expect(mockInvoke).toHaveBeenCalledWith("settings_set_max_upload_speed", {
+        maxSpeed: 256,
+      });
+    });
+
+    it("传入 null 时应该原样传递表示不限速", async () => {
+      mockInvoke.mockResolvedValueOnce(undefined);
+
+      await repository.setMaxUploadSpeed(null);
+
+      expect(mockInvoke).toHaveBeenCalledWith("settings_set_max_upload_speed", {
+        maxSpeed: null,
+      });
+    });
+  });
+
   describe("setTheme 方法", () => {
     it("当传入 light 或 dark 时，应该正确加载 tauri window 并设置主题", async () => {
       mockSetTheme.mockResolvedValueOnce(undefined);

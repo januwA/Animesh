@@ -71,6 +71,16 @@ export class HttpSettingsRepository implements SettingsRepository {
     });
   }
 
+  async setMaxUploadSpeed(speed: number | null): Promise<void> {
+    await this.httpClient.request(`${baseUrl}/settings/max-upload-speed`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ max_speed: speed }),
+    });
+  }
+
   async selectDirectory(): Promise<string | null> {
     // Web version doesn't support directory selection dialog
     return null;

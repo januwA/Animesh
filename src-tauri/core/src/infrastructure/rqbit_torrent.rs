@@ -128,6 +128,12 @@ impl TorrentRepository for RqbitTorrentRepository {
             .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
             .unwrap_or(0);
 
+        let upload_speed = stats
+            .live
+            .as_ref()
+            .map(|l| (l.upload_speed.mbps * 1024.0 * 1024.0) as u64)
+            .unwrap_or(0);
+
         let (peers_connected, peers_total) = stats
             .live
             .as_ref()
@@ -158,6 +164,7 @@ impl TorrentRepository for RqbitTorrentRepository {
             total_bytes: stats.total_bytes,
             finished,
             download_speed_bytes_per_sec: speed,
+            upload_speed_bytes_per_sec: upload_speed,
             paused: torrent.is_paused(),
             peers_connected,
             peers_total,
@@ -175,6 +182,11 @@ impl TorrentRepository for RqbitTorrentRepository {
                     .live
                     .as_ref()
                     .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
+                    .unwrap_or(0);
+                let upload_speed = stats
+                    .live
+                    .as_ref()
+                    .map(|l| (l.upload_speed.mbps * 1024.0 * 1024.0) as u64)
                     .unwrap_or(0);
                 let (peers_connected, peers_total) = stats
                     .live
@@ -204,6 +216,7 @@ impl TorrentRepository for RqbitTorrentRepository {
                     total_bytes: stats.total_bytes,
                     finished,
                     download_speed_bytes_per_sec: speed,
+                    upload_speed_bytes_per_sec: upload_speed,
                     paused: torrent.is_paused(),
                     peers_connected,
                     peers_total,
@@ -299,5 +312,10 @@ impl TorrentRepository for RqbitTorrentRepository {
     fn set_max_download_speed(&self, bytes_per_sec: Option<u32>) {
         let bps = bytes_per_sec.and_then(NonZeroU32::new);
         self.session.ratelimits.set_download_bps(bps);
+    }
+
+    fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>) {
+        let bps = bytes_per_sec.and_then(NonZeroU32::new);
+        self.session.ratelimits.set_upload_bps(bps);
     }
 }

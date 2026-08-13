@@ -6,6 +6,7 @@ export interface SettingsRepository {
   setProxy(proxy: string | null): Promise<void>;
   setAiConfigs(configs: AiConfig[] | null): Promise<void>;
   setMaxDownloadSpeed(speed: number | null): Promise<void>;
+  setMaxUploadSpeed(speed: number | null): Promise<void>;
   selectDirectory(): Promise<string | null>;
   setTheme(theme: string): Promise<void>;
 }

@@ -14,6 +14,7 @@ export const SettingsSchema = z.object({
   proxy: z.string().nullable().optional(),
   ai_configs: z.array(AiConfigSchema).nullable().optional(),
   max_download_speed: z.number().nullable().optional(),
+  max_upload_speed: z.number().nullable().optional(),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -61,6 +62,12 @@ export const SettingsFormSchema = z.object({
     .number()
     .int("下载速度限制必须是整数")
     .min(0, "下载速度限制不能为负数")
+    .nullable()
+    .optional(),
+  maxUploadSpeed: z
+    .number()
+    .int("上传速度限制必须是整数")
+    .min(0, "上传速度限制不能为负数")
     .nullable()
     .optional(),
 });

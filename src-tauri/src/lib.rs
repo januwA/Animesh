@@ -531,6 +531,16 @@ fn settings_set_max_download_speed(
 }
 
 #[tauri::command]
+fn settings_set_max_upload_speed(
+    max_speed: Option<u32>,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<(), String> {
+    manager
+        .set_max_upload_speed(max_speed)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, String> {
     #[cfg(mobile)]
     {
@@ -630,6 +640,7 @@ pub fn run() {
             let mut download_dir = app_data_dir.join("downloads");
             let mut proxy = None;
             let mut max_download_speed = None;
+            let mut max_upload_speed = None;
             if settings_path.exists() {
                 if let Ok(file) = std::fs::File::open(&settings_path) {
                     if let Ok(settings) = serde_json::from_reader::<
@@ -640,6 +651,7 @@ pub fn run() {
                         download_dir = std::path::PathBuf::from(settings.download_dir);
                         proxy = settings.proxy;
                         max_download_speed = settings.max_download_speed;
+                        max_upload_speed = settings.max_upload_speed;
                     }
                 }
             } else {
@@ -648,6 +660,7 @@ pub fn run() {
                     proxy: None,
                     ai_configs: None,
                     max_download_speed: None,
+                    max_upload_speed: None,
                 };
                 if let Ok(file) = std::fs::File::create(&settings_path) {
                     let _ = serde_json::to_writer_pretty(file, &settings);
@@ -656,9 +669,15 @@ pub fn run() {
             std::fs::create_dir_all(&download_dir).ok();
 
             let manager = tauri::async_runtime::block_on(async {
-                TorrentManager::new(download_dir, settings_path, proxy, max_download_speed)
-                    .await
-                    .expect("Failed to initialize TorrentManager")
+                TorrentManager::new(
+                    download_dir,
+                    settings_path,
+                    proxy,
+                    max_download_speed,
+                    max_upload_speed,
+                )
+                .await
+                .expect("Failed to initialize TorrentManager")
             });
 
             app.manage(Arc::new(manager));
@@ -688,6 +707,7 @@ pub fn run() {
             settings_set_proxy,
             settings_set_ai_configs,
             settings_set_max_download_speed,
+            settings_set_max_upload_speed,
             select_directory,
             torrent_get_video_metadata,
             torrent_get_subtitle_vtt,

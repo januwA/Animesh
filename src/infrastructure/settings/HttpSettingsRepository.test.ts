@@ -91,4 +91,26 @@ describe("基础设施层 HttpSettingsRepository", () => {
       );
     });
   });
+
+  describe("setMaxUploadSpeed 方法", () => {
+    it("应该发送 PUT 请求至 /api/settings/max-upload-speed 并携带正确的 JSON payload", async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        text: async () => "",
+      } as Response);
+
+      await repository.setMaxUploadSpeed(256);
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/settings/max-upload-speed"),
+        expect.objectContaining({
+          method: "PUT",
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+          }),
+          body: JSON.stringify({ max_speed: 256 }),
+        }),
+      );
+    });
+  });
 });
