@@ -11,9 +11,9 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import Downloads from "./Downloads";
 
@@ -68,6 +68,7 @@ describe("Downloads 页面组件", () => {
     });
 
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
   });
 
@@ -79,18 +80,16 @@ describe("Downloads 页面组件", () => {
     return render(
       <DIProvider value={mockContainer}>
         <TorrentStatusProvider>
-          <AppContextProvider>
-            <MemoryRouter initialEntries={["/downloads"]}>
-              <LocationTracker />
-              <Routes>
-                <Route path="/" element={<NavBarLayout />}>
-                  <Route path="downloads" element={<Downloads />} />
-                </Route>
-                <Route path="/" element={<div>Home Page</div>} />
-                <Route path="/torrent" element={<div>Torrent Page</div>} />
-              </Routes>
-            </MemoryRouter>
-          </AppContextProvider>
+          <MemoryRouter initialEntries={["/downloads"]}>
+            <LocationTracker />
+            <Routes>
+              <Route path="/" element={<NavBarLayout />}>
+                <Route path="downloads" element={<Downloads />} />
+              </Route>
+              <Route path="/" element={<div>Home Page</div>} />
+              <Route path="/torrent" element={<div>Torrent Page</div>} />
+            </Routes>
+          </MemoryRouter>
         </TorrentStatusProvider>
       </DIProvider>,
     );

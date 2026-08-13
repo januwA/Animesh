@@ -13,9 +13,9 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import { ACCENT_STORAGE_KEY } from "@/presentation/hooks/useAccentTheme";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import Settings from "./Settings";
 
 describe("Settings 页面组件", () => {
@@ -54,6 +54,7 @@ describe("Settings 页面组件", () => {
       clearCacheUseCase: mockClearCacheUseCase as any,
     });
 
+    resetAppStores();
     vi.clearAllMocks();
   });
 
@@ -85,11 +86,9 @@ describe("Settings 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-            <RouterProvider router={router} />
-          </ThemeProvider>
-        </AppContextProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <RouterProvider router={router} />
+        </ThemeProvider>
       </DIProvider>,
     );
     return router;

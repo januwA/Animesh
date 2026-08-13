@@ -4,7 +4,6 @@ import { RouterProvider } from "react-router-dom";
 import { Toaster } from "sonner";
 import { type DIContainer, DIProvider } from "@/di/DIContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { AppContextProvider } from "./context/AppContext";
 import { TorrentStatusProvider } from "./context/TorrentStatusContext";
 import "./App.css";
 
@@ -18,18 +17,16 @@ export default function App({ router, diContainer }: AppProps) {
     <ErrorBoundary>
       <DIProvider value={diContainer}>
         <TorrentStatusProvider>
-          <AppContextProvider>
-            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-              <RouterProvider router={router} />
-              <Toaster
-                position="top-center"
-                richColors
-                expand={false}
-                duration={3000}
-                mobileOffset={"calc(env(safe-area-inset-top, 0px) + 1.5rem)"}
-              />
-            </ThemeProvider>
-          </AppContextProvider>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+            <RouterProvider router={router} />
+            <Toaster
+              position="top-center"
+              richColors
+              expand={false}
+              duration={3000}
+              mobileOffset={"calc(env(safe-area-inset-top, 0px) + 1.5rem)"}
+            />
+          </ThemeProvider>
         </TorrentStatusProvider>
       </DIProvider>
     </ErrorBoundary>

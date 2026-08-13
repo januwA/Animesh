@@ -15,9 +15,9 @@ import type {
   BangumiEpisodesPage,
   BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import SubjectDetail from "./SubjectDetail";
 
 const currentLocation = {
@@ -33,6 +33,7 @@ describe("SubjectDetail 页面组件", () => {
 
   beforeEach(() => {
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
     vi.spyOn(window, "open").mockImplementation(() => null);
   });
@@ -58,16 +59,14 @@ describe("SubjectDetail 页面组件", () => {
 
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="subject/:subjectId" element={<SubjectDetail />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="subject/:subjectId" element={<SubjectDetail />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };
@@ -404,20 +403,18 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter
-            initialEntries={["/calendar", "/subject/123"]}
-            initialIndex={1}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="calendar" element={<div>日历页面</div>} />
-                <Route path="subject/:subjectId" element={<SubjectDetail />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter
+          initialEntries={["/calendar", "/subject/123"]}
+          initialIndex={1}
+        >
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="calendar" element={<div>日历页面</div>} />
+              <Route path="subject/:subjectId" element={<SubjectDetail />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -516,20 +513,18 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter
-            initialEntries={["/calendar", "/subject/123"]}
-            initialIndex={1}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="calendar" element={<div>日历页面</div>} />
-                <Route path="subject/:subjectId" element={<SubjectDetail />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter
+          initialEntries={["/calendar", "/subject/123"]}
+          initialIndex={1}
+        >
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="calendar" element={<div>日历页面</div>} />
+              <Route path="subject/:subjectId" element={<SubjectDetail />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -566,26 +561,24 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter
-            initialEntries={[
-              {
-                pathname: "/subject/123",
-                state: {
-                  name: "传递的动画名称",
-                  imageUrl: "http://example.com/passed-cover.jpg",
-                },
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: "/subject/123",
+              state: {
+                name: "传递的动画名称",
+                imageUrl: "http://example.com/passed-cover.jpg",
               },
-            ]}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="subject/:subjectId" element={<SubjectDetail />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+            },
+          ]}
+        >
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="subject/:subjectId" element={<SubjectDetail />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -645,13 +638,11 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -733,13 +724,11 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -765,13 +754,11 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject"]}>
-            <Routes>
-              <Route path="subject" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject"]}>
+          <Routes>
+            <Route path="subject" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -784,13 +771,11 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/abc"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/abc"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -922,13 +907,11 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -983,13 +966,11 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1044,13 +1025,11 @@ describe("SubjectDetail 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1068,6 +1047,7 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
   let mockContainer: DIContainer;
 
   beforeEach(() => {
+    resetAppStores();
     vi.clearAllMocks();
     vi.spyOn(window, "open").mockImplementation(() => null);
   });
@@ -1140,13 +1120,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1227,13 +1205,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1288,13 +1264,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1330,13 +1304,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1438,13 +1410,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1533,13 +1503,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1600,13 +1568,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1652,13 +1618,11 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -1730,20 +1694,19 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
 
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={initialEntries}>
-            <LocationTracker />
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={initialEntries}>
+          <LocationTracker />
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };
 
   beforeEach(() => {
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
     vi.spyOn(window, "open").mockImplementation(() => null);
     vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
@@ -1937,13 +1900,11 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/subject/123?page=abc"]}>
-            <Routes>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/subject/123?page=abc"]}>
+          <Routes>
+            <Route path="subject/:subjectId" element={<SubjectDetail />} />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 

@@ -46,7 +46,6 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/presentation/components/ui/toggle-group";
-import { useAppContext } from "@/presentation/context/AppContext";
 import {
   ACCENT_PRESETS,
   useAccentTheme,
@@ -54,6 +53,8 @@ import {
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { cn } from "@/presentation/lib/utils";
+import { useCalendarStore } from "@/presentation/store/calendarStore";
+import { useIptvStore } from "@/presentation/store/iptvStore";
 import { formatError } from "@/utils";
 
 interface AiConfigDraft {
@@ -83,7 +84,9 @@ function toAiConfigDrafts(configs: AiConfigDraft[]): AiConfigDraft[] {
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccentTheme();
-  const { setCalendar, setIptvCountries, setIptvChannels } = useAppContext();
+  const setCalendar = useCalendarStore((s) => s.setCalendar);
+  const setIptvCountries = useIptvStore((s) => s.setIptvCountries);
+  const setIptvChannels = useIptvStore((s) => s.setIptvChannels);
   const {
     getSettingsUseCase,
     saveSettingsUseCase,

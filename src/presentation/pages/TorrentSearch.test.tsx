@@ -19,9 +19,9 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import { TORRENT_SEARCH_ENGINES } from "@/domain/torrent/TorrentEngines";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import TorrentSearch from "./TorrentSearch";
 
 // Mock clipboard API
@@ -113,6 +113,7 @@ describe("TorrentSearch 页面组件", () => {
     });
 
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
     vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
   });
@@ -124,25 +125,23 @@ describe("TorrentSearch 页面组件", () => {
   const renderHome = (initialRoute = "/") => {
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={[initialRoute]}>
-            {initialRoute === "/" && <LocationTracker />}
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route index element={<TorrentSearch />} />
-                <Route
-                  path="torrent"
-                  element={
-                    <>
-                      <div>TorrentDetail Page</div>
-                      <BackButton />
-                    </>
-                  }
-                />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={[initialRoute]}>
+          {initialRoute === "/" && <LocationTracker />}
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route index element={<TorrentSearch />} />
+              <Route
+                path="torrent"
+                element={
+                  <>
+                    <div>TorrentDetail Page</div>
+                    <BackButton />
+                  </>
+                }
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };

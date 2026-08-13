@@ -12,9 +12,9 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import Player from "./Player";
 
@@ -103,6 +103,7 @@ describe("Player 页面组件", () => {
     });
 
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
     vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
   });
@@ -118,21 +119,19 @@ describe("Player 页面组件", () => {
     return render(
       <DIProvider value={mockContainer}>
         <TorrentStatusProvider>
-          <AppContextProvider>
-            <MemoryRouter
-              initialEntries={initialEntries}
-              initialIndex={initialEntries.indexOf(initialEntry)}
-            >
-              <LocationTracker />
-              <Routes>
-                <Route path="/" element={<NavBarLayout />}>
-                  <Route path="play/:infoHash" element={<Player />} />
-                  <Route path="play/:infoHash/:fileId" element={<Player />} />
-                  <Route path="torrent" element={<div>Torrent Page</div>} />
-                </Route>
-              </Routes>
-            </MemoryRouter>
-          </AppContextProvider>
+          <MemoryRouter
+            initialEntries={initialEntries}
+            initialIndex={initialEntries.indexOf(initialEntry)}
+          >
+            <LocationTracker />
+            <Routes>
+              <Route path="/" element={<NavBarLayout />}>
+                <Route path="play/:infoHash" element={<Player />} />
+                <Route path="play/:infoHash/:fileId" element={<Player />} />
+                <Route path="torrent" element={<div>Torrent Page</div>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
         </TorrentStatusProvider>
       </DIProvider>,
     );
@@ -809,26 +808,24 @@ describe("Player 页面组件", () => {
 
     const { unmount } = render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter
-            initialEntries={[
-              {
-                pathname: "/play/hash123/0",
-                state: {
-                  name: "State Title",
-                  imageUrl: "http://example.com/cover.jpg",
-                },
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: "/play/hash123/0",
+              state: {
+                name: "State Title",
+                imageUrl: "http://example.com/cover.jpg",
               },
-            ]}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="play/:infoHash/:fileId" element={<Player />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+            },
+          ]}
+        >
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="play/:infoHash/:fileId" element={<Player />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 
@@ -925,23 +922,21 @@ describe("Player 页面组件", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter
-            initialEntries={[
-              {
-                pathname: "/play/hash123/0",
-                state: {}, // Empty state to cover state?.name and state?.imageUrl fallback
-              },
-            ]}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="play/:infoHash/:fileId" element={<Player />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: "/play/hash123/0",
+              state: {}, // Empty state to cover state?.name and state?.imageUrl fallback
+            },
+          ]}
+        >
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="play/:infoHash/:fileId" element={<Player />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
 

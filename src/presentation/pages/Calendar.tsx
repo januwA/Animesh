@@ -18,7 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { FavoriteBadge } from "../components/FavoriteBadge";
 import { LazyImage } from "../components/LazyImage";
-import { useAppContext } from "../context/AppContext";
+import { useCalendarStore } from "../store/calendarStore";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -60,7 +60,8 @@ function CalendarSkeleton() {
 }
 
 function WeeklyCalendar({ calendar, onAnimeClick }: WeeklyCalendarProps) {
-  const { calendarActiveDay, setCalendarActiveDay } = useAppContext();
+  const calendarActiveDay = useCalendarStore((s) => s.calendarActiveDay);
+  const setCalendarActiveDay = useCalendarStore((s) => s.setCalendarActiveDay);
   const todayId = useMemo(() => getTodayWeekdayId(), []);
 
   const activeDay = calendarActiveDay ?? todayId;
@@ -194,7 +195,8 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 export default function Calendar() {
   const navigate = useNavigate();
   const { getBangumiCalendarUseCase } = useDI();
-  const { calendar, setCalendar } = useAppContext();
+  const calendar = useCalendarStore((s) => s.calendar);
+  const setCalendar = useCalendarStore((s) => s.setCalendar);
 
   const {
     loading: isLoading,

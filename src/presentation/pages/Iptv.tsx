@@ -26,7 +26,7 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 import { ErrorBanner } from "../components/AppComponents";
 import { LazyImage } from "../components/LazyImage";
-import { DEFAULT_IPTV_CATEGORY, useAppContext } from "../context/AppContext";
+import { DEFAULT_IPTV_CATEGORY, useIptvStore } from "../store/iptvStore";
 
 const DEFAULT_COUNTRY_FALLBACK: IptvCountry = {
   name: "中国",
@@ -118,20 +118,20 @@ function ChannelGridSkeleton() {
 export default function Iptv() {
   const navigate = useNavigate();
   const { getIptvCountriesUseCase, getIptvChannelsUseCase, logger } = useDI();
-  const {
-    iptvCountries,
-    setIptvCountries,
-    iptvSelectedCountry,
-    setIptvSelectedCountry,
-    iptvChannels,
-    setIptvChannels,
-    iptvChannelsCountry,
-    setIptvChannelsCountry,
-    iptvSelectedCategory,
-    setIptvSelectedCategory,
-    iptvKeyword,
-    setIptvKeyword,
-  } = useAppContext();
+  const iptvCountries = useIptvStore((s) => s.iptvCountries);
+  const setIptvCountries = useIptvStore((s) => s.setIptvCountries);
+  const iptvSelectedCountry = useIptvStore((s) => s.iptvSelectedCountry);
+  const setIptvSelectedCountry = useIptvStore((s) => s.setIptvSelectedCountry);
+  const iptvChannels = useIptvStore((s) => s.iptvChannels);
+  const setIptvChannels = useIptvStore((s) => s.setIptvChannels);
+  const iptvChannelsCountry = useIptvStore((s) => s.iptvChannelsCountry);
+  const setIptvChannelsCountry = useIptvStore((s) => s.setIptvChannelsCountry);
+  const iptvSelectedCategory = useIptvStore((s) => s.iptvSelectedCategory);
+  const setIptvSelectedCategory = useIptvStore(
+    (s) => s.setIptvSelectedCategory,
+  );
+  const iptvKeyword = useIptvStore((s) => s.iptvKeyword);
+  const setIptvKeyword = useIptvStore((s) => s.setIptvKeyword);
   const iptvLogger = useMemo(() => logger.withCategory("Iptv"), [logger]);
 
   const [error, setError] = useState<string | null>(null);

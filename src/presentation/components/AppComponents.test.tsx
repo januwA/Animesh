@@ -2,12 +2,16 @@ import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import { DIProvider } from "@/di/DIContext";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { AppContextProvider } from "../context/AppContext";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import { AppNavBar } from "./AppComponents";
 
 describe("AppComponents 组件", () => {
+  beforeEach(() => {
+    resetAppStores();
+  });
+
   it("AppNavBar 应该在 TorrentStatusProvider 下正确渲染", async () => {
     let resolveUnsubscribe: any;
     const unsubMock = vi.fn();
@@ -24,11 +28,9 @@ describe("AppComponents 组件", () => {
     const { unmount } = render(
       <DIProvider value={mockContainer}>
         <TorrentStatusProvider>
-          <AppContextProvider>
-            <MemoryRouter>
-              <AppNavBar />
-            </MemoryRouter>
-          </AppContextProvider>
+          <MemoryRouter>
+            <AppNavBar />
+          </MemoryRouter>
         </TorrentStatusProvider>
       </DIProvider>,
     );

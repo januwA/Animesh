@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import type { SubmitEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
@@ -59,53 +59,8 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 import { sanitizeHtml } from "@/presentation/lib/sanitizeHtml";
 import { cn } from "@/presentation/lib/utils";
 import { formatLocalDate } from "@/utils";
-import { useAppContext } from "../context/AppContext";
-
-// 未在标题中显式标注字幕组前缀的结果归入该组，并恒排最末
-const UNKNOWN_GROUP_LABEL = "未标注";
-
-// 提取标题开头的发布组/字幕组名称（支持 [..] 与 【..】），无前缀返回 null
-function extractReleaseGroup(title: string): string | null {
-  const match = /^(?:\[([^\]]+)\]|【([^】]+)】)\s*/.exec(title);
-  return match ? (match[1] ?? match[2]) : null;
-}
-
-interface TorrentResultGroup {
-  name: string;
-  startIndex: number;
-  items: AiSearchResultItem[];
-}
-
-// 将搜索结果按字幕组分组：数量降序、同数量保持首现顺序、未标注组恒排最后；组内保持原相对顺序
-function groupTorrentResults(
-  results: AiSearchResultItem[],
-): TorrentResultGroup[] {
-  const groups = new Map<string, AiSearchResultItem[]>();
-  for (const item of results) {
-    const name = extractReleaseGroup(item.title) ?? UNKNOWN_GROUP_LABEL;
-    const list = groups.get(name);
-    if (list) {
-      list.push(item);
-    } else {
-      groups.set(name, [item]);
-    }
-  }
-
-  const sortedEntries = Array.from(groups.entries()).sort(
-    ([nameA, itemsA], [nameB, itemsB]) => {
-      if (nameA === UNKNOWN_GROUP_LABEL) return 1;
-      if (nameB === UNKNOWN_GROUP_LABEL) return -1;
-      return itemsB.length - itemsA.length;
-    },
-  );
-
-  let startIndex = 0;
-  return sortedEntries.map(([name, items]) => {
-    const group = { name, startIndex, items };
-    startIndex += items.length;
-    return group;
-  });
-}
+import type { TorrentResultGroup } from "../store/searchStore";
+import { useSearchStore } from "../store/searchStore";
 
 const ENGINE_LABELS: Record<TorrentSearchEngine, string> = {
   dmhy: "动漫花园",
@@ -195,7 +150,7 @@ function SearchForm({
 }
 
 interface SearchLoadingProps {
-  onCancel?: () => void;
+  onCancel: () => void;
 }
 
 // 搜索加载指示器
@@ -206,16 +161,14 @@ function SearchLoading({ onCancel }: SearchLoadingProps) {
       <p className="text-sm text-muted-foreground font-medium">
         正在获取资源列表...
       </p>
-      {onCancel && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onCancel}
-          className="text-xs text-muted-foreground hover:text-foreground mt-2"
-        >
-          取消搜索
-        </Button>
-      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onCancel}
+        className="text-xs text-muted-foreground hover:text-foreground mt-2"
+      >
+        取消搜索
+      </Button>
     </div>
   );
 }
@@ -468,16 +421,14 @@ export default function TorrentSearch() {
     getSettingsUseCase,
   } = useDI();
 
-  const {
-    searchKeyword,
-    setSearchKeyword,
-    searchEngine,
-    setSearchEngine,
-    searchResults,
-    setSearchResults,
-    searchHasSearched,
-    setSearchHasSearched,
-  } = useAppContext();
+  const searchKeyword = useSearchStore((s) => s.searchKeyword);
+  const setSearchKeyword = useSearchStore((s) => s.setSearchKeyword);
+  const searchEngine = useSearchStore((s) => s.searchEngine);
+  const setSearchEngine = useSearchStore((s) => s.setSearchEngine);
+  const searchResults = useSearchStore((s) => s.searchResults);
+  const setSearchResults = useSearchStore((s) => s.setSearchResults);
+  const searchHasSearched = useSearchStore((s) => s.searchHasSearched);
+  const setSearchHasSearched = useSearchStore((s) => s.setSearchHasSearched);
 
   const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
     () => localStorage.getItem("animesh_selected_ai_alias") || "none",
@@ -517,46 +468,26 @@ export default function TorrentSearch() {
     }
   });
 
-  const groups = useMemo(
-    () => groupTorrentResults(searchResults),
-    [searchResults],
-  );
+  const groups = useSearchStore((s) => s.groups);
 
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const collapsedGroups = useSearchStore((s) => s.collapsedGroups);
+  const toggleGroup = useSearchStore((s) => s.toggleGroup);
+  const collapseAllGroups = useSearchStore((s) => s.collapseAllGroups);
+  const expandAllGroups = useSearchStore((s) => s.expandAllGroups);
 
   // 仅当搜索结果集合变化（新一次搜索）时重置为全部展开
   const prevResultsRef = useRef(searchResults);
   useEffect(() => {
     if (prevResultsRef.current !== searchResults) {
       prevResultsRef.current = searchResults;
-      setCollapsedGroups(new Set());
+      expandAllGroups();
     }
-  }, [searchResults]);
+  }, [searchResults, expandAllGroups]);
 
   const allGroupsCollapsed =
     groups.length > 0 && collapsedGroups.size === groups.length;
 
-  const toggleGroup = (name: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
-  };
-
-  const collapseAllGroups = () => {
-    setCollapsedGroups(new Set(groups.map((g) => g.name)));
-  };
-
-  const expandAllGroups = () => {
-    setCollapsedGroups(new Set());
-  };
+  const groupNames = groups.map((g) => g.name);
 
   const keywordParam = searchParams.get("keyword");
 
@@ -794,7 +725,9 @@ export default function TorrentSearch() {
                 size="sm"
                 data-testid="toggle-all-groups"
                 onClick={
-                  allGroupsCollapsed ? expandAllGroups : collapseAllGroups
+                  allGroupsCollapsed
+                    ? expandAllGroups
+                    : () => collapseAllGroups(groupNames)
                 }
                 className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
               >

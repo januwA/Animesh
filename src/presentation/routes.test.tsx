@@ -2,11 +2,15 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { DIProvider } from "@/di/DIContext";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { AppContextProvider } from "./context/AppContext";
 import { routes } from "./routes";
 
 describe("routes 路由懒加载与 PageLoader 覆盖", () => {
+  beforeEach(() => {
+    resetAppStores();
+  });
+
   it("应该能够成功切换和载入所有懒加载页面，并渲染 PageLoader", async () => {
     const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
     const mockCalendar = [
@@ -54,9 +58,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 
     render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <RouterProvider router={router} />
-        </AppContextProvider>
+        <RouterProvider router={router} />
       </DIProvider>,
     );
 

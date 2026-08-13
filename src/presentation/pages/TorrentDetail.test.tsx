@@ -11,9 +11,9 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import TorrentDetail from "./TorrentDetail";
 
 const currentLocation = {
@@ -50,6 +50,7 @@ describe("TorrentDetail 页面组件", () => {
     });
 
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
   });
 
@@ -63,25 +64,23 @@ describe("TorrentDetail 页面组件", () => {
   ) => {
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter
-            initialEntries={initialEntries}
-            initialIndex={initialEntries.indexOf(initialEntry)}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route index element={<div>Home Page</div>} />
-                <Route path="torrent" element={<TorrentDetail />} />
-                <Route path="downloads" element={<div>Downloads Page</div>} />
-                <Route
-                  path="play/:infoHash/:fileId"
-                  element={<div>Play Page</div>}
-                />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter
+          initialEntries={initialEntries}
+          initialIndex={initialEntries.indexOf(initialEntry)}
+        >
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route index element={<div>Home Page</div>} />
+              <Route path="torrent" element={<TorrentDetail />} />
+              <Route path="downloads" element={<div>Downloads Page</div>} />
+              <Route
+                path="play/:infoHash/:fileId"
+                element={<div>Play Page</div>}
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };
