@@ -9,20 +9,16 @@ export function useGlobalEffects() {
     notifyDownloadCompletionUseCase,
     setThemeUseCase,
   } = useDI();
-  const { resolvedTheme } = useTheme();
+  const { theme } = useTheme();
   const { torrents, isLoading } = useTorrentStatus();
 
   // 同步主题到 Tauri 原生窗口标题栏
   useEffect(() => {
     const syncTheme = async () => {
-      if (resolvedTheme === "dark" || resolvedTheme === "light") {
-        try {
-          await setThemeUseCase.execute(resolvedTheme);
-        } catch {}
-      }
+      await setThemeUseCase.execute(theme);
     };
     syncTheme();
-  }, [resolvedTheme, setThemeUseCase]);
+  }, [theme, setThemeUseCase]);
 
   // 请求系统通知权限
   useEffect(() => {

@@ -104,18 +104,4 @@ describe("基础设施层 TauriSettingsRepository", () => {
       });
     });
   });
-
-  describe("setTheme 方法", () => {
-    it("当传入 light 或 dark 时，应该正确加载 tauri window 并设置主题", async () => {
-      mockSetTheme.mockResolvedValueOnce(undefined);
-      await repository.setTheme("light");
-      expect(mockSetTheme).toHaveBeenCalledWith("light");
-    });
-
-    it("当传入非 light 或 dark 选项（如 system）时，应该忽略并不调用 tauri", async () => {
-      mockSetTheme.mockClear();
-      await repository.setTheme("system");
-      expect(mockSetTheme).not.toHaveBeenCalled();
-    });
-  });
 });

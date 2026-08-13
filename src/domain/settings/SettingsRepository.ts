@@ -8,5 +8,5 @@ export interface SettingsRepository {
   setMaxDownloadSpeed(speed: number | null): Promise<void>;
   setMaxUploadSpeed(speed: number | null): Promise<void>;
   selectDirectory(): Promise<string | null>;
-  setTheme(theme: string): Promise<void>;
+  setTheme(theme?: "light" | "dark" | null): Promise<void>;
 }

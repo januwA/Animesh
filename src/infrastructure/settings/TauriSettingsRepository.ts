@@ -46,11 +46,8 @@ export class TauriSettingsRepository implements SettingsRepository {
     return invoke<string | null>("select_directory");
   }
 
-  async setTheme(theme: string): Promise<void> {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    const appWindow = getCurrentWindow();
-    if (theme === "dark" || theme === "light") {
-      await appWindow.setTheme(theme);
-    }
+  async setTheme(theme: "light" | "dark" | null): Promise<void> {
+    const { setTheme } = await import("@tauri-apps/api/app");
+    await setTheme(theme);
   }
 }

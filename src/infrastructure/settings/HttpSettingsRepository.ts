@@ -16,6 +16,9 @@ export class HttpSettingsRepository implements SettingsRepository {
   constructor() {
     this.httpClient = new HttpClient();
   }
+  setTheme(_theme?: "light" | "dark" | null): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
 
   async getSettings(): Promise<Settings> {
     const rawSettings = await this.httpClient.getJson<unknown>(
@@ -84,9 +87,5 @@ export class HttpSettingsRepository implements SettingsRepository {
   async selectDirectory(): Promise<string | null> {
     // Web version doesn't support directory selection dialog
     return null;
-  }
-
-  async setTheme(_theme: string): Promise<void> {
-    // Web version doesn't support native window theme sync
   }
 }
