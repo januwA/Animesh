@@ -61,6 +61,8 @@ describe("Downloads 页面组件", () => {
           return () => clearInterval(interval);
         });
       }),
+      setTorrentSubject: vi.fn().mockResolvedValue(undefined),
+      clearTorrentSubject: vi.fn().mockResolvedValue(undefined),
     };
 
     mockContainer = createDIContainerForTest({
@@ -88,6 +90,10 @@ describe("Downloads 页面组件", () => {
               </Route>
               <Route path="/" element={<div>Home Page</div>} />
               <Route path="/torrent" element={<div>Torrent Page</div>} />
+              <Route
+                path="/subject/:subjectId"
+                element={<div>Subject Page</div>}
+              />
             </Routes>
           </MemoryRouter>
         </TorrentStatusProvider>
@@ -651,6 +657,83 @@ describe("Downloads 页面组件", () => {
 
     // 检查创建时间是否渲染
     expect(screen.getAllByText(/创建时间:/).length).toBe(2);
+  });
+
+  it("存在已绑定条目的任务时，应该按条目分组渲染，并支持跳转到条目详情页", async () => {
+    const mockTorrents = [
+      {
+        info_hash: "hashU",
+        name: "未绑定种子",
+        progress_bytes: 100,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        created_at: 3000,
+      },
+      {
+        info_hash: "hashA1",
+        name: "动漫A-第1话",
+        progress_bytes: 200,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        subject_id: 42,
+        subject_name: "动漫A",
+        created_at: 1000,
+      },
+      {
+        info_hash: "hashA2",
+        name: "动漫A-第2话",
+        progress_bytes: 300,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        subject_id: 42,
+        subject_name: "动漫A",
+        created_at: 2000,
+      },
+    ];
+
+    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
+      mockTorrents,
+    );
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("动漫A-第1话")).toBeInTheDocument();
+    });
+
+    // 分组标题与任务数量徽章
+    expect(screen.getByText("动漫A")).toBeInTheDocument();
+    expect(screen.getByText("2 个任务")).toBeInTheDocument();
+    expect(screen.getByText(/未关联条目/)).toBeInTheDocument();
+    expect(screen.getByText("未绑定种子")).toBeInTheDocument();
+
+    // 组内任务按创建时间倒序排列
+    const boundNames = screen
+      .getAllByText(/动漫A-第\d+话/)
+      .map((el) => el.textContent);
+    expect(boundNames).toEqual(["动漫A-第2话", "动漫A-第1话"]);
+
+    // 点击"查看条目"跳转到条目详情页
+    fireEvent.click(screen.getByRole("button", { name: /查看条目/ }));
+    expect(currentLocation.current?.pathname).toBe("/subject/42");
   });
 
   it("在无任务时应该正确显示空状态（通过上下文字段名称检测数据流）", async () => {

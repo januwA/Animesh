@@ -1,17 +1,76 @@
 use crate::domain::torrent::TorrentRepository;
-use crate::torrent::{format_hash, AddTorrentResult, FileDetails, TorrentStatusInfo};
+use crate::torrent::{
+    format_hash, AddTorrentResult, FileDetails, SubjectBinding, TorrentStatusInfo,
+};
 use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
+use std::collections::HashMap;
 use std::num::NonZeroU32;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+/// 下载资源与条目的绑定关系存储，按 info_hash（小写）唯一标识，
+/// 独立 JSON 落盘，保证重启后绑定关系不丢失。
+struct SubjectBindingStore {
+    path: PathBuf,
+    bindings: RwLock<HashMap<String, SubjectBinding>>,
+}
+
+impl SubjectBindingStore {
+    fn new(persistence_dir: &Path) -> Self {
+        let path = persistence_dir.join("subject_bindings.json");
+        let bindings = match std::fs::read_to_string(&path) {
+            Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+            Err(_) => HashMap::new(),
+        };
+        Self {
+            path,
+            bindings: RwLock::new(bindings),
+        }
+    }
+
+    fn get(&self, info_hash: &str) -> Option<SubjectBinding> {
+        self.bindings
+            .read()
+            .unwrap()
+            .get(&info_hash.to_lowercase())
+            .cloned()
+    }
+
+    fn set(&self, info_hash: &str, binding: SubjectBinding) {
+        self.bindings
+            .write()
+            .unwrap()
+            .insert(info_hash.to_lowercase(), binding);
+        self.persist();
+    }
+
+    fn clear(&self, info_hash: &str) {
+        self.bindings
+            .write()
+            .unwrap()
+            .remove(&info_hash.to_lowercase());
+        self.persist();
+    }
+
+    fn persist(&self) {
+        let bindings = self.bindings.read().unwrap();
+        if let Some(parent) = self.path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Ok(file) = std::fs::File::create(&self.path) {
+            let _ = serde_json::to_writer_pretty(file, &*bindings);
+        }
+    }
+}
 
 pub struct RqbitTorrentRepository {
     session: Arc<Session>,
     get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
     persistence_dir: PathBuf,
     start_time: std::time::Instant,
+    subject_bindings: SubjectBindingStore,
 }
 
 impl RqbitTorrentRepository {
@@ -23,9 +82,14 @@ impl RqbitTorrentRepository {
         Self {
             session,
             get_download_dir_fn,
-            persistence_dir,
+            persistence_dir: persistence_dir.clone(),
             start_time: std::time::Instant::now(),
+            subject_bindings: SubjectBindingStore::new(&persistence_dir),
         }
+    }
+
+    fn get_subject_binding(&self, info_hash_hex: &str) -> Option<SubjectBinding> {
+        self.subject_bindings.get(info_hash_hex)
     }
 
     fn find_torrent_by_hex(&self, hex_hash: &str) -> Option<Arc<ManagedTorrent>> {
@@ -157,6 +221,8 @@ impl TorrentRepository for RqbitTorrentRepository {
             .map(|u| u.to_string())
             .collect::<Vec<_>>();
 
+        let binding = self.get_subject_binding(info_hash_hex);
+
         Some(TorrentStatusInfo {
             info_hash: info_hash_hex.to_string(),
             name: torrent.name().unwrap_or_default(),
@@ -170,6 +236,8 @@ impl TorrentRepository for RqbitTorrentRepository {
             peers_total,
             created_at,
             trackers,
+            subject_id: binding.as_ref().map(|b| b.subject_id),
+            subject_name: binding.map(|b| b.subject_name),
         })
     }
 
@@ -209,6 +277,7 @@ impl TorrentRepository for RqbitTorrentRepository {
                     .iter()
                     .map(|u| u.to_string())
                     .collect::<Vec<_>>();
+                let binding = self.get_subject_binding(&hex);
                 TorrentStatusInfo {
                     info_hash: hex,
                     name: torrent.name().unwrap_or_default(),
@@ -222,6 +291,8 @@ impl TorrentRepository for RqbitTorrentRepository {
                     peers_total,
                     created_at,
                     trackers,
+                    subject_id: binding.as_ref().map(|b| b.subject_id),
+                    subject_name: binding.map(|b| b.subject_name),
                 }
             })
             .collect()
@@ -258,6 +329,7 @@ impl TorrentRepository for RqbitTorrentRepository {
             .delete(id, delete_files)
             .await
             .map_err(|e| format!("Failed to delete torrent: {}", e))?;
+        self.subject_bindings.clear(info_hash_hex);
         Ok(())
     }
 
@@ -317,5 +389,118 @@ impl TorrentRepository for RqbitTorrentRepository {
     fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>) {
         let bps = bytes_per_sec.and_then(NonZeroU32::new);
         self.session.ratelimits.set_upload_bps(bps);
+    }
+
+    fn set_subject_binding(&self, info_hash: &str, subject_id: u64, subject_name: String) {
+        self.subject_bindings.set(
+            info_hash,
+            SubjectBinding {
+                subject_id,
+                subject_name,
+            },
+        );
+    }
+
+    fn clear_subject_binding(&self, info_hash: &str) {
+        self.subject_bindings.clear(info_hash);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_persistence_dir() -> PathBuf {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("animesh_test_bindings_{}", nanos))
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_绑定存储_设置读取与清除() {
+        let dir = temp_persistence_dir();
+        std::fs::create_dir_all(&dir).unwrap();
+        let store = SubjectBindingStore::new(&dir);
+
+        let hash = "ABC123";
+        assert_eq!(store.get(hash), None);
+
+        store.set(
+            hash,
+            SubjectBinding {
+                subject_id: 42,
+                subject_name: "测试条目".to_string(),
+            },
+        );
+
+        // 大小写不敏感查找
+        let binding = store.get("abc123").expect("应能查到绑定");
+        assert_eq!(binding.subject_id, 42);
+        assert_eq!(binding.subject_name, "测试条目");
+
+        store.clear(hash);
+        assert_eq!(store.get(hash), None);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_绑定存储_覆盖已有绑定() {
+        let dir = temp_persistence_dir();
+        std::fs::create_dir_all(&dir).unwrap();
+        let store = SubjectBindingStore::new(&dir);
+
+        store.set(
+            "hash1",
+            SubjectBinding {
+                subject_id: 1,
+                subject_name: "旧条目".to_string(),
+            },
+        );
+        store.set(
+            "hash1",
+            SubjectBinding {
+                subject_id: 2,
+                subject_name: "新条目".to_string(),
+            },
+        );
+
+        let binding = store.get("hash1").expect("应能查到绑定");
+        assert_eq!(binding.subject_id, 2);
+        assert_eq!(binding.subject_name, "新条目");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_绑定存储_持久化跨实例重载() {
+        let dir = temp_persistence_dir();
+        std::fs::create_dir_all(&dir).unwrap();
+
+        {
+            let store = SubjectBindingStore::new(&dir);
+            store.set(
+                "persist_hash",
+                SubjectBinding {
+                    subject_id: 99,
+                    subject_name: "持久化条目".to_string(),
+                },
+            );
+            assert!(dir.join("subject_bindings.json").exists());
+        }
+
+        // 模拟重启：新实例从磁盘重载
+        let reloaded = SubjectBindingStore::new(&dir);
+        let binding = reloaded.get("PERSIST_HASH").expect("重启后应保留绑定");
+        assert_eq!(binding.subject_id, 99);
+        assert_eq!(binding.subject_name, "持久化条目");
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

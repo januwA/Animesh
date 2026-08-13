@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
@@ -15,9 +16,11 @@ import type {
   BangumiEpisodesPage,
   BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
+import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import SubjectDetail from "./SubjectDetail";
 
 const currentLocation = {
@@ -1910,5 +1913,324 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
 
     expect(screen.getByText("无效的条目详情参数")).toBeInTheDocument();
     expect(screen.getByText("页码必须是数字")).toBeInTheDocument();
+  });
+});
+
+describe("SubjectDetail 页面 - 资源绑定", () => {
+  let mockContainer: DIContainer;
+
+  const makeSubject = (): BangumiSubject => ({
+    id: 123,
+    name: "Test Anime",
+    name_cn: "测试动漫",
+    summary: "简介",
+    images: {
+      large: "http://example.com/large.jpg",
+      common: "",
+      medium: "",
+      small: "",
+      grid: "",
+    },
+    rating: { score: 8.5, rank: 42, total: 100 },
+    collection: { doing: 200 },
+    date: "2026-07-01",
+    eps: 12,
+    platform: "TV",
+  });
+
+  const makeTorrent = (
+    overrides: Partial<TorrentStatusInfo>,
+  ): TorrentStatusInfo => ({
+    info_hash: "hash-1",
+    name: "测试种子",
+    progress_bytes: 100,
+    total_bytes: 100,
+    finished: false,
+    download_speed_bytes_per_sec: 0,
+    upload_speed_bytes_per_sec: 0,
+    paused: false,
+    peers_connected: 0,
+    peers_total: 0,
+    trackers: [],
+    ...overrides,
+  });
+
+  const renderResourceTab = (
+    torrents: TorrentStatusInfo[],
+    hooks?: {
+      setTorrentSubject?: (
+        infoHash: string,
+        subject_id: number,
+        subject_name: string,
+      ) => Promise<void>;
+      clearTorrentSubject?: (infoHash: string) => Promise<void>;
+    },
+  ) => {
+    mockContainer = createDIContainerForTest({
+      bangumiRepository: {
+        getCalendar: vi.fn().mockResolvedValue([]),
+        getSubject: vi.fn().mockResolvedValue(makeSubject()),
+        getEpisodes: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+      },
+      torrentRepository: {
+        subscribeTorrents: vi.fn().mockImplementation(async (onUpdate) => {
+          onUpdate(torrents);
+          return () => {};
+        }),
+        setTorrentSubject: hooks?.setTorrentSubject ?? vi.fn(),
+        clearTorrentSubject: hooks?.clearTorrentSubject ?? vi.fn(),
+      },
+    });
+
+    return render(
+      <DIProvider value={mockContainer}>
+        <TorrentStatusProvider>
+          <MemoryRouter initialEntries={["/subject/123"]}>
+            <LocationTracker />
+            <Routes>
+              <Route path="/" element={<NavBarLayout />}>
+                <Route path="subject/:subjectId" element={<SubjectDetail />} />
+                <Route path="torrent" element={<div>种子详情页</div>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </TorrentStatusProvider>
+      </DIProvider>,
+    );
+  };
+
+  beforeEach(() => {
+    currentLocation.current = null;
+    resetAppStores();
+    vi.clearAllMocks();
+    vi.spyOn(window, "open").mockImplementation(() => null);
+  });
+
+  it("当没有绑定任务时，资源标签页应该展示空状态", async () => {
+    renderResourceTab([]);
+
+    await waitFor(() => {
+      expect(screen.getByText("测试动漫")).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+
+    expect(screen.getByText("暂未绑定下载资源")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /绑定下载/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("资源标签页应该展示已绑定任务，并在标签上显示数量徽章", async () => {
+    renderResourceTab([
+      makeTorrent({ subject_id: 123, subject_name: "测试动漫" }),
+      makeTorrent({
+        info_hash: "hash-2",
+        name: "未绑定种子",
+      }),
+    ]);
+
+    await waitFor(() => {
+      expect(screen.getByText("测试动漫")).toBeInTheDocument();
+    });
+
+    const resourceTab = screen.getByRole("tab", { name: /资源/ });
+    expect(resourceTab).toHaveTextContent("1");
+
+    await userEvent.setup().click(resourceTab);
+
+    expect(screen.getByText("测试种子")).toBeInTheDocument();
+    expect(screen.queryByText("未绑定种子")).not.toBeInTheDocument();
+  });
+
+  it("点击已绑定任务行，应该跳转到种子详情页并携带 hash 与标题", async () => {
+    renderResourceTab([
+      makeTorrent({
+        info_hash: "hash-1",
+        name: "测试种子",
+        subject_id: 123,
+        subject_name: "测试动漫",
+      }),
+    ]);
+
+    await waitFor(() => {
+      expect(screen.getByText("测试动漫")).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+
+    const row = screen.getByTestId("bound-torrent-row");
+    await userEvent.setup().click(row);
+
+    expect(currentLocation.current?.pathname).toBe("/torrent");
+    expect(currentLocation.current?.search).toContain("infoHash=hash-1");
+    expect(currentLocation.current?.search).toContain(
+      `title=${encodeURIComponent("测试种子")}`,
+    );
+  });
+
+  it("点击解绑按钮，应该调用 clearTorrentSubject", async () => {
+    const clearTorrentSubject = vi.fn().mockResolvedValue(undefined);
+    renderResourceTab(
+      [
+        makeTorrent({
+          info_hash: "hash-1",
+          name: "测试种子",
+          subject_id: 123,
+          subject_name: "测试动漫",
+        }),
+      ],
+      { clearTorrentSubject },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("测试动漫")).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+
+    await userEvent.setup().click(screen.getByRole("button", { name: /解绑/ }));
+
+    await waitFor(() => {
+      expect(clearTorrentSubject).toHaveBeenCalledWith("hash-1");
+    });
+  });
+
+  it("打开绑定对话框，点击绑定应该调用 setTorrentSubject", async () => {
+    const setTorrentSubject = vi.fn().mockResolvedValue(undefined);
+    renderResourceTab(
+      [
+        makeTorrent({
+          info_hash: "hash-1",
+          name: "测试种子",
+        }),
+        makeTorrent({
+          info_hash: "hash-2",
+          name: "另一个种子",
+          subject_id: 456,
+          subject_name: "其他动漫",
+        }),
+      ],
+      { setTorrentSubject },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("测试动漫")).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /绑定下载/ }));
+
+    // 对话框中应该列出所有下载，且已绑定到其它条目的显示为"改绑"
+    expect(screen.getByText("绑定下载资源")).toBeInTheDocument();
+    expect(screen.getByText("测试种子")).toBeInTheDocument();
+    expect(screen.getByText("另一个种子")).toBeInTheDocument();
+    expect(screen.getByText("已属于《其他动漫》")).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "绑定" }));
+
+    await waitFor(() => {
+      expect(setTorrentSubject).toHaveBeenCalledWith("hash-1", 123, "测试动漫");
+    });
+  });
+
+  it("绑定下载资源失败时，应该显示绑定失败提示", async () => {
+    const setTorrentSubject = vi
+      .fn()
+      .mockRejectedValue(new Error("Bind failed"));
+    renderResourceTab(
+      [makeTorrent({ info_hash: "hash-1", name: "测试种子" })],
+      { setTorrentSubject },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("测试动漫")).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /绑定下载/ }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "绑定" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining("绑定失败: Bind failed"),
+      );
+    });
+  });
+
+  it("解除绑定失败时，应该显示解绑失败提示", async () => {
+    const clearTorrentSubject = vi
+      .fn()
+      .mockRejectedValue(new Error("Unbind failed"));
+    renderResourceTab(
+      [
+        makeTorrent({
+          info_hash: "hash-1",
+          name: "测试种子",
+          subject_id: 123,
+          subject_name: "测试动漫",
+        }),
+      ],
+      { clearTorrentSubject },
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("测试动漫")).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+    await userEvent.setup().click(screen.getByRole("button", { name: /解绑/ }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining("解绑失败: Unbind failed"),
+      );
+    });
+  });
+
+  it("已绑定任务及绑定对话框中的未命名种子，应降级显示文案，跳转标题使用未命名种子", async () => {
+    renderResourceTab([
+      makeTorrent({
+        info_hash: "hash-1",
+        name: "",
+        subject_id: 123,
+        subject_name: "测试动漫",
+      }),
+    ]);
+
+    await waitFor(() => {
+      expect(screen.getByText("测试动漫")).toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+
+    // 绑定行未命名种子降级文案
+    expect(screen.getByText("正在解析元数据...")).toBeInTheDocument();
+
+    // 打开绑定对话框，列表中的未命名种子同样降级显示
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /绑定下载/ }));
+    expect(screen.getAllByText("正在解析元数据...").length).toBe(2);
+
+    // 关闭对话框后点击绑定行，跳转标题使用"未命名种子"
+    fireEvent.keyDown(screen.getByRole("dialog"), {
+      key: "Escape",
+      code: "Escape",
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await userEvent.setup().click(screen.getByTestId("bound-torrent-row"));
+    expect(currentLocation.current?.pathname).toBe("/torrent");
+    expect(currentLocation.current?.search).toContain(
+      `title=${encodeURIComponent("未命名种子")}`,
+    );
   });
 });

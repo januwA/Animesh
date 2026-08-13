@@ -43,6 +43,8 @@ describe("TorrentDetail 页面组件", () => {
       getSubtitleVtt: vi.fn(),
       getVideoMetadata: vi.fn(),
       subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
+      setTorrentSubject: vi.fn(),
+      clearTorrentSubject: vi.fn(),
     };
 
     mockContainer = createDIContainerForTest({

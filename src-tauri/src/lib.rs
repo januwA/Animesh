@@ -436,6 +436,31 @@ fn torrent_list(
 }
 
 #[tauri::command]
+fn torrent_set_subject(
+    info_hash: &str,
+    subject_id: u64,
+    subject_name: &str,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<(), String> {
+    trace_log(&format!(
+        "torrent_set_subject info_hash: {}, subject_id: {}, subject_name: {}",
+        info_hash, subject_id, subject_name
+    ));
+    manager.set_subject_binding(info_hash, subject_id, subject_name.to_string());
+    Ok(())
+}
+
+#[tauri::command]
+fn torrent_clear_subject(
+    info_hash: &str,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<(), String> {
+    trace_log(&format!("torrent_clear_subject info_hash: {}", info_hash));
+    manager.clear_subject_binding(info_hash);
+    Ok(())
+}
+
+#[tauri::command]
 async fn torrent_subscribe(
     window: tauri::Window,
     subscription_id: String,
@@ -700,6 +725,8 @@ pub fn run() {
             torrent_resume,
             torrent_delete,
             torrent_list,
+            torrent_set_subject,
+            torrent_clear_subject,
             torrent_subscribe,
             torrent_unsubscribe,
             settings_get,

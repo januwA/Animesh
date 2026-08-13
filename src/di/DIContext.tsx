@@ -32,6 +32,7 @@ import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryU
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
+import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
 import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUseCase";
@@ -44,6 +45,7 @@ import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseC
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SearchTorrentsWithAiUseCase } from "../application/torrent/SearchTorrentsWithAiUseCase";
+import { SetTorrentSubjectUseCase } from "../application/torrent/SetTorrentSubjectUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
@@ -78,6 +80,8 @@ export interface DIContainer {
   resumeTorrentUseCase: ResumeTorrentUseCase;
   deleteTorrentUseCase: DeleteTorrentUseCase;
   addTorrentMagnetUseCase: AddTorrentMagnetUseCase;
+  setTorrentSubjectUseCase: SetTorrentSubjectUseCase;
+  clearTorrentSubjectUseCase: ClearTorrentSubjectUseCase;
   getTorrentFilesUseCase: GetTorrentFilesUseCase;
   resolveTorrentUseCase: ResolveTorrentUseCase;
   getTorrentStatusUseCase: GetTorrentStatusUseCase;
@@ -144,6 +148,12 @@ export function createDefaultDIContainer(): DIContainer {
   const resumeTorrentUseCase = new ResumeTorrentUseCase(torrentRepository);
   const deleteTorrentUseCase = new DeleteTorrentUseCase(torrentRepository);
   const addTorrentMagnetUseCase = new AddTorrentMagnetUseCase(
+    torrentRepository,
+  );
+  const setTorrentSubjectUseCase = new SetTorrentSubjectUseCase(
+    torrentRepository,
+  );
+  const clearTorrentSubjectUseCase = new ClearTorrentSubjectUseCase(
     torrentRepository,
   );
   const getTorrentFilesUseCase = new GetTorrentFilesUseCase(torrentRepository);
@@ -229,6 +239,8 @@ export function createDefaultDIContainer(): DIContainer {
     resumeTorrentUseCase,
     deleteTorrentUseCase,
     addTorrentMagnetUseCase,
+    setTorrentSubjectUseCase,
+    clearTorrentSubjectUseCase,
     getTorrentFilesUseCase,
     resolveTorrentUseCase,
     getTorrentStatusUseCase,

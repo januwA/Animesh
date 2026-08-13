@@ -2,6 +2,7 @@ import { Background, WithValue } from "ajanuw-context";
 import { describe, expect, it, vi } from "vitest";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import { AddTorrentMagnetUseCase } from "./AddTorrentMagnetUseCase";
+import { ClearTorrentSubjectUseCase } from "./ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "./DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "./GetSubtitleVttUseCase";
 import { GetTorrentFilesUseCase } from "./GetTorrentFilesUseCase";
@@ -13,6 +14,7 @@ import { PauseTorrentUseCase } from "./PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "./ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "./ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "./SearchTorrentsUseCase";
+import { SetTorrentSubjectUseCase } from "./SetTorrentSubjectUseCase";
 
 describe("Torrent 相关的 UseCase 业务编排", () => {
   const mockRepo = {
@@ -27,6 +29,8 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     getTorrentStatus: vi.fn(),
     getVideoMetadata: vi.fn(),
     getSubtitleVtt: vi.fn(),
+    setTorrentSubject: vi.fn(),
+    clearTorrentSubject: vi.fn(),
     subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
   } as unknown as TorrentRepository;
 
@@ -208,5 +212,27 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     await expect(useCase.execute(ctx, {})).rejects.toThrow(
       "未提供有效的磁力链接或种子 Hash",
     );
+  });
+
+  it("SetTorrentSubjectUseCase 应该正确调用 repository 的 setTorrentSubject 方法", async () => {
+    const useCase = new SetTorrentSubjectUseCase(mockRepo);
+    vi.mocked(mockRepo.setTorrentSubject).mockResolvedValueOnce(undefined);
+    await useCase.execute({
+      infoHash: "123",
+      subjectId: 42,
+      subjectName: "测试条目",
+    });
+    expect(mockRepo.setTorrentSubject).toHaveBeenCalledWith(
+      "123",
+      42,
+      "测试条目",
+    );
+  });
+
+  it("ClearTorrentSubjectUseCase 应该正确调用 repository 的 clearTorrentSubject 方法", async () => {
+    const useCase = new ClearTorrentSubjectUseCase(mockRepo);
+    vi.mocked(mockRepo.clearTorrentSubject).mockResolvedValueOnce(undefined);
+    await useCase.execute("123");
+    expect(mockRepo.clearTorrentSubject).toHaveBeenCalledWith("123");
   });
 });

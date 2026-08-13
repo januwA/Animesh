@@ -150,6 +150,22 @@ export class TauriTorrentRepository implements TorrentRepository {
     });
   }
 
+  async setTorrentSubject(
+    infoHash: string,
+    subject_id: number,
+    subject_name: string,
+  ): Promise<void> {
+    return invoke<void>("torrent_set_subject", {
+      infoHash,
+      subjectId: subject_id,
+      subjectName: subject_name,
+    });
+  }
+
+  async clearTorrentSubject(infoHash: string): Promise<void> {
+    return invoke<void>("torrent_clear_subject", { infoHash });
+  }
+
   async subscribeTorrents(
     onUpdate: (torrents: TorrentStatusInfo[]) => void,
   ): Promise<() => void> {

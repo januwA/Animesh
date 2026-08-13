@@ -96,6 +96,8 @@ describe("Player 页面组件", () => {
 
         return Promise.resolve(() => clearInterval(interval));
       }),
+      setTorrentSubject: vi.fn().mockResolvedValue(undefined),
+      clearTorrentSubject: vi.fn().mockResolvedValue(undefined),
     };
 
     mockContainer = createDIContainerForTest({

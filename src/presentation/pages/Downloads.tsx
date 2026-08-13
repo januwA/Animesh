@@ -1,15 +1,18 @@
 import type { Context } from "ajanuw-context";
 import {
+  ChevronDown,
   Download,
+  ExternalLink,
   FolderOpen,
   HardDrive,
+  Layers,
   Loader2,
   Pause,
   Play,
   Trash2,
   Upload,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
@@ -23,6 +26,11 @@ import {
   CardTitle,
 } from "@/presentation/components/ui/card";
 import { Checkbox } from "@/presentation/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/presentation/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +54,177 @@ import { Progress } from "@/presentation/components/ui/progress";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { formatBytes, formatError, formatLocalDate } from "@/utils";
+
+interface SubjectGroup {
+  subjectId: number;
+  subjectName: string;
+  items: TorrentStatusInfo[];
+}
+
+/** 按 subject_id 分组，未绑定的归入 null 组，各组内按创建时间倒序。 */
+function groupTorrents(torrents: TorrentStatusInfo[]): {
+  groups: SubjectGroup[];
+  unbound: TorrentStatusInfo[];
+} {
+  const sorted = [...torrents].sort(
+    (a, b) => (b.created_at ?? 0) - (a.created_at ?? 0),
+  );
+  const groupMap = new Map<number, SubjectGroup>();
+  const unbound: TorrentStatusInfo[] = [];
+
+  for (const torrent of sorted) {
+    if (torrent.subject_id != null && torrent.subject_name) {
+      const subjectId = torrent.subject_id;
+      const group = groupMap.get(subjectId) ?? {
+        subjectId,
+        subjectName: torrent.subject_name,
+        items: [],
+      };
+      group.items.push(torrent);
+      groupMap.set(subjectId, group);
+    } else {
+      unbound.push(torrent);
+    }
+  }
+
+  return { groups: [...groupMap.values()], unbound };
+}
+
+interface TorrentCardProps {
+  torrent: TorrentStatusInfo;
+  onViewFiles: (torrent: TorrentStatusInfo) => void;
+  onTogglePause: (torrent: TorrentStatusInfo) => void;
+  onDelete: (torrent: TorrentStatusInfo) => void;
+  pauseLoading: boolean;
+  resumeLoading: boolean;
+}
+
+function TorrentCard({
+  torrent,
+  onViewFiles,
+  onTogglePause,
+  onDelete,
+  pauseLoading,
+  resumeLoading,
+}: TorrentCardProps) {
+  const progress = torrent.total_bytes
+    ? (torrent.progress_bytes / torrent.total_bytes) * 100
+    : 0;
+
+  return (
+    <Card className="bg-card hover:bg-muted/30 border-border transition-all duration-300">
+      <CardHeader className="p-5 pb-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+            <CardTitle
+              className="text-base font-bold text-foreground leading-normal"
+              title={torrent.name || "正在解析元数据..."}
+            >
+              {torrent.name || "正在解析元数据..."}
+            </CardTitle>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-muted-foreground">
+              <span>Hash: {torrent.info_hash}</span>
+              {torrent.created_at && (
+                <span>创建时间: {formatLocalDate(torrent.created_at)}</span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {torrent.finished ? (
+              <Badge className="bg-success/10 text-success border-success/20 text-xs">
+                已完成
+              </Badge>
+            ) : torrent.paused ? (
+              <Badge className="bg-warning/10 text-warning border-warning/20 text-xs">
+                已暂停
+              </Badge>
+            ) : (
+              <Badge className="bg-info/10 text-info border-info/20 text-xs flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                下载中
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="px-5 pb-5 pt-0 flex flex-col gap-4">
+        {/* Progress Info */}
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-between text-xs font-medium">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Download className="h-3.5 w-3.5 text-primary" />
+              进度: {progress.toFixed(2)}%
+            </span>
+            <span className="flex items-center gap-1 text-muted-foreground">
+              下载: {formatBytes(torrent.download_speed_bytes_per_sec)}/s
+            </span>
+            <span className="flex items-center gap-1 text-muted-foreground">
+              <Upload className="h-3.5 w-3.5 text-info" />
+              上传: {formatBytes(torrent.upload_speed_bytes_per_sec)}/s
+              <span className="text-info/80">
+                (同伴: {torrent.peers_connected}/{torrent.peers_total})
+              </span>
+            </span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+
+        {/* Storage Info & Actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-1 text-xs">
+          <div className="flex gap-4 text-muted-foreground items-center">
+            <span className="flex items-center gap-1">
+              <HardDrive className="h-3.5 w-3.5" />
+              已下载: {formatBytes(torrent.progress_bytes)}
+            </span>
+            <span>/</span>
+            <span>总大小: {formatBytes(torrent.total_bytes)}</span>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {/* Play / View files */}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onViewFiles(torrent)}
+              className="h-8 gap-1 text-xs font-medium"
+            >
+              <FolderOpen className="h-3.5 w-3.5" />
+              查看文件
+            </Button>
+
+            {/* Pause / Resume */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onTogglePause(torrent)}
+              className="h-8 w-8 p-0"
+              disabled={torrent.paused ? resumeLoading : pauseLoading}
+              title={torrent.paused ? "开始下载" : "暂停下载"}
+            >
+              {torrent.paused ? (
+                <Play className="h-3.5 w-3.5 fill-current" />
+              ) : (
+                <Pause className="h-3.5 w-3.5" />
+              )}
+            </Button>
+
+            {/* Delete */}
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => onDelete(torrent)}
+              className="h-8 w-8 p-0"
+              title="删除下载"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Downloads() {
   const navigate = useNavigate();
@@ -91,10 +270,29 @@ export default function Downloads() {
     },
   );
 
+  const { groups, unbound } = useMemo(
+    () => groupTorrents(torrents),
+    [torrents],
+  );
+
   const handleViewFiles = (torrent: TorrentStatusInfo) => {
     navigate(
       `/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name || "未命名种子")}`,
     );
+  };
+
+  const handleTogglePause = (torrent: TorrentStatusInfo) => {
+    const nameFallback = torrent.name || "";
+    if (torrent.paused) {
+      resume.execute({ infoHash: torrent.info_hash, name: nameFallback });
+    } else {
+      pause.execute({ infoHash: torrent.info_hash, name: nameFallback });
+    }
+  };
+
+  const handleDelete = (torrent: TorrentStatusInfo) => {
+    setDeleteTarget(torrent);
+    setDeleteFiles(false);
   };
 
   if (isLoading) {
@@ -107,6 +305,18 @@ export default function Downloads() {
       </div>
     );
   }
+
+  const renderCard = (torrent: TorrentStatusInfo) => (
+    <TorrentCard
+      key={torrent.info_hash}
+      torrent={torrent}
+      onViewFiles={handleViewFiles}
+      onTogglePause={handleTogglePause}
+      onDelete={handleDelete}
+      pauseLoading={pause.loading}
+      resumeLoading={resume.loading}
+    />
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -140,154 +350,73 @@ export default function Downloads() {
           </Button>
         </Empty>
       ) : (
-        /* Download Cards List */
-        <div className="grid gap-4">
-          {[...torrents]
-            .sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0))
-            .map((torrent) => {
-              const progress = torrent.total_bytes
-                ? (torrent.progress_bytes / torrent.total_bytes) * 100
-                : 0;
-              return (
-                <Card
-                  key={torrent.info_hash}
-                  className="bg-card hover:bg-muted/30 border-border transition-all duration-300"
+        <div className="flex flex-col gap-6">
+          {/* Bound subject groups */}
+          {groups.map((group) => {
+            return (
+              <Collapsible
+                key={group.subjectId}
+                defaultOpen
+                className="flex flex-col gap-3"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="group flex-1 justify-between gap-2 rounded-xl bg-card/60 border border-border px-3.5 py-2.5 h-auto hover:bg-accent/10 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2 text-sm font-semibold text-foreground min-w-0">
+                        <Layers className="h-4 w-4 text-primary shrink-0" />
+                        <span className="truncate">{group.subjectName}</span>
+                      </span>
+                      <span className="flex items-center gap-2 shrink-0 text-xs font-medium text-muted-foreground">
+                        <Badge variant="secondary">
+                          {group.items.length} 个任务
+                        </Badge>
+                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                      </span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-auto py-2.5 gap-1.5 text-xs font-medium shrink-0"
+                    onClick={() => navigate(`/subject/${group.subjectId}`)}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    查看条目
+                  </Button>
+                </div>
+                <CollapsibleContent className="grid gap-4">
+                  {group.items.map(renderCard)}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+
+          {/* Unbound group */}
+          {unbound.length > 0 && (
+            <Collapsible defaultOpen className="flex flex-col gap-3">
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="group flex-1 justify-between gap-2 rounded-xl bg-card/60 border border-border px-3.5 py-2.5 h-auto hover:bg-accent/10 cursor-pointer"
                 >
-                  <CardHeader className="p-5 pb-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-                        <CardTitle
-                          className="text-base font-bold text-foreground leading-normal"
-                          title={torrent.name || "正在解析元数据..."}
-                        >
-                          {torrent.name || "正在解析元数据..."}
-                        </CardTitle>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-muted-foreground">
-                          <span>Hash: {torrent.info_hash}</span>
-                          {torrent.created_at && (
-                            <span>
-                              创建时间: {formatLocalDate(torrent.created_at)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {torrent.finished ? (
-                          <Badge className="bg-success/10 text-success border-success/20 text-xs">
-                            已完成
-                          </Badge>
-                        ) : torrent.paused ? (
-                          <Badge className="bg-warning/10 text-warning border-warning/20 text-xs">
-                            已暂停
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-info/10 text-info border-info/20 text-xs flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            下载中
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="px-5 pb-5 pt-0 flex flex-col gap-4">
-                    {/* Progress Info */}
-                    <div className="flex flex-col gap-2">
-                      <div className="flex justify-between text-xs font-medium">
-                        <span className="flex items-center gap-1.5 text-muted-foreground">
-                          <Download className="h-3.5 w-3.5 text-primary" />
-                          进度: {progress.toFixed(2)}%
-                        </span>
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          下载:{" "}
-                          {formatBytes(torrent.download_speed_bytes_per_sec)}/s
-                        </span>
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Upload className="h-3.5 w-3.5 text-info" />
-                          上传:{" "}
-                          {formatBytes(torrent.upload_speed_bytes_per_sec)}/s
-                          <span className="text-info/80">
-                            (同伴: {torrent.peers_connected}/
-                            {torrent.peers_total})
-                          </span>
-                        </span>
-                      </div>
-                      <Progress value={progress} className="h-2" />
-                    </div>
-
-                    {/* Storage Info & Actions */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-1 text-xs">
-                      <div className="flex gap-4 text-muted-foreground items-center">
-                        <span className="flex items-center gap-1">
-                          <HardDrive className="h-3.5 w-3.5" />
-                          已下载: {formatBytes(torrent.progress_bytes)}
-                        </span>
-                        <span>/</span>
-                        <span>总大小: {formatBytes(torrent.total_bytes)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                        {/* Play / View files */}
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleViewFiles(torrent)}
-                          className="h-8 gap-1 text-xs font-medium"
-                        >
-                          <FolderOpen className="h-3.5 w-3.5" />
-                          查看文件
-                        </Button>
-
-                        {/* Pause / Resume */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const nameFallback = torrent.name || "";
-                            if (torrent.paused) {
-                              resume.execute({
-                                infoHash: torrent.info_hash,
-                                name: nameFallback,
-                              });
-                            } else {
-                              pause.execute({
-                                infoHash: torrent.info_hash,
-                                name: nameFallback,
-                              });
-                            }
-                          }}
-                          className="h-8 w-8 p-0"
-                          disabled={
-                            torrent.paused ? resume.loading : pause.loading
-                          }
-                          title={torrent.paused ? "开始下载" : "暂停下载"}
-                        >
-                          {torrent.paused ? (
-                            <Play className="h-3.5 w-3.5 fill-current" />
-                          ) : (
-                            <Pause className="h-3.5 w-3.5 fill-current" />
-                          )}
-                        </Button>
-
-                        {/* Delete */}
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            setDeleteTarget(torrent);
-                            setDeleteFiles(false);
-                          }}
-                          className="h-8 w-8 p-0"
-                          title="删除下载"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                  <span className="flex items-center gap-2 text-sm font-semibold text-muted-foreground min-w-0">
+                    <Layers className="h-4 w-4 shrink-0" />
+                    <span className="truncate">未关联条目</span>
+                  </span>
+                  <span className="flex items-center gap-2 shrink-0 text-xs font-medium text-muted-foreground">
+                    <Badge variant="secondary">{unbound.length} 个任务</Badge>
+                    <ChevronDown className="h-4 w-4 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                  </span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="grid gap-4">
+                {unbound.map(renderCard)}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       )}
 

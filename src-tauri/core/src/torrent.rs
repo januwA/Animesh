@@ -29,6 +29,17 @@ pub struct TorrentStatusInfo {
     pub created_at: u64,
     #[serde(default)]
     pub trackers: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject_id: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject_name: Option<String>,
+}
+
+/// 下载资源与 Bangumi 条目的绑定信息。
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct SubjectBinding {
+    pub subject_id: u64,
+    pub subject_name: String,
 }
 
 pub fn format_hash(bytes: &[u8; 20]) -> String {

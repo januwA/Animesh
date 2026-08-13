@@ -193,6 +193,26 @@ export class HttpTorrentRepository implements TorrentRepository {
     return response.text();
   }
 
+  async setTorrentSubject(
+    infoHash: string,
+    subject_id: number,
+    subject_name: string,
+  ): Promise<void> {
+    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ subject_id, subject_name }),
+    });
+  }
+
+  async clearTorrentSubject(infoHash: string): Promise<void> {
+    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
+      method: "DELETE",
+    });
+  }
+
   async subscribeTorrents(
     onUpdate: (torrents: TorrentStatusInfo[]) => void,
   ): Promise<() => void> {

@@ -122,6 +122,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route("/torrents/:hash/pause", post(torrent_pause_handler))
         .route("/torrents/:hash/resume", post(torrent_resume_handler))
+        .route("/torrents/:hash/subject", put(torrent_set_subject_handler))
+        .route(
+            "/torrents/:hash/subject",
+            delete(torrent_clear_subject_handler),
+        )
         .route("/torrents/:hash", delete(torrent_delete_handler))
         .route(
             "/torrents/:hash/files/:id/metadata",
@@ -356,6 +361,31 @@ async fn torrent_resume_handler(
 struct DeleteQuery {
     #[serde(rename = "deleteFiles")]
     delete_files: Option<bool>,
+}
+
+#[derive(serde::Deserialize)]
+struct SetSubjectInput {
+    subject_id: u64,
+    subject_name: String,
+}
+
+async fn torrent_set_subject_handler(
+    State(state): State<Arc<AppState>>,
+    Path(info_hash): Path<String>,
+    axum::Json(payload): axum::Json<SetSubjectInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .manager
+        .set_subject_binding(&info_hash, payload.subject_id, payload.subject_name);
+    Ok(StatusCode::OK)
+}
+
+async fn torrent_clear_subject_handler(
+    State(state): State<Arc<AppState>>,
+    Path(info_hash): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state.manager.clear_subject_binding(&info_hash);
+    Ok(StatusCode::OK)
 }
 
 async fn torrent_delete_handler(

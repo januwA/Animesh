@@ -359,6 +359,15 @@ impl TorrentManager {
         self.torrent_repo.list_torrents()
     }
 
+    pub fn set_subject_binding(&self, info_hash: &str, subject_id: u64, subject_name: String) {
+        self.torrent_repo
+            .set_subject_binding(info_hash, subject_id, subject_name);
+    }
+
+    pub fn clear_subject_binding(&self, info_hash: &str) {
+        self.torrent_repo.clear_subject_binding(info_hash);
+    }
+
     pub async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, String> {
         self.torrent_repo.add_magnet(magnet).await
     }

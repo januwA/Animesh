@@ -28,6 +28,12 @@ export interface TorrentRepository {
     fileId: number,
     trackId: number,
   ): Promise<string>;
+  setTorrentSubject(
+    infoHash: string,
+    subject_id: number,
+    subject_name: string,
+  ): Promise<void>;
+  clearTorrentSubject(infoHash: string): Promise<void>;
   subscribeTorrents(
     onUpdate: (torrents: TorrentStatusInfo[]) => void,
   ): Promise<() => void>;
