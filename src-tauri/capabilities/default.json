@@ -9,7 +9,6 @@
 		"dialog:default",
 		"log:default",
 		"notification:default",
-		"store:default",
 		"window-state:default"
 	]
 }

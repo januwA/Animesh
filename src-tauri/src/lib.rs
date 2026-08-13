@@ -641,8 +641,7 @@ pub fn run() {
                 })
                 .build(),
         )
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_store::Builder::default().build());
+        .plugin(tauri_plugin_notification::init());
 
     #[cfg(desktop)]
     {
