@@ -425,7 +425,7 @@ export default function Downloads() {
         open={deleteTarget !== null}
         onOpenChange={() => setDeleteTarget(null)}
       >
-        <DialogContent className="max-w-md bg-card border-border text-card-foreground">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-foreground">
               删除下载任务

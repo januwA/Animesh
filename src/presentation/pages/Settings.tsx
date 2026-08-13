@@ -965,7 +965,7 @@ export default function Settings() {
         open={confirmLeaveOpen}
         onOpenChange={(open) => !open && blocker.reset?.()}
       >
-        <DialogContent showCloseButton={false} className="sm:max-w-xs">
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>放弃未保存的更改？</DialogTitle>
             <DialogDescription>
@@ -988,7 +988,7 @@ export default function Settings() {
       </Dialog>
 
       <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
-        <DialogContent showCloseButton={false} className="sm:max-w-xs">
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>确定清理缓存数据？</DialogTitle>
             <DialogDescription>

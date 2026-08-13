@@ -347,7 +347,7 @@ function SubjectResourcesTab({
               </EmptyContent>
             </Empty>
           ) : (
-            <div className="flex w-full min-w-0 flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5">
               {torrents.map((torrent) => {
                 const boundHere = torrent.subject_id === subjectId;
                 const boundOther =
