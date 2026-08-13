@@ -2,14 +2,11 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
-import { IndexedDbCollectionRepository } from "@/infrastructure/collection/IndexedDbCollectionRepository";
-import { InMemoryCacheStore } from "@/test/InMemoryCacheStore";
+import { InMemoryCollectionRepository } from "@/test/InMemoryCollectionRepository";
 import { FavoriteButton } from "./FavoriteButton";
 
 function createContainer(): DIContainer {
-  const collectionRepository = new IndexedDbCollectionRepository(
-    new InMemoryCacheStore(),
-  );
+  const collectionRepository = new InMemoryCollectionRepository();
   return {
     collectionRepository,
   } as unknown as DIContainer;
@@ -56,13 +53,11 @@ describe("FavoriteButton 收藏按钮", () => {
 
   it("已收藏状态下点击按钮应取消收藏", async () => {
     const container = createContainer();
-    await (container.collectionRepository as IndexedDbCollectionRepository).add(
-      {
-        subjectId: mockSubject.subjectId,
-        name: "已收藏",
-        imageUrl: null,
-      },
-    );
+    await (container.collectionRepository as InMemoryCollectionRepository).add({
+      subjectId: mockSubject.subjectId,
+      name: "已收藏",
+      imageUrl: null,
+    });
     render(
       <DIProvider value={container}>
         <FavoriteButton subject={mockSubject} />

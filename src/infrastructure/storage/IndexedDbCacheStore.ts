@@ -113,31 +113,4 @@ export class IndexedDbCacheStore implements CacheStore {
       // 忽略清理失败
     }
   }
-
-  async clearCache(protectedKeys: string[]): Promise<void> {
-    const protectedSet = new Set(protectedKeys);
-    try {
-      await this.getDb().then(
-        (db) =>
-          new Promise<void>((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            const store = tx.objectStore(STORE_NAME);
-            const req = store.openCursor();
-            req.onsuccess = () => {
-              const cursor = req.result;
-              if (!cursor) return;
-              if (!protectedSet.has(cursor.key as string)) {
-                cursor.delete();
-              }
-              cursor.continue();
-            };
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-            tx.onabort = () => reject(tx.error);
-          }),
-      );
-    } catch {
-      // 忽略清理失败
-    }
-  }
 }

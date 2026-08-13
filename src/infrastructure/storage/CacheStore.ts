@@ -9,6 +9,4 @@ export interface CacheStore {
   setItem<T>(key: string, data: T, ttlMs: number): Promise<void>;
   removeItem(key: string): Promise<void>;
   clear(): Promise<void>;
-  /** 清空所有非保护键名的缓存记录，用于保留用户数据（如收藏）的缓存清理。 */
-  clearCache(protectedKeys: string[]): Promise<void>;
 }

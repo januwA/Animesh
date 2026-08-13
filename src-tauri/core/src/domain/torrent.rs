@@ -25,8 +25,8 @@ pub trait TorrentRepository: Send + Sync {
     fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>);
 
     /// 绑定下载资源到 Bangumi 条目。已存在同名绑定时会覆盖。
-    fn set_subject_binding(&self, info_hash: &str, subject_id: u64, subject_name: String);
+    async fn set_subject_binding(&self, info_hash: &str, subject_id: u64, subject_name: String);
 
     /// 解除下载资源与条目的绑定。
-    fn clear_subject_binding(&self, info_hash: &str);
+    async fn clear_subject_binding(&self, info_hash: &str);
 }

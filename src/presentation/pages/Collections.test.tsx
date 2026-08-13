@@ -3,14 +3,11 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
-import { IndexedDbCollectionRepository } from "@/infrastructure/collection/IndexedDbCollectionRepository";
-import { InMemoryCacheStore } from "@/test/InMemoryCacheStore";
+import { InMemoryCollectionRepository } from "@/test/InMemoryCollectionRepository";
 import Collections from "./Collections";
 
 function createContainer(): DIContainer {
-  const collectionRepository = new IndexedDbCollectionRepository(
-    new InMemoryCacheStore(),
-  );
+  const collectionRepository = new InMemoryCollectionRepository();
   return {
     collectionRepository,
   } as unknown as DIContainer;
@@ -38,13 +35,11 @@ describe("Collections 收藏页面", () => {
 
   it("有收藏时应显示收藏条目", async () => {
     const container = createContainer();
-    await (container.collectionRepository as IndexedDbCollectionRepository).add(
-      {
-        subjectId: 101,
-        name: "测试动画",
-        imageUrl: null,
-      },
-    );
+    await (container.collectionRepository as InMemoryCollectionRepository).add({
+      subjectId: 101,
+      name: "测试动画",
+      imageUrl: null,
+    });
     const { container: dom } = render(
       <DIProvider value={container}>
         <MemoryRouter>
@@ -67,13 +62,11 @@ describe("Collections 收藏页面", () => {
 
   it("应展示有封面的收藏条目且点击可触发导航", async () => {
     const container = createContainer();
-    await (container.collectionRepository as IndexedDbCollectionRepository).add(
-      {
-        subjectId: 201,
-        name: "带封面动画",
-        imageUrl: "https://example.com/cover.jpg",
-      },
-    );
+    await (container.collectionRepository as InMemoryCollectionRepository).add({
+      subjectId: 201,
+      name: "带封面动画",
+      imageUrl: "https://example.com/cover.jpg",
+    });
     const { container: dom } = render(
       <DIProvider value={container}>
         <MemoryRouter>
@@ -89,13 +82,11 @@ describe("Collections 收藏页面", () => {
 
   it("中文名为空时应回退显示英文名", async () => {
     const container = createContainer();
-    await (container.collectionRepository as IndexedDbCollectionRepository).add(
-      {
-        subjectId: 401,
-        name: "EnglishName",
-        imageUrl: null,
-      },
-    );
+    await (container.collectionRepository as InMemoryCollectionRepository).add({
+      subjectId: 401,
+      name: "EnglishName",
+      imageUrl: null,
+    });
     const { container: dom } = render(
       <DIProvider value={container}>
         <MemoryRouter>

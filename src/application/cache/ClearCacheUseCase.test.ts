@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { COLLECTION_STORAGE_KEY } from "@/domain/collection/CollectionSchemas";
 import { InMemoryCacheStore } from "@/test/InMemoryCacheStore";
 import { ClearCacheUseCase } from "./ClearCacheUseCase";
 
@@ -28,27 +27,14 @@ describe("ClearCacheUseCase 清理联网缓存用例", () => {
     for (const key of cacheKeys) {
       await store.setItem(key, { id: 1 }, 60_000);
     }
-    await store.setItem(
-      COLLECTION_STORAGE_KEY,
-      { items: [{ subjectId: 1, name: "测试收藏" }] },
-      Number.MAX_SAFE_INTEGER,
-    );
   }
 
-  it("应该清理 bangumi 与 iptv 等联网缓存", async () => {
+  it("应该清空 bangumi 与 iptv 等全部缓存", async () => {
     await seedCache();
     await useCase.execute();
     for (const key of cacheKeys) {
       await expect(store.getItem(key, anySchema)).resolves.toBeNull();
     }
-  });
-
-  it("应该保留用户收藏等本地数据", async () => {
-    await seedCache();
-    await useCase.execute();
-    await expect(
-      store.getItem(COLLECTION_STORAGE_KEY, anySchema),
-    ).resolves.toEqual({ items: [{ subjectId: 1, name: "测试收藏" }] });
   });
 
   it("在空仓库下执行也不应该报错", async () => {

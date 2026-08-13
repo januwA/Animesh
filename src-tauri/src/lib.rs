@@ -436,7 +436,7 @@ fn torrent_list(
 }
 
 #[tauri::command]
-fn torrent_set_subject(
+async fn torrent_set_subject(
     info_hash: &str,
     subject_id: u64,
     subject_name: &str,
@@ -446,18 +446,71 @@ fn torrent_set_subject(
         "torrent_set_subject info_hash: {}, subject_id: {}, subject_name: {}",
         info_hash, subject_id, subject_name
     ));
-    manager.set_subject_binding(info_hash, subject_id, subject_name.to_string());
+    manager
+        .set_subject_binding(info_hash, subject_id, subject_name.to_string())
+        .await;
     Ok(())
 }
 
 #[tauri::command]
-fn torrent_clear_subject(
+async fn torrent_clear_subject(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), String> {
     trace_log(&format!("torrent_clear_subject info_hash: {}", info_hash));
-    manager.clear_subject_binding(info_hash);
+    manager.clear_subject_binding(info_hash).await;
     Ok(())
+}
+
+#[tauri::command]
+async fn collection_get_all(
+    db: tauri::State<'_, Arc<animesh_core::infrastructure::db::AppDatabase>>,
+) -> Result<Vec<animesh_core::infrastructure::collection_repository::CollectionRecord>, String> {
+    animesh_core::infrastructure::collection_repository::CollectionRepository::new(&db)
+        .list()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn collection_is_favorited(
+    subject_id: i64,
+    db: tauri::State<'_, Arc<animesh_core::infrastructure::db::AppDatabase>>,
+) -> Result<bool, String> {
+    animesh_core::infrastructure::collection_repository::CollectionRepository::new(&db)
+        .is_favorited(subject_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn collection_add(
+    subject_id: i64,
+    name: String,
+    image_url: Option<String>,
+    db: tauri::State<'_, Arc<animesh_core::infrastructure::db::AppDatabase>>,
+) -> Result<(), String> {
+    animesh_core::infrastructure::collection_repository::CollectionRepository::new(&db)
+        .add(
+            animesh_core::infrastructure::collection_repository::NewCollectionItem {
+                subject_id,
+                name,
+                image_url,
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn collection_remove(
+    subject_id: i64,
+    db: tauri::State<'_, Arc<animesh_core::infrastructure::db::AppDatabase>>,
+) -> Result<(), String> {
+    animesh_core::infrastructure::collection_repository::CollectionRepository::new(&db)
+        .remove(subject_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -692,6 +745,15 @@ pub fn run() {
             }
             std::fs::create_dir_all(&download_dir).ok();
 
+            let db = Arc::new(
+                tauri::async_runtime::block_on(
+                    animesh_core::infrastructure::db::AppDatabase::connect(
+                        &app_data_dir.join("animesh.sqlite"),
+                    ),
+                )
+                .expect("Failed to initialize AppDatabase"),
+            );
+
             let manager = tauri::async_runtime::block_on(async {
                 TorrentManager::new(
                     download_dir,
@@ -699,12 +761,14 @@ pub fn run() {
                     proxy,
                     max_download_speed,
                     max_upload_speed,
+                    db.clone(),
                 )
                 .await
                 .expect("Failed to initialize TorrentManager")
             });
 
             app.manage(Arc::new(manager));
+            app.manage(db);
             app.manage(SearchTracker::default());
             app.manage(AddMagnetTracker::default());
             app.manage(SubscriptionTracker::default());
@@ -726,6 +790,10 @@ pub fn run() {
             torrent_list,
             torrent_set_subject,
             torrent_clear_subject,
+            collection_get_all,
+            collection_is_favorited,
+            collection_add,
+            collection_remove,
             torrent_subscribe,
             torrent_unsubscribe,
             settings_get,

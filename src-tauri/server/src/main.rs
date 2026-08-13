@@ -92,12 +92,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("ANIMESH_STREAM_PORT", "3000");
     }
 
+    let db = Arc::new(
+        animesh_core::infrastructure::db::AppDatabase::connect(
+            &app_data_dir.join("animesh.sqlite"),
+        )
+        .await
+        .expect("Failed to initialize AppDatabase"),
+    );
+
     let manager = TorrentManager::new(
         download_dir,
         settings_path,
         proxy,
         max_download_speed,
         max_upload_speed,
+        db,
     )
     .await
     .expect("Failed to initialize TorrentManager");
@@ -150,6 +159,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             "/settings/max-upload-speed",
             put(settings_set_max_upload_speed_handler),
+        )
+        .route("/collections", get(collection_get_all_handler))
+        .route("/collections", put(collection_add_handler))
+        .route(
+            "/collections/:subject_id",
+            delete(collection_remove_handler),
         )
         .route("/ai/chat-request", post(ai_chat_request_handler))
         .layer(
@@ -376,7 +391,8 @@ async fn torrent_set_subject_handler(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
         .manager
-        .set_subject_binding(&info_hash, payload.subject_id, payload.subject_name);
+        .set_subject_binding(&info_hash, payload.subject_id, payload.subject_name)
+        .await;
     Ok(StatusCode::OK)
 }
 
@@ -384,7 +400,7 @@ async fn torrent_clear_subject_handler(
     State(state): State<Arc<AppState>>,
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    state.manager.clear_subject_binding(&info_hash);
+    state.manager.clear_subject_binding(&info_hash).await;
     Ok(StatusCode::OK)
 }
 
@@ -546,6 +562,57 @@ async fn settings_set_max_upload_speed_handler(
         .manager
         .set_max_upload_speed(payload.max_speed)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
+async fn collection_get_all_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let items = animesh_core::infrastructure::collection_repository::CollectionRepository::new(
+        &state.manager.db,
+    )
+    .list()
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(axum::Json(items))
+}
+
+#[derive(serde::Deserialize)]
+struct CollectionAddInput {
+    subject_id: i64,
+    name: String,
+    image_url: Option<String>,
+}
+
+async fn collection_add_handler(
+    State(state): State<Arc<AppState>>,
+    axum::Json(payload): axum::Json<CollectionAddInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    animesh_core::infrastructure::collection_repository::CollectionRepository::new(
+        &state.manager.db,
+    )
+    .add(
+        animesh_core::infrastructure::collection_repository::NewCollectionItem {
+            subject_id: payload.subject_id,
+            name: payload.name,
+            image_url: payload.image_url,
+        },
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
+async fn collection_remove_handler(
+    State(state): State<Arc<AppState>>,
+    Path(subject_id): Path<i64>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    animesh_core::infrastructure::collection_repository::CollectionRepository::new(
+        &state.manager.db,
+    )
+    .remove(subject_id)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
 

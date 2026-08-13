@@ -119,7 +119,7 @@ export function createDefaultDIContainer(): DIContainer {
   const settingsRepository = new SettingsRepositoryImpl();
   const httpClient = new HttpClient();
   const bangumiRepository = new HttpBangumiRepository(httpClient);
-  const collectionRepository = new CollectionRepositoryImpl(cacheStore);
+  const collectionRepository = new CollectionRepositoryImpl();
   const notificationRepository = new NotificationRepositoryImpl();
   const openerRepository = new OpenerRepositoryImpl();
   const updateRepository = new UpdateRepositoryImpl(openerRepository);

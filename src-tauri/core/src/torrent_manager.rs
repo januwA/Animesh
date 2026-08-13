@@ -28,6 +28,7 @@ pub struct TorrentManager {
     pub crawler_repo: Arc<dyn CrawlerRepository + Send + Sync>,
     pub subtitle_cache: Arc<SubtitleCache>,
     pub hls_proxy: HlsProxyState,
+    pub db: Arc<crate::infrastructure::db::AppDatabase>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -63,6 +64,7 @@ impl TorrentManager {
         proxy: Option<String>,
         max_download_speed: Option<u32>,
         max_upload_speed: Option<u32>,
+        db: Arc<crate::infrastructure::db::AppDatabase>,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let persistence_dir = settings_path
             .parent()
@@ -97,7 +99,9 @@ impl TorrentManager {
                 session,
                 download_dir_fn,
                 persistence_dir.clone(),
-            ),
+                &db,
+            )
+            .await,
         );
 
         // 启动 Axum 服务器并监听端口。如果配置了 ANIMESH_STREAM_PORT 环境变量，则使用该固定端口，否则监听随机空闲端口。
@@ -166,6 +170,7 @@ impl TorrentManager {
             crawler_repo,
             subtitle_cache: Arc::new(SubtitleCache::new()),
             hls_proxy,
+            db,
         })
     }
 
@@ -359,13 +364,19 @@ impl TorrentManager {
         self.torrent_repo.list_torrents()
     }
 
-    pub fn set_subject_binding(&self, info_hash: &str, subject_id: u64, subject_name: String) {
+    pub async fn set_subject_binding(
+        &self,
+        info_hash: &str,
+        subject_id: u64,
+        subject_name: String,
+    ) {
         self.torrent_repo
-            .set_subject_binding(info_hash, subject_id, subject_name);
+            .set_subject_binding(info_hash, subject_id, subject_name)
+            .await;
     }
 
-    pub fn clear_subject_binding(&self, info_hash: &str) {
-        self.torrent_repo.clear_subject_binding(info_hash);
+    pub async fn clear_subject_binding(&self, info_hash: &str) {
+        self.torrent_repo.clear_subject_binding(info_hash).await;
     }
 
     pub async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, String> {
@@ -612,7 +623,12 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path, None, None, None).await;
+        let db = Arc::new(
+            crate::infrastructure::db::AppDatabase::connect_in_memory()
+                .await
+                .expect("内存库应成功"),
+        );
+        let manager = TorrentManager::new(dir, settings_path, None, None, None, db).await;
         if let Err(e) = &manager {
             panic!("Manager initialization failed: {:?}", e);
         }
@@ -672,7 +688,12 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_settings_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None, None, None)
+        let db = Arc::new(
+            crate::infrastructure::db::AppDatabase::connect_in_memory()
+                .await
+                .expect("内存库应成功"),
+        );
+        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None, None, None, db)
             .await
             .unwrap();
 
@@ -707,7 +728,12 @@ mod tests {
             .as_nanos();
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_control_{}", nanos));
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path, None, None, None)
+        let db = Arc::new(
+            crate::infrastructure::db::AppDatabase::connect_in_memory()
+                .await
+                .expect("内存库应成功"),
+        );
+        let manager = TorrentManager::new(dir, settings_path, None, None, None, db)
             .await
             .unwrap();
 
@@ -744,7 +770,12 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_proxy_{}", nanos));
         std::fs::create_dir_all(&dir).unwrap();
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir, settings_path.clone(), None, None, None)
+        let db = Arc::new(
+            crate::infrastructure::db::AppDatabase::connect_in_memory()
+                .await
+                .expect("内存库应成功"),
+        );
+        let manager = TorrentManager::new(dir, settings_path.clone(), None, None, None, db)
             .await
             .unwrap();
 
@@ -776,7 +807,12 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("animesh_test_manager_upload_{}", nanos));
         std::fs::create_dir_all(&dir).unwrap();
         let settings_path = dir.join("settings.json");
-        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None, None, None)
+        let db = Arc::new(
+            crate::infrastructure::db::AppDatabase::connect_in_memory()
+                .await
+                .expect("内存库应成功"),
+        );
+        let manager = TorrentManager::new(dir.clone(), settings_path.clone(), None, None, None, db)
             .await
             .unwrap();
 

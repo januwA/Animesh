@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-export const COLLECTION_STORAGE_KEY = "animesh:collections";
-
 export const FavoriteItemSchema = z.object({
   subjectId: z.number(),
   name: z.string(),
@@ -11,9 +9,21 @@ export const FavoriteItemSchema = z.object({
 
 export type FavoriteItem = z.infer<typeof FavoriteItemSchema>;
 
-export const CollectionsStateSchema = z.object({
-  items: z.array(FavoriteItemSchema),
-  lastUpdatedAt: z.number(),
+/** 后端 SQLite 返回的收藏记录结构（snake_case）。 */
+export const CollectionRecordSchema = z.object({
+  subject_id: z.number(),
+  name: z.string(),
+  image_url: z.string().nullable(),
+  added_at: z.number(),
 });
 
-export type CollectionsState = z.infer<typeof CollectionsStateSchema>;
+export type CollectionRecord = z.infer<typeof CollectionRecordSchema>;
+
+export function toFavoriteItem(record: CollectionRecord): FavoriteItem {
+  return {
+    subjectId: record.subject_id,
+    name: record.name,
+    imageUrl: record.image_url,
+    addedAt: record.added_at,
+  };
+}

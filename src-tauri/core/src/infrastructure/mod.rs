@@ -1,3 +1,5 @@
+pub mod collection_repository;
+pub mod db;
 pub mod http_client;
 pub mod http_crawler;
 pub mod matroska_subtitles;
