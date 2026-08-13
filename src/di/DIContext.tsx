@@ -16,6 +16,7 @@ import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCh
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
+import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
 import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
 import { GetFavoriteStatusUseCase } from "../application/collection/GetFavoriteStatusUseCase";
@@ -90,6 +91,7 @@ export interface DIContainer {
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
   aiClient: AiClient;
+  clearCacheUseCase: ClearCacheUseCase;
 
   getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
   getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
@@ -162,6 +164,7 @@ export function createDefaultDIContainer(): DIContainer {
   const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
+  const clearCacheUseCase = new ClearCacheUseCase(cacheStore);
 
   const bangumiCache = new BrowserBangumiCache(cacheStore);
   const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
@@ -239,6 +242,7 @@ export function createDefaultDIContainer(): DIContainer {
     verifyAiConnectionUseCase,
     setThemeUseCase,
     aiClient,
+    clearCacheUseCase,
 
     getBangumiCalendarUseCase,
     getBangumiSubjectUseCase,

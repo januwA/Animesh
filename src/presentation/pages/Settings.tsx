@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Save,
   Settings as SettingsIcon,
+  Trash2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState } from "react";
@@ -45,6 +46,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/presentation/components/ui/toggle-group";
+import { useAppContext } from "@/presentation/context/AppContext";
 import {
   ACCENT_PRESETS,
   useAccentTheme,
@@ -81,6 +83,7 @@ function toAiConfigDrafts(configs: AiConfigDraft[]): AiConfigDraft[] {
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccentTheme();
+  const { setCalendar, setIptvCountries, setIptvChannels } = useAppContext();
   const {
     getSettingsUseCase,
     saveSettingsUseCase,
@@ -89,6 +92,7 @@ export default function Settings() {
     getCurrentVersionUseCase,
     openUpdateUrlUseCase,
     verifyAiConnectionUseCase,
+    clearCacheUseCase,
   } = useDI();
   const isTauri = import.meta.env.MODE !== "web";
 
@@ -117,6 +121,7 @@ export default function Settings() {
   const [modelInput, setModelInput] = useState("");
 
   const [savedSnapshot, setSavedSnapshot] = useState<FormSnapshot | null>(null);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   // Load settings
   const settingsQuery = useQuery(
@@ -221,6 +226,23 @@ export default function Settings() {
   const updateResult = checkUpdateMutation.data;
   const handleCheckUpdate = () => {
     checkUpdateMutation.execute();
+  };
+
+  // Clear cache
+  const clearCacheMutation = useMutation(() => clearCacheUseCase.execute(), {
+    onSuccess: () => {
+      setCalendar([]);
+      setIptvCountries([]);
+      setIptvChannels([]);
+      setConfirmClearOpen(false);
+      toast.success("缓存已清理");
+    },
+    onError: (err) => toast.error(`清理缓存失败: ${formatError(err)}`),
+  });
+  const clearingCache = clearCacheMutation.loading;
+
+  const handleConfirmClearCache = () => {
+    clearCacheMutation.execute();
   };
 
   // Directory selection
@@ -759,6 +781,40 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        <Card className="bg-card border-border shadow-sm">
+          <CardHeader className="p-5">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Trash2 className="h-4 w-4 text-primary" />
+              缓存管理
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border border-border bg-secondary/30 rounded-lg p-4">
+              <div className="flex flex-col gap-1">
+                <p className="font-semibold text-foreground">清理缓存数据</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  清理新番日历、条目详情、剧集/角色/制作人员与 IPTV
+                  等联网缓存数据，清理后相关页面需重新联网加载。收藏数据不会被清除。
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={clearingCache}
+                onClick={() => setConfirmClearOpen(true)}
+                className="text-xs h-8.5 font-medium border-border bg-secondary/50 text-foreground hover:bg-secondary shrink-0"
+              >
+                {clearingCache ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                清理缓存
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {isTauri && (
           <Card className="bg-card border-border shadow-sm">
             <CardHeader className="p-5">
@@ -923,6 +979,35 @@ export default function Settings() {
             </Button>
             <Button type="button" onClick={() => blocker.proceed?.()}>
               确认离开
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>确定清理缓存数据？</DialogTitle>
+            <DialogDescription>
+              清理后新番日历、条目详情与 IPTV
+              等数据将重新联网加载，收藏内容不受影响。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmClearOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={clearingCache}
+              onClick={handleConfirmClearCache}
+            >
+              {clearingCache ? "清理中..." : "确认清理"}
             </Button>
           </DialogFooter>
         </DialogContent>

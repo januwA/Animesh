@@ -54,6 +54,15 @@ export class InMemoryCacheStore implements CacheStore {
     this.records.clear();
   }
 
+  async clearCache(protectedKeys: string[]): Promise<void> {
+    const protectedSet = new Set(protectedKeys);
+    for (const key of [...this.records.keys()]) {
+      if (!protectedSet.has(key)) {
+        this.records.delete(key);
+      }
+    }
+  }
+
   /**
    * 直接写入原始信封记录，用于构造损坏数据场景。
    */

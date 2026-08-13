@@ -3,6 +3,7 @@ import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCh
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
+import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
 import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
 import { GetFavoriteStatusUseCase } from "../application/collection/GetFavoriteStatusUseCase";
@@ -50,6 +51,7 @@ import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import type { UpdateRepository } from "../domain/update/UpdateRepository";
 import { FetchAiClient } from "../infrastructure/ai/FetchAiClient";
 import { HttpClient } from "../infrastructure/http/HttpClient";
+import { InMemoryCacheStore } from "./InMemoryCacheStore";
 
 const dummyLogger: Logger = {
   debug: () => {},
@@ -90,6 +92,7 @@ export interface CreateContainerParamsForTest {
   verifyAiConnectionUseCase?: VerifyAiConnectionUseCase;
   setThemeUseCase?: SetThemeUseCase;
   aiClient?: AiClient;
+  clearCacheUseCase?: ClearCacheUseCase;
 
   getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
   getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
@@ -282,6 +285,8 @@ export function createDIContainerForTest(
     params.verifyAiConnectionUseCase || new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase =
     params.setThemeUseCase || new SetThemeUseCase(settingsRepo);
+  const clearCacheUseCase =
+    params.clearCacheUseCase || new ClearCacheUseCase(new InMemoryCacheStore());
 
   const getBangumiCalendarUseCase =
     params.getBangumiCalendarUseCase ||
@@ -364,6 +369,7 @@ export function createDIContainerForTest(
     verifyAiConnectionUseCase,
     setThemeUseCase,
     aiClient,
+    clearCacheUseCase,
 
     getBangumiCalendarUseCase,
     getBangumiSubjectUseCase,

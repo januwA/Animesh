@@ -21,6 +21,7 @@ import Settings from "./Settings";
 describe("Settings 页面组件", () => {
   let mockSettingsRepository: SettingsRepository;
   let mockAiClient: { post: any };
+  let mockClearCacheUseCase: { execute: ReturnType<typeof vi.fn> };
   let mockContainer: DIContainer;
 
   beforeEach(() => {
@@ -43,9 +44,14 @@ describe("Settings 页面组件", () => {
       post: vi.fn(),
     };
 
+    mockClearCacheUseCase = {
+      execute: vi.fn().mockResolvedValue(undefined),
+    };
+
     mockContainer = createDIContainerForTest({
       settingsRepository: mockSettingsRepository,
       aiClient: mockAiClient as any,
+      clearCacheUseCase: mockClearCacheUseCase as any,
     });
 
     vi.clearAllMocks();
@@ -1281,5 +1287,71 @@ describe("Settings 页面组件", () => {
       expect(screen.getByText("Home Page")).toBeInTheDocument();
     });
     expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
+  });
+
+  it("应该渲染缓存管理卡片与清理缓存按钮", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存管理")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "清理缓存" }),
+    ).toBeInTheDocument();
+  });
+
+  it("点击清理缓存应弹出确认对话框，取消时不执行清理", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存管理")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "清理缓存" }));
+    expect(screen.getByText("确定清理缓存数据？")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("确定清理缓存数据？")).not.toBeInTheDocument();
+    });
+    expect(mockClearCacheUseCase.execute).not.toHaveBeenCalled();
+  });
+
+  it("确认清理缓存后应该调用用例并提示成功", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存管理")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "清理缓存" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认清理" }));
+
+    await waitFor(() => {
+      expect(mockClearCacheUseCase.execute).toHaveBeenCalled();
+    });
+    expect(toast.success).toHaveBeenCalledWith("缓存已清理");
+  });
+
+  it("清理缓存失败时应该提示错误信息", async () => {
+    vi.mocked(mockClearCacheUseCase.execute).mockRejectedValueOnce(
+      new Error("IndexedDB 清理失败"),
+    );
+
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存管理")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "清理缓存" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认清理" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining("清理缓存失败: IndexedDB 清理失败"),
+      );
+    });
   });
 });
