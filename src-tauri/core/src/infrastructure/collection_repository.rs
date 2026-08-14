@@ -1,38 +1,25 @@
+use crate::domain::collection::{CollectionRecord, CollectionRepository, NewCollectionItem};
 use crate::infrastructure::db::AppDatabase;
-use serde::Serialize;
-use sqlx::{FromRow, Row};
-
-/// 收藏条目的持久化记录，同时作为后端返回给前端的 JSON 结构。
-#[derive(Debug, Clone, Serialize, FromRow, PartialEq)]
-pub struct CollectionRecord {
-    pub subject_id: i64,
-    pub name: String,
-    pub image_url: Option<String>,
-    pub added_at: i64,
-}
-
-/// 新增收藏所需的字段，added_at 由仓储填充。
-pub struct NewCollectionItem {
-    pub subject_id: i64,
-    pub name: String,
-    pub image_url: Option<String>,
-}
+use sqlx::Row;
 
 /// 基于 SQLite 的收藏仓储。
 #[derive(Clone)]
-pub struct CollectionRepository {
+pub struct SqliteCollectionRepository {
     pool: sqlx::SqlitePool,
 }
 
-impl CollectionRepository {
+impl SqliteCollectionRepository {
     pub fn new(db: &AppDatabase) -> Self {
         Self {
             pool: db.pool().clone(),
         }
     }
+}
 
+#[async_trait::async_trait]
+impl CollectionRepository for SqliteCollectionRepository {
     /// 查询全部收藏，按收藏时间倒序。
-    pub async fn list(&self) -> Result<Vec<CollectionRecord>, sqlx::Error> {
+    async fn list(&self) -> Result<Vec<CollectionRecord>, sqlx::Error> {
         sqlx::query_as::<_, CollectionRecord>(
             "SELECT subject_id, name, image_url, added_at FROM collections ORDER BY added_at DESC",
         )
@@ -40,7 +27,7 @@ impl CollectionRepository {
         .await
     }
 
-    pub async fn is_favorited(&self, subject_id: i64) -> Result<bool, sqlx::Error> {
+    async fn is_favorited(&self, subject_id: i64) -> Result<bool, sqlx::Error> {
         let row = sqlx::query("SELECT COUNT(*) FROM collections WHERE subject_id = ?")
             .bind(subject_id)
             .fetch_one(&self.pool)
@@ -50,7 +37,7 @@ impl CollectionRepository {
     }
 
     /// 新增收藏，已存在时保持幂等（不重复插入）。
-    pub async fn add(&self, item: NewCollectionItem) -> Result<(), sqlx::Error> {
+    async fn add(&self, item: NewCollectionItem) -> Result<(), sqlx::Error> {
         let added_at = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as i64)
@@ -68,7 +55,7 @@ impl CollectionRepository {
         Ok(())
     }
 
-    pub async fn remove(&self, subject_id: i64) -> Result<(), sqlx::Error> {
+    async fn remove(&self, subject_id: i64) -> Result<(), sqlx::Error> {
         sqlx::query("DELETE FROM collections WHERE subject_id = ?")
             .bind(subject_id)
             .execute(&self.pool)
@@ -82,11 +69,11 @@ mod tests {
     use super::*;
     use crate::infrastructure::db::AppDatabase;
 
-    async fn setup() -> CollectionRepository {
+    async fn setup() -> SqliteCollectionRepository {
         let db = AppDatabase::connect_in_memory()
             .await
             .expect("内存库应成功");
-        CollectionRepository::new(&db)
+        SqliteCollectionRepository::new(&db)
     }
 
     #[tokio::test]

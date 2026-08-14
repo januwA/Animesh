@@ -32,7 +32,7 @@ pub struct Enclosure {
     pub length: Option<u64>,
 }
 
-pub use crate::domain::crawler::SearchResultItem;
+use crate::domain::crawler::SearchResultItem;
 
 /// Parse DMHY RSS XML data into SearchResultItems
 pub fn parse_dmhy_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {

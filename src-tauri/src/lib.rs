@@ -1,9 +1,12 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use animesh_core::torrent::{AddTorrentResult, TorrentStatusInfo};
-use animesh_core::torrent_manager::TorrentManager;
+use animesh_core::application::collection_service::CollectionService;
+use animesh_core::application::torrent_manager::{AiConfig, AppSettings, TorrentManager};
+use animesh_core::domain::collection::CollectionRecord;
+use animesh_core::domain::crawler::SearchResultItem;
+use animesh_core::domain::subtitles::VideoMetadata;
+use animesh_core::domain::torrent::{AddTorrentResult, FileDetails, TorrentStatusInfo};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::sync::{Arc, Mutex, RwLock};
 use tauri::Manager;
 
 pub fn trace_log(msg: &str) {
@@ -76,7 +79,7 @@ async fn search_torrents(
     engine: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
     tracker: tauri::State<'_, SearchTracker>,
-) -> Result<Vec<animesh_core::crawler::SearchResultItem>, String> {
+) -> Result<Vec<SearchResultItem>, String> {
     trace_log(&format!(
         "Entering search_torrents command, trace_id: {}, keyword: {}, engine: {}",
         trace_id, keyword, engine
@@ -86,48 +89,8 @@ async fn search_torrents(
     let keyword_string = keyword.to_string();
     let engine_string = engine.to_string();
 
-    let task = tokio::spawn(async move {
-        let proxy = manager_clone.get_proxy();
-        match engine_string.as_str() {
-            "dmhy" => {
-                manager_clone
-                    .crawler_repo
-                    .search_dmhy(&keyword_string, proxy)
-                    .await
-            }
-            "bangumi_moe" => {
-                manager_clone
-                    .crawler_repo
-                    .search_bangumi_moe(&keyword_string, proxy)
-                    .await
-            }
-            "mikan" => {
-                manager_clone
-                    .crawler_repo
-                    .search_mikan(&keyword_string, proxy)
-                    .await
-            }
-            "nyaa" => {
-                manager_clone
-                    .crawler_repo
-                    .search_nyaa(&keyword_string, proxy)
-                    .await
-            }
-            "acgrip" => {
-                manager_clone
-                    .crawler_repo
-                    .search_acgrip(&keyword_string, proxy)
-                    .await
-            }
-            "anibt" => {
-                manager_clone
-                    .crawler_repo
-                    .search_anibt(&keyword_string, proxy)
-                    .await
-            }
-            _ => Err(format!("Unsupported search engine: {}", engine_string)),
-        }
-    });
+    let task =
+        tokio::spawn(async move { manager_clone.search(&engine_string, &keyword_string).await });
 
     let abort_handle = task.abort_handle();
     if let Ok(mut handles) = tracker.handles.lock() {
@@ -271,27 +234,28 @@ fn torrent_get_stream_url(
 
 #[tauri::command]
 fn iptv_proxy_base_url(manager: tauri::State<'_, Arc<TorrentManager>>) -> String {
-    animesh_core::hls_proxy::proxy_base_url(manager.port)
+    manager.proxy_base_url()
 }
 
 #[tauri::command]
 async fn iptv_resolve_stream(
     raw_url: String,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<animesh_core::hls_proxy::ResolvedStream, String> {
+) -> Result<animesh_core::domain::stream::ResolvedStream, String> {
     trace_log(&format!("iptv_resolve_stream raw_url={raw_url}"));
-    let hls_proxy = manager.hls_proxy.clone();
-    let proxy_url = animesh_core::hls_proxy::proxy_base_url(manager.port);
-    let kind = animesh_core::hls_proxy::probe_stream(&hls_proxy, &raw_url).await;
-    trace_log(&format!("iptv_resolve_stream resolved kind={kind:?}"));
-    Ok(animesh_core::hls_proxy::ResolvedStream { proxy_url, kind })
+    let resolved = manager.resolve_stream(&raw_url).await?;
+    trace_log(&format!(
+        "iptv_resolve_stream resolved kind={:?}",
+        resolved.kind
+    ));
+    Ok(resolved)
 }
 
 #[tauri::command]
 fn torrent_get_files(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<Vec<animesh_core::torrent::FileDetails>, String> {
+) -> Result<Vec<FileDetails>, String> {
     manager
         .get_torrent_files(info_hash)
         .ok_or_else(|| "Torrent not found".to_string())
@@ -302,7 +266,7 @@ async fn torrent_get_video_metadata(
     info_hash: &str,
     file_id: usize,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<animesh_core::subtitles::VideoMetadata, String> {
+) -> Result<VideoMetadata, String> {
     trace_log(&format!(
         "Entering torrent_get_video_metadata command, info_hash: {}, file_id: {}",
         info_hash, file_id
@@ -321,77 +285,7 @@ async fn torrent_get_subtitle_vtt(
         "Entering torrent_get_subtitle_vtt command, info_hash: {}, file_id: {}, track_id: {}",
         info_hash, file_id, track_id
     ));
-    let download_dir = manager.get_download_dir();
-    let files = manager
-        .get_torrent_files(info_hash)
-        .ok_or_else(|| "Torrent not found".to_string())?;
-    let file_details = files
-        .iter()
-        .find(|f| f.id == file_id)
-        .ok_or_else(|| "File not found".to_string())?;
-
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err("Video file not downloaded or doesn't exist yet".to_string());
-    }
-
-    let cache = manager.subtitle_cache.clone();
-    let cache_path = path.clone();
-    let failure_key = format!("{}:{}:{}", info_hash, file_id, track_id);
-    if let Some(error) = cache.get_failure(&failure_key, &cache_path, None) {
-        trace_log(&format!(
-            "torrent_get_subtitle_vtt failure cached, info_hash: {}, file_id: {}, track_id: {}",
-            info_hash, file_id, track_id
-        ));
-        return Err(error);
-    }
-    if let Some(vtt) = cache.get_vtt(info_hash, file_id, track_id, &cache_path) {
-        trace_log(&format!(
-            "torrent_get_subtitle_vtt cache hit, info_hash: {}, file_id: {}, track_id: {}",
-            info_hash, file_id, track_id
-        ));
-        return Ok(vtt);
-    }
-
-    let parse = tokio::task::spawn_blocking(move || {
-        animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
-    });
-    match tokio::time::timeout(Duration::from_secs(15), parse).await {
-        Ok(Ok(Ok(vtt))) => {
-            trace_log(&format!(
-                "torrent_get_subtitle_vtt extracted vtt length={}, info_hash: {}, file_id: {}, track_id: {}",
-                vtt.len(),
-                info_hash,
-                file_id,
-                track_id
-            ));
-            cache.set_vtt(info_hash, file_id, track_id, &cache_path, vtt.clone());
-            Ok(vtt)
-        }
-        Ok(Ok(Err(e))) => {
-            log::error!(
-                "torrent_get_subtitle_vtt extraction failed, info_hash: {}, file_id: {}, track_id: {}: {}",
-                info_hash,
-                file_id,
-                track_id,
-                e
-            );
-            cache.set_failure(&failure_key, &cache_path, e.clone(), None);
-            Err(e)
-        }
-        Ok(Err(e)) => Err(format!("Task spawn error: {}", e)),
-        Err(_) => {
-            log::error!(
-                "torrent_get_subtitle_vtt extraction timed out, info_hash: {}, file_id: {}, track_id: {}",
-                info_hash,
-                file_id,
-                track_id
-            );
-            let message = "Failed to extract vtt: parse timed out".to_string();
-            cache.set_failure(&failure_key, &cache_path, message.clone(), None);
-            Err(message)
-        }
-    }
+    manager.get_subtitle_vtt(info_hash, file_id, track_id).await
 }
 
 #[tauri::command]
@@ -464,23 +358,17 @@ async fn torrent_clear_subject(
 
 #[tauri::command]
 async fn collection_get_all(
-    db: tauri::State<'_, Arc<animesh_core::infrastructure::db::AppDatabase>>,
-) -> Result<Vec<animesh_core::infrastructure::collection_repository::CollectionRecord>, String> {
-    animesh_core::infrastructure::collection_repository::CollectionRepository::new(&db)
-        .list()
-        .await
-        .map_err(|e| e.to_string())
+    service: tauri::State<'_, Arc<CollectionService>>,
+) -> Result<Vec<CollectionRecord>, String> {
+    service.list().await
 }
 
 #[tauri::command]
 async fn collection_is_favorited(
     subject_id: i64,
-    db: tauri::State<'_, Arc<animesh_core::infrastructure::db::AppDatabase>>,
+    service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<bool, String> {
-    animesh_core::infrastructure::collection_repository::CollectionRepository::new(&db)
-        .is_favorited(subject_id)
-        .await
-        .map_err(|e| e.to_string())
+    service.is_favorited(subject_id).await
 }
 
 #[tauri::command]
@@ -488,29 +376,23 @@ async fn collection_add(
     subject_id: i64,
     name: String,
     image_url: Option<String>,
-    db: tauri::State<'_, Arc<animesh_core::infrastructure::db::AppDatabase>>,
+    service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<(), String> {
-    animesh_core::infrastructure::collection_repository::CollectionRepository::new(&db)
-        .add(
-            animesh_core::infrastructure::collection_repository::NewCollectionItem {
-                subject_id,
-                name,
-                image_url,
-            },
-        )
+    service
+        .add(animesh_core::domain::collection::NewCollectionItem {
+            subject_id,
+            name,
+            image_url,
+        })
         .await
-        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn collection_remove(
     subject_id: i64,
-    db: tauri::State<'_, Arc<animesh_core::infrastructure::db::AppDatabase>>,
+    service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<(), String> {
-    animesh_core::infrastructure::collection_repository::CollectionRepository::new(&db)
-        .remove(subject_id)
-        .await
-        .map_err(|e| e.to_string())
+    service.remove(subject_id).await
 }
 
 #[tauri::command]
@@ -566,9 +448,7 @@ fn torrent_unsubscribe(subscription_id: String, tracker: tauri::State<'_, Subscr
 }
 
 #[tauri::command]
-fn settings_get(
-    manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<animesh_core::torrent_manager::AppSettings, String> {
+fn settings_get(manager: tauri::State<'_, Arc<TorrentManager>>) -> Result<AppSettings, String> {
     manager.get_settings().map_err(|e| e.to_string())
 }
 
@@ -592,7 +472,7 @@ fn settings_set_proxy(
 
 #[tauri::command]
 fn settings_set_ai_configs(
-    configs: Option<Vec<animesh_core::torrent_manager::AiConfig>>,
+    configs: Option<Vec<AiConfig>>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), String> {
     manager.set_ai_configs(configs).map_err(|e| e.to_string())
@@ -720,10 +600,8 @@ pub fn run() {
             let mut max_upload_speed = None;
             if settings_path.exists() {
                 if let Ok(file) = std::fs::File::open(&settings_path) {
-                    if let Ok(settings) = serde_json::from_reader::<
-                        _,
-                        animesh_core::torrent_manager::AppSettings,
-                    >(file)
+                    if let Ok(settings) =
+                        serde_json::from_reader::<_, AppSettings>(file)
                     {
                         download_dir = std::path::PathBuf::from(settings.download_dir);
                         proxy = settings.proxy;
@@ -732,7 +610,7 @@ pub fn run() {
                     }
                 }
             } else {
-                let settings = animesh_core::torrent_manager::AppSettings {
+                let settings = AppSettings {
                     download_dir: download_dir.to_string_lossy().to_string(),
                     proxy: None,
                     ai_configs: None,
@@ -755,20 +633,62 @@ pub fn run() {
             );
 
             let manager = tauri::async_runtime::block_on(async {
+                let download_dir_lock = Arc::new(RwLock::new(download_dir));
+                let persistence_dir = settings_path
+                    .parent()
+                    .map(|p| p.join("torrents"))
+                    .unwrap_or_else(|| std::path::PathBuf::from(".torrents"));
+                let torrent_repo = animesh_core::infrastructure::rqbit_torrent::create_torrent_repository(
+                    download_dir_lock.clone(),
+                    persistence_dir,
+                    &db,
+                )
+                .await
+                .expect("Failed to initialize TorrentRepository");
+
+                let (port, hls_proxy) =
+                    animesh_core::infrastructure::stream_server::start_stream_server(
+                        torrent_repo.clone(),
+                    )
+                    .await
+                    .expect("Failed to initialize stream server");
+
+                let crawler_repo =
+                    animesh_core::infrastructure::http_crawler::create_crawler_repository();
+                let subtitle_cache: Arc<dyn animesh_core::domain::subtitles::SubtitleCache> =
+                    Arc::new(
+                        animesh_core::infrastructure::subtitle_cache::InMemorySubtitleCache::new(),
+                    );
+                let subtitle_extractor: Arc<
+                    dyn animesh_core::domain::subtitles::SubtitleExtractor,
+                > = Arc::new(animesh_core::infrastructure::matroska_subtitles::MatroskaSubtitleExtractor);
+                let stream_prober: Arc<
+                    dyn animesh_core::domain::stream::StreamProber,
+                > = Arc::new(hls_proxy);
+
                 TorrentManager::new(
-                    download_dir,
+                    download_dir_lock,
                     settings_path,
                     proxy,
                     max_download_speed,
                     max_upload_speed,
-                    db.clone(),
+                    port,
+                    torrent_repo,
+                    crawler_repo,
+                    subtitle_cache,
+                    subtitle_extractor,
+                    stream_prober,
                 )
-                .await
-                .expect("Failed to initialize TorrentManager")
             });
 
+            let collection_service = CollectionService::new(Arc::new(
+                animesh_core::infrastructure::collection_repository::SqliteCollectionRepository::new(
+                    &db,
+                ),
+            ));
+
             app.manage(Arc::new(manager));
-            app.manage(db);
+            app.manage(Arc::new(collection_service));
             app.manage(SearchTracker::default());
             app.manage(AddMagnetTracker::default());
             app.manage(SubscriptionTracker::default());

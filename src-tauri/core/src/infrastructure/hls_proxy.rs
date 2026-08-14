@@ -12,8 +12,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-/// 内嵌流媒体服务器上对外暴露的 IPTV HLS 代理路径。
-pub const IPTV_PROXY_PATH: &str = "/iptv-proxy";
+use crate::domain::stream::{StreamKind, StreamProber};
 
 /// 上游请求携带的浏览器 User-Agent。部分直播源（如 Cloudflare 防护站点）会拒绝
 /// 非浏览器请求（403/连接重置），必须伪装成浏览器才能正常拉流。
@@ -102,9 +101,11 @@ impl HlsProxyState {
     }
 }
 
-/// 生成对前端公开的代理基础地址，前端在该地址后追加 `?url=` 即可发起代理请求。
-pub fn proxy_base_url(port: u16) -> String {
-    format!("http://127.0.0.1:{port}{IPTV_PROXY_PATH}")
+#[async_trait::async_trait]
+impl StreamProber for HlsProxyState {
+    async fn probe(&self, raw_url: &str) -> StreamKind {
+        probe_stream(self, raw_url).await
+    }
 }
 
 #[derive(Deserialize)]
@@ -400,22 +401,6 @@ fn looks_like_ad_manifest(url: &Url) -> bool {
     AD_MANIFEST_MARKERS
         .iter()
         .any(|marker| hay.contains(marker))
-}
-
-/// 流类型判定结果。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum StreamKind {
-    Hls,
-    Flv,
-    Unknown,
-}
-
-/// Tauri 命令返回的已解析直播源。
-#[derive(serde::Serialize)]
-pub struct ResolvedStream {
-    pub proxy_url: String,
-    pub kind: StreamKind,
 }
 
 /// 嗅探上游响应并判定流类型（只读取少量前缀即断开，不消耗直播流）。
@@ -1017,6 +1002,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn 测试_生成代理基础地址() {
+        use crate::domain::stream::proxy_base_url;
         assert_eq!(proxy_base_url(12345), "http://127.0.0.1:12345/iptv-proxy");
     }
 

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::time::SystemTime;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SubtitleTrackInfo {
@@ -59,6 +60,30 @@ pub struct VideoMetadata {
 pub trait SubtitleExtractor: Send + Sync {
     fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, String>;
     fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String>;
+}
+
+/// 字幕提取结果的缓存，由基础设施层（内存缓存）实现。
+pub trait SubtitleCache: Send + Sync {
+    fn get_vtt(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+        track_id: u64,
+        file_path: &Path,
+    ) -> Option<String>;
+
+    fn set_vtt(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+        track_id: u64,
+        file_path: &Path,
+        data: String,
+    );
+
+    fn set_failure(&self, key: &str, file_path: &Path, error: String, now: Option<SystemTime>);
+
+    fn get_failure(&self, key: &str, file_path: &Path, now: Option<SystemTime>) -> Option<String>;
 }
 
 pub fn strip_ass_tags(text: &str) -> String {

@@ -1,12 +1,18 @@
-use crate::crawler::{
+use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
+use crate::infrastructure::crawler_parsers::{
     parse_acgrip_rss, parse_anibt_rss, parse_bangumi_moe_json, parse_dmhy_rss, parse_mikan_rss,
     parse_nyaa_rss,
 };
-use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
 use crate::infrastructure::http_client::HttpClient;
 use async_trait::async_trait;
 use std::sync::Arc;
 use urlencoding::encode;
+
+/// 构建默认的爬虫仓储（真实 HTTP 客户端），由组合根调用。
+pub fn create_crawler_repository() -> Arc<dyn CrawlerRepository> {
+    let client = Arc::new(crate::infrastructure::http_client::ReqwestHttpClient);
+    Arc::new(HttpCrawlerRepository::new(client))
+}
 
 pub struct HttpCrawlerRepository {
     client: Arc<dyn HttpClient>,

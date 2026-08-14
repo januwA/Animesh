@@ -1,8 +1,8 @@
-use crate::domain::torrent::TorrentRepository;
-use crate::infrastructure::db::AppDatabase;
-use crate::torrent::{
-    format_hash, AddTorrentResult, FileDetails, SubjectBinding, TorrentStatusInfo,
+use crate::domain::torrent::{
+    format_hash, AddTorrentResult, AsyncReadSeek, FileDetails, SubjectBinding, TorrentRepository,
+    TorrentStatusInfo,
 };
+use crate::infrastructure::db::AppDatabase;
 use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
 use std::collections::HashMap;
@@ -92,6 +92,40 @@ pub struct RqbitTorrentRepository {
     persistence_dir: PathBuf,
     start_time: std::time::Instant,
     subject_bindings: SubjectBindingStore,
+}
+
+/// 创建基于 librqbit 的种子仓储，由组合根调用。
+/// 内部完成 Session 初始化、下载目录闭包构建与持久化目录准备。
+pub async fn create_torrent_repository(
+    download_dir_lock: Arc<RwLock<PathBuf>>,
+    persistence_dir: PathBuf,
+    db: &AppDatabase,
+) -> Result<Arc<dyn TorrentRepository>, Box<dyn std::error::Error>> {
+    std::fs::create_dir_all(&persistence_dir).ok();
+
+    #[allow(unused_mut)]
+    let mut opts = librqbit::SessionOptions {
+        persistence: Some(librqbit::SessionPersistenceConfig::Json {
+            folder: Some(persistence_dir.clone()),
+        }),
+        disable_dht_persistence: true,
+        ..Default::default()
+    };
+    #[cfg(test)]
+    {
+        opts.disable_dht = true;
+    }
+    let download_dir = download_dir_lock.read().unwrap().clone();
+    let session = librqbit::Session::new_with_opts(download_dir.clone(), opts).await?;
+
+    let download_dir_fn = {
+        let dl = download_dir_lock.clone();
+        Arc::new(move || dl.read().unwrap().to_string_lossy().to_string())
+    };
+
+    Ok(Arc::new(
+        RqbitTorrentRepository::new(session, download_dir_fn, persistence_dir, db).await,
+    ))
 }
 
 impl RqbitTorrentRepository {
@@ -376,7 +410,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         &self,
         info_hash: &str,
         file_id: usize,
-    ) -> Result<Box<dyn crate::domain::torrent::AsyncReadSeek>, String> {
+    ) -> Result<Box<dyn AsyncReadSeek>, String> {
         let torrent = self
             .find_torrent_by_hex(info_hash)
             .ok_or_else(|| "Torrent not found".to_string())?;

@@ -1,7 +1,10 @@
 pub mod collection_repository;
+pub mod crawler_parsers;
 pub mod db;
+pub mod hls_proxy;
 pub mod http_client;
 pub mod http_crawler;
 pub mod matroska_subtitles;
 pub mod rqbit_torrent;
+pub mod stream_server;
 pub mod subtitle_cache;

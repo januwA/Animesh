@@ -1,3 +1,4 @@
+use crate::domain::subtitles::SubtitleCache;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::RwLock;
@@ -8,7 +9,7 @@ use std::time::{Duration, SystemTime};
 const FAILURE_COOLDOWN: Duration = Duration::from_secs(30);
 
 #[derive(Default)]
-pub struct SubtitleCache {
+pub struct InMemorySubtitleCache {
     vtt: RwLock<HashMap<String, CachedEntry<String>>>,
     failures: RwLock<HashMap<String, CachedFailure>>,
 }
@@ -31,12 +32,14 @@ fn file_fingerprint(path: &Path) -> Option<(SystemTime, u64)> {
     Some((meta.modified().ok()?, meta.len()))
 }
 
-impl SubtitleCache {
+impl InMemorySubtitleCache {
     pub fn new() -> Self {
         Self::default()
     }
+}
 
-    pub fn get_vtt(
+impl SubtitleCache for InMemorySubtitleCache {
+    fn get_vtt(
         &self,
         info_hash: &str,
         file_id: usize,
@@ -53,7 +56,7 @@ impl SubtitleCache {
         }
     }
 
-    pub fn set_vtt(
+    fn set_vtt(
         &self,
         info_hash: &str,
         file_id: usize,
@@ -70,7 +73,7 @@ impl SubtitleCache {
     }
 
     /// 记录一次解析失败。仅当文件指纹有效时记录，方便冷却失效判断。
-    pub fn set_failure(&self, key: &str, file_path: &Path, error: String, now: Option<SystemTime>) {
+    fn set_failure(&self, key: &str, file_path: &Path, error: String, now: Option<SystemTime>) {
         let Some((mtime, len)) = file_fingerprint(file_path) else {
             return;
         };
@@ -90,12 +93,7 @@ impl SubtitleCache {
 
     /// 命中冷却期内的失败缓存时返回错误信息。
     /// 若文件指纹已变化（下载有进展）或已过期，返回 None 允许重新解析。
-    pub fn get_failure(
-        &self,
-        key: &str,
-        file_path: &Path,
-        now: Option<SystemTime>,
-    ) -> Option<String> {
+    fn get_failure(&self, key: &str, file_path: &Path, now: Option<SystemTime>) -> Option<String> {
         let cache = self.failures.read().ok()?;
         let entry = cache.get(key)?;
         let now = now.unwrap_or_else(SystemTime::now);
@@ -115,7 +113,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn 测试_文件长度变化后VTT缓存应失效() {
-        let cache = SubtitleCache::new();
+        let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_test_len.mkv");
         std::fs::File::create(&temp_path)
             .unwrap()
@@ -141,7 +139,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn 测试_冷却期内命中失败缓存() {
-        let cache = SubtitleCache::new();
+        let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_hit.mkv");
         std::fs::File::create(&temp_path)
             .unwrap()
@@ -166,7 +164,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn 测试_冷却过期后允许重新解析() {
-        let cache = SubtitleCache::new();
+        let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_expired.mkv");
         std::fs::File::create(&temp_path)
             .unwrap()
@@ -187,7 +185,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn 测试_文件指纹变化后冷却失效() {
-        let cache = SubtitleCache::new();
+        let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_changed.mkv");
         std::fs::File::create(&temp_path)
             .unwrap()
@@ -210,7 +208,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn 测试_冷却key不同互不影响() {
-        let cache = SubtitleCache::new();
+        let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_key.mkv");
         std::fs::File::create(&temp_path)
             .unwrap()
