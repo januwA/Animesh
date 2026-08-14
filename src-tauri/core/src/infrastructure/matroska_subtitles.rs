@@ -2,7 +2,7 @@ use crate::domain::subtitles::{
     decode_subtitle_bytes, format_vtt_time, strip_ass_tags, AudioTrackInfo, ChapterInfo,
     SubtitleExtractor, SubtitleTrackInfo, VideoInfo, VideoMetadata, VideoTrackInfo,
 };
-use crate::error::CoreError;
+use crate::error::{CoreError, CoreResult};
 use matroska_demuxer::{
     ContentCompAlgo, ContentEncoding, ContentEncodingValue, MatroskaFile, TrackType,
 };
@@ -133,14 +133,12 @@ fn decompress_by_algo(
     algo: ContentCompAlgo,
     settings: Option<&[u8]>,
     data: &[u8],
-) -> Result<Vec<u8>, String> {
+) -> CoreResult<Vec<u8>> {
     match algo {
         ContentCompAlgo::Zlib => {
             let mut decoder = flate2::read::ZlibDecoder::new(data);
             let mut buf = Vec::new();
-            decoder
-                .read_to_end(&mut buf)
-                .map_err(|e| format!("Failed to inflate compressed subtitle frame: {}", e))?;
+            decoder.read_to_end(&mut buf)?;
             Ok(buf)
         }
         ContentCompAlgo::Stripping => {
@@ -150,14 +148,14 @@ fn decompress_by_algo(
             buf.extend_from_slice(data);
             Ok(buf)
         }
-        algo => Err(format!(
+        algo => Err(CoreError::Message(format!(
             "Unsupported subtitle content compression algorithm: {:?}",
             algo
-        )),
+        ))),
     }
 }
 
-fn decompress_frame_data(encodings: &[ContentEncoding], data: &[u8]) -> Result<Vec<u8>, String> {
+fn decompress_frame_data(encodings: &[ContentEncoding], data: &[u8]) -> CoreResult<Vec<u8>> {
     let mut result = data.to_vec();
     for encoding in encodings {
         match encoding.encoding() {
@@ -165,10 +163,10 @@ fn decompress_frame_data(encodings: &[ContentEncoding], data: &[u8]) -> Result<V
                 result = decompress_by_algo(compression.algo(), compression.settings(), &result)?
             }
             ContentEncodingValue::Encryption(_) => {
-                return Err("Encrypted subtitle tracks are not supported".to_string());
+                return Err("Encrypted subtitle tracks are not supported".into());
             }
             ContentEncodingValue::Unknown => {
-                return Err("Unknown subtitle content encoding".to_string());
+                return Err("Unknown subtitle content encoding".into());
             }
         }
     }
@@ -252,24 +250,26 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     reader: R,
     track_id: u64,
     skip_check: bool,
-) -> Result<String, String> {
+) -> CoreResult<String> {
     let checked_reader = if skip_check {
         ZeroCheckReader::new_skip_check(reader)
     } else {
         ZeroCheckReader::new(reader)
     };
-    let mut mkv =
-        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+    let mut mkv = MatroskaFile::open(checked_reader)?;
 
     let track = mkv
         .tracks()
         .iter()
         .find(|t| t.track_number().get() == track_id)
-        .ok_or_else(|| "Subtitle track not found".to_string())?;
+        .ok_or("Subtitle track not found")?;
 
     let codec = track.codec_id().to_string();
     if codec != "S_TEXT/UTF8" && codec != "S_TEXT/ASS" && codec != "S_TEXT/SSA" {
-        return Err(format!("Unsupported subtitle codec: {}", codec));
+        return Err(CoreError::Message(format!(
+            "Unsupported subtitle codec: {}",
+            codec
+        )));
     }
 
     let encodings: Vec<ContentEncoding> = track
@@ -337,8 +337,8 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     Ok(vtt)
 }
 
-pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> Result<String, String> {
-    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
+pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> CoreResult<String> {
+    let file = File::open(path)?;
     let reader = BufReader::new(file);
     extract_subtitle_vtt_from_reader(reader, track_id, true)
 }
@@ -443,14 +443,13 @@ fn collect_video_info<R: Read + Seek>(mkv: &MatroskaFile<R>) -> VideoInfo {
 pub fn extract_video_metadata_from_reader<R: Read + Seek>(
     reader: R,
     skip_check: bool,
-) -> Result<VideoMetadata, String> {
+) -> CoreResult<VideoMetadata> {
     let checked_reader = if skip_check {
         ZeroCheckReader::new_skip_check(reader)
     } else {
         ZeroCheckReader::new(reader)
     };
-    let mkv =
-        MatroskaFile::open(checked_reader).map_err(|e| format!("Failed to parse MKV: {:?}", e))?;
+    let mkv = MatroskaFile::open(checked_reader)?;
 
     Ok(VideoMetadata {
         tracks: collect_subtitle_tracks(&mkv),
@@ -459,8 +458,8 @@ pub fn extract_video_metadata_from_reader<R: Read + Seek>(
     })
 }
 
-pub fn extract_video_metadata(path: &Path) -> Result<VideoMetadata, String> {
-    let file = File::open(path).map_err(|e| format!("Failed to open file: {}", e))?;
+pub fn extract_video_metadata(path: &Path) -> CoreResult<VideoMetadata> {
+    let file = File::open(path)?;
     let reader = BufReader::new(file);
     extract_video_metadata_from_reader(reader, true)
 }
@@ -469,11 +468,11 @@ pub struct MatroskaSubtitleExtractor;
 
 impl SubtitleExtractor for MatroskaSubtitleExtractor {
     fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, CoreError> {
-        extract_video_metadata(path).map_err(CoreError::from)
+        extract_video_metadata(path)
     }
 
     fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, CoreError> {
-        extract_subtitle_vtt(path, track_id).map_err(CoreError::from)
+        extract_subtitle_vtt(path, track_id)
     }
 }
 
@@ -488,11 +487,7 @@ mod tests {
         let extractor = MatroskaSubtitleExtractor;
         let path = Path::new("non_existent_file.mkv");
         let result = extractor.extract_video_metadata(path);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Failed to open file"));
+        assert!(matches!(result, Err(CoreError::Io(_))));
     }
 
     #[test]
@@ -501,11 +496,7 @@ mod tests {
         let extractor = MatroskaSubtitleExtractor;
         let path = Path::new("non_existent_file.mkv");
         let result = extractor.extract_subtitle_vtt(path, 1);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Failed to open file"));
+        assert!(matches!(result, Err(CoreError::Io(_))));
     }
 
     #[test]
@@ -516,18 +507,10 @@ mod tests {
         std::fs::write(&temp_path, b"invalid mkv data").unwrap();
 
         let result_metadata = extractor.extract_video_metadata(&temp_path);
-        assert!(result_metadata.is_err());
-        assert!(result_metadata
-            .unwrap_err()
-            .to_string()
-            .contains("Failed to parse MKV"));
+        assert!(matches!(result_metadata, Err(CoreError::Demux(_))));
 
         let result_vtt = extractor.extract_subtitle_vtt(&temp_path, 1);
-        assert!(result_vtt.is_err());
-        assert!(result_vtt
-            .unwrap_err()
-            .to_string()
-            .contains("Failed to parse MKV"));
+        assert!(matches!(result_vtt, Err(CoreError::Demux(_))));
 
         let _ = std::fs::remove_file(&temp_path);
     }

@@ -117,9 +117,7 @@ pub async fn create_torrent_repository(
         opts.disable_dht = true;
     }
     let download_dir = download_dir_lock.read().unwrap().clone();
-    let session = librqbit::Session::new_with_opts(download_dir.clone(), opts)
-        .await
-        .map_err(|e| CoreError::Message(format!("Failed to initialize session: {}", e)))?;
+    let session = librqbit::Session::new_with_opts(download_dir.clone(), opts).await?;
 
     let download_dir_fn = {
         let dl = download_dir_lock.clone();
@@ -201,12 +199,11 @@ impl TorrentRepository for RqbitTorrentRepository {
         let response = self
             .session
             .add_torrent(AddTorrent::from_url(magnet), Some(options))
-            .await
-            .map_err(|e| format!("Failed to add torrent: {}", e))?;
+            .await?;
 
         let handle = response
             .into_handle()
-            .ok_or_else(|| "Failed to get torrent handle".to_string())?;
+            .ok_or_else(|| CoreError::Message("Failed to get torrent handle".to_string()))?;
 
         // Wait with a 20s timeout
         tokio::time::timeout(
@@ -214,25 +211,25 @@ impl TorrentRepository for RqbitTorrentRepository {
             handle.wait_until_initialized(),
         )
         .await
-        .map_err(|_| "解析种子元数据超时，可能该种子目前没有在线的做种者".to_string())?
-        .map_err(|e| format!("解析种子失败: {}", e))?;
+        .map_err(|_| {
+            CoreError::Message("解析种子元数据超时，可能该种子目前没有在线的做种者".to_string())
+        })?
+        .map_err(CoreError::from)?;
 
         let info_hash = format_hash(&handle.info_hash().0);
         let name = handle.name().unwrap_or_default();
 
-        let files = handle
-            .with_metadata(|meta| {
-                meta.file_infos
-                    .iter()
-                    .enumerate()
-                    .map(|(id, fi)| FileDetails {
-                        id,
-                        name: fi.relative_filename.to_string_lossy().to_string(),
-                        len: fi.len,
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .map_err(|e| format!("Failed to read metadata: {}", e))?;
+        let files = handle.with_metadata(|meta| {
+            meta.file_infos
+                .iter()
+                .enumerate()
+                .map(|(id, fi)| FileDetails {
+                    id,
+                    name: fi.relative_filename.to_string_lossy().to_string(),
+                    len: fi.len,
+                })
+                .collect::<Vec<_>>()
+        })?;
 
         Ok(AddTorrentResult {
             info_hash,
@@ -361,22 +358,16 @@ impl TorrentRepository for RqbitTorrentRepository {
     async fn pause_torrent(&self, info_hash_hex: &str) -> Result<(), CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash_hex)
-            .ok_or_else(|| "Torrent not found".to_string())?;
-        self.session
-            .pause(&torrent)
-            .await
-            .map_err(|e| format!("Failed to pause torrent: {}", e))?;
+            .ok_or(CoreError::TorrentNotFound)?;
+        self.session.pause(&torrent).await?;
         Ok(())
     }
 
     async fn resume_torrent(&self, info_hash_hex: &str) -> Result<(), CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash_hex)
-            .ok_or_else(|| "Torrent not found".to_string())?;
-        self.session
-            .unpause(&torrent)
-            .await
-            .map_err(|e| format!("Failed to resume torrent: {}", e))?;
+            .ok_or(CoreError::TorrentNotFound)?;
+        self.session.unpause(&torrent).await?;
         Ok(())
     }
 
@@ -386,12 +377,8 @@ impl TorrentRepository for RqbitTorrentRepository {
         delete_files: bool,
     ) -> Result<(), CoreError> {
         use librqbit::api::TorrentIdOrHash;
-        let id = TorrentIdOrHash::try_from(info_hash_hex)
-            .map_err(|e| format!("Invalid info hash format: {}", e))?;
-        self.session
-            .delete(id, delete_files)
-            .await
-            .map_err(|e| format!("Failed to delete torrent: {}", e))?;
+        let id = TorrentIdOrHash::try_from(info_hash_hex)?;
+        self.session.delete(id, delete_files).await?;
         self.subject_bindings.clear(info_hash_hex).await;
         Ok(())
     }
@@ -420,26 +407,20 @@ impl TorrentRepository for RqbitTorrentRepository {
     ) -> Result<Box<dyn AsyncReadSeek>, CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash)
-            .ok_or_else(|| "Torrent not found".to_string())?;
+            .ok_or(CoreError::TorrentNotFound)?;
 
         let relative_path = torrent
             .with_metadata(|meta| {
                 meta.file_infos
                     .get(file_id)
                     .map(|fi| fi.relative_filename.clone())
-            })
-            .map_err(|e| format!("Failed to get metadata: {}", e))?
-            .ok_or_else(|| "File id not found in metadata".to_string())?;
+            })?
+            .ok_or_else(|| CoreError::Message("File id not found in metadata".to_string()))?;
 
         let download_dir = (self.get_download_dir_fn)();
         let absolute_path = std::path::PathBuf::from(download_dir).join(relative_path);
 
-        let std_file = std::fs::File::open(&absolute_path).map_err(|e| {
-            format!(
-                "Failed to open local file: {}, path: {:?}",
-                e, absolute_path
-            )
-        })?;
+        let std_file = std::fs::File::open(&absolute_path)?;
         let tokio_file = tokio::fs::File::from_std(std_file);
         Ok(Box::new(tokio_file))
     }

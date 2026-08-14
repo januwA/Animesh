@@ -1481,6 +1481,44 @@ mod tests {
         assert_eq!(manager.get_max_upload_speed(), None);
     }
 
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_设置持久化_异常JSON回退与速度清空() {
+        let dir = temp_dir("manager_persist_invalid");
+        std::fs::create_dir_all(&dir).unwrap();
+        let settings_path = dir.join("settings.json");
+        std::fs::write(&settings_path, "{not-valid-json}").unwrap();
+
+        let (manager, _) = build_manager(dir.clone(), settings_path.clone())
+            .await
+            .expect("初始化应成功");
+
+        let next_dir = dir.join("custom_downloads");
+        manager
+            .set_download_dir(next_dir.to_string_lossy().to_string())
+            .unwrap();
+        assert_eq!(
+            manager.get_download_dir(),
+            next_dir.to_string_lossy().to_string()
+        );
+
+        let proxy = "socks5://127.0.0.1:1080".to_string();
+        manager.set_proxy(Some(proxy.clone())).unwrap();
+        assert_eq!(manager.get_proxy(), Some(proxy));
+
+        manager.set_max_download_speed(Some(0)).unwrap();
+        manager.set_max_download_speed(None).unwrap();
+        assert_eq!(manager.get_max_download_speed(), None);
+
+        manager.set_max_upload_speed(Some(0)).unwrap();
+        manager.set_max_upload_speed(None).unwrap();
+        assert_eq!(manager.get_max_upload_speed(), None);
+
+        manager.set_ai_configs(None).unwrap();
+        let settings = manager.get_settings().unwrap();
+        assert!(settings.ai_configs.is_none());
+    }
+
     #[test]
     #[allow(non_snake_case)]
     fn 测试_将KB每秒限制转换为bytes每秒() {

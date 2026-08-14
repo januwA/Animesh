@@ -33,11 +33,11 @@ pub struct Enclosure {
 }
 
 use crate::domain::crawler::SearchResultItem;
+use crate::error::CoreResult;
 
 /// Parse DMHY RSS XML data into SearchResultItems
-pub fn parse_dmhy_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
-    let rss: Rss = quick_xml::de::from_str(xml_data)
-        .map_err(|e| format!("Failed to deserialize DMHY XML data: {}", e))?;
+pub fn parse_dmhy_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
+    let rss: Rss = quick_xml::de::from_str(xml_data)?;
 
     let results = rss
         .channel
@@ -74,9 +74,8 @@ pub struct BangumiMoeTorrent {
     pub description: String,
 }
 
-pub fn parse_bangumi_moe_json(json_data: &str) -> Result<Vec<SearchResultItem>, String> {
-    let res: BangumiMoeSearchResult = serde_json::from_str(json_data)
-        .map_err(|e| format!("Failed to deserialize Bangumi.moe JSON data: {}", e))?;
+pub fn parse_bangumi_moe_json(json_data: &str) -> CoreResult<Vec<SearchResultItem>> {
+    let res: BangumiMoeSearchResult = serde_json::from_str(json_data)?;
 
     let results = res
         .torrents
@@ -145,9 +144,8 @@ pub struct MikanTorrent {
     pub pub_date: String,
 }
 
-pub fn parse_mikan_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
-    let rss: MikanRss = quick_xml::de::from_str(xml_data)
-        .map_err(|e| format!("Failed to deserialize Mikan XML data: {}", e))?;
+pub fn parse_mikan_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
+    let rss: MikanRss = quick_xml::de::from_str(xml_data)?;
 
     let results = rss
         .channel
@@ -206,9 +204,8 @@ pub struct AcgRipItem {
 ///
 /// ACG.RIP 的搜索结果只提供 .torrent 下载链接，不提供磁力链接，
 /// 因此 magnet 字段直接使用种子文件的下载地址。
-pub fn parse_acgrip_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
-    let rss: AcgRipRss = quick_xml::de::from_str(xml_data)
-        .map_err(|e| format!("Failed to deserialize ACG.RIP XML data: {}", e))?;
+pub fn parse_acgrip_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
+    let rss: AcgRipRss = quick_xml::de::from_str(xml_data)?;
 
     let results = rss
         .channel
@@ -259,9 +256,8 @@ pub struct AnibtTorrent {
 }
 
 /// Parse AniBT RSS XML data into SearchResultItems.
-pub fn parse_anibt_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
-    let rss: AnibtRss = quick_xml::de::from_str(xml_data)
-        .map_err(|e| format!("Failed to deserialize AniBT XML data: {}", e))?;
+pub fn parse_anibt_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
+    let rss: AnibtRss = quick_xml::de::from_str(xml_data)?;
 
     let results = rss
         .channel
@@ -306,9 +302,8 @@ pub struct NyaaItem {
     pub size: String,
 }
 
-pub fn parse_nyaa_rss(xml_data: &str) -> Result<Vec<SearchResultItem>, String> {
-    let rss: NyaaRss = quick_xml::de::from_str(xml_data)
-        .map_err(|e| format!("Failed to deserialize Nyaa XML data: {}", e))?;
+pub fn parse_nyaa_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
+    let rss: NyaaRss = quick_xml::de::from_str(xml_data)?;
 
     let results = rss
         .channel
@@ -400,7 +395,6 @@ mod tests {
         let invalid_xml = "<invalid>";
         let result = parse_dmhy_rss(invalid_xml);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to deserialize"));
     }
 
     #[test]
@@ -533,7 +527,6 @@ mod tests {
         let invalid_xml = "<invalid>";
         let result = parse_mikan_rss(invalid_xml);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to deserialize"));
     }
 
     #[test]
@@ -541,7 +534,6 @@ mod tests {
         let invalid_xml = "<invalid>";
         let result = parse_nyaa_rss(invalid_xml);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to deserialize"));
     }
 
     #[test]
@@ -577,7 +569,6 @@ mod tests {
         let invalid_xml = "<invalid>";
         let result = parse_acgrip_rss(invalid_xml);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to deserialize"));
     }
 
     #[test]
@@ -628,6 +619,5 @@ mod tests {
         let invalid_xml = "<invalid>";
         let result = parse_anibt_rss(invalid_xml);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to deserialize"));
     }
 }

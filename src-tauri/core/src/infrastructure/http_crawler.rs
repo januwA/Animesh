@@ -39,7 +39,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         );
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_dmhy_rss(&xml_data).map_err(CoreError::from)
+        parse_dmhy_rss(&xml_data)
     }
 
     async fn search_bangumi_moe(
@@ -62,7 +62,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
             )
             .await?;
 
-        parse_bangumi_moe_json(&json_data).map_err(CoreError::from)
+        parse_bangumi_moe_json(&json_data)
     }
 
     async fn search_mikan(
@@ -77,7 +77,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         );
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_mikan_rss(&xml_data).map_err(CoreError::from)
+        parse_mikan_rss(&xml_data)
     }
 
     async fn search_nyaa(
@@ -89,7 +89,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         let url = format!("https://nyaa.si/?page=rss&q={}&c=0_0&f=0", encoded_keyword);
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_nyaa_rss(&xml_data).map_err(CoreError::from)
+        parse_nyaa_rss(&xml_data)
     }
 
     async fn search_acgrip(
@@ -101,7 +101,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         let url = format!("https://acg.rip/.xml?term={}", encoded_keyword);
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_acgrip_rss(&xml_data).map_err(CoreError::from)
+        parse_acgrip_rss(&xml_data)
     }
 
     async fn search_anibt(
@@ -113,7 +113,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         let url = format!("https://anibt.net/rss/magnets.xml?q={}", encoded_keyword);
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_anibt_rss(&xml_data).map_err(CoreError::from)
+        parse_anibt_rss(&xml_data)
     }
 }
 
@@ -129,7 +129,7 @@ mod tests {
             get_handler: Arc::new(|_url, proxy| {
                 if let Some(p) = proxy {
                     if p.contains("://bad") {
-                        return Err("Invalid proxy".to_string());
+                        return Err("Invalid proxy".to_string().into());
                     }
                 }
                 Ok(String::new())
@@ -150,7 +150,7 @@ mod tests {
             post_handler: Arc::new(|_url, _body, _ct, proxy| {
                 if let Some(p) = proxy {
                     if p.contains("://bad") {
-                        return Err("Invalid proxy".to_string());
+                        return Err("Invalid proxy".to_string().into());
                     }
                 }
                 Ok(String::new())

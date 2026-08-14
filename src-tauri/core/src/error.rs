@@ -31,9 +31,15 @@ pub enum CoreError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
+    Demux(#[from] matroska_demuxer::DemuxError),
+    #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    Xml(#[from] quick_xml::de::DeError),
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
 }
 
 impl Clone for CoreError {
@@ -51,8 +57,11 @@ impl Clone for CoreError {
             CoreError::SubtitleParseTimeout => CoreError::SubtitleParseTimeout,
             CoreError::Sqlx(e) => CoreError::Message(e.to_string()),
             CoreError::Io(e) => CoreError::Message(e.to_string()),
+            CoreError::Demux(e) => CoreError::Message(e.to_string()),
             CoreError::Reqwest(e) => CoreError::Message(e.to_string()),
             CoreError::Json(e) => CoreError::Message(e.to_string()),
+            CoreError::Xml(e) => CoreError::Message(e.to_string()),
+            CoreError::Anyhow(e) => CoreError::Message(e.to_string()),
         }
     }
 }
@@ -66,6 +75,16 @@ impl From<String> for CoreError {
 impl From<&str> for CoreError {
     fn from(s: &str) -> Self {
         CoreError::Message(s.to_string())
+    }
+}
+
+/// 序列化为字符串，供 Tauri 命令边界作为可序列化的错误类型返回给前端。
+impl serde::Serialize for CoreError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
     }
 }
 
@@ -116,6 +135,91 @@ mod tests {
 
         let msg = CoreError::Message("内容".to_string());
         assert_eq!(msg.clone().to_string(), "内容");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_Xml变体转换与Clone() {
+        #[derive(serde::Deserialize, Debug)]
+        struct Dummy {
+            #[allow(dead_code)]
+            value: u32,
+        }
+
+        let de_err = quick_xml::de::from_str::<Dummy>("<invalid>").unwrap_err();
+        let err: CoreError = de_err.into();
+        assert!(matches!(err, CoreError::Xml(_)));
+
+        let cloned = err.clone();
+        assert!(matches!(cloned, CoreError::Message(_)));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_错误序列化为JSON字符串() {
+        assert_eq!(
+            serde_json::to_string(&CoreError::TorrentNotFound).unwrap(),
+            "\"Torrent not found\""
+        );
+        assert_eq!(
+            serde_json::to_string(&CoreError::Message("自定义错误".into())).unwrap(),
+            "\"自定义错误\""
+        );
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_Demux变体转换与Clone() {
+        let err: CoreError = matroska_demuxer::DemuxError::InvalidEbmlElementId.into();
+        assert!(matches!(err, CoreError::Demux(_)));
+        assert_eq!(err.to_string(), "invalid EBML Element ID was found");
+        assert!(matches!(err.clone(), CoreError::Message(_)));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_Anyhow变体转换与Clone() {
+        let err: CoreError = anyhow::anyhow!("librqbit 底层错误").into();
+        assert!(matches!(err, CoreError::Anyhow(_)));
+        assert_eq!(err.to_string(), "librqbit 底层错误");
+        assert!(matches!(err.clone(), CoreError::Message(_)));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_补齐其余底层错误转换与Clone分支() {
+        let sqlx_err: CoreError = sqlx::Error::RowNotFound.into();
+        assert!(matches!(sqlx_err, CoreError::Sqlx(_)));
+        assert!(matches!(sqlx_err.clone(), CoreError::Message(_)));
+
+        let reqwest_err = reqwest::Client::new()
+            .get("http://[::1")
+            .build()
+            .unwrap_err();
+        let err: CoreError = reqwest_err.into();
+        assert!(matches!(err, CoreError::Reqwest(_)));
+        assert!(matches!(err.clone(), CoreError::Message(_)));
+
+        let json_err: CoreError = serde_json::from_str::<u32>("not-a-number")
+            .unwrap_err()
+            .into();
+        assert!(matches!(json_err, CoreError::Json(_)));
+        assert!(matches!(json_err.clone(), CoreError::Message(_)));
+
+        let xml_err: CoreError = quick_xml::de::from_str::<u32>("<root>").unwrap_err().into();
+        assert!(matches!(xml_err, CoreError::Xml(_)));
+        assert!(matches!(xml_err.clone(), CoreError::Message(_)));
+
+        let unsupported = CoreError::UnsupportedSearchEngine("nyaa".to_string());
+        assert!(
+            matches!(unsupported.clone(), CoreError::UnsupportedSearchEngine(s) if s == "nyaa")
+        );
+
+        let timeout = CoreError::SubtitleParseTimeout;
+        assert_eq!(
+            timeout.clone().to_string(),
+            "Failed to extract vtt: parse timed out"
+        );
     }
 
     #[test]

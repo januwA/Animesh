@@ -5,6 +5,7 @@ use animesh_core::domain::collection::CollectionRecord;
 use animesh_core::domain::crawler::SearchResultItem;
 use animesh_core::domain::subtitles::VideoMetadata;
 use animesh_core::domain::torrent::{AddTorrentResult, FileDetails, TorrentStatusInfo};
+use animesh_core::error::CoreError;
 use anyhow::Context;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
@@ -80,7 +81,7 @@ async fn search_torrents(
     engine: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
     tracker: tauri::State<'_, SearchTracker>,
-) -> Result<Vec<SearchResultItem>, String> {
+) -> Result<Vec<SearchResultItem>, CoreError> {
     trace_log(&format!(
         "Entering search_torrents command, trace_id: {}, keyword: {}, engine: {}",
         trace_id, keyword, engine
@@ -113,7 +114,7 @@ async fn search_torrents(
                 )),
                 Err(e) => trace_log(&format!("search_torrents failed with error: {}", e)),
             }
-            inner_res.map_err(|e| e.to_string())
+            inner_res
         }
         Err(join_err) => {
             if join_err.is_cancelled() {
@@ -121,10 +122,10 @@ async fn search_torrents(
                     "search_torrents was cancelled, trace_id: {}",
                     trace_id
                 ));
-                Err("Search cancelled".to_string())
+                Err(CoreError::Message("Search cancelled".to_string()))
             } else {
                 trace_log(&format!("search_torrents task panicked: {:?}", join_err));
-                Err("Search task panicked".to_string())
+                Err(CoreError::Message("Search task panicked".to_string()))
             }
         }
     }
@@ -136,7 +137,7 @@ async fn torrent_add_magnet(
     magnet: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
     tracker: tauri::State<'_, AddMagnetTracker>,
-) -> Result<AddTorrentResult, String> {
+) -> Result<AddTorrentResult, CoreError> {
     trace_log(&format!(
         "Entering torrent_add_magnet command, trace_id: {}, magnet length: {}",
         trace_id,
@@ -175,7 +176,7 @@ async fn torrent_add_magnet(
                 )),
                 Err(e) => trace_log(&format!("torrent_add_magnet failed with error: {}", e)),
             }
-            inner.map_err(|e| e.to_string())
+            inner
         }
         Err(join_err) => {
             if join_err.is_cancelled() {
@@ -183,10 +184,10 @@ async fn torrent_add_magnet(
                     "torrent_add_magnet was cancelled, trace_id: {}",
                     trace_id
                 ));
-                Err("添加磁力链接已取消".to_string())
+                Err(CoreError::Message("添加磁力链接已取消".to_string()))
             } else {
                 trace_log(&format!("torrent_add_magnet task panicked: {:?}", join_err));
-                Err("添加磁力链接任务异常".to_string())
+                Err(CoreError::Message("添加磁力链接任务异常".to_string()))
             }
         }
     }
@@ -218,10 +219,10 @@ fn cancel_add_magnet(trace_id: String, tracker: tauri::State<'_, AddMagnetTracke
 fn torrent_get_status(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<TorrentStatusInfo, String> {
+) -> Result<TorrentStatusInfo, CoreError> {
     manager
         .get_torrent_status(info_hash)
-        .ok_or_else(|| "Torrent not found".to_string())
+        .ok_or(CoreError::TorrentNotFound)
 }
 
 #[tauri::command]
@@ -242,12 +243,9 @@ fn iptv_proxy_base_url(manager: tauri::State<'_, Arc<TorrentManager>>) -> String
 async fn iptv_resolve_stream(
     raw_url: String,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<animesh_core::domain::stream::ResolvedStream, String> {
+) -> Result<animesh_core::domain::stream::ResolvedStream, CoreError> {
     trace_log(&format!("iptv_resolve_stream raw_url={raw_url}"));
-    let resolved = manager
-        .resolve_stream(&raw_url)
-        .await
-        .map_err(|e| e.to_string())?;
+    let resolved = manager.resolve_stream(&raw_url).await?;
     trace_log(&format!(
         "iptv_resolve_stream resolved kind={:?}",
         resolved.kind
@@ -259,10 +257,10 @@ async fn iptv_resolve_stream(
 fn torrent_get_files(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<Vec<FileDetails>, String> {
+) -> Result<Vec<FileDetails>, CoreError> {
     manager
         .get_torrent_files(info_hash)
-        .ok_or_else(|| "Torrent not found".to_string())
+        .ok_or(CoreError::TorrentNotFound)
 }
 
 #[tauri::command]
@@ -270,15 +268,12 @@ async fn torrent_get_video_metadata(
     info_hash: &str,
     file_id: usize,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<VideoMetadata, String> {
+) -> Result<VideoMetadata, CoreError> {
     trace_log(&format!(
         "Entering torrent_get_video_metadata command, info_hash: {}, file_id: {}",
         info_hash, file_id
     ));
-    manager
-        .get_video_metadata(info_hash, file_id)
-        .await
-        .map_err(|e| e.to_string())
+    manager.get_video_metadata(info_hash, file_id).await
 }
 
 #[tauri::command]
@@ -287,37 +282,28 @@ async fn torrent_get_subtitle_vtt(
     file_id: usize,
     track_id: u64,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<String, String> {
+) -> Result<String, CoreError> {
     trace_log(&format!(
         "Entering torrent_get_subtitle_vtt command, info_hash: {}, file_id: {}, track_id: {}",
         info_hash, file_id, track_id
     ));
-    manager
-        .get_subtitle_vtt(info_hash, file_id, track_id)
-        .await
-        .map_err(|e| e.to_string())
+    manager.get_subtitle_vtt(info_hash, file_id, track_id).await
 }
 
 #[tauri::command]
 async fn torrent_pause(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager
-        .pause_torrent(info_hash)
-        .await
-        .map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    manager.pause_torrent(info_hash).await
 }
 
 #[tauri::command]
 async fn torrent_resume(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager
-        .resume_torrent(info_hash)
-        .await
-        .map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    manager.resume_torrent(info_hash).await
 }
 
 #[tauri::command]
@@ -325,17 +311,14 @@ async fn torrent_delete(
     info_hash: &str,
     delete_files: bool,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager
-        .delete_torrent(info_hash, delete_files)
-        .await
-        .map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    manager.delete_torrent(info_hash, delete_files).await
 }
 
 #[tauri::command]
 fn torrent_list(
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<Vec<TorrentStatusInfo>, String> {
+) -> Result<Vec<TorrentStatusInfo>, CoreError> {
     Ok(manager.list_torrents())
 }
 
@@ -345,7 +328,7 @@ async fn torrent_set_subject(
     subject_id: u64,
     subject_name: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
+) -> Result<(), CoreError> {
     trace_log(&format!(
         "torrent_set_subject info_hash: {}, subject_id: {}, subject_name: {}",
         info_hash, subject_id, subject_name
@@ -360,7 +343,7 @@ async fn torrent_set_subject(
 async fn torrent_clear_subject(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
+) -> Result<(), CoreError> {
     trace_log(&format!("torrent_clear_subject info_hash: {}", info_hash));
     manager.clear_subject_binding(info_hash).await;
     Ok(())
@@ -369,19 +352,16 @@ async fn torrent_clear_subject(
 #[tauri::command]
 async fn collection_get_all(
     service: tauri::State<'_, Arc<CollectionService>>,
-) -> Result<Vec<CollectionRecord>, String> {
-    service.list().await.map_err(|e| e.to_string())
+) -> Result<Vec<CollectionRecord>, CoreError> {
+    service.list().await
 }
 
 #[tauri::command]
 async fn collection_is_favorited(
     subject_id: i64,
     service: tauri::State<'_, Arc<CollectionService>>,
-) -> Result<bool, String> {
-    service
-        .is_favorited(subject_id)
-        .await
-        .map_err(|e| e.to_string())
+) -> Result<bool, CoreError> {
+    service.is_favorited(subject_id).await
 }
 
 #[tauri::command]
@@ -390,7 +370,7 @@ async fn collection_add(
     name: String,
     image_url: Option<String>,
     service: tauri::State<'_, Arc<CollectionService>>,
-) -> Result<(), String> {
+) -> Result<(), CoreError> {
     service
         .add(animesh_core::domain::collection::NewCollectionItem {
             subject_id,
@@ -398,15 +378,14 @@ async fn collection_add(
             image_url,
         })
         .await
-        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn collection_remove(
     subject_id: i64,
     service: tauri::State<'_, Arc<CollectionService>>,
-) -> Result<(), String> {
-    service.remove(subject_id).await.map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    service.remove(subject_id).await
 }
 
 #[tauri::command]
@@ -417,7 +396,7 @@ async fn torrent_subscribe(
     on_event: tauri::ipc::Channel<Vec<TorrentStatusInfo>>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
     tracker: tauri::State<'_, SubscriptionTracker>,
-) -> Result<(), String> {
+) -> Result<(), CoreError> {
     let window_label = window.label().to_string();
 
     let subs_clone = tracker.subscriptions.clone();
@@ -462,62 +441,58 @@ fn torrent_unsubscribe(subscription_id: String, tracker: tauri::State<'_, Subscr
 }
 
 #[tauri::command]
-fn settings_get(manager: tauri::State<'_, Arc<TorrentManager>>) -> Result<AppSettings, String> {
-    manager.get_settings().map_err(|e| e.to_string())
+fn settings_get(manager: tauri::State<'_, Arc<TorrentManager>>) -> Result<AppSettings, CoreError> {
+    manager.get_settings()
 }
 
 #[tauri::command]
 fn settings_set_download_dir(
     dir: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager
-        .set_download_dir(dir.to_string())
-        .map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    manager.set_download_dir(dir.to_string())
 }
 
 #[tauri::command]
 fn settings_set_proxy(
     proxy: Option<String>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager.set_proxy(proxy).map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    manager.set_proxy(proxy)
 }
 
 #[tauri::command]
 fn settings_set_ai_configs(
     configs: Option<Vec<AiConfig>>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager.set_ai_configs(configs).map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    manager.set_ai_configs(configs)
 }
 
 #[tauri::command]
 fn settings_set_max_download_speed(
     max_speed: Option<u32>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager
-        .set_max_download_speed(max_speed)
-        .map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    manager.set_max_download_speed(max_speed)
 }
 
 #[tauri::command]
 fn settings_set_max_upload_speed(
     max_speed: Option<u32>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<(), String> {
-    manager
-        .set_max_upload_speed(max_speed)
-        .map_err(|e| e.to_string())
+) -> Result<(), CoreError> {
+    manager.set_max_upload_speed(max_speed)
 }
 
 #[tauri::command]
-async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, String> {
+async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, CoreError> {
     #[cfg(mobile)]
     {
         let _ = app;
-        return Err("Directory selection is not supported on mobile devices.".to_string());
+        return Err(CoreError::Message(
+            "Directory selection is not supported on mobile devices.".to_string(),
+        ));
     }
 
     #[cfg(desktop)]
@@ -539,7 +514,7 @@ async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, Strin
                 })
         })
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| CoreError::Message(e.to_string()))?;
         Ok(path)
     }
 }
@@ -549,7 +524,7 @@ async fn ai_chat_request(
     endpoint: String,
     api_key: String,
     body_json: String,
-) -> Result<String, String> {
+) -> Result<String, CoreError> {
     animesh_core::send_ai_chat_request(&endpoint, &api_key, &body_json).await
 }
 
@@ -665,7 +640,7 @@ pub fn run() {
                         torrent_repo.clone(),
                     )
                     .await
-                    .map_err(|e| anyhow::anyhow!("初始化流媒体服务器失败: {}", e))?;
+                    .context("初始化流媒体服务器失败")?;
 
                 let crawler_repo =
                     animesh_core::infrastructure::http_crawler::create_crawler_repository();

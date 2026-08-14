@@ -117,7 +117,7 @@ async fn main() -> anyhow::Result<()> {
     let (port, hls_proxy) =
         animesh_core::infrastructure::stream_server::start_stream_server(torrent_repo.clone())
             .await
-            .map_err(|e| anyhow::anyhow!("初始化流媒体服务器失败: {}", e))?;
+            .context("初始化流媒体服务器失败")?;
 
     let crawler_repo = animesh_core::infrastructure::http_crawler::create_crawler_repository();
     let subtitle_cache: Arc<dyn animesh_core::domain::subtitles::SubtitleCache> =

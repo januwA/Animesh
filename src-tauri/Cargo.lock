@@ -98,6 +98,7 @@ dependencies = [
 name = "animesh_core"
 version = "0.5.2"
 dependencies = [
+ "anyhow",
  "async-trait",
  "aws-lc-sys",
  "axum",

@@ -1,5 +1,6 @@
 use crate::domain::stream::{proxy_base_url, IPTV_PROXY_PATH};
 use crate::domain::torrent::{parse_range, TorrentRepository};
+use crate::error::CoreResult;
 use crate::infrastructure::hls_proxy::{self, HlsProxyState};
 use axum::{
     body::Body,
@@ -69,7 +70,7 @@ pub fn spawn_stream_server(
 /// 由组合根调用：绑定端口 + 创建 HLS 代理 + 启动服务器，返回实际监听端口。
 pub async fn start_stream_server(
     torrent_repo: Arc<dyn TorrentRepository>,
-) -> Result<(u16, HlsProxyState), Box<dyn std::error::Error>> {
+) -> CoreResult<(u16, HlsProxyState)> {
     let listener = bind_stream_listener().await?;
     let port = listener.local_addr()?.port();
     let hls_proxy = HlsProxyState::new(proxy_base_url(port));
