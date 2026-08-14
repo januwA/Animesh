@@ -11,6 +11,7 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
@@ -28,38 +29,48 @@ const LocationTracker = () => {
 describe("Downloads 页面组件", () => {
   let mockTorrentRepository: TorrentRepository;
   let mockContainer: DIContainer;
+  // 让 subscribeTorrents mock 从可变引用读取数据，测试中可随时替换
+  let getTorrentsRef: () => Promise<TorrentStatusInfo[]>;
+  // 让 subscribeTorrents 返回 reject（用于失败场景）
+  let subscribeRejectRef: unknown | null;
 
   beforeEach(() => {
+    getTorrentsRef = async () => [];
+    subscribeRejectRef = null;
+
     mockTorrentRepository = {
       search: vi.fn(),
       addTorrentMagnet: vi.fn(),
       getTorrentFiles: vi.fn(),
-      listTorrents: vi.fn().mockResolvedValue([]),
       pauseTorrent: vi.fn().mockResolvedValue(undefined),
       resumeTorrent: vi.fn().mockResolvedValue(undefined),
       deleteTorrent: vi.fn().mockResolvedValue(undefined),
       getTorrentStreamUrl: vi.fn(),
-      getTorrentStatus: vi.fn(),
       getSubtitleVtt: vi.fn(),
       getVideoMetadata: vi.fn(),
-      subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
+      subscribeTorrents: vi.fn().mockImplementation(async (onUpdate) => {
+        if (subscribeRejectRef !== null) {
+          return Promise.reject(subscribeRejectRef);
+        }
+
         const runUpdate = async () => {
-          const list = await mockTorrentRepository.listTorrents();
+          const list = await getTorrentsRef();
           onUpdate(list);
         };
 
-        const promise = runUpdate();
+        const initPromise = runUpdate();
 
         const interval = setInterval(async () => {
           try {
-            const list = await mockTorrentRepository.listTorrents();
+            const list = await getTorrentsRef();
             onUpdate(list);
-          } catch {}
+          } catch {
+            // 轮询报错静默忽略（保持上次数据）
+          }
         }, 1500);
 
-        return promise.then(() => {
-          return () => clearInterval(interval);
-        });
+        await initPromise;
+        return () => clearInterval(interval);
       }),
       setTorrentSubject: vi.fn().mockResolvedValue(undefined),
       clearTorrentSubject: vi.fn().mockResolvedValue(undefined),
@@ -102,7 +113,8 @@ describe("Downloads 页面组件", () => {
   };
 
   it("应该在加载时渲染加载指示器", async () => {
-    vi.mocked(mockTorrentRepository.listTorrents).mockImplementation(
+    // subscribeTorrents 永不 resolve 且不回调 → isLoading 保持 true
+    vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
       () => new Promise(() => {}),
     );
 
@@ -112,9 +124,7 @@ describe("Downloads 页面组件", () => {
   });
 
   it("当获取下载列表失败时，应该显示加载完成和Toast提示", async () => {
-    vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValue(
-      "Fetch list failed",
-    );
+    subscribeRejectRef = "Fetch list failed";
 
     renderDownloads();
 
@@ -129,7 +139,7 @@ describe("Downloads 页面组件", () => {
   });
 
   it("当无下载任务时，应该渲染空状态并可以点击返回首页", async () => {
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue([]);
+    getTorrentsRef = async () => [];
 
     renderDownloads();
 
@@ -162,9 +172,7 @@ describe("Downloads 页面组件", () => {
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -189,9 +197,7 @@ describe("Downloads 页面组件", () => {
         trackers: [],
       },
     ];
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      updatedTorrents,
-    );
+    getTorrentsRef = async () => updatedTorrents;
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1500);
@@ -199,9 +205,8 @@ describe("Downloads 页面组件", () => {
 
     expect(screen.getByText(/进度: 80/)).toBeInTheDocument();
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValueOnce(
-      new Error("Network polling error"),
-    );
+    // 下一次轮询 getTorrentsRef 抛错 → 静默忽略，保持数据
+    getTorrentsRef = () => Promise.reject(new Error("Network polling error"));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1500);
@@ -266,9 +271,7 @@ describe("Downloads 页面组件", () => {
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -355,9 +358,7 @@ describe("Downloads 页面组件", () => {
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -405,9 +406,7 @@ describe("Downloads 页面组件", () => {
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -514,9 +513,7 @@ describe("Downloads 页面组件", () => {
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -544,9 +541,7 @@ describe("Downloads 页面组件", () => {
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -601,9 +596,7 @@ describe("Downloads 页面组件", () => {
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -672,9 +665,7 @@ describe("Downloads 页面组件", () => {
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -700,7 +691,7 @@ describe("Downloads 页面组件", () => {
   });
 
   it("在无任务时应该正确显示空状态（通过上下文字段名称检测数据流）", async () => {
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue([]);
+    getTorrentsRef = async () => [];
     renderDownloads();
 
     await waitFor(() => {

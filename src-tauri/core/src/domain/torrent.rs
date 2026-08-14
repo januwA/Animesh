@@ -51,7 +51,6 @@ impl<T: tokio::io::AsyncRead + tokio::io::AsyncSeek + Unpin + Send> AsyncReadSee
 #[async_trait]
 pub trait TorrentRepository: Send + Sync {
     async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, CoreError>;
-    async fn get_torrent_status(&self, info_hash: &str) -> Option<TorrentStatusInfo>;
     async fn list_torrents(&self) -> Vec<TorrentStatusInfo>;
     async fn pause_torrent(&self, info_hash: &str) -> Result<(), CoreError>;
     async fn resume_torrent(&self, info_hash: &str) -> Result<(), CoreError>;

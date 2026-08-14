@@ -72,9 +72,6 @@ impl TorrentRepository for MockTorrentRepository {
     async fn add_magnet(&self, _magnet: &str) -> CoreResult<AddTorrentResult> {
         self.add_result.clone()
     }
-    async fn get_torrent_status(&self, _info_hash: &str) -> Option<TorrentStatusInfo> {
-        self.status.clone()
-    }
     async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
         self.status.clone().into_iter().collect()
     }

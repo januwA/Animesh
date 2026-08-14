@@ -36,10 +36,8 @@ import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentS
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
 import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUseCase";
-import { GetTorrentStatusUseCase } from "../application/torrent/GetTorrentStatusUseCase";
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
 import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
-import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
@@ -74,7 +72,6 @@ export interface DIContainer {
   getFavoriteStatusUseCase: GetFavoriteStatusUseCase;
   searchTorrentsUseCase: SearchTorrentsUseCase;
   searchTorrentsWithAiUseCase: SearchTorrentsWithAiUseCase;
-  listTorrentsUseCase: ListTorrentsUseCase;
   subscribeTorrentsUseCase: SubscribeTorrentsUseCase;
   pauseTorrentUseCase: PauseTorrentUseCase;
   resumeTorrentUseCase: ResumeTorrentUseCase;
@@ -84,7 +81,6 @@ export interface DIContainer {
   clearTorrentSubjectUseCase: ClearTorrentSubjectUseCase;
   getTorrentFilesUseCase: GetTorrentFilesUseCase;
   resolveTorrentUseCase: ResolveTorrentUseCase;
-  getTorrentStatusUseCase: GetTorrentStatusUseCase;
   getTorrentStreamUrlUseCase: GetTorrentStreamUrlUseCase;
   getSubtitleVttUseCase: GetSubtitleVttUseCase;
   getVideoMetadataUseCase: GetVideoMetadataUseCase;
@@ -125,7 +121,6 @@ export function createDefaultDIContainer(): DIContainer {
   const updateRepository = new UpdateRepositoryImpl(openerRepository);
 
   const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
-    torrentRepository,
     notificationRepository,
   );
   const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
@@ -140,7 +135,6 @@ export function createDefaultDIContainer(): DIContainer {
     aiClient,
     logger.withCategory("SearchTorrentsWithAiUseCase"),
   );
-  const listTorrentsUseCase = new ListTorrentsUseCase(torrentRepository);
   const subscribeTorrentsUseCase = new SubscribeTorrentsUseCase(
     torrentRepository,
   );
@@ -158,9 +152,6 @@ export function createDefaultDIContainer(): DIContainer {
   );
   const getTorrentFilesUseCase = new GetTorrentFilesUseCase(torrentRepository);
   const resolveTorrentUseCase = new ResolveTorrentUseCase(torrentRepository);
-  const getTorrentStatusUseCase = new GetTorrentStatusUseCase(
-    torrentRepository,
-  );
   const getTorrentStreamUrlUseCase = new GetTorrentStreamUrlUseCase(
     torrentRepository,
   );
@@ -233,7 +224,6 @@ export function createDefaultDIContainer(): DIContainer {
     notifyDownloadCompletionUseCase,
     searchTorrentsUseCase,
     searchTorrentsWithAiUseCase,
-    listTorrentsUseCase,
     subscribeTorrentsUseCase,
     pauseTorrentUseCase,
     resumeTorrentUseCase,
@@ -243,7 +233,6 @@ export function createDefaultDIContainer(): DIContainer {
     clearTorrentSubjectUseCase,
     getTorrentFilesUseCase,
     resolveTorrentUseCase,
-    getTorrentStatusUseCase,
     getTorrentStreamUrlUseCase,
     getSubtitleVttUseCase,
     getVideoMetadataUseCase,

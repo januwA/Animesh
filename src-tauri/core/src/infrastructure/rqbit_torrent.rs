@@ -239,65 +239,6 @@ impl TorrentRepository for RqbitTorrentRepository {
         })
     }
 
-    async fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
-        let torrent = self.find_torrent_by_hex(info_hash_hex)?;
-        let stats = torrent.stats();
-
-        let speed = stats
-            .live
-            .as_ref()
-            .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
-            .unwrap_or(0);
-
-        let upload_speed = stats
-            .live
-            .as_ref()
-            .map(|l| (l.upload_speed.mbps * 1024.0 * 1024.0) as u64)
-            .unwrap_or(0);
-
-        let (peers_connected, peers_total) = stats
-            .live
-            .as_ref()
-            .map(|l| {
-                (
-                    l.snapshot.peer_stats.live as u32,
-                    l.snapshot.peer_stats.seen as u32,
-                )
-            })
-            .unwrap_or((0, 0));
-
-        let created_at = self.get_creation_time(info_hash_hex).await;
-        let is_startup = self.start_time.elapsed().as_secs() < 15;
-        let finished = stats.finished
-            || (is_startup && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
-
-        let trackers = torrent
-            .shared()
-            .trackers
-            .iter()
-            .map(|u| u.to_string())
-            .collect::<Vec<_>>();
-
-        let binding = self.get_subject_binding(info_hash_hex);
-
-        Some(TorrentStatusInfo {
-            info_hash: info_hash_hex.to_string(),
-            name: torrent.name().unwrap_or_default(),
-            progress_bytes: stats.progress_bytes,
-            total_bytes: stats.total_bytes,
-            finished,
-            download_speed_bytes_per_sec: speed,
-            upload_speed_bytes_per_sec: upload_speed,
-            paused: torrent.is_paused(),
-            peers_connected,
-            peers_total,
-            created_at,
-            trackers,
-            subject_id: binding.as_ref().map(|b| b.subject_id),
-            subject_name: binding.map(|b| b.subject_name),
-        })
-    }
-
     async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
         let is_startup = self.start_time.elapsed().as_secs() < 15;
         let mut torrents: Vec<TorrentStatusInfo> = self.session.with_torrents(|iter| {

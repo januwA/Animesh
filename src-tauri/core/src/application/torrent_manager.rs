@@ -37,10 +37,6 @@ impl TorrentManager {
         self.torrent_repo.list_torrents().await
     }
 
-    pub async fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
-        self.torrent_repo.get_torrent_status(info_hash_hex).await
-    }
-
     pub async fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
         self.torrent_repo.get_torrent_files(info_hash_hex).await
     }
@@ -170,7 +166,6 @@ mod tests {
         let manager = TorrentManager::new(repo);
 
         assert_eq!(manager.list_torrents().await.len(), 1);
-        assert!(manager.get_torrent_status("hash1").await.is_some());
         assert!(manager.pause_torrent("hash1").await.is_ok());
         assert!(manager.resume_torrent("hash1").await.is_ok());
         assert!(manager.delete_torrent("hash1", false).await.is_ok());
@@ -186,9 +181,6 @@ mod tests {
         let (manager, torrent_repo) = build_manager(dir).await.expect("初始化应成功");
 
         let test_hash = "3a2a3e0f438a2e1d74381395bb0e6840742fef8e";
-
-        // 未找到种子时的 get_torrent_status 覆盖
-        assert!(manager.get_torrent_status(test_hash).await.is_none());
 
         // 测试 HTTP 流式播放接口_未找到种子
         let hls_proxy = HlsProxyState::new(crate::domain::stream::proxy_base_url(0));

@@ -185,9 +185,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/torrents/search", get(search_torrents_handler))
         .route("/torrents/search/:trace_id", delete(cancel_search_handler))
         .route("/torrents", post(torrent_add_magnet_handler))
-        .route("/torrents", get(torrent_list_handler))
         .route("/torrents/subscribe", get(torrent_subscribe_handler))
-        .route("/torrents/:hash/status", get(torrent_get_status_handler))
         .route("/torrents/:hash/files", get(torrent_get_files_handler))
         .route(
             "/torrents/:hash/files/:id/stream-url",
@@ -345,16 +343,12 @@ async fn torrent_add_magnet_handler(
     Ok(axum::Json(res))
 }
 
-async fn torrent_list_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    axum::Json(state.torrent_manager.list_torrents().await)
-}
-
 async fn torrent_subscribe_handler(
     State(state): State<Arc<AppState>>,
 ) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
     let torrent_manager = state.torrent_manager.clone();
     let stream = tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(
-        std::time::Duration::from_millis(1500),
+        std::time::Duration::from_millis(3000),
     ))
     .then(move |_| {
         let torrents_mgr = torrent_manager.clone();
@@ -366,18 +360,6 @@ async fn torrent_subscribe_handler(
     });
 
     Sse::new(stream).keep_alive(KeepAlive::default())
-}
-
-async fn torrent_get_status_handler(
-    State(state): State<Arc<AppState>>,
-    Path(info_hash): Path<String>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let status = state
-        .torrent_manager
-        .get_torrent_status(&info_hash)
-        .await
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
-    Ok(axum::Json(status))
 }
 
 async fn torrent_get_files_handler(

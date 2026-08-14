@@ -23,10 +23,8 @@ import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentS
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
 import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUseCase";
-import { GetTorrentStatusUseCase } from "../application/torrent/GetTorrentStatusUseCase";
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
 import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
-import { ListTorrentsUseCase } from "../application/torrent/ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
@@ -75,7 +73,6 @@ export interface CreateContainerParamsForTest {
   notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
   searchTorrentsUseCase?: SearchTorrentsUseCase;
   searchTorrentsWithAiUseCase?: SearchTorrentsWithAiUseCase;
-  listTorrentsUseCase?: ListTorrentsUseCase;
   subscribeTorrentsUseCase?: SubscribeTorrentsUseCase;
   pauseTorrentUseCase?: PauseTorrentUseCase;
   resumeTorrentUseCase?: ResumeTorrentUseCase;
@@ -85,7 +82,6 @@ export interface CreateContainerParamsForTest {
   clearTorrentSubjectUseCase?: ClearTorrentSubjectUseCase;
   getTorrentFilesUseCase?: GetTorrentFilesUseCase;
   resolveTorrentUseCase?: ResolveTorrentUseCase;
-  getTorrentStatusUseCase?: GetTorrentStatusUseCase;
   getTorrentStreamUrlUseCase?: GetTorrentStreamUrlUseCase;
   getSubtitleVttUseCase?: GetSubtitleVttUseCase;
   getVideoMetadataUseCase?: GetVideoMetadataUseCase;
@@ -125,14 +121,12 @@ export function createDIContainerForTest(
 ): DIContainer {
   const torrentRepo = {
     search: async () => [],
-    listTorrents: async () => [],
     pauseTorrent: async () => {},
     resumeTorrent: async () => {},
     deleteTorrent: async () => {},
     addTorrentMagnet: async () => ({ info_hash: "", name: "", files: [] }),
     getTorrentFiles: async () => [],
     getTorrentStreamUrl: async () => "",
-    getTorrentStatus: async () => ({}) as any,
     getSubtitleVtt: async () => "",
     getVideoMetadata: async () => ({
       tracks: [],
@@ -241,7 +235,7 @@ export function createDIContainerForTest(
 
   const notifyUseCase =
     params.notifyDownloadCompletionUseCase ||
-    new NotifyDownloadCompletionUseCase(torrentRepo, notificationRepo);
+    new NotifyDownloadCompletionUseCase(notificationRepo);
 
   const searchTorrentsUseCase =
     params.searchTorrentsUseCase || new SearchTorrentsUseCase(torrentRepo);
@@ -253,8 +247,6 @@ export function createDIContainerForTest(
       new FetchAiClient(new HttpClient()),
       dummyLogger,
     );
-  const listTorrentsUseCase =
-    params.listTorrentsUseCase || new ListTorrentsUseCase(torrentRepo);
   const subscribeTorrentsUseCase =
     params.subscribeTorrentsUseCase ||
     new SubscribeTorrentsUseCase(torrentRepo);
@@ -276,8 +268,6 @@ export function createDIContainerForTest(
     params.getTorrentFilesUseCase || new GetTorrentFilesUseCase(torrentRepo);
   const resolveTorrentUseCase =
     params.resolveTorrentUseCase || new ResolveTorrentUseCase(torrentRepo);
-  const getTorrentStatusUseCase =
-    params.getTorrentStatusUseCase || new GetTorrentStatusUseCase(torrentRepo);
   const getTorrentStreamUrlUseCase =
     params.getTorrentStreamUrlUseCase ||
     new GetTorrentStreamUrlUseCase(torrentRepo);
@@ -362,7 +352,6 @@ export function createDIContainerForTest(
     notifyDownloadCompletionUseCase: notifyUseCase,
     searchTorrentsUseCase,
     searchTorrentsWithAiUseCase,
-    listTorrentsUseCase,
     subscribeTorrentsUseCase,
     pauseTorrentUseCase,
     resumeTorrentUseCase,
@@ -372,7 +361,6 @@ export function createDIContainerForTest(
     clearTorrentSubjectUseCase,
     getTorrentFilesUseCase,
     resolveTorrentUseCase,
-    getTorrentStatusUseCase,
     getTorrentStreamUrlUseCase,
     getSubtitleVttUseCase,
     getVideoMetadataUseCase,

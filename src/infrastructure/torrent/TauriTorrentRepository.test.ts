@@ -8,8 +8,8 @@ const { mockInvoke } = vi.hoisted(() => ({
 // Mock @tauri-apps/api/core
 vi.mock("@tauri-apps/api/core", () => {
   class MockChannel {
-    handler: (data: any) => void;
-    constructor(handler: (data: any) => void) {
+    handler: (data: unknown) => void;
+    constructor(handler: (data: unknown) => void) {
       this.handler = handler;
     }
   }
@@ -19,48 +19,36 @@ vi.mock("@tauri-apps/api/core", () => {
   };
 });
 
-describe("TauriTorrentRepository 订阅与取消订阅测试", () => {
+describe("TauriTorrentRepository 订阅测试", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("subscribeTorrents 应该在调用时传入 subscriptionId 和 sessionId，并注册回调", async () => {
+  it("subscribeTorrents 应该调用 torrent_subscribe 并注册 Channel 回调", async () => {
     const repo = new TauriTorrentRepository();
     const onUpdate = vi.fn();
 
     const unsub = await repo.subscribeTorrents(onUpdate);
 
-    // 验证 invoke 被调用，并且参数正确
-    expect(mockInvoke).toHaveBeenCalledWith(
-      "torrent_subscribe",
-      expect.objectContaining({
-        subscriptionId: expect.any(String),
-        sessionId: expect.any(String),
-        onEvent: expect.any(Object),
-      }),
-    );
+    // 验证 invoke 被调用，且只传 onEvent 参数
+    expect(mockInvoke).toHaveBeenCalledWith("torrent_subscribe", {
+      onEvent: expect.any(Object),
+    });
 
     expect(unsub).toBeTypeOf("function");
   });
 
-  it("调用返回的 unsubscribe 函数应该触发 torrent_unsubscribe", async () => {
+  it("返回的 unsubscribe 函数应为 no-op，不再调用 torrent_unsubscribe", async () => {
     const repo = new TauriTorrentRepository();
     const onUpdate = vi.fn();
 
     const unsub = await repo.subscribeTorrents(onUpdate);
+    vi.clearAllMocks();
 
-    // 获取传给 invoke 的 subscriptionId
-    const calls = mockInvoke.mock.calls;
-    const subscribeCall = calls.find((call) => call[0] === "torrent_subscribe");
-    expect(subscribeCall).toBeDefined();
-    const subscriptionId = subscribeCall![1].subscriptionId;
+    // 调用取消订阅（no-op）
+    unsub();
 
-    // 调用取消订阅
-    await unsub();
-
-    // 验证 invoke 调用了 torrent_unsubscribe
-    expect(mockInvoke).toHaveBeenCalledWith("torrent_unsubscribe", {
-      subscriptionId,
-    });
+    // 不应再调用任何 invoke
+    expect(mockInvoke).not.toHaveBeenCalled();
   });
 });

@@ -70,17 +70,6 @@ export class HttpTorrentRepository implements TorrentRepository {
     }
   }
 
-  async listTorrents(): Promise<TorrentStatusInfo[]> {
-    const raw = await this.httpClient.getJson<unknown>(`${baseUrl}/torrents`);
-    const result = z.array(TorrentStatusInfoSchema).safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_list API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
-  }
-
   async pauseTorrent(infoHash: string): Promise<void> {
     await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/pause`, {
       method: "POST",
@@ -151,19 +140,6 @@ export class HttpTorrentRepository implements TorrentRepository {
       `${baseUrl}/torrents/${infoHash}/files/${fileId}/stream-url`,
     );
     return response.text();
-  }
-
-  async getTorrentStatus(infoHash: string): Promise<TorrentStatusInfo> {
-    const raw = await this.httpClient.getJson<unknown>(
-      `${baseUrl}/torrents/${infoHash}/status`,
-    );
-    const result = TorrentStatusInfoSchema.safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_get_status API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
   }
 
   async getVideoMetadata(

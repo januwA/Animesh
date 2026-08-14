@@ -6,10 +6,8 @@ import { ClearTorrentSubjectUseCase } from "./ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "./DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "./GetSubtitleVttUseCase";
 import { GetTorrentFilesUseCase } from "./GetTorrentFilesUseCase";
-import { GetTorrentStatusUseCase } from "./GetTorrentStatusUseCase";
 import { GetTorrentStreamUrlUseCase } from "./GetTorrentStreamUrlUseCase";
 import { GetVideoMetadataUseCase } from "./GetVideoMetadataUseCase";
-import { ListTorrentsUseCase } from "./ListTorrentsUseCase";
 import { PauseTorrentUseCase } from "./PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "./ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "./ResumeTorrentUseCase";
@@ -19,14 +17,12 @@ import { SetTorrentSubjectUseCase } from "./SetTorrentSubjectUseCase";
 describe("Torrent 相关的 UseCase 业务编排", () => {
   const mockRepo = {
     search: vi.fn(),
-    listTorrents: vi.fn(),
     pauseTorrent: vi.fn(),
     resumeTorrent: vi.fn(),
     deleteTorrent: vi.fn(),
     addTorrentMagnet: vi.fn(),
     getTorrentFiles: vi.fn(),
     getTorrentStreamUrl: vi.fn(),
-    getTorrentStatus: vi.fn(),
     getVideoMetadata: vi.fn(),
     getSubtitleVtt: vi.fn(),
     setTorrentSubject: vi.fn(),
@@ -48,16 +44,6 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     expect(results).toEqual([
       { name: "test anime", magnet: "magnet:?xt=urn:btih:123" },
     ]);
-  });
-
-  it("ListTorrentsUseCase 应该正确调用 repository 的 listTorrents 方法", async () => {
-    const useCase = new ListTorrentsUseCase(mockRepo);
-    vi.mocked(mockRepo.listTorrents).mockResolvedValueOnce([
-      { info_hash: "123", finished: true } as any,
-    ]);
-    const results = await useCase.execute();
-    expect(mockRepo.listTorrents).toHaveBeenCalled();
-    expect(results).toEqual([{ info_hash: "123", finished: true }]);
   });
 
   it("PauseTorrentUseCase 应该正确调用 repository 的 pauseTorrent 方法", async () => {
@@ -104,17 +90,6 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     const results = await useCase.execute("123");
     expect(mockRepo.getTorrentFiles).toHaveBeenCalledWith("123");
     expect(results).toEqual([{ id: 1, name: "video.mp4" }]);
-  });
-
-  it("GetTorrentStatusUseCase 应该正确调用 repository 的 getTorrentStatus 方法", async () => {
-    const useCase = new GetTorrentStatusUseCase(mockRepo);
-    vi.mocked(mockRepo.getTorrentStatus).mockResolvedValueOnce({
-      info_hash: "123",
-      progress_bytes: 100,
-    } as any);
-    const result = await useCase.execute("123");
-    expect(mockRepo.getTorrentStatus).toHaveBeenCalledWith("123");
-    expect(result).toEqual({ info_hash: "123", progress_bytes: 100 });
   });
 
   it("GetTorrentStreamUrlUseCase 应该正确调用 repository 的 getTorrentStreamUrl 方法", async () => {

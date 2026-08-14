@@ -64,37 +64,40 @@ const makeVideoMetadata = (overrides: Partial<VideoMetadata> = {}) => ({
 describe("Player 页面组件", () => {
   let mockTorrentRepository: TorrentRepository;
   let mockContainer: DIContainer;
+  let currentStatus: TorrentStatusInfo | null;
+  let nextStatusError: unknown | null;
 
   beforeEach(() => {
+    currentStatus = null;
+    nextStatusError = null;
     mockTorrentRepository = {
       search: vi.fn(),
       addTorrentMagnet: vi.fn(),
       getTorrentFiles: vi.fn(),
-      listTorrents: vi.fn(),
       pauseTorrent: vi.fn(),
       resumeTorrent: vi.fn(),
       deleteTorrent: vi.fn(),
       getTorrentStreamUrl: vi.fn(),
-      getTorrentStatus: vi.fn(),
       getSubtitleVtt: vi.fn(),
       getVideoMetadata: vi.fn().mockResolvedValue(emptyMetadata),
-      subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
-        const runInitial = async () => {
-          try {
-            const status = await mockTorrentRepository.getTorrentStatus("");
-            if (status) onUpdate([status]);
-          } catch {}
+      subscribeTorrents: vi.fn().mockImplementation(async (onUpdate) => {
+        const runUpdate = async () => {
+          await Promise.resolve();
+          if (nextStatusError !== null) {
+            const err = nextStatusError;
+            nextStatusError = null;
+            throw err;
+          }
+          if (currentStatus) onUpdate([currentStatus]);
         };
-        runInitial();
 
-        const interval = setInterval(async () => {
-          try {
-            const status = await mockTorrentRepository.getTorrentStatus("");
-            if (status) onUpdate([status]);
-          } catch {}
+        runUpdate().catch(() => {});
+
+        const interval = setInterval(() => {
+          runUpdate().catch(() => {});
         }, 1500);
 
-        return Promise.resolve(() => clearInterval(interval));
+        return () => clearInterval(interval);
       }),
       setTorrentSubject: vi.fn().mockResolvedValue(undefined),
       clearTorrentSubject: vi.fn().mockResolvedValue(undefined),
@@ -166,9 +169,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
 
     renderPlayer(
       "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
@@ -202,9 +203,7 @@ describe("Player 页面组件", () => {
       peers_total: 0,
       trackers: [],
     };
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      finishedStatus,
-    );
+    currentStatus = finishedStatus;
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1500);
@@ -218,9 +217,7 @@ describe("Player 页面组件", () => {
     expect(screen.getByText("已完成")).toBeInTheDocument();
 
     // Polling error (should not crash page)
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockRejectedValueOnce(
-      "Fetch status error",
-    );
+    nextStatusError = "Fetch status error";
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1500);
@@ -262,7 +259,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "stream_url",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "视频",
       progress_bytes: 0,
@@ -274,7 +271,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
 
     renderPlayer(
       "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
@@ -315,7 +312,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "stream_url",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "视频",
       progress_bytes: 0,
@@ -327,7 +324,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
 
     // 1. Has magnet parameter in history
     const render1 = renderPlayer(
@@ -385,7 +382,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1/stream",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -397,7 +394,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
 
     let resolveUnsubscribePromise: (value: any) => void = () => {};
     const unsubscribePromise = new Promise<any>((resolve) => {
@@ -450,9 +447,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({ tracks: mockSubtracks }),
     );
@@ -496,9 +491,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockRejectedValue(
       new Error("Failed to load metadata"),
     );
@@ -541,9 +534,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({ tracks: mockSubtracks }),
     );
@@ -581,9 +572,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
       "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
     );
@@ -669,7 +658,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -681,7 +670,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
 
     renderPlayer("/play/hash123/0?fileName=test.mp4");
 
@@ -796,16 +785,8 @@ describe("Player 页面组件", () => {
   it("应该支持从 React Router state 获取视频标题和封面，并处理未加载完成时的 unmount", async () => {
     vi.useFakeTimers();
 
-    let resolveStatus: any;
-    const statusPromise = new Promise<any>((resolve) => {
-      resolveStatus = resolve;
-    });
-
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
-    );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockReturnValue(
-      statusPromise,
     );
 
     const { unmount } = render(
@@ -837,21 +818,7 @@ describe("Player 页面组件", () => {
 
     unmount();
 
-    await act(async () => {
-      resolveStatus({
-        info_hash: "hash123",
-        name: "测试视频",
-        progress_bytes: 400,
-        total_bytes: 1000,
-        finished: false,
-        download_speed_bytes_per_sec: 100,
-        upload_speed_bytes_per_sec: 100,
-        paused: false,
-        peers_connected: 0,
-        peers_total: 0,
-        trackers: [],
-      });
-    });
+    // Player 通过 TorrentStatusContext 获取状态，无需手动 resolve status
 
     vi.useRealTimers();
   });
@@ -876,9 +843,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
 
     let triggerUpdate: any;
     vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
@@ -908,7 +873,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -920,7 +885,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
 
     render(
       <DIProvider value={mockContainer}>
@@ -972,9 +937,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         tracks: [{ id: 1, language: "eng", title: "English" } as any],
@@ -1005,7 +968,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -1017,7 +980,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockReturnValue(
       metadataPromise,
     );
@@ -1054,7 +1017,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -1066,7 +1029,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockReturnValue(
       metadataPromise,
     );
@@ -1092,7 +1055,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -1104,7 +1067,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         tracks: [
@@ -1268,7 +1231,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -1280,7 +1243,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         tracks: [
@@ -1322,7 +1285,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -1334,7 +1297,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         tracks: [
@@ -1585,7 +1548,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -1597,7 +1560,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         tracks: [
@@ -1673,9 +1636,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         chapters: [
@@ -1735,9 +1696,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         chapters: [
@@ -1789,9 +1748,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         chapters: [
@@ -1848,9 +1805,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue(
-      mockStatus,
-    );
+    currentStatus = mockStatus;
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         video_info: {
@@ -1904,7 +1859,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -1916,7 +1871,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata(),
     );
@@ -2001,7 +1956,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 1000,
@@ -2013,7 +1968,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     // 第一次解析返回空元数据，触发进度 100% 时的立即刷新
     vi.mocked(mockTorrentRepository.getVideoMetadata)
       .mockResolvedValueOnce(null as unknown as VideoMetadata)
@@ -2038,7 +1993,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -2050,7 +2005,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         tracks: [{ id: 7, language: "eng", title: "", codec: "S_TEXT/UTF8" }],
@@ -2083,7 +2038,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -2095,7 +2050,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         tracks: [
@@ -2136,7 +2091,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -2151,7 +2106,7 @@ describe("Player 页面组件", () => {
         "udp://tracker1.example.com:6969",
         "udp://tracker2.example.com:1337",
       ],
-    });
+    };
 
     renderPlayer("/play/hash123/0");
 
@@ -2175,7 +2130,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -2187,7 +2142,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
 
     renderPlayer("/play/hash123/0");
 
@@ -2206,7 +2161,7 @@ describe("Player 页面组件", () => {
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
       "http://127.0.0.1:12345/stream/hash123/0",
     );
-    vi.mocked(mockTorrentRepository.getTorrentStatus).mockResolvedValue({
+    currentStatus = {
       info_hash: "hash123",
       name: "测试视频",
       progress_bytes: 400,
@@ -2218,7 +2173,7 @@ describe("Player 页面组件", () => {
       peers_connected: 0,
       peers_total: 0,
       trackers: [],
-    });
+    };
     vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
       makeVideoMetadata({
         video_info: {

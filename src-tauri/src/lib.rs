@@ -46,19 +46,6 @@ impl Default for AddMagnetTracker {
     }
 }
 
-pub struct SubscriptionTracker {
-    // Maps subscription_id to (window_label, session_id)
-    pub subscriptions: Arc<Mutex<HashMap<String, (String, String)>>>,
-}
-
-impl Default for SubscriptionTracker {
-    fn default() -> Self {
-        Self {
-            subscriptions: Arc::new(Mutex::new(HashMap::new())),
-        }
-    }
-}
-
 #[tauri::command]
 async fn cancel_search(
     trace_id: String,
@@ -231,17 +218,6 @@ async fn cancel_add_magnet(
 }
 
 #[tauri::command]
-async fn torrent_get_status(
-    info_hash: &str,
-    manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<TorrentStatusInfo, CoreError> {
-    manager
-        .get_torrent_status(info_hash)
-        .await
-        .ok_or(CoreError::TorrentNotFound)
-}
-
-#[tauri::command]
 async fn torrent_get_stream_url(
     info_hash: &str,
     file_id: usize,
@@ -339,13 +315,6 @@ async fn torrent_delete(
 }
 
 #[tauri::command]
-async fn torrent_list(
-    manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> Result<Vec<TorrentStatusInfo>, CoreError> {
-    Ok(manager.list_torrents().await)
-}
-
-#[tauri::command]
 async fn torrent_set_subject(
     info_hash: &str,
     subject_id: u64,
@@ -413,57 +382,19 @@ async fn collection_remove(
 
 #[tauri::command]
 async fn torrent_subscribe(
-    window: tauri::Window,
-    subscription_id: String,
-    session_id: String,
     on_event: tauri::ipc::Channel<Vec<TorrentStatusInfo>>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-    tracker: tauri::State<'_, SubscriptionTracker>,
 ) -> Result<(), CoreError> {
-    let window_label = window.label().to_string();
-
-    let subs_clone = tracker.subscriptions.clone();
-    if let Ok(mut subs) = tracker.subscriptions.lock() {
-        // Find and remove any subscriptions that belong to the same window but a different session
-        subs.retain(|_, (w_label, s_id)| !(w_label == &window_label && s_id != &session_id));
-
-        // Insert the new subscription
-        subs.insert(subscription_id.clone(), (window_label, session_id));
-    }
-
     let manager = manager.inner().clone();
     tauri::async_runtime::spawn(async move {
         loop {
-            // Check if subscription is still active
-            {
-                let active = if let Ok(subs) = subs_clone.lock() {
-                    subs.contains_key(&subscription_id)
-                } else {
-                    false
-                };
-                if !active {
-                    break;
-                }
-            }
-
             let torrents = manager.list_torrents().await;
             if on_event.send(torrents).is_err() {
                 break;
             }
-            tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(3000)).await;
         }
     });
-    Ok(())
-}
-
-#[tauri::command]
-async fn torrent_unsubscribe(
-    subscription_id: String,
-    tracker: tauri::State<'_, SubscriptionTracker>,
-) -> Result<(), CoreError> {
-    if let Ok(mut subs) = tracker.subscriptions.lock() {
-        subs.remove(&subscription_id);
-    }
     Ok(())
 }
 
@@ -726,7 +657,6 @@ pub fn run() {
                 app.manage(Arc::new(collection_service));
                 app.manage(SearchTracker::default());
                 app.manage(AddMagnetTracker::default());
-                app.manage(SubscriptionTracker::default());
                 Ok(())
             })
         })
@@ -735,7 +665,6 @@ pub fn run() {
             cancel_search,
             torrent_add_magnet,
             cancel_add_magnet,
-            torrent_get_status,
             torrent_get_stream_url,
             iptv_proxy_base_url,
             iptv_resolve_stream,
@@ -743,7 +672,6 @@ pub fn run() {
             torrent_pause,
             torrent_resume,
             torrent_delete,
-            torrent_list,
             torrent_set_subject,
             torrent_clear_subject,
             collection_get_all,
@@ -751,7 +679,6 @@ pub fn run() {
             collection_add,
             collection_remove,
             torrent_subscribe,
-            torrent_unsubscribe,
             settings_get,
             settings_set_download_dir,
             settings_set_proxy,

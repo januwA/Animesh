@@ -1,18 +1,13 @@
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import type { NotificationRepository } from "../../domain/notification/NotificationRepository";
-import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 
 export class NotifyDownloadCompletionUseCase {
   private notifiedHashes: Set<string> = new Set();
   private isFirstRun = true;
 
-  constructor(
-    private torrentRepository: TorrentRepository,
-    private notificationRepository: NotificationRepository,
-  ) {}
+  constructor(private notificationRepository: NotificationRepository) {}
 
-  async execute(list?: TorrentStatusInfo[]): Promise<void> {
-    const torrents = list || (await this.torrentRepository.listTorrents());
+  async execute(torrents: TorrentStatusInfo[]): Promise<void> {
     for (const torrent of torrents) {
       if (torrent.finished) {
         if (this.isFirstRun) {
