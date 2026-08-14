@@ -216,12 +216,13 @@ fn cancel_add_magnet(trace_id: String, tracker: tauri::State<'_, AddMagnetTracke
 }
 
 #[tauri::command]
-fn torrent_get_status(
+async fn torrent_get_status(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<TorrentStatusInfo, CoreError> {
     manager
         .get_torrent_status(info_hash)
+        .await
         .ok_or(CoreError::TorrentNotFound)
 }
 
@@ -254,12 +255,13 @@ async fn iptv_resolve_stream(
 }
 
 #[tauri::command]
-fn torrent_get_files(
+async fn torrent_get_files(
     info_hash: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<Vec<FileDetails>, CoreError> {
     manager
         .get_torrent_files(info_hash)
+        .await
         .ok_or(CoreError::TorrentNotFound)
 }
 
@@ -316,10 +318,10 @@ async fn torrent_delete(
 }
 
 #[tauri::command]
-fn torrent_list(
+async fn torrent_list(
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<Vec<TorrentStatusInfo>, CoreError> {
-    Ok(manager.list_torrents())
+    Ok(manager.list_torrents().await)
 }
 
 #[tauri::command]
@@ -423,7 +425,7 @@ async fn torrent_subscribe(
                 }
             }
 
-            let torrents = manager.list_torrents();
+            let torrents = manager.list_torrents().await;
             if on_event.send(torrents).is_err() {
                 break;
             }
@@ -470,19 +472,19 @@ fn settings_set_ai_configs(
 }
 
 #[tauri::command]
-fn settings_set_max_download_speed(
+async fn settings_set_max_download_speed(
     max_speed: Option<u32>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
-    manager.set_max_download_speed(max_speed)
+    manager.set_max_download_speed(max_speed).await
 }
 
 #[tauri::command]
-fn settings_set_max_upload_speed(
+async fn settings_set_max_upload_speed(
     max_speed: Option<u32>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
-    manager.set_max_upload_speed(max_speed)
+    manager.set_max_upload_speed(max_speed).await
 }
 
 #[tauri::command]

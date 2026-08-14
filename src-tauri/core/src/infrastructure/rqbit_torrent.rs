@@ -238,7 +238,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         })
     }
 
-    fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
+    async fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
         let torrent = self.find_torrent_by_hex(info_hash_hex)?;
         let stats = torrent.stats();
 
@@ -297,7 +297,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         })
     }
 
-    fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
+    async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
         let is_startup = self.start_time.elapsed().as_secs() < 15;
         self.session.with_torrents(|iter| {
             iter.map(|(_, torrent)| {
@@ -383,7 +383,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         Ok(())
     }
 
-    fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
+    async fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
         let torrent = self.find_torrent_by_hex(info_hash_hex)?;
         torrent
             .with_metadata(|meta| {
@@ -400,7 +400,7 @@ impl TorrentRepository for RqbitTorrentRepository {
             .ok()
     }
 
-    fn get_file_reader(
+    async fn get_file_reader(
         &self,
         info_hash: &str,
         file_id: usize,
@@ -425,12 +425,12 @@ impl TorrentRepository for RqbitTorrentRepository {
         Ok(Box::new(tokio_file))
     }
 
-    fn set_max_download_speed(&self, bytes_per_sec: Option<u32>) {
+    async fn set_max_download_speed(&self, bytes_per_sec: Option<u32>) {
         let bps = bytes_per_sec.and_then(NonZeroU32::new);
         self.session.ratelimits.set_download_bps(bps);
     }
 
-    fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>) {
+    async fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>) {
         let bps = bytes_per_sec.and_then(NonZeroU32::new);
         self.session.ratelimits.set_upload_bps(bps);
     }

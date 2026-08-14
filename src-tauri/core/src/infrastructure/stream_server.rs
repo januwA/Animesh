@@ -96,12 +96,14 @@ async fn stream_handler(
     let torrent_repo = state.torrent_repo;
     let files = torrent_repo
         .get_torrent_files(&info_hash_hex)
+        .await
         .ok_or(StatusCode::NOT_FOUND)?;
     let file_details = files.get(file_id).ok_or(StatusCode::NOT_FOUND)?;
     let file_len = file_details.len;
 
     let stream = torrent_repo
         .get_file_reader(&info_hash_hex, file_id)
+        .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let range_header = headers.get(header::RANGE).and_then(|v| v.to_str().ok());

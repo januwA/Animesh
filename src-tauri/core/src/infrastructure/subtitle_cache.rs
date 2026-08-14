@@ -1,4 +1,5 @@
 use crate::domain::subtitles::SubtitleCache;
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::RwLock;
@@ -38,8 +39,9 @@ impl InMemorySubtitleCache {
     }
 }
 
+#[async_trait]
 impl SubtitleCache for InMemorySubtitleCache {
-    fn get_vtt(
+    async fn get_vtt(
         &self,
         info_hash: &str,
         file_id: usize,
@@ -56,7 +58,7 @@ impl SubtitleCache for InMemorySubtitleCache {
         }
     }
 
-    fn set_vtt(
+    async fn set_vtt(
         &self,
         info_hash: &str,
         file_id: usize,
@@ -73,7 +75,13 @@ impl SubtitleCache for InMemorySubtitleCache {
     }
 
     /// 记录一次解析失败。仅当文件指纹有效时记录，方便冷却失效判断。
-    fn set_failure(&self, key: &str, file_path: &Path, error: String, now: Option<SystemTime>) {
+    async fn set_failure(
+        &self,
+        key: &str,
+        file_path: &Path,
+        error: String,
+        now: Option<SystemTime>,
+    ) {
         let Some((mtime, len)) = file_fingerprint(file_path) else {
             return;
         };
@@ -93,7 +101,12 @@ impl SubtitleCache for InMemorySubtitleCache {
 
     /// 命中冷却期内的失败缓存时返回错误信息。
     /// 若文件指纹已变化（下载有进展）或已过期，返回 None 允许重新解析。
-    fn get_failure(&self, key: &str, file_path: &Path, now: Option<SystemTime>) -> Option<String> {
+    async fn get_failure(
+        &self,
+        key: &str,
+        file_path: &Path,
+        now: Option<SystemTime>,
+    ) -> Option<String> {
         let cache = self.failures.read().ok()?;
         let entry = cache.get(key)?;
         let now = now.unwrap_or_else(SystemTime::now);
@@ -110,9 +123,9 @@ mod tests {
     use super::*;
     use std::io::Write;
 
-    #[test]
+    #[tokio::test]
     #[allow(non_snake_case)]
-    fn 测试_文件长度变化后VTT缓存应失效() {
+    async fn 测试_文件长度变化后VTT缓存应失效() {
         let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_test_len.mkv");
         std::fs::File::create(&temp_path)
@@ -120,9 +133,11 @@ mod tests {
             .write_all(b"12345")
             .unwrap();
 
-        cache.set_vtt("hash", 0, 1, &temp_path, "v1".to_string());
+        cache
+            .set_vtt("hash", 0, 1, &temp_path, "v1".to_string())
+            .await;
         assert_eq!(
-            cache.get_vtt("hash", 0, 1, &temp_path),
+            cache.get_vtt("hash", 0, 1, &temp_path).await,
             Some("v1".to_string())
         );
 
@@ -131,14 +146,14 @@ mod tests {
             .unwrap()
             .write_all(b"123456789")
             .unwrap();
-        assert_eq!(cache.get_vtt("hash", 0, 1, &temp_path), None);
+        assert_eq!(cache.get_vtt("hash", 0, 1, &temp_path).await, None);
 
         let _ = std::fs::remove_file(&temp_path);
     }
 
-    #[test]
+    #[tokio::test]
     #[allow(non_snake_case)]
-    fn 测试_冷却期内命中失败缓存() {
+    async fn 测试_冷却期内命中失败缓存() {
         let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_hit.mkv");
         std::fs::File::create(&temp_path)
@@ -147,23 +162,25 @@ mod tests {
             .unwrap();
 
         let now = std::time::SystemTime::now();
-        cache.set_failure(
-            "hash:0:1",
-            &temp_path,
-            "Failed to parse MKV: CantFindCluster".to_string(),
-            Some(now),
-        );
+        cache
+            .set_failure(
+                "hash:0:1",
+                &temp_path,
+                "Failed to parse MKV: CantFindCluster".to_string(),
+                Some(now),
+            )
+            .await;
         assert_eq!(
-            cache.get_failure("hash:0:1", &temp_path, Some(now)),
+            cache.get_failure("hash:0:1", &temp_path, Some(now)).await,
             Some("Failed to parse MKV: CantFindCluster".to_string())
         );
 
         let _ = std::fs::remove_file(&temp_path);
     }
 
-    #[test]
+    #[tokio::test]
     #[allow(non_snake_case)]
-    fn 测试_冷却过期后允许重新解析() {
+    async fn 测试_冷却过期后允许重新解析() {
         let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_expired.mkv");
         std::fs::File::create(&temp_path)
@@ -172,19 +189,23 @@ mod tests {
             .unwrap();
 
         let now = std::time::SystemTime::now();
-        cache.set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now));
+        cache
+            .set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now))
+            .await;
         let expired = now + FAILURE_COOLDOWN + std::time::Duration::from_secs(1);
         assert_eq!(
-            cache.get_failure("hash:0:1", &temp_path, Some(expired)),
+            cache
+                .get_failure("hash:0:1", &temp_path, Some(expired))
+                .await,
             None
         );
 
         let _ = std::fs::remove_file(&temp_path);
     }
 
-    #[test]
+    #[tokio::test]
     #[allow(non_snake_case)]
-    fn 测试_文件指纹变化后冷却失效() {
+    async fn 测试_文件指纹变化后冷却失效() {
         let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_changed.mkv");
         std::fs::File::create(&temp_path)
@@ -193,21 +214,26 @@ mod tests {
             .unwrap();
 
         let now = std::time::SystemTime::now();
-        cache.set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now));
+        cache
+            .set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now))
+            .await;
 
         // 文件增长 → len 变化 → 冷却失效，允许重新解析
         std::fs::File::create(&temp_path)
             .unwrap()
             .write_all(b"incomplete-more-data")
             .unwrap();
-        assert_eq!(cache.get_failure("hash:0:1", &temp_path, Some(now)), None);
+        assert_eq!(
+            cache.get_failure("hash:0:1", &temp_path, Some(now)).await,
+            None
+        );
 
         let _ = std::fs::remove_file(&temp_path);
     }
 
-    #[test]
+    #[tokio::test]
     #[allow(non_snake_case)]
-    fn 测试_冷却key不同互不影响() {
+    async fn 测试_冷却key不同互不影响() {
         let cache = InMemorySubtitleCache::new();
         let temp_path = std::env::temp_dir().join("subtitle_cache_failure_key.mkv");
         std::fs::File::create(&temp_path)
@@ -216,8 +242,13 @@ mod tests {
             .unwrap();
 
         let now = std::time::SystemTime::now();
-        cache.set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now));
-        assert_eq!(cache.get_failure("hash:0:2", &temp_path, Some(now)), None);
+        cache
+            .set_failure("hash:0:1", &temp_path, "boom".to_string(), Some(now))
+            .await;
+        assert_eq!(
+            cache.get_failure("hash:0:2", &temp_path, Some(now)).await,
+            None
+        );
 
         let _ = std::fs::remove_file(&temp_path);
     }

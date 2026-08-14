@@ -3,6 +3,7 @@ use crate::domain::subtitles::{
     SubtitleExtractor, SubtitleTrackInfo, VideoInfo, VideoMetadata, VideoTrackInfo,
 };
 use crate::error::{CoreError, CoreResult};
+use async_trait::async_trait;
 use matroska_demuxer::{
     ContentCompAlgo, ContentEncoding, ContentEncodingValue, MatroskaFile, TrackType,
 };
@@ -466,12 +467,13 @@ pub fn extract_video_metadata(path: &Path) -> CoreResult<VideoMetadata> {
 
 pub struct MatroskaSubtitleExtractor;
 
+#[async_trait]
 impl SubtitleExtractor for MatroskaSubtitleExtractor {
-    fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, CoreError> {
+    async fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, CoreError> {
         extract_video_metadata(path)
     }
 
-    fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, CoreError> {
+    async fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, CoreError> {
         extract_subtitle_vtt(path, track_id)
     }
 }
@@ -481,35 +483,35 @@ mod tests {
     use super::*;
     use std::io::Write;
 
-    #[test]
+    #[tokio::test]
     #[allow(non_snake_case)]
-    fn 测试_提取非存在文件的元数据_应返回错误() {
+    async fn 测试_提取非存在文件的元数据_应返回错误() {
         let extractor = MatroskaSubtitleExtractor;
         let path = Path::new("non_existent_file.mkv");
-        let result = extractor.extract_video_metadata(path);
+        let result = extractor.extract_video_metadata(path).await;
         assert!(matches!(result, Err(CoreError::Io(_))));
     }
 
-    #[test]
+    #[tokio::test]
     #[allow(non_snake_case)]
-    fn 测试_提取非存在文件的字幕VTT_应返回错误() {
+    async fn 测试_提取非存在文件的字幕VTT_应返回错误() {
         let extractor = MatroskaSubtitleExtractor;
         let path = Path::new("non_existent_file.mkv");
-        let result = extractor.extract_subtitle_vtt(path, 1);
+        let result = extractor.extract_subtitle_vtt(path, 1).await;
         assert!(matches!(result, Err(CoreError::Io(_))));
     }
 
-    #[test]
+    #[tokio::test]
     #[allow(non_snake_case)]
-    fn 测试_提取无效格式文件的元数据_应返回解析错误() {
+    async fn 测试_提取无效格式文件的元数据_应返回解析错误() {
         let extractor = MatroskaSubtitleExtractor;
         let temp_path = std::env::temp_dir().join("invalid_mkv_test_matroska.mkv");
         std::fs::write(&temp_path, b"invalid mkv data").unwrap();
 
-        let result_metadata = extractor.extract_video_metadata(&temp_path);
+        let result_metadata = extractor.extract_video_metadata(&temp_path).await;
         assert!(matches!(result_metadata, Err(CoreError::Demux(_))));
 
-        let result_vtt = extractor.extract_subtitle_vtt(&temp_path, 1);
+        let result_vtt = extractor.extract_subtitle_vtt(&temp_path, 1).await;
         assert!(matches!(result_vtt, Err(CoreError::Demux(_))));
 
         let _ = std::fs::remove_file(&temp_path);

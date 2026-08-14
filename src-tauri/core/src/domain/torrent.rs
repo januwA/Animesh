@@ -51,22 +51,22 @@ impl<T: tokio::io::AsyncRead + tokio::io::AsyncSeek + Unpin + Send> AsyncReadSee
 #[async_trait]
 pub trait TorrentRepository: Send + Sync {
     async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, CoreError>;
-    fn get_torrent_status(&self, info_hash: &str) -> Option<TorrentStatusInfo>;
-    fn list_torrents(&self) -> Vec<TorrentStatusInfo>;
+    async fn get_torrent_status(&self, info_hash: &str) -> Option<TorrentStatusInfo>;
+    async fn list_torrents(&self) -> Vec<TorrentStatusInfo>;
     async fn pause_torrent(&self, info_hash: &str) -> Result<(), CoreError>;
     async fn resume_torrent(&self, info_hash: &str) -> Result<(), CoreError>;
     async fn delete_torrent(&self, info_hash: &str, delete_files: bool) -> Result<(), CoreError>;
-    fn get_torrent_files(&self, info_hash: &str) -> Option<Vec<FileDetails>>;
+    async fn get_torrent_files(&self, info_hash: &str) -> Option<Vec<FileDetails>>;
 
-    fn get_file_reader(
+    async fn get_file_reader(
         &self,
         info_hash: &str,
         file_id: usize,
     ) -> Result<Box<dyn AsyncReadSeek>, CoreError>;
 
-    fn set_max_download_speed(&self, bytes_per_sec: Option<u32>);
+    async fn set_max_download_speed(&self, bytes_per_sec: Option<u32>);
 
-    fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>);
+    async fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>);
 
     /// 绑定下载资源到 Bangumi 条目。已存在同名绑定时会覆盖。
     async fn set_subject_binding(&self, info_hash: &str, subject_id: u64, subject_name: String);

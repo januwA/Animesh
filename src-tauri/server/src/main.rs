@@ -316,7 +316,7 @@ async fn torrent_add_magnet_handler(
 }
 
 async fn torrent_list_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    axum::Json(state.manager.list_torrents())
+    axum::Json(state.manager.list_torrents().await)
 }
 
 async fn torrent_subscribe_handler(
@@ -326,10 +326,13 @@ async fn torrent_subscribe_handler(
     let stream = tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(
         std::time::Duration::from_millis(1500),
     ))
-    .map(move |_| {
-        let torrents = manager.list_torrents();
-        let json = serde_json::to_string(&torrents).unwrap_or_default();
-        Ok(Event::default().data(json))
+    .then(move |_| {
+        let torrents_mgr = manager.clone();
+        async move {
+            let torrents = torrents_mgr.list_torrents().await;
+            let json = serde_json::to_string(&torrents).unwrap_or_default();
+            Ok::<_, Infallible>(Event::default().data(json))
+        }
     });
 
     Sse::new(stream).keep_alive(KeepAlive::default())
@@ -342,6 +345,7 @@ async fn torrent_get_status_handler(
     let status = state
         .manager
         .get_torrent_status(&info_hash)
+        .await
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
     Ok(axum::Json(status))
 }
@@ -353,6 +357,7 @@ async fn torrent_get_files_handler(
     let files = state
         .manager
         .get_torrent_files(&info_hash)
+        .await
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
     Ok(axum::Json(files))
 }
@@ -530,6 +535,7 @@ async fn settings_set_max_download_speed_handler(
     state
         .manager
         .set_max_download_speed(payload.max_speed)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
@@ -546,6 +552,7 @@ async fn settings_set_max_upload_speed_handler(
     state
         .manager
         .set_max_upload_speed(payload.max_speed)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }

@@ -48,8 +48,8 @@ impl TorrentManager {
         download_dir: Arc<RwLock<PathBuf>>,
         settings_path: PathBuf,
         proxy: Option<String>,
-        max_download_speed: Option<u32>,
-        max_upload_speed: Option<u32>,
+        _max_download_speed: Option<u32>,
+        _max_upload_speed: Option<u32>,
         port: u16,
         torrent_repo: Arc<dyn TorrentRepository>,
         crawler_repo: Arc<dyn CrawlerRepository>,
@@ -57,17 +57,7 @@ impl TorrentManager {
         subtitle_extractor: Arc<dyn SubtitleExtractor>,
         stream_prober: Arc<dyn StreamProber>,
     ) -> Self {
-        // 应用初始限速
-        if let Some(speed_kbps) = max_download_speed {
-            if speed_kbps > 0 {
-                torrent_repo.set_max_download_speed(Some(speed_kbps.saturating_mul(1024)));
-            }
-        }
-        if let Some(speed_kbps) = max_upload_speed {
-            if speed_kbps > 0 {
-                torrent_repo.set_max_upload_speed(Some(speed_kbps.saturating_mul(1024)));
-            }
-        }
+        // 注：初始速度限制已改为异步，应在初始化后通过 set_max_download_speed 和 set_max_upload_speed 调用
 
         Self {
             torrent_repo,
@@ -79,6 +69,24 @@ impl TorrentManager {
             download_dir,
             proxy: Arc::new(RwLock::new(proxy)),
             settings_path,
+        }
+    }
+
+    /// 异步初始化方法，应用初始速度限制。
+    pub async fn apply_initial_speed_limits(
+        &self,
+        max_download_speed: Option<u32>,
+        max_upload_speed: Option<u32>,
+    ) {
+        if let Some(speed_kbps) = max_download_speed {
+            if speed_kbps > 0 {
+                let _ = self.set_max_download_speed(Some(speed_kbps)).await;
+            }
+        }
+        if let Some(speed_kbps) = max_upload_speed {
+            if speed_kbps > 0 {
+                let _ = self.set_max_upload_speed(Some(speed_kbps)).await;
+            }
         }
     }
 
@@ -201,9 +209,10 @@ impl TorrentManager {
         self.get_settings().ok().and_then(|s| s.max_download_speed)
     }
 
-    pub fn set_max_download_speed(&self, max_speed: Option<u32>) -> CoreResult<()> {
+    pub async fn set_max_download_speed(&self, max_speed: Option<u32>) -> CoreResult<()> {
         self.torrent_repo
-            .set_max_download_speed(speed_kbps_to_bytes_per_sec(max_speed));
+            .set_max_download_speed(speed_kbps_to_bytes_per_sec(max_speed))
+            .await;
         self.update_settings(|s| s.max_download_speed = max_speed)
     }
 
@@ -211,9 +220,10 @@ impl TorrentManager {
         self.get_settings().ok().and_then(|s| s.max_upload_speed)
     }
 
-    pub fn set_max_upload_speed(&self, max_speed: Option<u32>) -> CoreResult<()> {
+    pub async fn set_max_upload_speed(&self, max_speed: Option<u32>) -> CoreResult<()> {
         self.torrent_repo
-            .set_max_upload_speed(speed_kbps_to_bytes_per_sec(max_speed));
+            .set_max_upload_speed(speed_kbps_to_bytes_per_sec(max_speed))
+            .await;
         self.update_settings(|s| s.max_upload_speed = max_speed)
     }
 
@@ -251,8 +261,8 @@ impl TorrentManager {
             .await
     }
 
-    pub fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
-        self.torrent_repo.list_torrents()
+    pub async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
+        self.torrent_repo.list_torrents().await
     }
 
     pub async fn set_subject_binding(
@@ -274,12 +284,12 @@ impl TorrentManager {
         self.torrent_repo.add_magnet(magnet).await
     }
 
-    pub fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
-        self.torrent_repo.get_torrent_status(info_hash_hex)
+    pub async fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
+        self.torrent_repo.get_torrent_status(info_hash_hex).await
     }
 
-    pub fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
-        self.torrent_repo.get_torrent_files(info_hash_hex)
+    pub async fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
+        self.torrent_repo.get_torrent_files(info_hash_hex).await
     }
 
     /// 按引擎分发搜索请求，返回搜索结果。
@@ -305,6 +315,7 @@ impl TorrentManager {
         let download_dir = self.get_download_dir();
         let files = self
             .get_torrent_files(info_hash)
+            .await
             .ok_or(CoreError::TorrentNotFound)?;
         let file_details = files
             .iter()
@@ -319,7 +330,7 @@ impl TorrentManager {
             return Err(CoreError::UnsupportedVideoFormat);
         }
 
-        self.subtitle_extractor.extract_video_metadata(&path)
+        self.subtitle_extractor.extract_video_metadata(&path).await
     }
 
     /// 提取字幕 VTT。命中缓存直接返回；失败带冷却，避免下载未完成时反复读取整个 MKV。
@@ -332,6 +343,7 @@ impl TorrentManager {
         let download_dir = self.get_download_dir();
         let files = self
             .get_torrent_files(info_hash)
+            .await
             .ok_or(CoreError::TorrentNotFound)?;
         let file_details = files
             .iter()
@@ -346,31 +358,41 @@ impl TorrentManager {
         let cache = self.subtitle_cache.clone();
         let cache_path = path.clone();
         let failure_key = format!("{}:{}:{}", info_hash, file_id, track_id);
-        if let Some(error) = cache.get_failure(&failure_key, &cache_path, None) {
+        if let Some(error) = cache.get_failure(&failure_key, &cache_path, None).await {
             return Err(CoreError::Message(error));
         }
-        if let Some(vtt) = cache.get_vtt(info_hash, file_id, track_id, &cache_path) {
+        if let Some(vtt) = cache
+            .get_vtt(info_hash, file_id, track_id, &cache_path)
+            .await
+        {
             return Ok(vtt);
         }
 
         let extractor = self.subtitle_extractor.clone();
         let path_for_parse = path.clone();
-        let parse = tokio::task::spawn_blocking(move || {
-            extractor.extract_subtitle_vtt(&path_for_parse, track_id)
-        });
+        let parse = async move {
+            extractor
+                .extract_subtitle_vtt(&path_for_parse, track_id)
+                .await
+        };
         match tokio::time::timeout(Duration::from_secs(15), parse).await {
-            Ok(Ok(Ok(vtt))) => {
-                cache.set_vtt(info_hash, file_id, track_id, &cache_path, vtt.clone());
+            Ok(Ok(vtt)) => {
+                cache
+                    .set_vtt(info_hash, file_id, track_id, &cache_path, vtt.clone())
+                    .await;
                 Ok(vtt)
             }
-            Ok(Ok(Err(e))) => {
-                cache.set_failure(&failure_key, &cache_path, e.to_string(), None);
+            Ok(Err(e)) => {
+                cache
+                    .set_failure(&failure_key, &cache_path, e.to_string(), None)
+                    .await;
                 Err(e)
             }
-            Ok(Err(e)) => Err(CoreError::Message(format!("Task spawn error: {}", e))),
             Err(_) => {
                 let message = CoreError::SubtitleParseTimeout;
-                cache.set_failure(&failure_key, &cache_path, message.to_string(), None);
+                cache
+                    .set_failure(&failure_key, &cache_path, message.to_string(), None)
+                    .await;
                 Err(message)
             }
         }
@@ -600,10 +622,10 @@ mod tests {
         async fn add_magnet(&self, _magnet: &str) -> CoreResult<AddTorrentResult> {
             self.add_result.clone()
         }
-        fn get_torrent_status(&self, _info_hash: &str) -> Option<TorrentStatusInfo> {
+        async fn get_torrent_status(&self, _info_hash: &str) -> Option<TorrentStatusInfo> {
             self.status.clone()
         }
-        fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
+        async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
             self.status.clone().into_iter().collect()
         }
         async fn pause_torrent(&self, _info_hash: &str) -> CoreResult<()> {
@@ -615,18 +637,18 @@ mod tests {
         async fn delete_torrent(&self, _info_hash: &str, _delete_files: bool) -> CoreResult<()> {
             Ok(())
         }
-        fn get_torrent_files(&self, _info_hash: &str) -> Option<Vec<FileDetails>> {
+        async fn get_torrent_files(&self, _info_hash: &str) -> Option<Vec<FileDetails>> {
             self.files.clone()
         }
-        fn get_file_reader(
+        async fn get_file_reader(
             &self,
             _info_hash: &str,
             _file_id: usize,
         ) -> Result<Box<dyn AsyncReadSeek>, CoreError> {
             Err("未配置读取器".to_string().into())
         }
-        fn set_max_download_speed(&self, _bytes_per_sec: Option<u32>) {}
-        fn set_max_upload_speed(&self, _bytes_per_sec: Option<u32>) {}
+        async fn set_max_download_speed(&self, _bytes_per_sec: Option<u32>) {}
+        async fn set_max_upload_speed(&self, _bytes_per_sec: Option<u32>) {}
         async fn set_subject_binding(
             &self,
             info_hash: &str,
@@ -711,8 +733,9 @@ mod tests {
         set_failure_calls: Arc<std::sync::Mutex<usize>>,
     }
 
+    #[async_trait::async_trait]
     impl SubtitleCache for MockSubtitleCache {
-        fn get_vtt(
+        async fn get_vtt(
             &self,
             _info_hash: &str,
             _file_id: usize,
@@ -721,7 +744,7 @@ mod tests {
         ) -> Option<String> {
             self.vtt_result.clone()
         }
-        fn set_vtt(
+        async fn set_vtt(
             &self,
             _info_hash: &str,
             _file_id: usize,
@@ -731,7 +754,7 @@ mod tests {
         ) {
             *self.set_vtt_calls.lock().unwrap() += 1;
         }
-        fn set_failure(
+        async fn set_failure(
             &self,
             _key: &str,
             _file_path: &Path,
@@ -740,7 +763,7 @@ mod tests {
         ) {
             *self.set_failure_calls.lock().unwrap() += 1;
         }
-        fn get_failure(
+        async fn get_failure(
             &self,
             _key: &str,
             _file_path: &Path,
@@ -755,11 +778,12 @@ mod tests {
         vtt_result: CoreResult<String>,
     }
 
+    #[async_trait::async_trait]
     impl SubtitleExtractor for MockSubtitleExtractor {
-        fn extract_video_metadata(&self, _path: &Path) -> CoreResult<VideoMetadata> {
+        async fn extract_video_metadata(&self, _path: &Path) -> CoreResult<VideoMetadata> {
             self.metadata_result.clone()
         }
-        fn extract_subtitle_vtt(&self, _path: &Path, _track_id: u64) -> CoreResult<String> {
+        async fn extract_subtitle_vtt(&self, _path: &Path, _track_id: u64) -> CoreResult<String> {
             self.vtt_result.clone()
         }
     }
@@ -1277,6 +1301,7 @@ mod tests {
 
         manager
             .set_max_download_speed(Some(256))
+            .await
             .expect("设置下载限速应成功");
         assert_eq!(manager.get_max_download_speed(), Some(256));
     }
@@ -1338,8 +1363,8 @@ mod tests {
             Arc::new(MockStreamProber(StreamKind::Hls)),
         );
 
-        assert_eq!(manager.list_torrents().len(), 1);
-        assert!(manager.get_torrent_status("hash1").is_some());
+        assert_eq!(manager.list_torrents().await.len(), 1);
+        assert!(manager.get_torrent_status("hash1").await.is_some());
         assert!(manager.pause_torrent("hash1").await.is_ok());
         assert!(manager.resume_torrent("hash1").await.is_ok());
         assert!(manager.delete_torrent("hash1", false).await.is_ok());
@@ -1363,7 +1388,7 @@ mod tests {
         assert!(url.contains(test_hash));
 
         // 未找到种子时的 get_torrent_status 覆盖
-        assert!(manager.get_torrent_status(test_hash).is_none());
+        assert!(manager.get_torrent_status(test_hash).await.is_none());
 
         // 测试 HTTP 流式播放接口_未找到种子
         let hls_proxy = HlsProxyState::new(proxy_base_url(manager.port));
@@ -1421,11 +1446,11 @@ mod tests {
             .await
             .expect("初始化应成功");
 
-        assert!(manager.list_torrents().is_empty());
+        assert!(manager.list_torrents().await.is_empty());
 
         let test_hash = "3a2a3e0f438a2e1d74381395bb0e6840742fef8e";
 
-        assert!(manager.get_torrent_files(test_hash).is_none());
+        assert!(manager.get_torrent_files(test_hash).await.is_none());
         assert!(manager.pause_torrent(test_hash).await.is_err());
         assert!(manager.resume_torrent(test_hash).await.is_err());
         assert!(manager.delete_torrent(test_hash, false).await.is_err());
@@ -1466,7 +1491,7 @@ mod tests {
 
         assert_eq!(manager.get_max_upload_speed(), None);
 
-        manager.set_max_upload_speed(Some(128)).unwrap();
+        manager.set_max_upload_speed(Some(128)).await.unwrap();
         assert_eq!(manager.get_max_upload_speed(), Some(128));
 
         assert!(settings_path.exists());
@@ -1474,10 +1499,10 @@ mod tests {
         let parsed: AppSettings = serde_json::from_str(&content).unwrap();
         assert_eq!(parsed.max_upload_speed, Some(128));
 
-        manager.set_max_upload_speed(Some(0)).unwrap();
+        manager.set_max_upload_speed(Some(0)).await.unwrap();
         assert_eq!(manager.get_max_upload_speed(), Some(0));
 
-        manager.set_max_upload_speed(None).unwrap();
+        manager.set_max_upload_speed(None).await.unwrap();
         assert_eq!(manager.get_max_upload_speed(), None);
     }
 
@@ -1506,12 +1531,12 @@ mod tests {
         manager.set_proxy(Some(proxy.clone())).unwrap();
         assert_eq!(manager.get_proxy(), Some(proxy));
 
-        manager.set_max_download_speed(Some(0)).unwrap();
-        manager.set_max_download_speed(None).unwrap();
+        manager.set_max_download_speed(Some(0)).await.unwrap();
+        manager.set_max_download_speed(None).await.unwrap();
         assert_eq!(manager.get_max_download_speed(), None);
 
-        manager.set_max_upload_speed(Some(0)).unwrap();
-        manager.set_max_upload_speed(None).unwrap();
+        manager.set_max_upload_speed(Some(0)).await.unwrap();
+        manager.set_max_upload_speed(None).await.unwrap();
         assert_eq!(manager.get_max_upload_speed(), None);
 
         manager.set_ai_configs(None).unwrap();
