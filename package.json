@@ -15,7 +15,7 @@
     "tauri:android:apk": "tauri android build --apk --target aarch64",
     "test": "vitest run",
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml -p animesh_core -- --test-threads=1",
-    "test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml -p animesh_core --fail-under-lines 95 --fail-under-functions 95  --fail-under-regions 95 --ignore-filename-regex \"infrastructure\" --no-clean -- --test-threads=1",
+    "test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml -p animesh_core --fail-under-lines 98 --fail-under-functions 98  --fail-under-regions 98 --ignore-filename-regex \"infrastructure\" --no-clean -- --test-threads=1",
     "check:apply": "biome check --write --no-errors-on-unmatched",
     "check:error-handling": "tsx scripts/check-error-handling.ts",
     "check:application-params": "tsx scripts/check-application-params.ts",

@@ -1,5 +1,9 @@
 use animesh_core::application::collection_service::CollectionService;
-use animesh_core::application::torrent_manager::{AiConfig, AppSettings, TorrentManager};
+use animesh_core::application::search_service::SearchService;
+use animesh_core::application::settings_service::{AiConfig, AppSettings, SettingsService};
+use animesh_core::application::stream_service::StreamService;
+use animesh_core::application::subtitle_service::SubtitleService;
+use animesh_core::application::torrent_manager::TorrentManager;
 use animesh_core::domain::settings::SettingsRepository;
 use animesh_core::infrastructure::settings_repository::SqliteSettingsRepository;
 use anyhow::Context;
@@ -32,7 +36,11 @@ impl Default for SearchTracker {
 }
 
 struct AppState {
-    manager: Arc<TorrentManager>,
+    torrent_manager: Arc<TorrentManager>,
+    settings_service: Arc<SettingsService>,
+    search_service: Arc<SearchService>,
+    subtitle_service: Arc<SubtitleService>,
+    stream_service: Arc<StreamService>,
     collection_service: Arc<CollectionService>,
     search_tracker: Arc<SearchTracker>,
 }
@@ -134,19 +142,27 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(animesh_core::infrastructure::matroska_subtitles::MatroskaSubtitleExtractor);
     let stream_prober: Arc<dyn animesh_core::domain::stream::StreamProber> = Arc::new(hls_proxy);
 
-    let manager = TorrentManager::new(
-        download_dir_lock,
-        proxy,
-        port,
-        torrent_repo,
-        crawler_repo,
+    // 代理地址内存状态:与 SettingsService / SearchService 共享
+    let proxy_lock = Arc::new(RwLock::new(proxy));
+
+    let torrent_manager = TorrentManager::new(torrent_repo.clone());
+    let settings_service = SettingsService::new(
+        settings_repo,
+        torrent_repo.clone(),
+        download_dir_lock.clone(),
+        proxy_lock.clone(),
+    );
+    let search_service = SearchService::new(crawler_repo, proxy_lock.clone());
+    let subtitle_service = SubtitleService::new(
+        torrent_repo.clone(),
         subtitle_cache,
         subtitle_extractor,
-        stream_prober,
-        settings_repo,
+        download_dir_lock.clone(),
     );
+    let stream_service = StreamService::new(stream_prober, port);
+
     // 应用启动时持久化的初始速度限制（DB 已存值）
-    manager
+    settings_service
         .apply_initial_speed_limits(max_download_speed, max_upload_speed)
         .await;
 
@@ -155,7 +171,11 @@ async fn main() -> anyhow::Result<()> {
     ));
 
     let state = Arc::new(AppState {
-        manager: Arc::new(manager),
+        torrent_manager: Arc::new(torrent_manager),
+        settings_service: Arc::new(settings_service),
+        search_service: Arc::new(search_service),
+        subtitle_service: Arc::new(subtitle_service),
+        stream_service: Arc::new(stream_service),
         collection_service: Arc::new(collection_service),
         search_tracker: Arc::new(SearchTracker::default()),
     });
@@ -260,13 +280,13 @@ async fn search_torrents_handler(
     State(state): State<Arc<AppState>>,
     Query(query): Query<SearchQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let manager = state.manager.clone();
+    let search_service = state.search_service.clone();
     let tracker = state.search_tracker.clone();
     let trace_id = query.trace_id.clone();
     let keyword = query.keyword.clone();
     let engine = query.engine.clone();
 
-    let task = tokio::spawn(async move { manager.search(&engine, &keyword).await });
+    let task = tokio::spawn(async move { search_service.search(&engine, &keyword).await });
 
     let abort_handle = task.abort_handle();
     if let Ok(mut handles) = tracker.handles.lock() {
@@ -318,7 +338,7 @@ async fn torrent_add_magnet_handler(
     axum::Json(payload): axum::Json<AddMagnetInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let res = state
-        .manager
+        .torrent_manager
         .add_magnet(&payload.magnet)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -326,18 +346,18 @@ async fn torrent_add_magnet_handler(
 }
 
 async fn torrent_list_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    axum::Json(state.manager.list_torrents().await)
+    axum::Json(state.torrent_manager.list_torrents().await)
 }
 
 async fn torrent_subscribe_handler(
     State(state): State<Arc<AppState>>,
 ) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
-    let manager = state.manager.clone();
+    let torrent_manager = state.torrent_manager.clone();
     let stream = tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(
         std::time::Duration::from_millis(1500),
     ))
     .then(move |_| {
-        let torrents_mgr = manager.clone();
+        let torrents_mgr = torrent_manager.clone();
         async move {
             let torrents = torrents_mgr.list_torrents().await;
             let json = serde_json::to_string(&torrents).unwrap_or_default();
@@ -353,7 +373,7 @@ async fn torrent_get_status_handler(
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let status = state
-        .manager
+        .torrent_manager
         .get_torrent_status(&info_hash)
         .await
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
@@ -365,7 +385,7 @@ async fn torrent_get_files_handler(
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let files = state
-        .manager
+        .torrent_manager
         .get_torrent_files(&info_hash)
         .await
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
@@ -377,7 +397,7 @@ async fn torrent_get_stream_url_handler(
     Path((info_hash, file_id)): Path<(String, usize)>,
 ) -> impl IntoResponse {
     let external_url = std::env::var("ANIMESH_EXTERNAL_URL")
-        .unwrap_or_else(|_| format!("http://localhost:{}", state.manager.port));
+        .unwrap_or_else(|_| format!("http://localhost:{}", state.stream_service.port()));
     format!("{}/stream/{}/{}", external_url, info_hash, file_id)
 }
 
@@ -386,7 +406,7 @@ async fn torrent_pause_handler(
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .torrent_manager
         .pause_torrent(&info_hash)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -398,7 +418,7 @@ async fn torrent_resume_handler(
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .torrent_manager
         .resume_torrent(&info_hash)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -423,7 +443,7 @@ async fn torrent_set_subject_handler(
     axum::Json(payload): axum::Json<SetSubjectInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .torrent_manager
         .set_subject_binding(&info_hash, payload.subject_id, payload.subject_name)
         .await;
     Ok(StatusCode::OK)
@@ -433,7 +453,10 @@ async fn torrent_clear_subject_handler(
     State(state): State<Arc<AppState>>,
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    state.manager.clear_subject_binding(&info_hash).await;
+    state
+        .torrent_manager
+        .clear_subject_binding(&info_hash)
+        .await;
     Ok(StatusCode::OK)
 }
 
@@ -444,7 +467,7 @@ async fn torrent_delete_handler(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let delete_files = query.delete_files.unwrap_or(false);
     state
-        .manager
+        .torrent_manager
         .delete_torrent(&info_hash, delete_files)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -456,7 +479,7 @@ async fn torrent_get_video_metadata_handler(
     Path((info_hash, file_id)): Path<(String, usize)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let metadata = state
-        .manager
+        .subtitle_service
         .get_video_metadata(&info_hash, file_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -468,7 +491,7 @@ async fn torrent_get_subtitle_vtt_handler(
     Path((info_hash, file_id, track_id)): Path<(String, usize, u64)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let vtt = state
-        .manager
+        .subtitle_service
         .get_subtitle_vtt(&info_hash, file_id, track_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -479,7 +502,7 @@ async fn settings_get_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let settings = state
-        .manager
+        .settings_service
         .get_settings()
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -496,7 +519,7 @@ async fn settings_set_download_dir_handler(
     axum::Json(payload): axum::Json<SetDownloadDirInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_download_dir(payload.dir)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -513,7 +536,7 @@ async fn settings_set_proxy_handler(
     axum::Json(payload): axum::Json<SetProxyInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_proxy(payload.proxy)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -530,7 +553,7 @@ async fn settings_set_ai_configs_handler(
     axum::Json(payload): axum::Json<SetAiConfigsInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_ai_configs(payload.configs)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -547,7 +570,7 @@ async fn settings_set_max_download_speed_handler(
     axum::Json(payload): axum::Json<SetMaxDownloadSpeedInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_max_download_speed(payload.max_speed)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -564,7 +587,7 @@ async fn settings_set_max_upload_speed_handler(
     axum::Json(payload): axum::Json<SetMaxUploadSpeedInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_max_upload_speed(payload.max_speed)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
