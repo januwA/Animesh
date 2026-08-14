@@ -1,74 +1,53 @@
 use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
+use crate::domain::settings::SettingsRepository;
 use crate::domain::stream::{proxy_base_url, ResolvedStream, StreamProber};
 use crate::domain::subtitles::{SubtitleCache, SubtitleExtractor, VideoMetadata};
 use crate::domain::torrent::{AddTorrentResult, FileDetails, TorrentRepository, TorrentStatusInfo};
 use crate::error::{CoreError, CoreResult};
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
+// 领域模型 AppSettings / AiConfig 已迁移至 domain::settings，这里重新导出以保持公共 API 稳定。
+pub use crate::domain::settings::{AiConfig, AppSettings};
+
 /// 种子下载与流媒体领域用例。
-/// 所有外部依赖（种子仓储、爬虫、字幕缓存/提取、流探测）均通过构造注入，便于替换与测试。
+/// 所有外部依赖（种子仓储、爬虫、字幕缓存/提取、流探测、设置仓储）均通过构造注入，便于替换与测试。
 pub struct TorrentManager {
     torrent_repo: Arc<dyn TorrentRepository>,
     crawler_repo: Arc<dyn CrawlerRepository>,
     subtitle_cache: Arc<dyn SubtitleCache>,
     subtitle_extractor: Arc<dyn SubtitleExtractor>,
     stream_prober: Arc<dyn StreamProber>,
+    settings_repo: Arc<dyn SettingsRepository>,
     pub port: u16,
     download_dir: Arc<RwLock<PathBuf>>,
     proxy: Arc<RwLock<Option<String>>>,
-    settings_path: PathBuf,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AiConfig {
-    pub alias: String,
-    pub api_endpoint: String,
-    pub api_key: String,
-    pub ai_model: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct AppSettings {
-    pub download_dir: String,
-    pub proxy: Option<String>,
-    #[serde(default)]
-    pub ai_configs: Option<Vec<AiConfig>>,
-    #[serde(default)]
-    pub max_download_speed: Option<u32>,
-    #[serde(default)]
-    pub max_upload_speed: Option<u32>,
 }
 
 impl TorrentManager {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         download_dir: Arc<RwLock<PathBuf>>,
-        settings_path: PathBuf,
         proxy: Option<String>,
-        _max_download_speed: Option<u32>,
-        _max_upload_speed: Option<u32>,
         port: u16,
         torrent_repo: Arc<dyn TorrentRepository>,
         crawler_repo: Arc<dyn CrawlerRepository>,
         subtitle_cache: Arc<dyn SubtitleCache>,
         subtitle_extractor: Arc<dyn SubtitleExtractor>,
         stream_prober: Arc<dyn StreamProber>,
+        settings_repo: Arc<dyn SettingsRepository>,
     ) -> Self {
-        // 注：初始速度限制已改为异步，应在初始化后通过 set_max_download_speed 和 set_max_upload_speed 调用
-
         Self {
             torrent_repo,
             crawler_repo,
             subtitle_cache,
             subtitle_extractor,
             stream_prober,
+            settings_repo,
             port,
             download_dir,
             proxy: Arc::new(RwLock::new(proxy)),
-            settings_path,
         }
     }
 
@@ -102,45 +81,7 @@ impl TorrentManager {
         let path = PathBuf::from(&dir);
         tokio::fs::create_dir_all(&path).await?;
 
-        if let Some(parent) = self.settings_path.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-
-        let mut settings = if self.settings_path.exists() {
-            if let Ok(bytes) = tokio::fs::read(&self.settings_path).await {
-                serde_json::from_slice(&bytes).unwrap_or_else(|_| AppSettings {
-                    download_dir: dir.clone(),
-                    proxy: None,
-                    ai_configs: None,
-                    max_download_speed: None,
-                    max_upload_speed: None,
-                })
-            } else {
-                AppSettings {
-                    download_dir: dir.clone(),
-                    proxy: None,
-                    ai_configs: None,
-                    max_download_speed: None,
-                    max_upload_speed: None,
-                }
-            }
-        } else {
-            AppSettings {
-                download_dir: dir.clone(),
-                proxy: None,
-                ai_configs: None,
-                max_download_speed: None,
-                max_upload_speed: None,
-            }
-        };
-
-        if settings.proxy.is_none() {
-            settings.proxy = self.get_proxy().await;
-        }
-        settings.download_dir = dir;
-
-        let bytes = serde_json::to_vec_pretty(&settings)?;
-        tokio::fs::write(&self.settings_path, bytes).await?;
+        self.settings_repo.update_download_dir(&dir).await?;
 
         *self.download_dir.write().unwrap() = path;
         Ok(())
@@ -151,82 +92,29 @@ impl TorrentManager {
     }
 
     pub async fn set_proxy(&self, proxy: Option<String>) -> CoreResult<()> {
-        if let Some(parent) = self.settings_path.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-
-        let download_dir = self.get_download_dir().await;
-        let mut settings = if self.settings_path.exists() {
-            if let Ok(bytes) = tokio::fs::read(&self.settings_path).await {
-                serde_json::from_slice(&bytes).unwrap_or_else(|_| AppSettings {
-                    download_dir: download_dir.clone(),
-                    proxy: proxy.clone(),
-                    ai_configs: None,
-                    max_download_speed: None,
-                    max_upload_speed: None,
-                })
-            } else {
-                AppSettings {
-                    download_dir: download_dir.clone(),
-                    proxy: proxy.clone(),
-                    ai_configs: None,
-                    max_download_speed: None,
-                    max_upload_speed: None,
-                }
-            }
-        } else {
-            AppSettings {
-                download_dir: download_dir.clone(),
-                proxy: proxy.clone(),
-                ai_configs: None,
-                max_download_speed: None,
-                max_upload_speed: None,
-            }
-        };
-        settings.proxy = proxy.clone();
-
-        let bytes = serde_json::to_vec_pretty(&settings)?;
-        tokio::fs::write(&self.settings_path, bytes).await?;
+        self.settings_repo.update_proxy(proxy.as_deref()).await?;
 
         *self.proxy.write().unwrap() = proxy;
         Ok(())
     }
 
     pub async fn get_settings(&self) -> CoreResult<AppSettings> {
-        if self.settings_path.exists() {
-            let bytes = tokio::fs::read(&self.settings_path).await?;
-            let settings: AppSettings = serde_json::from_slice(&bytes)?;
-            Ok(settings)
-        } else {
-            Ok(AppSettings {
+        match self.settings_repo.get().await? {
+            Some(settings) => Ok(settings),
+            None => Ok(AppSettings {
                 download_dir: self.get_download_dir().await,
                 proxy: self.get_proxy().await,
                 ai_configs: None,
                 max_download_speed: None,
                 max_upload_speed: None,
-            })
+            }),
         }
     }
 
     pub async fn set_ai_configs(&self, configs: Option<Vec<AiConfig>>) -> CoreResult<()> {
-        if let Some(parent) = self.settings_path.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-
-        let download_dir = self.get_download_dir().await;
-        let mut settings = self.get_settings().await.unwrap_or_else(|_| AppSettings {
-            download_dir,
-            proxy: self.proxy.read().unwrap().clone(),
-            ai_configs: None,
-            max_download_speed: None,
-            max_upload_speed: None,
-        });
-
-        settings.ai_configs = configs;
-
-        let bytes = serde_json::to_vec_pretty(&settings)?;
-        tokio::fs::write(&self.settings_path, bytes).await?;
-        Ok(())
+        self.settings_repo
+            .update_ai_configs(configs.as_deref())
+            .await
     }
 
     pub async fn get_max_download_speed(&self) -> Option<u32> {
@@ -240,7 +128,8 @@ impl TorrentManager {
         self.torrent_repo
             .set_max_download_speed(speed_kbps_to_bytes_per_sec(max_speed))
             .await;
-        self.update_settings(|s| s.max_download_speed = max_speed)
+        self.settings_repo
+            .update_max_download_speed(max_speed)
             .await
     }
 
@@ -255,29 +144,7 @@ impl TorrentManager {
         self.torrent_repo
             .set_max_upload_speed(speed_kbps_to_bytes_per_sec(max_speed))
             .await;
-        self.update_settings(|s| s.max_upload_speed = max_speed)
-            .await
-    }
-
-    /// 将设置持久化到 settings.json，未修改的字段保持原值。
-    async fn update_settings(&self, apply: impl FnOnce(&mut AppSettings)) -> CoreResult<()> {
-        if let Some(parent) = self.settings_path.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-
-        let download_dir = self.get_download_dir().await;
-        let mut settings = self.get_settings().await.unwrap_or_else(|_| AppSettings {
-            download_dir,
-            proxy: self.proxy.read().unwrap().clone(),
-            ai_configs: None,
-            max_download_speed: None,
-            max_upload_speed: None,
-        });
-        apply(&mut settings);
-
-        let bytes = serde_json::to_vec_pretty(&settings)?;
-        tokio::fs::write(&self.settings_path, bytes).await?;
-        Ok(())
+        self.settings_repo.update_max_upload_speed(max_speed).await
     }
 
     pub async fn pause_torrent(&self, info_hash_hex: &str) -> CoreResult<()> {
@@ -575,6 +442,7 @@ mod tests {
     use crate::infrastructure::hls_proxy::HlsProxyState;
     use crate::infrastructure::matroska_subtitles::MatroskaSubtitleExtractor;
     use crate::infrastructure::rqbit_torrent::create_torrent_repository;
+    use crate::infrastructure::settings_repository::SqliteSettingsRepository;
     use crate::infrastructure::stream_server::{build_stream_router, StreamState};
     use crate::infrastructure::subtitle_cache::InMemorySubtitleCache;
     use axum::body::Body;
@@ -584,7 +452,6 @@ mod tests {
     /// 构造一个使用真实基础设施（内存 SQLite + 真实 librqbit 会话）的测试管理器。
     async fn build_manager(
         dir: PathBuf,
-        settings_path: PathBuf,
     ) -> CoreResult<(TorrentManager, Arc<dyn TorrentRepository>)> {
         let download_dir_lock: Arc<RwLock<PathBuf>> = Arc::new(RwLock::new(dir.clone()));
         let db = Arc::new(
@@ -592,22 +459,18 @@ mod tests {
                 .await
                 .expect("内存库应成功"),
         );
-        let persistence_dir = settings_path
-            .parent()
-            .map(|p| p.join("torrents"))
-            .unwrap_or_else(|| dir.join(".torrents"));
+        let persistence_dir = dir.join(".torrents");
         let torrent_repo =
             create_torrent_repository(download_dir_lock.clone(), persistence_dir, &db).await?;
         let crawler_repo = crate::infrastructure::http_crawler::create_crawler_repository();
         let subtitle_cache: Arc<dyn SubtitleCache> = Arc::new(InMemorySubtitleCache::new());
         let subtitle_extractor: Arc<dyn SubtitleExtractor> = Arc::new(MatroskaSubtitleExtractor);
         let stream_prober: Arc<dyn StreamProber> = Arc::new(HlsProxyState::new(proxy_base_url(0)));
+        let settings_repo: Arc<dyn SettingsRepository> =
+            Arc::new(SqliteSettingsRepository::new(&db));
 
         let manager = TorrentManager::new(
             download_dir_lock,
-            settings_path,
-            None,
-            None,
             None,
             45678,
             torrent_repo.clone(),
@@ -615,6 +478,7 @@ mod tests {
             subtitle_cache,
             subtitle_extractor,
             stream_prober,
+            settings_repo,
         );
         Ok((manager, torrent_repo))
     }
@@ -847,7 +711,7 @@ mod tests {
         }
     }
 
-    fn build_manager_custom_with_dir(
+    async fn build_manager_custom_with_dir(
         download_dir: PathBuf,
         torrent_repo: Arc<dyn TorrentRepository>,
         crawler_repo: Arc<dyn CrawlerRepository>,
@@ -857,11 +721,13 @@ mod tests {
         std::fs::create_dir_all(&download_dir).unwrap();
         let download_dir_lock = Arc::new(RwLock::new(download_dir));
         let stream_prober = Arc::new(MockStreamProber(StreamKind::Hls)) as Arc<dyn StreamProber>;
+        let db = AppDatabase::connect_in_memory()
+            .await
+            .expect("内存库应成功");
+        let settings_repo: Arc<dyn SettingsRepository> =
+            Arc::new(SqliteSettingsRepository::new(&db));
         TorrentManager::new(
             download_dir_lock,
-            temp_dir("manager_custom_settings").join("settings.json"),
-            None,
-            None,
             None,
             45679,
             torrent_repo,
@@ -869,10 +735,11 @@ mod tests {
             subtitle_cache,
             subtitle_extractor,
             stream_prober,
+            settings_repo,
         )
     }
 
-    fn build_manager_custom(
+    async fn build_manager_custom(
         torrent_repo: Arc<dyn TorrentRepository>,
         crawler_repo: Arc<dyn CrawlerRepository>,
         subtitle_cache: Arc<dyn SubtitleCache>,
@@ -885,6 +752,7 @@ mod tests {
             subtitle_cache,
             subtitle_extractor,
         )
+        .await
     }
 
     fn write_test_file(dir: &Path, name: &str, data: &[u8]) {
@@ -902,7 +770,8 @@ mod tests {
             crawler,
             Arc::new(MockSubtitleCache::default()),
             Arc::new(extractor),
-        );
+        )
+        .await;
 
         for (engine, expected_title) in [
             ("dmhy", "dmhy-条目"),
@@ -945,7 +814,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(extractor),
-        );
+        )
+        .await;
 
         let res = manager.add_magnet("magnet:?xt=urn:btih:abc").await;
         let res = res.expect("添加应成功");
@@ -961,7 +831,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager_err.add_magnet("magnet").await.is_err());
     }
 
@@ -976,7 +847,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
 
         manager
             .set_subject_binding("hash1", 42, "进击的巨人".to_string())
@@ -997,7 +869,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager
             .get_video_metadata("h", 0)
             .await
@@ -1015,7 +888,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager
             .get_video_metadata("h", 0)
             .await
@@ -1039,7 +913,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager
             .get_video_metadata("h", 0)
             .await
@@ -1063,7 +938,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager
             .get_video_metadata("h", 0)
             .await
@@ -1087,7 +963,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         let metadata = manager
             .get_video_metadata("h", 0)
             .await
@@ -1115,7 +992,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(extractor_err),
-        );
+        )
+        .await;
         assert!(manager
             .get_video_metadata("h", 0)
             .await
@@ -1133,7 +1011,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager
             .get_subtitle_vtt("h", 0, 1)
             .await
@@ -1151,7 +1030,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager
             .get_subtitle_vtt("h", 0, 1)
             .await
@@ -1175,7 +1055,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager
             .get_subtitle_vtt("h", 0, 1)
             .await
@@ -1204,7 +1085,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(cache),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         assert!(manager
             .get_subtitle_vtt("h", 0, 1)
             .await
@@ -1233,7 +1115,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(cache),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         let vtt = manager
             .get_subtitle_vtt("h", 0, 1)
             .await
@@ -1259,7 +1142,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             cache.clone(),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
         let vtt = manager
             .get_subtitle_vtt("h", 0, 1)
             .await
@@ -1300,7 +1184,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             cache.clone(),
             Arc::new(extractor_err),
-        );
+        )
+        .await;
         assert!(manager
             .get_subtitle_vtt("h", 0, 1)
             .await
@@ -1318,7 +1203,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
 
         assert_eq!(manager.get_max_download_speed().await, None);
         manager
@@ -1348,7 +1234,8 @@ mod tests {
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
-        );
+        )
+        .await;
 
         let base = manager.proxy_base_url().await;
         assert!(base.contains(&manager.port.to_string()));
@@ -1383,19 +1270,28 @@ mod tests {
             ..Default::default()
         });
         let download_dir_lock = Arc::new(RwLock::new(temp_dir("manager_speeds")));
+        let db = AppDatabase::connect_in_memory()
+            .await
+            .expect("内存库应成功");
+        let settings_repo: Arc<dyn SettingsRepository> =
+            Arc::new(SqliteSettingsRepository::new(&db));
         let manager = TorrentManager::new(
             download_dir_lock,
-            temp_dir("manager_speeds_settings").join("settings.json"),
             None,
-            Some(100),
-            Some(200),
             45680,
             repo,
             Arc::new(MockCrawlerRepository),
             Arc::new(MockSubtitleCache::default()),
             Arc::new(ok_extractor()),
             Arc::new(MockStreamProber(StreamKind::Hls)),
+            settings_repo,
         );
+        // 应用初始速度限制（覆盖 apply_initial_speed_limits 路径）
+        manager
+            .apply_initial_speed_limits(Some(100), Some(200))
+            .await;
+        assert_eq!(manager.get_max_download_speed().await, Some(100));
+        assert_eq!(manager.get_max_upload_speed().await, Some(200));
 
         assert_eq!(manager.list_torrents().await.len(), 1);
         assert!(manager.get_torrent_status("hash1").await.is_some());
@@ -1408,10 +1304,7 @@ mod tests {
     #[allow(non_snake_case)]
     async fn 测试_种子管理器及流式接口_综合逻辑() {
         let dir = temp_dir("manager_stream");
-        let settings_path = dir.join("settings.json");
-        let (manager, torrent_repo) = build_manager(dir, settings_path)
-            .await
-            .expect("初始化应成功");
+        let (manager, torrent_repo) = build_manager(dir).await.expect("初始化应成功");
 
         assert!(manager.port > 0, "Axum 应监听有效动态端口");
 
@@ -1449,10 +1342,7 @@ mod tests {
     #[allow(non_snake_case)]
     async fn 测试_自定义下载目录_逻辑() {
         let dir = temp_dir("manager_download_dir");
-        let settings_path = dir.join("settings.json");
-        let (manager, _) = build_manager(dir.clone(), settings_path.clone())
-            .await
-            .expect("初始化应成功");
+        let (manager, _) = build_manager(dir.clone()).await.expect("初始化应成功");
 
         assert_eq!(
             manager.get_download_dir().await,
@@ -1465,20 +1355,16 @@ mod tests {
 
         assert_eq!(manager.get_download_dir().await, new_dir_str);
 
-        assert!(settings_path.exists());
-        let content = std::fs::read_to_string(&settings_path).unwrap();
-        let parsed: AppSettings = serde_json::from_str(&content).unwrap();
-        assert_eq!(parsed.download_dir, new_dir_str);
+        // 通过仓储回读验证持久化（DB 取代 JSON）
+        let settings = manager.get_settings().await.unwrap();
+        assert_eq!(settings.download_dir, new_dir_str);
     }
 
     #[tokio::test]
     #[allow(non_snake_case)]
     async fn 测试_种子管理控制_未找到种子时的错误处理() {
         let dir = temp_dir("manager_control");
-        let settings_path = dir.join("settings.json");
-        let (manager, _) = build_manager(dir, settings_path)
-            .await
-            .expect("初始化应成功");
+        let (manager, _) = build_manager(dir).await.expect("初始化应成功");
 
         assert!(manager.list_torrents().await.is_empty());
 
@@ -1495,10 +1381,7 @@ mod tests {
     async fn 测试_自定义代理_逻辑() {
         let dir = temp_dir("manager_proxy");
         std::fs::create_dir_all(&dir).unwrap();
-        let settings_path = dir.join("settings.json");
-        let (manager, _) = build_manager(dir, settings_path.clone())
-            .await
-            .expect("初始化应成功");
+        let (manager, _) = build_manager(dir).await.expect("初始化应成功");
 
         assert_eq!(manager.get_proxy().await, None);
 
@@ -1507,10 +1390,9 @@ mod tests {
 
         assert_eq!(manager.get_proxy().await, Some(proxy_str.clone()));
 
-        assert!(settings_path.exists());
-        let content = std::fs::read_to_string(&settings_path).unwrap();
-        let parsed: AppSettings = serde_json::from_str(&content).unwrap();
-        assert_eq!(parsed.proxy, Some(proxy_str));
+        // 通过仓储回读验证持久化（DB 取代 JSON）
+        let settings = manager.get_settings().await.unwrap();
+        assert_eq!(settings.proxy, Some(proxy_str));
     }
 
     #[tokio::test]
@@ -1518,20 +1400,16 @@ mod tests {
     async fn 测试_上传速度限制_逻辑() {
         let dir = temp_dir("manager_upload");
         std::fs::create_dir_all(&dir).unwrap();
-        let settings_path = dir.join("settings.json");
-        let (manager, _) = build_manager(dir.clone(), settings_path.clone())
-            .await
-            .expect("初始化应成功");
+        let (manager, _) = build_manager(dir.clone()).await.expect("初始化应成功");
 
         assert_eq!(manager.get_max_upload_speed().await, None);
 
         manager.set_max_upload_speed(Some(128)).await.unwrap();
         assert_eq!(manager.get_max_upload_speed().await, Some(128));
 
-        assert!(settings_path.exists());
-        let content = std::fs::read_to_string(&settings_path).unwrap();
-        let parsed: AppSettings = serde_json::from_str(&content).unwrap();
-        assert_eq!(parsed.max_upload_speed, Some(128));
+        // 通过仓储回读验证持久化（DB 取代 JSON）
+        let settings = manager.get_settings().await.unwrap();
+        assert_eq!(settings.max_upload_speed, Some(128));
 
         manager.set_max_upload_speed(Some(0)).await.unwrap();
         assert_eq!(manager.get_max_upload_speed().await, Some(0));
@@ -1542,15 +1420,12 @@ mod tests {
 
     #[tokio::test]
     #[allow(non_snake_case)]
-    async fn 测试_设置持久化_异常JSON回退与速度清空() {
-        let dir = temp_dir("manager_persist_invalid");
+    async fn 测试_字段级设置更新_空库初始化与清空() {
+        // 取代旧的"异常JSON回退"测试：迁移到 DB 后不再有 JSON 解析路径，
+        // 此测试覆盖空库场景下字段级 set/clear 行为。
+        let dir = temp_dir("manager_persist_fresh");
         std::fs::create_dir_all(&dir).unwrap();
-        let settings_path = dir.join("settings.json");
-        std::fs::write(&settings_path, "{not-valid-json}").unwrap();
-
-        let (manager, _) = build_manager(dir.clone(), settings_path.clone())
-            .await
-            .expect("初始化应成功");
+        let (manager, _) = build_manager(dir.clone()).await.expect("初始化应成功");
 
         let next_dir = dir.join("custom_downloads");
         manager
@@ -1688,10 +1563,7 @@ mod tests {
     #[allow(non_snake_case)]
     async fn 测试_解析直播流_返回代理地址与类型() {
         let dir = temp_dir("manager_resolve_stream");
-        let settings_path = dir.join("settings.json");
-        let (manager, _) = build_manager(dir, settings_path)
-            .await
-            .expect("初始化应成功");
+        let (manager, _) = build_manager(dir).await.expect("初始化应成功");
 
         let resolved = manager.resolve_stream("http://example.com/live.m3u8").await;
         let resolved = resolved.expect("解析应成功");

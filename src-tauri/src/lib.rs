@@ -3,11 +3,14 @@ use animesh_core::application::collection_service::CollectionService;
 use animesh_core::application::torrent_manager::{AiConfig, AppSettings, TorrentManager};
 use animesh_core::domain::collection::CollectionRecord;
 use animesh_core::domain::crawler::SearchResultItem;
+use animesh_core::domain::settings::SettingsRepository;
 use animesh_core::domain::subtitles::VideoMetadata;
 use animesh_core::domain::torrent::{AddTorrentResult, FileDetails, TorrentStatusInfo};
 use animesh_core::error::CoreError;
+use animesh_core::infrastructure::settings_repository::SqliteSettingsRepository;
 use anyhow::Context;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, RwLock};
 use tauri::Manager;
 
@@ -546,6 +549,38 @@ async fn ai_chat_request(
     animesh_core::send_ai_chat_request(&endpoint, &api_key, &body_json).await
 }
 
+/// 启动时加载或初始化设置。DB 已有记录则读取，否则写入默认值。
+///
+/// 返回启动期 TorrentManager 需要的下载目录、代理、限速等字段。
+async fn load_or_init_settings(
+    settings_repo: &Arc<dyn SettingsRepository>,
+    app_data_dir: &Path,
+) -> Result<(PathBuf, Option<String>, Option<u32>, Option<u32>), CoreError> {
+    // DB 已有记录
+    if let Some(existing) = settings_repo.get().await? {
+        log::info!("从数据库加载已有设置");
+        return Ok((
+            PathBuf::from(existing.download_dir),
+            existing.proxy,
+            existing.max_download_speed,
+            existing.max_upload_speed,
+        ));
+    }
+
+    // 初始化默认值
+    let default_dir = app_data_dir.join("downloads");
+    let default_settings = AppSettings {
+        download_dir: default_dir.to_string_lossy().to_string(),
+        proxy: None,
+        ai_configs: None,
+        max_download_speed: None,
+        max_upload_speed: None,
+    };
+    settings_repo.ensure_initialized(&default_settings).await?;
+    log::info!("使用默认设置初始化数据库");
+    Ok((default_dir, None, None, None))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     std::panic::set_hook(Box::new(|info| {
@@ -599,36 +634,6 @@ pub fn run() {
                     .unwrap_or_else(|_| std::env::temp_dir().join("animesh"));
                 tokio::fs::create_dir_all(&app_data_dir).await.ok();
 
-                let settings_path = app_data_dir.join("settings.json");
-
-                // Read settings if exists, otherwise write defaults
-                let mut download_dir = app_data_dir.join("downloads");
-                let mut proxy = None;
-                let mut max_download_speed = None;
-                let mut max_upload_speed = None;
-                if tokio::fs::metadata(&settings_path).await.is_ok() {
-                    if let Ok(bytes) = tokio::fs::read(&settings_path).await {
-                        if let Ok(settings) = serde_json::from_slice::<AppSettings>(&bytes) {
-                            download_dir = std::path::PathBuf::from(settings.download_dir);
-                            proxy = settings.proxy;
-                            max_download_speed = settings.max_download_speed;
-                            max_upload_speed = settings.max_upload_speed;
-                        }
-                    }
-                } else {
-                    let settings = AppSettings {
-                        download_dir: download_dir.to_string_lossy().to_string(),
-                        proxy: None,
-                        ai_configs: None,
-                        max_download_speed: None,
-                        max_upload_speed: None,
-                    };
-                    if let Ok(bytes) = serde_json::to_vec_pretty(&settings) {
-                        let _ = tokio::fs::write(&settings_path, bytes).await;
-                    }
-                }
-                tokio::fs::create_dir_all(&download_dir).await.ok();
-
                 let db = Arc::new(
                     animesh_core::infrastructure::db::AppDatabase::connect(
                         &app_data_dir.join("animesh.sqlite"),
@@ -637,11 +642,16 @@ pub fn run() {
                     .context("初始化 AppDatabase 失败")?,
                 );
 
+                // 设置仓储：从 DB 加载或初始化默认值
+                let settings_repo: Arc<dyn SettingsRepository> =
+                    Arc::new(SqliteSettingsRepository::new(&db));
+                let (download_dir, proxy, max_download_speed, max_upload_speed) =
+                    load_or_init_settings(&settings_repo, &app_data_dir).await?;
+
+                tokio::fs::create_dir_all(&download_dir).await.ok();
+
                 let download_dir_lock = Arc::new(RwLock::new(download_dir));
-                let persistence_dir = settings_path
-                    .parent()
-                    .map(|p| p.join("torrents"))
-                    .unwrap_or_else(|| std::path::PathBuf::from(".torrents"));
+                let persistence_dir = app_data_dir.join("torrents");
                 let torrent_repo = animesh_core::infrastructure::rqbit_torrent::create_torrent_repository(
                     download_dir_lock.clone(),
                     persistence_dir,
@@ -672,17 +682,19 @@ pub fn run() {
 
                 let manager = TorrentManager::new(
                     download_dir_lock,
-                    settings_path,
                     proxy,
-                    max_download_speed,
-                    max_upload_speed,
                     port,
                     torrent_repo,
                     crawler_repo,
                     subtitle_cache,
                     subtitle_extractor,
                     stream_prober,
+                    settings_repo,
                 );
+                // 应用启动时持久化的初始速度限制（DB 已存值）
+                manager
+                    .apply_initial_speed_limits(max_download_speed, max_upload_speed)
+                    .await;
 
                 let collection_service = CollectionService::new(Arc::new(
                     animesh_core::infrastructure::collection_repository::SqliteCollectionRepository::new(

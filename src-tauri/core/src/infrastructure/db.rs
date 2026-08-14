@@ -66,6 +66,19 @@ impl AppDatabase {
         .execute(&self.pool)
         .await?;
 
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS app_settings (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                download_dir TEXT NOT NULL,
+                proxy TEXT,
+                ai_configs TEXT,
+                max_download_speed INTEGER,
+                max_upload_speed INTEGER
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+
         Ok(())
     }
 }
@@ -88,7 +101,7 @@ mod tests {
         let path = temp_db_path("connect").await;
         let db = AppDatabase::connect(&path).await.expect("连接应成功");
         let tables: Vec<String> = sqlx::query_scalar(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('collections', 'torrent_subject_bindings') ORDER BY name",
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('collections', 'torrent_subject_bindings', 'app_settings') ORDER BY name",
         )
         .fetch_all(db.pool())
         .await
@@ -96,6 +109,7 @@ mod tests {
         assert_eq!(
             tables,
             vec![
+                "app_settings".to_string(),
                 "collections".to_string(),
                 "torrent_subject_bindings".to_string()
             ]
