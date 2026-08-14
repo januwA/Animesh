@@ -592,54 +592,51 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .unwrap_or_else(|_| std::env::temp_dir().join("animesh"));
-            std::fs::create_dir_all(&app_data_dir).ok();
+            tauri::async_runtime::block_on(async {
+                let app_data_dir = app
+                    .path()
+                    .app_data_dir()
+                    .unwrap_or_else(|_| std::env::temp_dir().join("animesh"));
+                tokio::fs::create_dir_all(&app_data_dir).await.ok();
 
-            let settings_path = app_data_dir.join("settings.json");
+                let settings_path = app_data_dir.join("settings.json");
 
-            // Read settings if exists, otherwise write defaults
-            let mut download_dir = app_data_dir.join("downloads");
-            let mut proxy = None;
-            let mut max_download_speed = None;
-            let mut max_upload_speed = None;
-            if settings_path.exists() {
-                if let Ok(file) = std::fs::File::open(&settings_path) {
-                    if let Ok(settings) =
-                        serde_json::from_reader::<_, AppSettings>(file)
-                    {
-                        download_dir = std::path::PathBuf::from(settings.download_dir);
-                        proxy = settings.proxy;
-                        max_download_speed = settings.max_download_speed;
-                        max_upload_speed = settings.max_upload_speed;
+                // Read settings if exists, otherwise write defaults
+                let mut download_dir = app_data_dir.join("downloads");
+                let mut proxy = None;
+                let mut max_download_speed = None;
+                let mut max_upload_speed = None;
+                if tokio::fs::metadata(&settings_path).await.is_ok() {
+                    if let Ok(bytes) = tokio::fs::read(&settings_path).await {
+                        if let Ok(settings) = serde_json::from_slice::<AppSettings>(&bytes) {
+                            download_dir = std::path::PathBuf::from(settings.download_dir);
+                            proxy = settings.proxy;
+                            max_download_speed = settings.max_download_speed;
+                            max_upload_speed = settings.max_upload_speed;
+                        }
+                    }
+                } else {
+                    let settings = AppSettings {
+                        download_dir: download_dir.to_string_lossy().to_string(),
+                        proxy: None,
+                        ai_configs: None,
+                        max_download_speed: None,
+                        max_upload_speed: None,
+                    };
+                    if let Ok(bytes) = serde_json::to_vec_pretty(&settings) {
+                        let _ = tokio::fs::write(&settings_path, bytes).await;
                     }
                 }
-            } else {
-                let settings = AppSettings {
-                    download_dir: download_dir.to_string_lossy().to_string(),
-                    proxy: None,
-                    ai_configs: None,
-                    max_download_speed: None,
-                    max_upload_speed: None,
-                };
-                if let Ok(file) = std::fs::File::create(&settings_path) {
-                    let _ = serde_json::to_writer_pretty(file, &settings);
-                }
-            }
-            std::fs::create_dir_all(&download_dir).ok();
+                tokio::fs::create_dir_all(&download_dir).await.ok();
 
-            let db = Arc::new(
-                tauri::async_runtime::block_on(
+                let db = Arc::new(
                     animesh_core::infrastructure::db::AppDatabase::connect(
                         &app_data_dir.join("animesh.sqlite"),
-                    ),
-                )
-                .context("初始化 AppDatabase 失败")?,
-            );
+                    )
+                    .await
+                    .context("初始化 AppDatabase 失败")?,
+                );
 
-            let manager = tauri::async_runtime::block_on(async {
                 let download_dir_lock = Arc::new(RwLock::new(download_dir));
                 let persistence_dir = settings_path
                     .parent()
@@ -673,7 +670,7 @@ pub fn run() {
                     dyn animesh_core::domain::stream::StreamProber,
                 > = Arc::new(hls_proxy);
 
-                Ok::<TorrentManager, anyhow::Error>(TorrentManager::new(
+                let manager = TorrentManager::new(
                     download_dir_lock,
                     settings_path,
                     proxy,
@@ -685,22 +682,21 @@ pub fn run() {
                     subtitle_cache,
                     subtitle_extractor,
                     stream_prober,
-                ))
+                );
+
+                let collection_service = CollectionService::new(Arc::new(
+                    animesh_core::infrastructure::collection_repository::SqliteCollectionRepository::new(
+                        &db,
+                    ),
+                ));
+
+                app.manage(Arc::new(manager));
+                app.manage(Arc::new(collection_service));
+                app.manage(SearchTracker::default());
+                app.manage(AddMagnetTracker::default());
+                app.manage(SubscriptionTracker::default());
+                Ok(())
             })
-            .context("初始化 TorrentManager 失败")?;
-
-            let collection_service = CollectionService::new(Arc::new(
-                animesh_core::infrastructure::collection_repository::SqliteCollectionRepository::new(
-                    &db,
-                ),
-            ));
-
-            app.manage(Arc::new(manager));
-            app.manage(Arc::new(collection_service));
-            app.manage(SearchTracker::default());
-            app.manage(AddMagnetTracker::default());
-            app.manage(SubscriptionTracker::default());
-            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             search_torrents,

@@ -28,8 +28,8 @@ struct CachedFailure {
     expire_at: SystemTime,
 }
 
-fn file_fingerprint(path: &Path) -> Option<(SystemTime, u64)> {
-    let meta = std::fs::metadata(path).ok()?;
+async fn file_fingerprint(path: &Path) -> Option<(SystemTime, u64)> {
+    let meta = tokio::fs::metadata(path).await.ok()?;
     Some((meta.modified().ok()?, meta.len()))
 }
 
@@ -49,10 +49,13 @@ impl SubtitleCache for InMemorySubtitleCache {
         file_path: &Path,
     ) -> Option<String> {
         let key = format!("{}:{}:{}", info_hash, file_id, track_id);
-        let cache = self.vtt.read().ok()?;
-        let entry = cache.get(&key)?;
-        if file_fingerprint(file_path) == Some((entry.mtime, entry.len)) {
-            Some(entry.data.clone())
+        let (mtime, len, data) = {
+            let cache = self.vtt.read().ok()?;
+            let entry = cache.get(&key)?;
+            (entry.mtime, entry.len, entry.data.clone())
+        };
+        if file_fingerprint(file_path).await == Some((mtime, len)) {
+            Some(data)
         } else {
             None
         }
@@ -66,7 +69,7 @@ impl SubtitleCache for InMemorySubtitleCache {
         file_path: &Path,
         data: String,
     ) {
-        if let Some((mtime, len)) = file_fingerprint(file_path) {
+        if let Some((mtime, len)) = file_fingerprint(file_path).await {
             let key = format!("{}:{}:{}", info_hash, file_id, track_id);
             if let Ok(mut cache) = self.vtt.write() {
                 cache.insert(key, CachedEntry { mtime, len, data });
@@ -82,7 +85,7 @@ impl SubtitleCache for InMemorySubtitleCache {
         error: String,
         now: Option<SystemTime>,
     ) {
-        let Some((mtime, len)) = file_fingerprint(file_path) else {
+        let Some((mtime, len)) = file_fingerprint(file_path).await else {
             return;
         };
         let expire_at = now.unwrap_or_else(SystemTime::now) + FAILURE_COOLDOWN;
@@ -107,11 +110,14 @@ impl SubtitleCache for InMemorySubtitleCache {
         file_path: &Path,
         now: Option<SystemTime>,
     ) -> Option<String> {
-        let cache = self.failures.read().ok()?;
-        let entry = cache.get(key)?;
+        let (mtime, len, error, expire_at) = {
+            let cache = self.failures.read().ok()?;
+            let entry = cache.get(key)?;
+            (entry.mtime, entry.len, entry.error.clone(), entry.expire_at)
+        };
         let now = now.unwrap_or_else(SystemTime::now);
-        if now < entry.expire_at && file_fingerprint(file_path) == Some((entry.mtime, entry.len)) {
-            Some(entry.error.clone())
+        if now < expire_at && file_fingerprint(file_path).await == Some((mtime, len)) {
+            Some(error)
         } else {
             None
         }

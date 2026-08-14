@@ -11,7 +11,9 @@ impl AppDatabase {
     /// 连接（必要时创建）指定路径下的数据库文件，并确保表结构存在。
     pub async fn connect(path: &Path) -> Result<Self, sqlx::Error> {
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(sqlx::Error::Io)?;
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(sqlx::Error::Io)?;
         }
         let options = SqliteConnectOptions::new()
             .filename(path)

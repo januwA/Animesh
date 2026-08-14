@@ -102,7 +102,7 @@ pub async fn create_torrent_repository(
     persistence_dir: PathBuf,
     db: &AppDatabase,
 ) -> Result<Arc<dyn TorrentRepository>, CoreError> {
-    std::fs::create_dir_all(&persistence_dir).ok();
+    tokio::fs::create_dir_all(&persistence_dir).await.ok();
 
     #[allow(unused_mut)]
     let mut opts = librqbit::SessionOptions {
@@ -161,12 +161,13 @@ impl RqbitTorrentRepository {
         })
     }
 
-    fn get_creation_time(&self, info_hash_hex: &str) -> u64 {
-        if let Ok(entries) = std::fs::read_dir(&self.persistence_dir) {
-            for entry in entries.flatten() {
+    async fn get_creation_time(&self, info_hash_hex: &str) -> u64 {
+        let target = info_hash_hex.to_lowercase();
+        if let Ok(mut entries) = tokio::fs::read_dir(&self.persistence_dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
                 if let Some(name) = entry.file_name().to_str() {
-                    if name.to_lowercase().contains(&info_hash_hex.to_lowercase()) {
-                        if let Ok(metadata) = entry.metadata() {
+                    if name.to_lowercase().contains(&target) {
+                        if let Ok(metadata) = entry.metadata().await {
                             if let Ok(created) = metadata.created().or_else(|_| metadata.modified())
                             {
                                 if let Ok(duration) = created.duration_since(std::time::UNIX_EPOCH)
@@ -265,7 +266,7 @@ impl TorrentRepository for RqbitTorrentRepository {
             })
             .unwrap_or((0, 0));
 
-        let created_at = self.get_creation_time(info_hash_hex);
+        let created_at = self.get_creation_time(info_hash_hex).await;
         let is_startup = self.start_time.elapsed().as_secs() < 15;
         let finished = stats.finished
             || (is_startup && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
@@ -299,7 +300,7 @@ impl TorrentRepository for RqbitTorrentRepository {
 
     async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
         let is_startup = self.start_time.elapsed().as_secs() < 15;
-        self.session.with_torrents(|iter| {
+        let mut torrents: Vec<TorrentStatusInfo> = self.session.with_torrents(|iter| {
             iter.map(|(_, torrent)| {
                 let stats = torrent.stats();
                 let speed = stats
@@ -323,7 +324,6 @@ impl TorrentRepository for RqbitTorrentRepository {
                     })
                     .unwrap_or((0, 0));
                 let hex = format_hash(&torrent.info_hash().0);
-                let created_at = self.get_creation_time(&hex);
                 let finished = stats.finished
                     || (is_startup
                         && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
@@ -345,14 +345,18 @@ impl TorrentRepository for RqbitTorrentRepository {
                     paused: torrent.is_paused(),
                     peers_connected,
                     peers_total,
-                    created_at,
+                    created_at: 0,
                     trackers,
                     subject_id: binding.as_ref().map(|b| b.subject_id),
                     subject_name: binding.map(|b| b.subject_name),
                 }
             })
             .collect()
-        })
+        });
+        for torrent in &mut torrents {
+            torrent.created_at = self.get_creation_time(&torrent.info_hash).await;
+        }
+        torrents
     }
 
     async fn pause_torrent(&self, info_hash_hex: &str) -> Result<(), CoreError> {
