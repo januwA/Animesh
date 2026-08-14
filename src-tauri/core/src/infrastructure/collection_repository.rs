@@ -1,4 +1,5 @@
 use crate::domain::collection::{CollectionRecord, CollectionRepository, NewCollectionItem};
+use crate::error::{CoreError, CoreResult};
 use crate::infrastructure::db::AppDatabase;
 use sqlx::Row;
 
@@ -19,15 +20,16 @@ impl SqliteCollectionRepository {
 #[async_trait::async_trait]
 impl CollectionRepository for SqliteCollectionRepository {
     /// 查询全部收藏，按收藏时间倒序。
-    async fn list(&self) -> Result<Vec<CollectionRecord>, sqlx::Error> {
+    async fn list(&self) -> CoreResult<Vec<CollectionRecord>> {
         sqlx::query_as::<_, CollectionRecord>(
             "SELECT subject_id, name, image_url, added_at FROM collections ORDER BY added_at DESC",
         )
         .fetch_all(&self.pool)
         .await
+        .map_err(CoreError::from)
     }
 
-    async fn is_favorited(&self, subject_id: i64) -> Result<bool, sqlx::Error> {
+    async fn is_favorited(&self, subject_id: i64) -> CoreResult<bool> {
         let row = sqlx::query("SELECT COUNT(*) FROM collections WHERE subject_id = ?")
             .bind(subject_id)
             .fetch_one(&self.pool)
@@ -37,7 +39,7 @@ impl CollectionRepository for SqliteCollectionRepository {
     }
 
     /// 新增收藏，已存在时保持幂等（不重复插入）。
-    async fn add(&self, item: NewCollectionItem) -> Result<(), sqlx::Error> {
+    async fn add(&self, item: NewCollectionItem) -> CoreResult<()> {
         let added_at = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_millis() as i64)
@@ -55,7 +57,7 @@ impl CollectionRepository for SqliteCollectionRepository {
         Ok(())
     }
 
-    async fn remove(&self, subject_id: i64) -> Result<(), sqlx::Error> {
+    async fn remove(&self, subject_id: i64) -> CoreResult<()> {
         sqlx::query("DELETE FROM collections WHERE subject_id = ?")
             .bind(subject_id)
             .execute(&self.pool)

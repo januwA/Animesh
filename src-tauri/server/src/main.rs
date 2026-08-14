@@ -1,5 +1,6 @@
 use animesh_core::application::collection_service::CollectionService;
 use animesh_core::application::torrent_manager::{AiConfig, AppSettings, TorrentManager};
+use anyhow::Context;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -35,7 +36,7 @@ struct AppState {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     // 初始化日志
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info");
@@ -97,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             &app_data_dir.join("animesh.sqlite"),
         )
         .await
-        .expect("Failed to initialize AppDatabase"),
+        .context("初始化 AppDatabase 失败")?,
     );
 
     let download_dir_lock = Arc::new(RwLock::new(download_dir));
@@ -111,12 +112,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &db,
     )
     .await
-    .expect("Failed to initialize TorrentRepository");
+    .context("初始化 TorrentRepository 失败")?;
 
     let (port, hls_proxy) =
         animesh_core::infrastructure::stream_server::start_stream_server(torrent_repo.clone())
             .await
-            .expect("Failed to initialize stream server");
+            .map_err(|e| anyhow::anyhow!("初始化流媒体服务器失败: {}", e))?;
 
     let crawler_repo = animesh_core::infrastructure::http_crawler::create_crawler_repository();
     let subtitle_cache: Arc<dyn animesh_core::domain::subtitles::SubtitleCache> =
@@ -270,7 +271,7 @@ async fn search_torrents_handler(
 
     match res {
         Ok(Ok(items)) => Ok(axum::Json(items)),
-        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
         Err(join_err) => {
             if join_err.is_cancelled() {
                 Err((StatusCode::BAD_REQUEST, "Search cancelled".to_string()))
@@ -443,7 +444,7 @@ async fn torrent_get_video_metadata_handler(
         .manager
         .get_video_metadata(&info_hash, file_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(axum::Json(metadata))
 }
 
@@ -455,7 +456,7 @@ async fn torrent_get_subtitle_vtt_handler(
         .manager
         .get_subtitle_vtt(&info_hash, file_id, track_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(vtt)
 }
 
@@ -556,7 +557,7 @@ async fn collection_get_all_handler(
         .collection_service
         .list()
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(axum::Json(items))
 }
 
@@ -579,7 +580,7 @@ async fn collection_add_handler(
             image_url: payload.image_url,
         })
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
 
@@ -591,7 +592,7 @@ async fn collection_remove_handler(
         .collection_service
         .remove(subject_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
 

@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+use crate::error::CoreError;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct FileDetails {
     pub id: usize,
@@ -48,19 +50,19 @@ impl<T: tokio::io::AsyncRead + tokio::io::AsyncSeek + Unpin + Send> AsyncReadSee
 
 #[async_trait]
 pub trait TorrentRepository: Send + Sync {
-    async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, String>;
+    async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, CoreError>;
     fn get_torrent_status(&self, info_hash: &str) -> Option<TorrentStatusInfo>;
     fn list_torrents(&self) -> Vec<TorrentStatusInfo>;
-    async fn pause_torrent(&self, info_hash: &str) -> Result<(), String>;
-    async fn resume_torrent(&self, info_hash: &str) -> Result<(), String>;
-    async fn delete_torrent(&self, info_hash: &str, delete_files: bool) -> Result<(), String>;
+    async fn pause_torrent(&self, info_hash: &str) -> Result<(), CoreError>;
+    async fn resume_torrent(&self, info_hash: &str) -> Result<(), CoreError>;
+    async fn delete_torrent(&self, info_hash: &str, delete_files: bool) -> Result<(), CoreError>;
     fn get_torrent_files(&self, info_hash: &str) -> Option<Vec<FileDetails>>;
 
     fn get_file_reader(
         &self,
         info_hash: &str,
         file_id: usize,
-    ) -> Result<Box<dyn AsyncReadSeek>, String>;
+    ) -> Result<Box<dyn AsyncReadSeek>, CoreError>;
 
     fn set_max_download_speed(&self, bytes_per_sec: Option<u32>);
 

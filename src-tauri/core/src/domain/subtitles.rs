@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::time::SystemTime;
 
+use crate::error::CoreError;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SubtitleTrackInfo {
     pub id: u64,
@@ -58,8 +60,8 @@ pub struct VideoMetadata {
 }
 
 pub trait SubtitleExtractor: Send + Sync {
-    fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, String>;
-    fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String>;
+    fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, CoreError>;
+    fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, CoreError>;
 }
 
 /// 字幕提取结果的缓存，由基础设施层（内存缓存）实现。

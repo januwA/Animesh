@@ -1,7 +1,8 @@
 use crate::domain::collection::{CollectionRecord, CollectionRepository, NewCollectionItem};
+use crate::error::CoreResult;
 use std::sync::Arc;
 
-/// 收藏领域用例，负责将存储层错误映射为表现层可读的错误信息。
+/// 收藏领域用例，将领域仓储能力编排为面向表现层的应用服务。
 pub struct CollectionService {
     repo: Arc<dyn CollectionRepository>,
 }
@@ -11,26 +12,20 @@ impl CollectionService {
         Self { repo }
     }
 
-    pub async fn list(&self) -> Result<Vec<CollectionRecord>, String> {
-        self.repo.list().await.map_err(|e| e.to_string())
+    pub async fn list(&self) -> CoreResult<Vec<CollectionRecord>> {
+        self.repo.list().await
     }
 
-    pub async fn is_favorited(&self, subject_id: i64) -> Result<bool, String> {
-        self.repo
-            .is_favorited(subject_id)
-            .await
-            .map_err(|e| e.to_string())
+    pub async fn is_favorited(&self, subject_id: i64) -> CoreResult<bool> {
+        self.repo.is_favorited(subject_id).await
     }
 
-    pub async fn add(&self, item: NewCollectionItem) -> Result<(), String> {
-        self.repo.add(item).await.map_err(|e| e.to_string())
+    pub async fn add(&self, item: NewCollectionItem) -> CoreResult<()> {
+        self.repo.add(item).await
     }
 
-    pub async fn remove(&self, subject_id: i64) -> Result<(), String> {
-        self.repo
-            .remove(subject_id)
-            .await
-            .map_err(|e| e.to_string())
+    pub async fn remove(&self, subject_id: i64) -> CoreResult<()> {
+        self.repo.remove(subject_id).await
     }
 }
 
@@ -38,6 +33,7 @@ impl CollectionService {
 mod tests {
     use super::*;
     use crate::domain::collection::CollectionRepository;
+    use crate::error::CoreError;
     use async_trait::async_trait;
     use std::sync::{Arc, Mutex};
 
@@ -58,15 +54,15 @@ mod tests {
 
     #[async_trait]
     impl CollectionRepository for MockCollectionRepository {
-        async fn list(&self) -> Result<Vec<CollectionRecord>, sqlx::Error> {
+        async fn list(&self) -> CoreResult<Vec<CollectionRecord>> {
             if let Some(msg) = &self.fail_with {
-                return Err(sqlx::Error::Protocol(msg.to_string()));
+                return Err(CoreError::Message(msg.clone()));
             }
             Ok(self.records.lock().unwrap().clone())
         }
-        async fn is_favorited(&self, subject_id: i64) -> Result<bool, sqlx::Error> {
+        async fn is_favorited(&self, subject_id: i64) -> CoreResult<bool> {
             if let Some(msg) = &self.fail_with {
-                return Err(sqlx::Error::Protocol(msg.to_string()));
+                return Err(CoreError::Message(msg.clone()));
             }
             Ok(self
                 .records
@@ -75,9 +71,9 @@ mod tests {
                 .iter()
                 .any(|r| r.subject_id == subject_id))
         }
-        async fn add(&self, item: NewCollectionItem) -> Result<(), sqlx::Error> {
+        async fn add(&self, item: NewCollectionItem) -> CoreResult<()> {
             if let Some(msg) = &self.fail_with {
-                return Err(sqlx::Error::Protocol(msg.to_string()));
+                return Err(CoreError::Message(msg.clone()));
             }
             self.records.lock().unwrap().push(CollectionRecord {
                 subject_id: item.subject_id,
@@ -87,9 +83,9 @@ mod tests {
             });
             Ok(())
         }
-        async fn remove(&self, subject_id: i64) -> Result<(), sqlx::Error> {
+        async fn remove(&self, subject_id: i64) -> CoreResult<()> {
             if let Some(msg) = &self.fail_with {
-                return Err(sqlx::Error::Protocol(msg.to_string()));
+                return Err(CoreError::Message(msg.clone()));
             }
             self.records
                 .lock()
@@ -135,7 +131,8 @@ mod tests {
         let service =
             CollectionService::new(Arc::new(MockCollectionRepository::fail("数据库繁忙")));
 
-        assert!(service.list().await.is_err());
+        let err = service.list().await.unwrap_err();
+        assert_eq!(err.to_string(), "数据库繁忙");
         assert!(service.is_favorited(1).await.is_err());
         assert!(service
             .add(NewCollectionItem {

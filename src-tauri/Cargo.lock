@@ -80,6 +80,7 @@ name = "animesh"
 version = "0.5.2"
 dependencies = [
  "animesh_core",
+ "anyhow",
  "aws-lc-sys",
  "log",
  "serde_json",
@@ -115,6 +116,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "thiserror 2.0.18",
  "tokio",
  "tokio-util",
  "tower",
@@ -127,6 +129,7 @@ name = "animesh_server"
 version = "0.5.2"
 dependencies = [
  "animesh_core",
+ "anyhow",
  "axum",
  "env_logger",
  "futures-util",

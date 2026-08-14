@@ -2,6 +2,7 @@ use crate::domain::torrent::{
     format_hash, AddTorrentResult, AsyncReadSeek, FileDetails, SubjectBinding, TorrentRepository,
     TorrentStatusInfo,
 };
+use crate::error::CoreError;
 use crate::infrastructure::db::AppDatabase;
 use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
@@ -100,7 +101,7 @@ pub async fn create_torrent_repository(
     download_dir_lock: Arc<RwLock<PathBuf>>,
     persistence_dir: PathBuf,
     db: &AppDatabase,
-) -> Result<Arc<dyn TorrentRepository>, Box<dyn std::error::Error>> {
+) -> Result<Arc<dyn TorrentRepository>, CoreError> {
     std::fs::create_dir_all(&persistence_dir).ok();
 
     #[allow(unused_mut)]
@@ -116,7 +117,9 @@ pub async fn create_torrent_repository(
         opts.disable_dht = true;
     }
     let download_dir = download_dir_lock.read().unwrap().clone();
-    let session = librqbit::Session::new_with_opts(download_dir.clone(), opts).await?;
+    let session = librqbit::Session::new_with_opts(download_dir.clone(), opts)
+        .await
+        .map_err(|e| CoreError::Message(format!("Failed to initialize session: {}", e)))?;
 
     let download_dir_fn = {
         let dl = download_dir_lock.clone();
@@ -187,7 +190,7 @@ impl RqbitTorrentRepository {
 
 #[async_trait]
 impl TorrentRepository for RqbitTorrentRepository {
-    async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, String> {
+    async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, CoreError> {
         let output_folder = (self.get_download_dir_fn)();
         let options = librqbit::AddTorrentOptions {
             overwrite: true,
@@ -355,7 +358,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         })
     }
 
-    async fn pause_torrent(&self, info_hash_hex: &str) -> Result<(), String> {
+    async fn pause_torrent(&self, info_hash_hex: &str) -> Result<(), CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash_hex)
             .ok_or_else(|| "Torrent not found".to_string())?;
@@ -366,7 +369,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         Ok(())
     }
 
-    async fn resume_torrent(&self, info_hash_hex: &str) -> Result<(), String> {
+    async fn resume_torrent(&self, info_hash_hex: &str) -> Result<(), CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash_hex)
             .ok_or_else(|| "Torrent not found".to_string())?;
@@ -377,7 +380,11 @@ impl TorrentRepository for RqbitTorrentRepository {
         Ok(())
     }
 
-    async fn delete_torrent(&self, info_hash_hex: &str, delete_files: bool) -> Result<(), String> {
+    async fn delete_torrent(
+        &self,
+        info_hash_hex: &str,
+        delete_files: bool,
+    ) -> Result<(), CoreError> {
         use librqbit::api::TorrentIdOrHash;
         let id = TorrentIdOrHash::try_from(info_hash_hex)
             .map_err(|e| format!("Invalid info hash format: {}", e))?;
@@ -410,7 +417,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         &self,
         info_hash: &str,
         file_id: usize,
-    ) -> Result<Box<dyn AsyncReadSeek>, String> {
+    ) -> Result<Box<dyn AsyncReadSeek>, CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash)
             .ok_or_else(|| "Torrent not found".to_string())?;

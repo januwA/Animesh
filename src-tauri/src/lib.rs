@@ -5,6 +5,7 @@ use animesh_core::domain::collection::CollectionRecord;
 use animesh_core::domain::crawler::SearchResultItem;
 use animesh_core::domain::subtitles::VideoMetadata;
 use animesh_core::domain::torrent::{AddTorrentResult, FileDetails, TorrentStatusInfo};
+use anyhow::Context;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use tauri::Manager;
@@ -112,7 +113,7 @@ async fn search_torrents(
                 )),
                 Err(e) => trace_log(&format!("search_torrents failed with error: {}", e)),
             }
-            inner_res
+            inner_res.map_err(|e| e.to_string())
         }
         Err(join_err) => {
             if join_err.is_cancelled() {
@@ -174,7 +175,7 @@ async fn torrent_add_magnet(
                 )),
                 Err(e) => trace_log(&format!("torrent_add_magnet failed with error: {}", e)),
             }
-            inner
+            inner.map_err(|e| e.to_string())
         }
         Err(join_err) => {
             if join_err.is_cancelled() {
@@ -243,7 +244,10 @@ async fn iptv_resolve_stream(
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<animesh_core::domain::stream::ResolvedStream, String> {
     trace_log(&format!("iptv_resolve_stream raw_url={raw_url}"));
-    let resolved = manager.resolve_stream(&raw_url).await?;
+    let resolved = manager
+        .resolve_stream(&raw_url)
+        .await
+        .map_err(|e| e.to_string())?;
     trace_log(&format!(
         "iptv_resolve_stream resolved kind={:?}",
         resolved.kind
@@ -271,7 +275,10 @@ async fn torrent_get_video_metadata(
         "Entering torrent_get_video_metadata command, info_hash: {}, file_id: {}",
         info_hash, file_id
     ));
-    manager.get_video_metadata(info_hash, file_id).await
+    manager
+        .get_video_metadata(info_hash, file_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -285,7 +292,10 @@ async fn torrent_get_subtitle_vtt(
         "Entering torrent_get_subtitle_vtt command, info_hash: {}, file_id: {}, track_id: {}",
         info_hash, file_id, track_id
     ));
-    manager.get_subtitle_vtt(info_hash, file_id, track_id).await
+    manager
+        .get_subtitle_vtt(info_hash, file_id, track_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -360,7 +370,7 @@ async fn torrent_clear_subject(
 async fn collection_get_all(
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<Vec<CollectionRecord>, String> {
-    service.list().await
+    service.list().await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -368,7 +378,10 @@ async fn collection_is_favorited(
     subject_id: i64,
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<bool, String> {
-    service.is_favorited(subject_id).await
+    service
+        .is_favorited(subject_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -385,6 +398,7 @@ async fn collection_add(
             image_url,
         })
         .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -392,7 +406,7 @@ async fn collection_remove(
     subject_id: i64,
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<(), String> {
-    service.remove(subject_id).await
+    service.remove(subject_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -629,7 +643,7 @@ pub fn run() {
                         &app_data_dir.join("animesh.sqlite"),
                     ),
                 )
-                .expect("Failed to initialize AppDatabase"),
+                .context("初始化 AppDatabase 失败")?,
             );
 
             let manager = tauri::async_runtime::block_on(async {
@@ -644,14 +658,14 @@ pub fn run() {
                     &db,
                 )
                 .await
-                .expect("Failed to initialize TorrentRepository");
+                .context("初始化 TorrentRepository 失败")?;
 
                 let (port, hls_proxy) =
                     animesh_core::infrastructure::stream_server::start_stream_server(
                         torrent_repo.clone(),
                     )
                     .await
-                    .expect("Failed to initialize stream server");
+                    .map_err(|e| anyhow::anyhow!("初始化流媒体服务器失败: {}", e))?;
 
                 let crawler_repo =
                     animesh_core::infrastructure::http_crawler::create_crawler_repository();
@@ -666,7 +680,7 @@ pub fn run() {
                     dyn animesh_core::domain::stream::StreamProber,
                 > = Arc::new(hls_proxy);
 
-                TorrentManager::new(
+                Ok::<TorrentManager, anyhow::Error>(TorrentManager::new(
                     download_dir_lock,
                     settings_path,
                     proxy,
@@ -678,8 +692,9 @@ pub fn run() {
                     subtitle_cache,
                     subtitle_extractor,
                     stream_prober,
-                )
-            });
+                ))
+            })
+            .context("初始化 TorrentManager 失败")?;
 
             let collection_service = CollectionService::new(Arc::new(
                 animesh_core::infrastructure::collection_repository::SqliteCollectionRepository::new(

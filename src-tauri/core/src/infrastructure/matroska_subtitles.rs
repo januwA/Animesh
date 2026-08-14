@@ -2,6 +2,7 @@ use crate::domain::subtitles::{
     decode_subtitle_bytes, format_vtt_time, strip_ass_tags, AudioTrackInfo, ChapterInfo,
     SubtitleExtractor, SubtitleTrackInfo, VideoInfo, VideoMetadata, VideoTrackInfo,
 };
+use crate::error::CoreError;
 use matroska_demuxer::{
     ContentCompAlgo, ContentEncoding, ContentEncodingValue, MatroskaFile, TrackType,
 };
@@ -467,12 +468,12 @@ pub fn extract_video_metadata(path: &Path) -> Result<VideoMetadata, String> {
 pub struct MatroskaSubtitleExtractor;
 
 impl SubtitleExtractor for MatroskaSubtitleExtractor {
-    fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, String> {
-        extract_video_metadata(path)
+    fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, CoreError> {
+        extract_video_metadata(path).map_err(CoreError::from)
     }
 
-    fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String> {
-        extract_subtitle_vtt(path, track_id)
+    fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, CoreError> {
+        extract_subtitle_vtt(path, track_id).map_err(CoreError::from)
     }
 }
 
@@ -488,7 +489,10 @@ mod tests {
         let path = Path::new("non_existent_file.mkv");
         let result = extractor.extract_video_metadata(path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to open file"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to open file"));
     }
 
     #[test]
@@ -498,7 +502,10 @@ mod tests {
         let path = Path::new("non_existent_file.mkv");
         let result = extractor.extract_subtitle_vtt(path, 1);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Failed to open file"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to open file"));
     }
 
     #[test]
@@ -510,11 +517,17 @@ mod tests {
 
         let result_metadata = extractor.extract_video_metadata(&temp_path);
         assert!(result_metadata.is_err());
-        assert!(result_metadata.unwrap_err().contains("Failed to parse MKV"));
+        assert!(result_metadata
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to parse MKV"));
 
         let result_vtt = extractor.extract_subtitle_vtt(&temp_path, 1);
         assert!(result_vtt.is_err());
-        assert!(result_vtt.unwrap_err().contains("Failed to parse MKV"));
+        assert!(result_vtt
+            .unwrap_err()
+            .to_string()
+            .contains("Failed to parse MKV"));
 
         let _ = std::fs::remove_file(&temp_path);
     }

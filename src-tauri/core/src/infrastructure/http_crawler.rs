@@ -1,4 +1,5 @@
 use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
+use crate::error::CoreError;
 use crate::infrastructure::crawler_parsers::{
     parse_acgrip_rss, parse_anibt_rss, parse_bangumi_moe_json, parse_dmhy_rss, parse_mikan_rss,
     parse_nyaa_rss,
@@ -30,7 +31,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!(
             "https://share.dmhy.org/topics/rss/rss.xml?keyword={}",
@@ -38,14 +39,14 @@ impl CrawlerRepository for HttpCrawlerRepository {
         );
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_dmhy_rss(&xml_data)
+        parse_dmhy_rss(&xml_data).map_err(CoreError::from)
     }
 
     async fn search_bangumi_moe(
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let payload = serde_json::json!({
             "query": keyword
         });
@@ -61,14 +62,14 @@ impl CrawlerRepository for HttpCrawlerRepository {
             )
             .await?;
 
-        parse_bangumi_moe_json(&json_data)
+        parse_bangumi_moe_json(&json_data).map_err(CoreError::from)
     }
 
     async fn search_mikan(
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!(
             "https://mikanani.me/RSS/Search?searchstr={}",
@@ -76,43 +77,43 @@ impl CrawlerRepository for HttpCrawlerRepository {
         );
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_mikan_rss(&xml_data)
+        parse_mikan_rss(&xml_data).map_err(CoreError::from)
     }
 
     async fn search_nyaa(
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!("https://nyaa.si/?page=rss&q={}&c=0_0&f=0", encoded_keyword);
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_nyaa_rss(&xml_data)
+        parse_nyaa_rss(&xml_data).map_err(CoreError::from)
     }
 
     async fn search_acgrip(
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!("https://acg.rip/.xml?term={}", encoded_keyword);
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_acgrip_rss(&xml_data)
+        parse_acgrip_rss(&xml_data).map_err(CoreError::from)
     }
 
     async fn search_anibt(
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!("https://anibt.net/rss/magnets.xml?q={}", encoded_keyword);
 
         let xml_data = self.client.get(&url, proxy).await?;
-        parse_anibt_rss(&xml_data)
+        parse_anibt_rss(&xml_data).map_err(CoreError::from)
     }
 }
 
@@ -139,7 +140,7 @@ mod tests {
         let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
         let result = repo.search_dmhy("xxx", Some("://bad".to_string())).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid proxy"));
+        assert!(result.unwrap_err().to_string().contains("Invalid proxy"));
     }
 
     #[tokio::test]
@@ -162,7 +163,7 @@ mod tests {
             .search_bangumi_moe("xxx", Some("://bad".to_string()))
             .await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid proxy"));
+        assert!(result.unwrap_err().to_string().contains("Invalid proxy"));
     }
 
     #[tokio::test]

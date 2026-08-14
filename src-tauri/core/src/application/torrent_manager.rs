@@ -2,6 +2,7 @@ use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
 use crate::domain::stream::{proxy_base_url, ResolvedStream, StreamProber};
 use crate::domain::subtitles::{SubtitleCache, SubtitleExtractor, VideoMetadata};
 use crate::domain::torrent::{AddTorrentResult, FileDetails, TorrentRepository, TorrentStatusInfo};
+use crate::error::{CoreError, CoreResult};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
@@ -89,7 +90,7 @@ impl TorrentManager {
             .to_string()
     }
 
-    pub fn set_download_dir(&self, dir: String) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn set_download_dir(&self, dir: String) -> CoreResult<()> {
         let path = PathBuf::from(&dir);
         std::fs::create_dir_all(&path)?;
 
@@ -128,7 +129,7 @@ impl TorrentManager {
         self.proxy.read().unwrap().clone()
     }
 
-    pub fn set_proxy(&self, proxy: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn set_proxy(&self, proxy: Option<String>) -> CoreResult<()> {
         if let Some(parent) = self.settings_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -160,7 +161,7 @@ impl TorrentManager {
         Ok(())
     }
 
-    pub fn get_settings(&self) -> Result<AppSettings, Box<dyn std::error::Error>> {
+    pub fn get_settings(&self) -> CoreResult<AppSettings> {
         if self.settings_path.exists() {
             let file = std::fs::File::open(&self.settings_path)?;
             let settings: AppSettings = serde_json::from_reader(file)?;
@@ -176,10 +177,7 @@ impl TorrentManager {
         }
     }
 
-    pub fn set_ai_configs(
-        &self,
-        configs: Option<Vec<AiConfig>>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn set_ai_configs(&self, configs: Option<Vec<AiConfig>>) -> CoreResult<()> {
         if let Some(parent) = self.settings_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -203,10 +201,7 @@ impl TorrentManager {
         self.get_settings().ok().and_then(|s| s.max_download_speed)
     }
 
-    pub fn set_max_download_speed(
-        &self,
-        max_speed: Option<u32>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn set_max_download_speed(&self, max_speed: Option<u32>) -> CoreResult<()> {
         self.torrent_repo
             .set_max_download_speed(speed_kbps_to_bytes_per_sec(max_speed));
         self.update_settings(|s| s.max_download_speed = max_speed)
@@ -216,20 +211,14 @@ impl TorrentManager {
         self.get_settings().ok().and_then(|s| s.max_upload_speed)
     }
 
-    pub fn set_max_upload_speed(
-        &self,
-        max_speed: Option<u32>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn set_max_upload_speed(&self, max_speed: Option<u32>) -> CoreResult<()> {
         self.torrent_repo
             .set_max_upload_speed(speed_kbps_to_bytes_per_sec(max_speed));
         self.update_settings(|s| s.max_upload_speed = max_speed)
     }
 
     /// 将设置持久化到 settings.json，未修改的字段保持原值。
-    fn update_settings(
-        &self,
-        apply: impl FnOnce(&mut AppSettings),
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    fn update_settings(&self, apply: impl FnOnce(&mut AppSettings)) -> CoreResult<()> {
         if let Some(parent) = self.settings_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -248,19 +237,15 @@ impl TorrentManager {
         Ok(())
     }
 
-    pub async fn pause_torrent(&self, info_hash_hex: &str) -> Result<(), String> {
+    pub async fn pause_torrent(&self, info_hash_hex: &str) -> CoreResult<()> {
         self.torrent_repo.pause_torrent(info_hash_hex).await
     }
 
-    pub async fn resume_torrent(&self, info_hash_hex: &str) -> Result<(), String> {
+    pub async fn resume_torrent(&self, info_hash_hex: &str) -> CoreResult<()> {
         self.torrent_repo.resume_torrent(info_hash_hex).await
     }
 
-    pub async fn delete_torrent(
-        &self,
-        info_hash_hex: &str,
-        delete_files: bool,
-    ) -> Result<(), String> {
+    pub async fn delete_torrent(&self, info_hash_hex: &str, delete_files: bool) -> CoreResult<()> {
         self.torrent_repo
             .delete_torrent(info_hash_hex, delete_files)
             .await
@@ -285,7 +270,7 @@ impl TorrentManager {
         self.torrent_repo.clear_subject_binding(info_hash).await;
     }
 
-    pub async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, String> {
+    pub async fn add_magnet(&self, magnet: &str) -> CoreResult<AddTorrentResult> {
         self.torrent_repo.add_magnet(magnet).await
     }
 
@@ -298,11 +283,7 @@ impl TorrentManager {
     }
 
     /// 按引擎分发搜索请求，返回搜索结果。
-    pub async fn search(
-        &self,
-        engine: &str,
-        keyword: &str,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    pub async fn search(&self, engine: &str, keyword: &str) -> CoreResult<Vec<SearchResultItem>> {
         let proxy = self.get_proxy();
         match engine {
             "dmhy" => self.crawler_repo.search_dmhy(keyword, proxy).await,
@@ -311,7 +292,7 @@ impl TorrentManager {
             "nyaa" => self.crawler_repo.search_nyaa(keyword, proxy).await,
             "acgrip" => self.crawler_repo.search_acgrip(keyword, proxy).await,
             "anibt" => self.crawler_repo.search_anibt(keyword, proxy).await,
-            _ => Err(format!("Unsupported search engine: {}", engine)),
+            _ => Err(CoreError::UnsupportedSearchEngine(engine.to_string())),
         }
     }
 
@@ -320,22 +301,22 @@ impl TorrentManager {
         &self,
         info_hash: &str,
         file_id: usize,
-    ) -> Result<VideoMetadata, String> {
+    ) -> CoreResult<VideoMetadata> {
         let download_dir = self.get_download_dir();
         let files = self
             .get_torrent_files(info_hash)
-            .ok_or_else(|| "Torrent not found".to_string())?;
+            .ok_or(CoreError::TorrentNotFound)?;
         let file_details = files
             .iter()
             .find(|f| f.id == file_id)
-            .ok_or_else(|| "File not found".to_string())?;
+            .ok_or(CoreError::FileNotFound)?;
 
         let path = PathBuf::from(download_dir).join(&file_details.name);
         if !path.exists() {
-            return Err("Video file not downloaded or doesn't exist yet".to_string());
+            return Err(CoreError::VideoNotDownloaded);
         }
         if !file_details.name.to_lowercase().ends_with(".mkv") {
-            return Err("Unsupported video format, metadata extraction requires MKV".to_string());
+            return Err(CoreError::UnsupportedVideoFormat);
         }
 
         self.subtitle_extractor.extract_video_metadata(&path)
@@ -347,26 +328,26 @@ impl TorrentManager {
         info_hash: &str,
         file_id: usize,
         track_id: u64,
-    ) -> Result<String, String> {
+    ) -> CoreResult<String> {
         let download_dir = self.get_download_dir();
         let files = self
             .get_torrent_files(info_hash)
-            .ok_or_else(|| "Torrent not found".to_string())?;
+            .ok_or(CoreError::TorrentNotFound)?;
         let file_details = files
             .iter()
             .find(|f| f.id == file_id)
-            .ok_or_else(|| "File not found".to_string())?;
+            .ok_or(CoreError::FileNotFound)?;
 
         let path = PathBuf::from(download_dir).join(&file_details.name);
         if !path.exists() {
-            return Err("Video file not downloaded or doesn't exist yet".to_string());
+            return Err(CoreError::VideoNotDownloaded);
         }
 
         let cache = self.subtitle_cache.clone();
         let cache_path = path.clone();
         let failure_key = format!("{}:{}:{}", info_hash, file_id, track_id);
         if let Some(error) = cache.get_failure(&failure_key, &cache_path, None) {
-            return Err(error);
+            return Err(CoreError::Message(error));
         }
         if let Some(vtt) = cache.get_vtt(info_hash, file_id, track_id, &cache_path) {
             return Ok(vtt);
@@ -383,20 +364,20 @@ impl TorrentManager {
                 Ok(vtt)
             }
             Ok(Ok(Err(e))) => {
-                cache.set_failure(&failure_key, &cache_path, e.clone(), None);
+                cache.set_failure(&failure_key, &cache_path, e.to_string(), None);
                 Err(e)
             }
-            Ok(Err(e)) => Err(format!("Task spawn error: {}", e)),
+            Ok(Err(e)) => Err(CoreError::Message(format!("Task spawn error: {}", e))),
             Err(_) => {
-                let message = "Failed to extract vtt: parse timed out".to_string();
-                cache.set_failure(&failure_key, &cache_path, message.clone(), None);
+                let message = CoreError::SubtitleParseTimeout;
+                cache.set_failure(&failure_key, &cache_path, message.to_string(), None);
                 Err(message)
             }
         }
     }
 
     /// 探测直播源类型并返回可直接播放的代理地址。
-    pub async fn resolve_stream(&self, raw_url: &str) -> Result<ResolvedStream, String> {
+    pub async fn resolve_stream(&self, raw_url: &str) -> CoreResult<ResolvedStream> {
         let kind = self.stream_prober.probe(raw_url).await;
         Ok(ResolvedStream {
             proxy_url: proxy_base_url(self.port),
@@ -549,7 +530,7 @@ mod tests {
     async fn build_manager(
         dir: PathBuf,
         settings_path: PathBuf,
-    ) -> Result<(TorrentManager, Arc<dyn TorrentRepository>), Box<dyn std::error::Error>> {
+    ) -> CoreResult<(TorrentManager, Arc<dyn TorrentRepository>)> {
         let download_dir_lock: Arc<RwLock<PathBuf>> = Arc::new(RwLock::new(dir.clone()));
         let db = Arc::new(
             AppDatabase::connect_in_memory()
@@ -597,7 +578,7 @@ mod tests {
     struct MockTorrentRepository {
         files: Option<Vec<FileDetails>>,
         status: Option<TorrentStatusInfo>,
-        add_result: Result<AddTorrentResult, String>,
+        add_result: CoreResult<AddTorrentResult>,
         subject_bindings: Arc<std::sync::Mutex<Vec<(String, u64, String)>>>,
         cleared: Arc<std::sync::Mutex<Vec<String>>>,
     }
@@ -607,7 +588,7 @@ mod tests {
             Self {
                 files: None,
                 status: None,
-                add_result: Err("未配置".to_string()),
+                add_result: Err("未配置".to_string().into()),
                 subject_bindings: Arc::new(std::sync::Mutex::new(Vec::new())),
                 cleared: Arc::new(std::sync::Mutex::new(Vec::new())),
             }
@@ -616,7 +597,7 @@ mod tests {
 
     #[async_trait::async_trait]
     impl TorrentRepository for MockTorrentRepository {
-        async fn add_magnet(&self, _magnet: &str) -> Result<AddTorrentResult, String> {
+        async fn add_magnet(&self, _magnet: &str) -> CoreResult<AddTorrentResult> {
             self.add_result.clone()
         }
         fn get_torrent_status(&self, _info_hash: &str) -> Option<TorrentStatusInfo> {
@@ -625,17 +606,13 @@ mod tests {
         fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
             self.status.clone().into_iter().collect()
         }
-        async fn pause_torrent(&self, _info_hash: &str) -> Result<(), String> {
+        async fn pause_torrent(&self, _info_hash: &str) -> CoreResult<()> {
             Ok(())
         }
-        async fn resume_torrent(&self, _info_hash: &str) -> Result<(), String> {
+        async fn resume_torrent(&self, _info_hash: &str) -> CoreResult<()> {
             Ok(())
         }
-        async fn delete_torrent(
-            &self,
-            _info_hash: &str,
-            _delete_files: bool,
-        ) -> Result<(), String> {
+        async fn delete_torrent(&self, _info_hash: &str, _delete_files: bool) -> CoreResult<()> {
             Ok(())
         }
         fn get_torrent_files(&self, _info_hash: &str) -> Option<Vec<FileDetails>> {
@@ -645,8 +622,8 @@ mod tests {
             &self,
             _info_hash: &str,
             _file_id: usize,
-        ) -> Result<Box<dyn AsyncReadSeek>, String> {
-            Err("未配置读取器".to_string())
+        ) -> Result<Box<dyn AsyncReadSeek>, CoreError> {
+            Err("未配置读取器".to_string().into())
         }
         fn set_max_download_speed(&self, _bytes_per_sec: Option<u32>) {}
         fn set_max_upload_speed(&self, _bytes_per_sec: Option<u32>) {}
@@ -686,42 +663,42 @@ mod tests {
             &self,
             _keyword: &str,
             _proxy: Option<String>,
-        ) -> Result<Vec<SearchResultItem>, String> {
+        ) -> CoreResult<Vec<SearchResultItem>> {
             Ok(vec![make_item("dmhy")])
         }
         async fn search_bangumi_moe(
             &self,
             _keyword: &str,
             _proxy: Option<String>,
-        ) -> Result<Vec<SearchResultItem>, String> {
+        ) -> CoreResult<Vec<SearchResultItem>> {
             Ok(vec![make_item("bangumi_moe")])
         }
         async fn search_mikan(
             &self,
             _keyword: &str,
             _proxy: Option<String>,
-        ) -> Result<Vec<SearchResultItem>, String> {
+        ) -> CoreResult<Vec<SearchResultItem>> {
             Ok(vec![make_item("mikan")])
         }
         async fn search_nyaa(
             &self,
             _keyword: &str,
             _proxy: Option<String>,
-        ) -> Result<Vec<SearchResultItem>, String> {
+        ) -> CoreResult<Vec<SearchResultItem>> {
             Ok(vec![make_item("nyaa")])
         }
         async fn search_acgrip(
             &self,
             _keyword: &str,
             _proxy: Option<String>,
-        ) -> Result<Vec<SearchResultItem>, String> {
+        ) -> CoreResult<Vec<SearchResultItem>> {
             Ok(vec![make_item("acgrip")])
         }
         async fn search_anibt(
             &self,
             _keyword: &str,
             _proxy: Option<String>,
-        ) -> Result<Vec<SearchResultItem>, String> {
+        ) -> CoreResult<Vec<SearchResultItem>> {
             Ok(vec![make_item("anibt")])
         }
     }
@@ -774,15 +751,15 @@ mod tests {
     }
 
     struct MockSubtitleExtractor {
-        metadata_result: Result<VideoMetadata, String>,
-        vtt_result: Result<String, String>,
+        metadata_result: CoreResult<VideoMetadata>,
+        vtt_result: CoreResult<String>,
     }
 
     impl SubtitleExtractor for MockSubtitleExtractor {
-        fn extract_video_metadata(&self, _path: &Path) -> Result<VideoMetadata, String> {
+        fn extract_video_metadata(&self, _path: &Path) -> CoreResult<VideoMetadata> {
             self.metadata_result.clone()
         }
-        fn extract_subtitle_vtt(&self, _path: &Path, _track_id: u64) -> Result<String, String> {
+        fn extract_subtitle_vtt(&self, _path: &Path, _track_id: u64) -> CoreResult<String> {
             self.vtt_result.clone()
         }
     }
@@ -884,7 +861,10 @@ mod tests {
         }
 
         let err = manager.search("unknown", "关键词").await;
-        assert!(err.unwrap_err().contains("Unsupported search engine"));
+        assert!(err
+            .unwrap_err()
+            .to_string()
+            .contains("Unsupported search engine"));
     }
 
     #[tokio::test]
@@ -916,7 +896,7 @@ mod tests {
         assert_eq!(res.files.len(), 1);
 
         let repo_err = MockTorrentRepository {
-            add_result: Err("添加失败".to_string()),
+            add_result: Err("添加失败".to_string().into()),
             ..Default::default()
         };
         let manager_err = build_manager_custom(
@@ -965,6 +945,7 @@ mod tests {
             .get_video_metadata("h", 0)
             .await
             .unwrap_err()
+            .to_string()
             .contains("Torrent not found"));
 
         // 文件不存在
@@ -982,6 +963,7 @@ mod tests {
             .get_video_metadata("h", 0)
             .await
             .unwrap_err()
+            .to_string()
             .contains("File not found"));
 
         // 文件未下载
@@ -1005,6 +987,7 @@ mod tests {
             .get_video_metadata("h", 0)
             .await
             .unwrap_err()
+            .to_string()
             .contains("not downloaded"));
 
         // 非 MKV 格式
@@ -1028,6 +1011,7 @@ mod tests {
             .get_video_metadata("h", 0)
             .await
             .unwrap_err()
+            .to_string()
             .contains("Unsupported video format"));
 
         // 成功提取（mock extractor 返回元数据）
@@ -1055,7 +1039,7 @@ mod tests {
 
         // 提取失败透传错误
         let extractor_err = MockSubtitleExtractor {
-            metadata_result: Err("提取失败".to_string()),
+            metadata_result: Err("提取失败".to_string().into()),
             vtt_result: Ok("WEBVTT\n".to_string()),
         };
         let dir2 = temp_dir("metadata_err");
@@ -1079,6 +1063,7 @@ mod tests {
             .get_video_metadata("h", 0)
             .await
             .unwrap_err()
+            .to_string()
             .contains("提取失败"));
     }
 
@@ -1096,6 +1081,7 @@ mod tests {
             .get_subtitle_vtt("h", 0, 1)
             .await
             .unwrap_err()
+            .to_string()
             .contains("Torrent not found"));
 
         // 文件不存在
@@ -1113,6 +1099,7 @@ mod tests {
             .get_subtitle_vtt("h", 0, 1)
             .await
             .unwrap_err()
+            .to_string()
             .contains("File not found"));
 
         // 文件未下载
@@ -1136,6 +1123,7 @@ mod tests {
             .get_subtitle_vtt("h", 0, 1)
             .await
             .unwrap_err()
+            .to_string()
             .contains("not downloaded"));
 
         // 冷却期内命中失败缓存
@@ -1164,6 +1152,7 @@ mod tests {
             .get_subtitle_vtt("h", 0, 1)
             .await
             .unwrap_err()
+            .to_string()
             .contains("上次解析失败"));
 
         // VTT 缓存命中
@@ -1246,7 +1235,7 @@ mod tests {
                     audio_tracks: vec![],
                 },
             }),
-            vtt_result: Err("解析字幕失败".to_string()),
+            vtt_result: Err("解析字幕失败".to_string().into()),
         };
         let manager = build_manager_custom_with_dir(
             dir,
@@ -1259,6 +1248,7 @@ mod tests {
             .get_subtitle_vtt("h", 0, 1)
             .await
             .unwrap_err()
+            .to_string()
             .contains("解析字幕失败"));
         assert_eq!(*set_failure_calls.lock().unwrap(), 1);
     }
