@@ -23,7 +23,7 @@ export class NotifyDownloadCompletionUseCase {
           // 触发系统通知
           await this.notificationRepository.sendNotification(
             "下载完成",
-            `动漫 《${torrent.name || "未命名种子"}》 已下载完成！`,
+            `动漫 《${torrent.name}》 已下载完成！`,
           );
         }
       } else {

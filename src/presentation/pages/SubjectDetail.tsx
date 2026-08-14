@@ -58,6 +58,7 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 import { ErrorState } from "../components/ErrorState";
 import { InvalidParamsView } from "../components/InvalidParamsView";
+import { ScrollArea } from "../components/ui/scroll-area";
 
 /** Deduplicate staff by (id, relation), then group by person ID to collect all roles. */
 function consolidateStaff(persons: BangumiPerson[]) {
@@ -251,10 +252,11 @@ function SubjectResourcesTab({
   );
 
   const bound = torrents.filter((t) => t.subject_id === subjectId);
+  const unbound = torrents.filter((t) => !t.subject_id);
 
   const handleOpenTorrent = (torrent: TorrentStatusInfo) => {
     navigate(
-      `/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name || "未命名种子")}`,
+      `/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name)}`,
     );
   };
 
@@ -306,7 +308,7 @@ function SubjectResourcesTab({
                 <FolderOpen className="h-4 w-4 text-primary shrink-0" />
                 <span className="min-w-0 flex flex-col gap-0.5">
                   <span className="text-sm font-medium text-foreground">
-                    {torrent.name || "正在解析元数据..."}
+                    {torrent.name}
                   </span>
                   <span className="text-[10px] font-mono text-muted-foreground">
                     {torrent.info_hash}
@@ -340,52 +342,44 @@ function SubjectResourcesTab({
             </DialogDescription>
           </DialogHeader>
 
-          {torrents.length === 0 ? (
+          {unbound.length === 0 ? (
             <Empty className="py-8">
               <EmptyContent>
                 <EmptyTitle>暂无下载任务</EmptyTitle>
               </EmptyContent>
             </Empty>
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {torrents.map((torrent) => {
-                const boundHere = torrent.subject_id === subjectId;
-                const boundOther =
-                  torrent.subject_id != null &&
-                  torrent.subject_id !== subjectId;
-                return (
-                  <div
-                    key={torrent.info_hash}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-card border border-border"
-                  >
-                    <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                      <span className="text-sm font-medium text-foreground">
-                        {torrent.name || "正在解析元数据..."}
-                      </span>
-                      <span className="text-[10px] font-mono text-muted-foreground">
-                        {torrent.info_hash}
-                      </span>
-                      {boundOther && (
-                        <span className="text-[10px] text-muted-foreground">
-                          已属于《{torrent.subject_name}》
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      variant={boundHere ? "outline" : "default"}
-                      size="sm"
-                      className="h-7 px-2.5 text-xs shrink-0"
-                      disabled={boundHere || bind.loading}
-                      onClick={() =>
-                        bind.execute({ infoHash: torrent.info_hash })
-                      }
+            <ScrollArea className="h-72 w-full">
+              <div className="flex flex-col gap-1.5">
+                {unbound.map((torrent) => {
+                  return (
+                    <div
+                      key={torrent.info_hash}
+                      className="flex items-center gap-3 p-2.5 rounded-lg bg-card border border-border"
                     >
-                      {boundHere ? "已绑定" : boundOther ? "改绑" : "绑定"}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+                      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                        <span className="text-sm font-medium text-foreground">
+                          {torrent.name}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {torrent.info_hash}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-7 px-2.5 text-xs shrink-0"
+                        disabled={bind.loading}
+                        onClick={() =>
+                          bind.execute({ infoHash: torrent.info_hash })
+                        }
+                      >
+                        绑定
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           )}
         </DialogContent>
       </Dialog>

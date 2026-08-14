@@ -338,7 +338,7 @@ describe("Downloads 页面组件", () => {
     );
   });
 
-  it("应该支持查看文件操作，正确进行路由跳转 (有名字)", async () => {
+  it("应该支持查看文件操作，正确进行路由跳转", async () => {
     const mockTorrents = [
       {
         info_hash: "hash111",
@@ -372,43 +372,6 @@ describe("Downloads 页面组件", () => {
     expect(currentLocation.current?.search).toContain("infoHash=hash111");
     expect(currentLocation.current?.search).toContain(
       "title=%E5%8A%A8%E6%BC%AB%E8%A7%86%E9%A2%911",
-    );
-  });
-
-  it("应该支持查看文件操作，正确进行路由跳转 (无名字)", async () => {
-    const mockTorrents = [
-      {
-        info_hash: "hash222",
-        name: "",
-        progress_bytes: 100,
-        total_bytes: 1000,
-        finished: false,
-        download_speed_bytes_per_sec: 50,
-        upload_speed_bytes_per_sec: 100,
-        paused: false,
-        peers_connected: 0,
-        peers_total: 0,
-        trackers: [],
-      },
-    ];
-
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
-
-    renderDownloads();
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "查看文件" }),
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "查看文件" }));
-    expect(currentLocation.current?.pathname).toBe("/torrent");
-    expect(currentLocation.current?.search).toContain("infoHash=hash222");
-    expect(currentLocation.current?.search).toContain(
-      "title=%E6%9C%AA%E5%91%BD%E5%90%8D%E7%A7%8D%E5%AD%90",
     );
   });
 

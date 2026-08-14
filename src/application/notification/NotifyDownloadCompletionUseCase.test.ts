@@ -159,42 +159,4 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
 
     await expect(useCase.execute()).rejects.toThrow("Fetch error");
   });
-
-  it("当已完成的种子没有名称时，通知信息应该降级显示为“未命名种子”", async () => {
-    let callCount = 0;
-    const torrentWithoutName: TorrentStatusInfo = {
-      info_hash: "hashUnnamed",
-      name: "",
-      progress_bytes: 50,
-      total_bytes: 100,
-      finished: false,
-      download_speed_bytes_per_sec: 10,
-      upload_speed_bytes_per_sec: 10,
-      paused: false,
-      peers_connected: 1,
-      peers_total: 1,
-      trackers: [],
-    };
-
-    vi.mocked(mockTorrentRepository.listTorrents).mockImplementation(
-      async () => {
-        callCount++;
-        if (callCount === 1) {
-          return [torrentWithoutName];
-        }
-        return [{ ...torrentWithoutName, finished: true, progress_bytes: 100 }];
-      },
-    );
-
-    // First run
-    await useCase.execute();
-
-    // Second run
-    await useCase.execute();
-
-    expect(mockNotificationRepository.sendNotification).toHaveBeenCalledWith(
-      "下载完成",
-      "动漫 《未命名种子》 已下载完成！",
-    );
-  });
 });

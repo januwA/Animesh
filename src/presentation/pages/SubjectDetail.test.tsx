@@ -2127,8 +2127,8 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
     // 对话框中应该列出所有下载，且已绑定到其它条目的显示为"改绑"
     expect(screen.getByText("绑定下载资源")).toBeInTheDocument();
     expect(screen.getByText("测试种子")).toBeInTheDocument();
-    expect(screen.getByText("另一个种子")).toBeInTheDocument();
-    expect(screen.getByText("已属于《其他动漫》")).toBeInTheDocument();
+    expect(screen.queryByText("另一个种子")).not.toBeInTheDocument();
+    expect(screen.queryByText("已属于《其他动漫》")).not.toBeInTheDocument();
 
     await userEvent.setup().click(screen.getByRole("button", { name: "绑定" }));
 
@@ -2191,46 +2191,5 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
         expect.stringContaining("解绑失败: Unbind failed"),
       );
     });
-  });
-
-  it("已绑定任务及绑定对话框中的未命名种子，应降级显示文案，跳转标题使用未命名种子", async () => {
-    renderResourceTab([
-      makeTorrent({
-        info_hash: "hash-1",
-        name: "",
-        subject_id: 123,
-        subject_name: "测试动漫",
-      }),
-    ]);
-
-    await waitFor(() => {
-      expect(screen.getByText("测试动漫")).toBeInTheDocument();
-    });
-
-    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
-
-    // 绑定行未命名种子降级文案
-    expect(screen.getByText("正在解析元数据...")).toBeInTheDocument();
-
-    // 打开绑定对话框，列表中的未命名种子同样降级显示
-    await userEvent
-      .setup()
-      .click(screen.getByRole("button", { name: /绑定下载/ }));
-    expect(screen.getAllByText("正在解析元数据...").length).toBe(2);
-
-    // 关闭对话框后点击绑定行，跳转标题使用"未命名种子"
-    fireEvent.keyDown(screen.getByRole("dialog"), {
-      key: "Escape",
-      code: "Escape",
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
-
-    await userEvent.setup().click(screen.getByTestId("bound-torrent-row"));
-    expect(currentLocation.current?.pathname).toBe("/torrent");
-    expect(currentLocation.current?.search).toContain(
-      `title=${encodeURIComponent("未命名种子")}`,
-    );
   });
 });

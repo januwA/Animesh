@@ -118,9 +118,9 @@ function TorrentCard({
           <div className="flex flex-col gap-1.5 min-w-0 flex-1">
             <CardTitle
               className="text-base font-bold text-foreground leading-normal"
-              title={torrent.name || "正在解析元数据..."}
+              title={torrent.name}
             >
-              {torrent.name || "正在解析元数据..."}
+              {torrent.name}
             </CardTitle>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-muted-foreground">
               <span>Hash: {torrent.info_hash}</span>
@@ -277,16 +277,15 @@ export default function Downloads() {
 
   const handleViewFiles = (torrent: TorrentStatusInfo) => {
     navigate(
-      `/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name || "未命名种子")}`,
+      `/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name)}`,
     );
   };
 
   const handleTogglePause = (torrent: TorrentStatusInfo) => {
-    const nameFallback = torrent.name || "";
     if (torrent.paused) {
-      resume.execute({ infoHash: torrent.info_hash, name: nameFallback });
+      resume.execute({ infoHash: torrent.info_hash, name: torrent.name });
     } else {
-      pause.execute({ infoHash: torrent.info_hash, name: nameFallback });
+      pause.execute({ infoHash: torrent.info_hash, name: torrent.name });
     }
   };
 
