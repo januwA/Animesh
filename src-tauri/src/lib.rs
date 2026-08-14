@@ -53,7 +53,10 @@ impl Default for SubscriptionTracker {
 }
 
 #[tauri::command]
-fn cancel_search(trace_id: String, tracker: tauri::State<'_, SearchTracker>) {
+async fn cancel_search(
+    trace_id: String,
+    tracker: tauri::State<'_, SearchTracker>,
+) -> Result<(), CoreError> {
     trace_log(&format!(
         "Entering cancel_search command, trace_id: {}",
         trace_id
@@ -72,6 +75,7 @@ fn cancel_search(trace_id: String, tracker: tauri::State<'_, SearchTracker>) {
             ));
         }
     }
+    Ok(())
 }
 
 #[tauri::command]
@@ -194,7 +198,10 @@ async fn torrent_add_magnet(
 }
 
 #[tauri::command]
-fn cancel_add_magnet(trace_id: String, tracker: tauri::State<'_, AddMagnetTracker>) {
+async fn cancel_add_magnet(
+    trace_id: String,
+    tracker: tauri::State<'_, AddMagnetTracker>,
+) -> Result<(), CoreError> {
     trace_log(&format!(
         "Entering cancel_add_magnet command, trace_id: {}",
         trace_id
@@ -213,6 +220,7 @@ fn cancel_add_magnet(trace_id: String, tracker: tauri::State<'_, AddMagnetTracke
             ));
         }
     }
+    Ok(())
 }
 
 #[tauri::command]
@@ -227,17 +235,19 @@ async fn torrent_get_status(
 }
 
 #[tauri::command]
-fn torrent_get_stream_url(
+async fn torrent_get_stream_url(
     info_hash: &str,
     file_id: usize,
     manager: tauri::State<'_, Arc<TorrentManager>>,
-) -> String {
-    manager.get_stream_url(info_hash, file_id)
+) -> Result<String, CoreError> {
+    Ok(manager.get_stream_url(info_hash, file_id).await)
 }
 
 #[tauri::command]
-fn iptv_proxy_base_url(manager: tauri::State<'_, Arc<TorrentManager>>) -> String {
-    manager.proxy_base_url()
+async fn iptv_proxy_base_url(
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<String, CoreError> {
+    Ok(manager.proxy_base_url().await)
 }
 
 #[tauri::command]
@@ -436,39 +446,45 @@ async fn torrent_subscribe(
 }
 
 #[tauri::command]
-fn torrent_unsubscribe(subscription_id: String, tracker: tauri::State<'_, SubscriptionTracker>) {
+async fn torrent_unsubscribe(
+    subscription_id: String,
+    tracker: tauri::State<'_, SubscriptionTracker>,
+) -> Result<(), CoreError> {
     if let Ok(mut subs) = tracker.subscriptions.lock() {
         subs.remove(&subscription_id);
     }
+    Ok(())
 }
 
 #[tauri::command]
-fn settings_get(manager: tauri::State<'_, Arc<TorrentManager>>) -> Result<AppSettings, CoreError> {
-    manager.get_settings()
+async fn settings_get(
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<AppSettings, CoreError> {
+    manager.get_settings().await
 }
 
 #[tauri::command]
-fn settings_set_download_dir(
+async fn settings_set_download_dir(
     dir: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
-    manager.set_download_dir(dir.to_string())
+    manager.set_download_dir(dir.to_string()).await
 }
 
 #[tauri::command]
-fn settings_set_proxy(
+async fn settings_set_proxy(
     proxy: Option<String>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
-    manager.set_proxy(proxy)
+    manager.set_proxy(proxy).await
 }
 
 #[tauri::command]
-fn settings_set_ai_configs(
+async fn settings_set_ai_configs(
     configs: Option<Vec<AiConfig>>,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
-    manager.set_ai_configs(configs)
+    manager.set_ai_configs(configs).await
 }
 
 #[tauri::command]

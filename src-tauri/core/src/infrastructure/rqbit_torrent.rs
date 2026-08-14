@@ -420,8 +420,7 @@ impl TorrentRepository for RqbitTorrentRepository {
         let download_dir = (self.get_download_dir_fn)();
         let absolute_path = std::path::PathBuf::from(download_dir).join(relative_path);
 
-        let std_file = std::fs::File::open(&absolute_path)?;
-        let tokio_file = tokio::fs::File::from_std(std_file);
+        let tokio_file = tokio::fs::File::open(&absolute_path).await?;
         Ok(Box::new(tokio_file))
     }
 

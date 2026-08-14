@@ -338,12 +338,6 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
     Ok(vtt)
 }
 
-pub fn extract_subtitle_vtt(path: &Path, track_id: u64) -> CoreResult<String> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    extract_subtitle_vtt_from_reader(reader, track_id, true)
-}
-
 /// 从已打开的 MKV 中收集章节信息。
 fn collect_chapters<R: Read + Seek>(mkv: &MatroskaFile<R>) -> Vec<ChapterInfo> {
     let mut chapters = Vec::new();
@@ -459,22 +453,30 @@ pub fn extract_video_metadata_from_reader<R: Read + Seek>(
     })
 }
 
-pub fn extract_video_metadata(path: &Path) -> CoreResult<VideoMetadata> {
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    extract_video_metadata_from_reader(reader, true)
-}
-
 pub struct MatroskaSubtitleExtractor;
 
 #[async_trait]
 impl SubtitleExtractor for MatroskaSubtitleExtractor {
     async fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, CoreError> {
-        extract_video_metadata(path)
+        let path = path.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            let file = File::open(&path)?;
+            let reader = BufReader::new(file);
+            extract_video_metadata_from_reader(reader, true)
+        })
+        .await
+        .map_err(|e| CoreError::Message(e.to_string()))?
     }
 
     async fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, CoreError> {
-        extract_subtitle_vtt(path, track_id)
+        let path = path.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            let file = File::open(&path)?;
+            let reader = BufReader::new(file);
+            extract_subtitle_vtt_from_reader(reader, track_id, true)
+        })
+        .await
+        .map_err(|e| CoreError::Message(e.to_string()))?
     }
 }
 

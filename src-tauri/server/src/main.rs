@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
                 .unwrap_or_else(|_| std::env::temp_dir())
                 .join("data")
         });
-    std::fs::create_dir_all(&app_data_dir).ok();
+    tokio::fs::create_dir_all(&app_data_dir).await.ok();
     log::info!("Data directory: {:?}", app_data_dir);
 
     let settings_path = app_data_dir.join("settings.json");
@@ -62,9 +62,9 @@ async fn main() -> anyhow::Result<()> {
     let mut max_download_speed = None;
     let mut max_upload_speed = None;
 
-    if settings_path.exists() {
-        if let Ok(file) = std::fs::File::open(&settings_path) {
-            if let Ok(settings) = serde_json::from_reader::<_, AppSettings>(file) {
+    if tokio::fs::metadata(&settings_path).await.is_ok() {
+        if let Ok(bytes) = tokio::fs::read(&settings_path).await {
+            if let Ok(settings) = serde_json::from_slice::<AppSettings>(&bytes) {
                 download_dir = std::path::PathBuf::from(settings.download_dir);
                 proxy = settings.proxy;
                 max_download_speed = settings.max_download_speed;
@@ -80,12 +80,13 @@ async fn main() -> anyhow::Result<()> {
             max_download_speed: None,
             max_upload_speed: None,
         };
-        if let Ok(file) = std::fs::File::create(&settings_path) {
-            let _ = serde_json::to_writer_pretty(file, &settings);
-            log::info!("Created default settings.json");
+        if let Ok(bytes) = serde_json::to_vec_pretty(&settings) {
+            if tokio::fs::write(&settings_path, bytes).await.is_ok() {
+                log::info!("Created default settings.json");
+            }
         }
     }
-    std::fs::create_dir_all(&download_dir).ok();
+    tokio::fs::create_dir_all(&download_dir).await.ok();
     log::info!("Download directory: {:?}", download_dir);
 
     // 默认如果未设置流媒体端口，我们在服务器模式下可以使用 3000
@@ -471,6 +472,7 @@ async fn settings_get_handler(
     let settings = state
         .manager
         .get_settings()
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(axum::Json(settings))
 }
@@ -487,6 +489,7 @@ async fn settings_set_download_dir_handler(
     state
         .manager
         .set_download_dir(payload.dir)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
@@ -503,6 +506,7 @@ async fn settings_set_proxy_handler(
     state
         .manager
         .set_proxy(payload.proxy)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
@@ -519,6 +523,7 @@ async fn settings_set_ai_configs_handler(
     state
         .manager
         .set_ai_configs(payload.configs)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }

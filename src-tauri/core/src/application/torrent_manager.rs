@@ -90,7 +90,7 @@ impl TorrentManager {
         }
     }
 
-    pub fn get_download_dir(&self) -> String {
+    pub async fn get_download_dir(&self) -> String {
         self.download_dir
             .read()
             .unwrap()
@@ -98,62 +98,85 @@ impl TorrentManager {
             .to_string()
     }
 
-    pub fn set_download_dir(&self, dir: String) -> CoreResult<()> {
+    pub async fn set_download_dir(&self, dir: String) -> CoreResult<()> {
         let path = PathBuf::from(&dir);
-        std::fs::create_dir_all(&path)?;
+        tokio::fs::create_dir_all(&path).await?;
 
         if let Some(parent) = self.settings_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            tokio::fs::create_dir_all(parent).await?;
         }
 
         let mut settings = if self.settings_path.exists() {
-            let file = std::fs::File::open(&self.settings_path)?;
-            serde_json::from_reader(file).unwrap_or_else(|_| AppSettings {
-                download_dir: dir.clone(),
-                proxy: self.get_proxy(),
-                ai_configs: None,
-                max_download_speed: None,
-                max_upload_speed: None,
-            })
+            if let Ok(bytes) = tokio::fs::read(&self.settings_path).await {
+                serde_json::from_slice(&bytes).unwrap_or_else(|_| AppSettings {
+                    download_dir: dir.clone(),
+                    proxy: None,
+                    ai_configs: None,
+                    max_download_speed: None,
+                    max_upload_speed: None,
+                })
+            } else {
+                AppSettings {
+                    download_dir: dir.clone(),
+                    proxy: None,
+                    ai_configs: None,
+                    max_download_speed: None,
+                    max_upload_speed: None,
+                }
+            }
         } else {
             AppSettings {
                 download_dir: dir.clone(),
-                proxy: self.get_proxy(),
+                proxy: None,
                 ai_configs: None,
                 max_download_speed: None,
                 max_upload_speed: None,
             }
         };
+
+        if settings.proxy.is_none() {
+            settings.proxy = self.get_proxy().await;
+        }
         settings.download_dir = dir;
 
-        let file = std::fs::File::create(&self.settings_path)?;
-        serde_json::to_writer_pretty(file, &settings)?;
+        let bytes = serde_json::to_vec_pretty(&settings)?;
+        tokio::fs::write(&self.settings_path, bytes).await?;
 
         *self.download_dir.write().unwrap() = path;
         Ok(())
     }
 
-    pub fn get_proxy(&self) -> Option<String> {
+    pub async fn get_proxy(&self) -> Option<String> {
         self.proxy.read().unwrap().clone()
     }
 
-    pub fn set_proxy(&self, proxy: Option<String>) -> CoreResult<()> {
+    pub async fn set_proxy(&self, proxy: Option<String>) -> CoreResult<()> {
         if let Some(parent) = self.settings_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            tokio::fs::create_dir_all(parent).await?;
         }
 
+        let download_dir = self.get_download_dir().await;
         let mut settings = if self.settings_path.exists() {
-            let file = std::fs::File::open(&self.settings_path)?;
-            serde_json::from_reader(file).unwrap_or_else(|_| AppSettings {
-                download_dir: self.get_download_dir(),
-                proxy: proxy.clone(),
-                ai_configs: None,
-                max_download_speed: None,
-                max_upload_speed: None,
-            })
+            if let Ok(bytes) = tokio::fs::read(&self.settings_path).await {
+                serde_json::from_slice(&bytes).unwrap_or_else(|_| AppSettings {
+                    download_dir: download_dir.clone(),
+                    proxy: proxy.clone(),
+                    ai_configs: None,
+                    max_download_speed: None,
+                    max_upload_speed: None,
+                })
+            } else {
+                AppSettings {
+                    download_dir: download_dir.clone(),
+                    proxy: proxy.clone(),
+                    ai_configs: None,
+                    max_download_speed: None,
+                    max_upload_speed: None,
+                }
+            }
         } else {
             AppSettings {
-                download_dir: self.get_download_dir(),
+                download_dir: download_dir.clone(),
                 proxy: proxy.clone(),
                 ai_configs: None,
                 max_download_speed: None,
@@ -162,22 +185,22 @@ impl TorrentManager {
         };
         settings.proxy = proxy.clone();
 
-        let file = std::fs::File::create(&self.settings_path)?;
-        serde_json::to_writer_pretty(file, &settings)?;
+        let bytes = serde_json::to_vec_pretty(&settings)?;
+        tokio::fs::write(&self.settings_path, bytes).await?;
 
         *self.proxy.write().unwrap() = proxy;
         Ok(())
     }
 
-    pub fn get_settings(&self) -> CoreResult<AppSettings> {
+    pub async fn get_settings(&self) -> CoreResult<AppSettings> {
         if self.settings_path.exists() {
-            let file = std::fs::File::open(&self.settings_path)?;
-            let settings: AppSettings = serde_json::from_reader(file)?;
+            let bytes = tokio::fs::read(&self.settings_path).await?;
+            let settings: AppSettings = serde_json::from_slice(&bytes)?;
             Ok(settings)
         } else {
             Ok(AppSettings {
-                download_dir: self.get_download_dir(),
-                proxy: self.get_proxy(),
+                download_dir: self.get_download_dir().await,
+                proxy: self.get_proxy().await,
                 ai_configs: None,
                 max_download_speed: None,
                 max_upload_speed: None,
@@ -185,14 +208,15 @@ impl TorrentManager {
         }
     }
 
-    pub fn set_ai_configs(&self, configs: Option<Vec<AiConfig>>) -> CoreResult<()> {
+    pub async fn set_ai_configs(&self, configs: Option<Vec<AiConfig>>) -> CoreResult<()> {
         if let Some(parent) = self.settings_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            tokio::fs::create_dir_all(parent).await?;
         }
 
-        let mut settings = self.get_settings().unwrap_or_else(|_| AppSettings {
-            download_dir: self.get_download_dir(),
-            proxy: self.get_proxy(),
+        let download_dir = self.get_download_dir().await;
+        let mut settings = self.get_settings().await.unwrap_or_else(|_| AppSettings {
+            download_dir,
+            proxy: self.proxy.read().unwrap().clone(),
             ai_configs: None,
             max_download_speed: None,
             max_upload_speed: None,
@@ -200,13 +224,16 @@ impl TorrentManager {
 
         settings.ai_configs = configs;
 
-        let file = std::fs::File::create(&self.settings_path)?;
-        serde_json::to_writer_pretty(file, &settings)?;
+        let bytes = serde_json::to_vec_pretty(&settings)?;
+        tokio::fs::write(&self.settings_path, bytes).await?;
         Ok(())
     }
 
-    pub fn get_max_download_speed(&self) -> Option<u32> {
-        self.get_settings().ok().and_then(|s| s.max_download_speed)
+    pub async fn get_max_download_speed(&self) -> Option<u32> {
+        self.get_settings()
+            .await
+            .ok()
+            .and_then(|s| s.max_download_speed)
     }
 
     pub async fn set_max_download_speed(&self, max_speed: Option<u32>) -> CoreResult<()> {
@@ -214,10 +241,14 @@ impl TorrentManager {
             .set_max_download_speed(speed_kbps_to_bytes_per_sec(max_speed))
             .await;
         self.update_settings(|s| s.max_download_speed = max_speed)
+            .await
     }
 
-    pub fn get_max_upload_speed(&self) -> Option<u32> {
-        self.get_settings().ok().and_then(|s| s.max_upload_speed)
+    pub async fn get_max_upload_speed(&self) -> Option<u32> {
+        self.get_settings()
+            .await
+            .ok()
+            .and_then(|s| s.max_upload_speed)
     }
 
     pub async fn set_max_upload_speed(&self, max_speed: Option<u32>) -> CoreResult<()> {
@@ -225,25 +256,27 @@ impl TorrentManager {
             .set_max_upload_speed(speed_kbps_to_bytes_per_sec(max_speed))
             .await;
         self.update_settings(|s| s.max_upload_speed = max_speed)
+            .await
     }
 
     /// 将设置持久化到 settings.json，未修改的字段保持原值。
-    fn update_settings(&self, apply: impl FnOnce(&mut AppSettings)) -> CoreResult<()> {
+    async fn update_settings(&self, apply: impl FnOnce(&mut AppSettings)) -> CoreResult<()> {
         if let Some(parent) = self.settings_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            tokio::fs::create_dir_all(parent).await?;
         }
 
-        let mut settings = self.get_settings().unwrap_or_else(|_| AppSettings {
-            download_dir: self.get_download_dir(),
-            proxy: self.get_proxy(),
+        let download_dir = self.get_download_dir().await;
+        let mut settings = self.get_settings().await.unwrap_or_else(|_| AppSettings {
+            download_dir,
+            proxy: self.proxy.read().unwrap().clone(),
             ai_configs: None,
             max_download_speed: None,
             max_upload_speed: None,
         });
         apply(&mut settings);
 
-        let file = std::fs::File::create(&self.settings_path)?;
-        serde_json::to_writer_pretty(file, &settings)?;
+        let bytes = serde_json::to_vec_pretty(&settings)?;
+        tokio::fs::write(&self.settings_path, bytes).await?;
         Ok(())
     }
 
@@ -294,7 +327,7 @@ impl TorrentManager {
 
     /// 按引擎分发搜索请求，返回搜索结果。
     pub async fn search(&self, engine: &str, keyword: &str) -> CoreResult<Vec<SearchResultItem>> {
-        let proxy = self.get_proxy();
+        let proxy = self.get_proxy().await;
         match engine {
             "dmhy" => self.crawler_repo.search_dmhy(keyword, proxy).await,
             "bangumi_moe" => self.crawler_repo.search_bangumi_moe(keyword, proxy).await,
@@ -312,7 +345,7 @@ impl TorrentManager {
         info_hash: &str,
         file_id: usize,
     ) -> CoreResult<VideoMetadata> {
-        let download_dir = self.get_download_dir();
+        let download_dir = self.get_download_dir().await;
         let files = self
             .get_torrent_files(info_hash)
             .await
@@ -340,7 +373,7 @@ impl TorrentManager {
         file_id: usize,
         track_id: u64,
     ) -> CoreResult<String> {
-        let download_dir = self.get_download_dir();
+        let download_dir = self.get_download_dir().await;
         let files = self
             .get_torrent_files(info_hash)
             .await
@@ -408,11 +441,11 @@ impl TorrentManager {
     }
 
     /// 生成对前端公开的 IPTV 代理基础地址。
-    pub fn proxy_base_url(&self) -> String {
+    pub async fn proxy_base_url(&self) -> String {
         proxy_base_url(self.port)
     }
 
-    pub fn get_stream_url(&self, info_hash_hex: &str, file_id: usize) -> String {
+    pub async fn get_stream_url(&self, info_hash_hex: &str, file_id: usize) -> String {
         let host = get_local_ip().unwrap_or_else(|| "127.0.0.1".to_string());
         format!(
             "http://{}:{}/stream/{}/{}",
@@ -1287,7 +1320,7 @@ mod tests {
             Arc::new(ok_extractor()),
         );
 
-        assert_eq!(manager.get_max_download_speed(), None);
+        assert_eq!(manager.get_max_download_speed().await, None);
         manager
             .set_ai_configs(Some(vec![AiConfig {
                 alias: "gpt".to_string(),
@@ -1295,15 +1328,16 @@ mod tests {
                 api_key: "key".to_string(),
                 ai_model: Some("gpt-4o".to_string()),
             }]))
+            .await
             .expect("设置 AI 配置应成功");
-        let settings = manager.get_settings().expect("读取设置应成功");
+        let settings = manager.get_settings().await.expect("读取设置应成功");
         assert_eq!(settings.ai_configs.as_ref().unwrap()[0].alias, "gpt");
 
         manager
             .set_max_download_speed(Some(256))
             .await
             .expect("设置下载限速应成功");
-        assert_eq!(manager.get_max_download_speed(), Some(256));
+        assert_eq!(manager.get_max_download_speed().await, Some(256));
     }
 
     #[tokio::test]
@@ -1316,7 +1350,7 @@ mod tests {
             Arc::new(ok_extractor()),
         );
 
-        let base = manager.proxy_base_url();
+        let base = manager.proxy_base_url().await;
         assert!(base.contains(&manager.port.to_string()));
         assert!(base.contains("/iptv-proxy"));
 
@@ -1383,7 +1417,7 @@ mod tests {
 
         // 生成 stream url
         let test_hash = "3a2a3e0f438a2e1d74381395bb0e6840742fef8e";
-        let url = manager.get_stream_url(test_hash, 0);
+        let url = manager.get_stream_url(test_hash, 0).await;
         assert!(url.contains(&manager.port.to_string()));
         assert!(url.contains(test_hash));
 
@@ -1421,15 +1455,15 @@ mod tests {
             .expect("初始化应成功");
 
         assert_eq!(
-            manager.get_download_dir(),
+            manager.get_download_dir().await,
             dir.to_string_lossy().to_string()
         );
 
         let new_dir = dir.join("custom_downloads");
         let new_dir_str = new_dir.to_string_lossy().to_string();
-        manager.set_download_dir(new_dir_str.clone()).unwrap();
+        manager.set_download_dir(new_dir_str.clone()).await.unwrap();
 
-        assert_eq!(manager.get_download_dir(), new_dir_str);
+        assert_eq!(manager.get_download_dir().await, new_dir_str);
 
         assert!(settings_path.exists());
         let content = std::fs::read_to_string(&settings_path).unwrap();
@@ -1466,12 +1500,12 @@ mod tests {
             .await
             .expect("初始化应成功");
 
-        assert_eq!(manager.get_proxy(), None);
+        assert_eq!(manager.get_proxy().await, None);
 
         let proxy_str = "http://127.0.0.1:7890".to_string();
-        manager.set_proxy(Some(proxy_str.clone())).unwrap();
+        manager.set_proxy(Some(proxy_str.clone())).await.unwrap();
 
-        assert_eq!(manager.get_proxy(), Some(proxy_str.clone()));
+        assert_eq!(manager.get_proxy().await, Some(proxy_str.clone()));
 
         assert!(settings_path.exists());
         let content = std::fs::read_to_string(&settings_path).unwrap();
@@ -1489,10 +1523,10 @@ mod tests {
             .await
             .expect("初始化应成功");
 
-        assert_eq!(manager.get_max_upload_speed(), None);
+        assert_eq!(manager.get_max_upload_speed().await, None);
 
         manager.set_max_upload_speed(Some(128)).await.unwrap();
-        assert_eq!(manager.get_max_upload_speed(), Some(128));
+        assert_eq!(manager.get_max_upload_speed().await, Some(128));
 
         assert!(settings_path.exists());
         let content = std::fs::read_to_string(&settings_path).unwrap();
@@ -1500,10 +1534,10 @@ mod tests {
         assert_eq!(parsed.max_upload_speed, Some(128));
 
         manager.set_max_upload_speed(Some(0)).await.unwrap();
-        assert_eq!(manager.get_max_upload_speed(), Some(0));
+        assert_eq!(manager.get_max_upload_speed().await, Some(0));
 
         manager.set_max_upload_speed(None).await.unwrap();
-        assert_eq!(manager.get_max_upload_speed(), None);
+        assert_eq!(manager.get_max_upload_speed().await, None);
     }
 
     #[tokio::test]
@@ -1521,26 +1555,27 @@ mod tests {
         let next_dir = dir.join("custom_downloads");
         manager
             .set_download_dir(next_dir.to_string_lossy().to_string())
+            .await
             .unwrap();
         assert_eq!(
-            manager.get_download_dir(),
+            manager.get_download_dir().await,
             next_dir.to_string_lossy().to_string()
         );
 
         let proxy = "socks5://127.0.0.1:1080".to_string();
-        manager.set_proxy(Some(proxy.clone())).unwrap();
-        assert_eq!(manager.get_proxy(), Some(proxy));
+        manager.set_proxy(Some(proxy.clone())).await.unwrap();
+        assert_eq!(manager.get_proxy().await, Some(proxy));
 
         manager.set_max_download_speed(Some(0)).await.unwrap();
         manager.set_max_download_speed(None).await.unwrap();
-        assert_eq!(manager.get_max_download_speed(), None);
+        assert_eq!(manager.get_max_download_speed().await, None);
 
         manager.set_max_upload_speed(Some(0)).await.unwrap();
         manager.set_max_upload_speed(None).await.unwrap();
-        assert_eq!(manager.get_max_upload_speed(), None);
+        assert_eq!(manager.get_max_upload_speed().await, None);
 
-        manager.set_ai_configs(None).unwrap();
-        let settings = manager.get_settings().unwrap();
+        manager.set_ai_configs(None).await.unwrap();
+        let settings = manager.get_settings().await.unwrap();
         assert!(settings.ai_configs.is_none());
     }
 
