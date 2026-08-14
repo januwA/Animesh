@@ -16,7 +16,6 @@ import {
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { FavoriteBadge } from "../components/FavoriteBadge";
 import { LazyImage } from "../components/LazyImage";
 import { useCalendarStore } from "../store/calendarStore";
 
@@ -139,7 +138,6 @@ function AnimeCard({ item, onClick }: AnimeCardProps) {
 
   return (
     <div className="group flex flex-col bg-card border border-border rounded-lg overflow-hidden hover:border-primary/30 transition-all duration-200 text-left relative">
-      <FavoriteBadge subjectId={item.id} />
       <button
         type="button"
         onClick={onClick}
