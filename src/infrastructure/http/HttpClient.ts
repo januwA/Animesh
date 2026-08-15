@@ -4,7 +4,14 @@ export interface HttpClientOptions extends RequestInit {
   ctx?: Context;
 }
 
-export class HttpClient {
+/** HTTP 客户端契约（端口）：仓库与 AI 客户端依赖此接口，测试可注入假实现。 */
+export interface HttpClient {
+  request(url: string | URL, options?: HttpClientOptions): Promise<Response>;
+  getJson<T>(url: string | URL, options?: HttpClientOptions): Promise<T>;
+}
+
+/** 基于 fetch 的默认实现，负责 Context 取消与响应错误归一化。 */
+export class FetchHttpClient implements HttpClient {
   private readonly defaultHeaders: HeadersInit;
 
   constructor(defaults: { headers?: HeadersInit } = {}) {

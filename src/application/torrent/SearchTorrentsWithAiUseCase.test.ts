@@ -4,7 +4,7 @@ import type { Logger } from "../../domain/logger/logger";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import { FetchAiClient } from "../../infrastructure/ai/FetchAiClient";
-import { HttpClient } from "../../infrastructure/http/HttpClient";
+import { FetchHttpClient } from "../../infrastructure/http/HttpClient";
 import { SearchTorrentsWithAiUseCase } from "./SearchTorrentsWithAiUseCase";
 
 describe("SearchTorrentsWithAiUseCase 测试", () => {
@@ -75,7 +75,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -130,7 +130,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -190,7 +190,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -314,7 +314,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -405,7 +405,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -453,7 +453,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -502,7 +502,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -524,7 +524,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -548,7 +548,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -644,7 +644,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -724,7 +724,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -817,7 +817,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -859,7 +859,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -907,7 +907,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -981,7 +981,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -1033,7 +1033,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {
@@ -1070,7 +1070,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
       mockSettingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
     const result = await useCase.execute(ctx, {

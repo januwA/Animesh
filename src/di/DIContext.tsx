@@ -1,12 +1,9 @@
 import { createContext, use } from "react";
 import {
-  CollectionRepositoryImpl,
   IptvRepositoryImpl,
   IptvStreamUrlRepositoryImpl,
   NotificationRepositoryImpl,
   OpenerRepositoryImpl,
-  SettingsRepositoryImpl,
-  TorrentRepositoryImpl,
   UpdateRepositoryImpl,
 } from "@/di/repositories";
 import { FetchAiClient } from "@/infrastructure/ai/FetchAiClient";
@@ -51,10 +48,16 @@ import type { AiClient } from "../domain/ai/AiClient";
 import type { Logger } from "../domain/logger/logger";
 import { BrowserBangumiCache } from "../infrastructure/bangumi/BrowserBangumiCache";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
-import { HttpClient } from "../infrastructure/http/HttpClient";
+import { HttpCollectionRepository } from "../infrastructure/collection/HttpCollectionRepository";
+import { TauriCollectionRepository } from "../infrastructure/collection/TauriCollectionRepository";
+import { FetchHttpClient } from "../infrastructure/http/HttpClient";
 import { BrowserIptvCache } from "../infrastructure/iptv/BrowserIptvCache";
 import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
+import { HttpSettingsRepository } from "../infrastructure/settings/HttpSettingsRepository";
+import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
 import { IndexedDbCacheStore } from "../infrastructure/storage/IndexedDbCacheStore";
+import { HttpTorrentRepository } from "../infrastructure/torrent/HttpTorrentRepository";
+import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
 
 export interface DIContainer {
   logger: Logger;
@@ -104,11 +107,17 @@ export function createDefaultDIContainer(): DIContainer {
   const isTauri = import.meta.env.MODE !== "web";
   const cacheStore = new IndexedDbCacheStore();
   const logger = new ConsoleLogger("App");
-  const torrentRepository = new TorrentRepositoryImpl();
-  const settingsRepository = new SettingsRepositoryImpl();
-  const httpClient = new HttpClient();
+  const httpClient = new FetchHttpClient();
+  const torrentRepository = isTauri
+    ? new TauriTorrentRepository()
+    : new HttpTorrentRepository(httpClient);
+  const settingsRepository = isTauri
+    ? new TauriSettingsRepository()
+    : new HttpSettingsRepository(httpClient);
   const bangumiRepository = new HttpBangumiRepository(httpClient);
-  const collectionRepository = new CollectionRepositoryImpl();
+  const collectionRepository = isTauri
+    ? new TauriCollectionRepository()
+    : new HttpCollectionRepository(httpClient);
   const notificationRepository = new NotificationRepositoryImpl();
   const openerRepository = new OpenerRepositoryImpl();
   const updateRepository = new UpdateRepositoryImpl(openerRepository);

@@ -17,25 +17,12 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 use tokio_stream::StreamExt;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
-
-struct SearchTracker {
-    pub handles: Mutex<HashMap<String, tokio::task::AbortHandle>>,
-}
-
-impl Default for SearchTracker {
-    fn default() -> Self {
-        Self {
-            handles: Mutex::new(HashMap::new()),
-        }
-    }
-}
 
 struct AppState {
     torrent_manager: Arc<TorrentManager>,
@@ -44,7 +31,6 @@ struct AppState {
     subtitle_service: Arc<SubtitleService>,
     stream_service: Arc<StreamService>,
     collection_service: Arc<CollectionService>,
-    search_tracker: Arc<SearchTracker>,
 }
 
 /// 启动时加载或初始化设置。DB 已有记录则读取，否则写入默认值。
@@ -176,13 +162,11 @@ async fn main() -> anyhow::Result<()> {
         subtitle_service: Arc::new(subtitle_service),
         stream_service: Arc::new(stream_service),
         collection_service: Arc::new(collection_service),
-        search_tracker: Arc::new(SearchTracker::default()),
     });
 
     // 路由定义
     let api_router = Router::new()
         .route("/torrents/search", get(search_torrents_handler))
-        .route("/torrents/search/:trace_id", delete(cancel_search_handler))
         .route("/torrents", post(torrent_add_magnet_handler))
         .route("/torrents/subscribe", get(torrent_subscribe_handler))
         .route("/torrents/:hash/files", get(torrent_get_files_handler))
@@ -268,61 +252,22 @@ async fn main() -> anyhow::Result<()> {
 
 #[derive(serde::Deserialize)]
 struct SearchQuery {
-    trace_id: String,
     keyword: String,
     engine: String,
 }
 
+/// 客户端断开连接时 handler future 会被 hyper 自动取消，
+/// 无需额外维护取消句柄。
 async fn search_torrents_handler(
     State(state): State<Arc<AppState>>,
     Query(query): Query<SearchQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let search_use_case = state.search_use_case.clone();
-    let tracker = state.search_tracker.clone();
-    let trace_id = query.trace_id.clone();
-    let keyword = query.keyword.clone();
-    let engine = query.engine.clone();
-
-    let task = tokio::spawn(async move { search_use_case.execute(&engine, &keyword).await });
-
-    let abort_handle = task.abort_handle();
-    if let Ok(mut handles) = tracker.handles.lock() {
-        handles.insert(trace_id.clone(), abort_handle);
-    }
-
-    let res = task.await;
-
-    if let Ok(mut handles) = tracker.handles.lock() {
-        handles.remove(&trace_id);
-    }
-
-    match res {
-        Ok(Ok(items)) => Ok(axum::Json(items)),
-        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
-        Err(join_err) => {
-            if join_err.is_cancelled() {
-                Err((StatusCode::BAD_REQUEST, "Search cancelled".to_string()))
-            } else {
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Search task panicked".to_string(),
-                ))
-            }
-        }
-    }
-}
-
-async fn cancel_search_handler(
-    State(state): State<Arc<AppState>>,
-    Path(trace_id): Path<String>,
-) -> impl IntoResponse {
-    if let Ok(mut handles) = state.search_tracker.handles.lock() {
-        if let Some(handle) = handles.remove(&trace_id) {
-            handle.abort();
-            return (StatusCode::OK, "Cancelled".to_string());
-        }
-    }
-    (StatusCode::NOT_FOUND, "No active search found".to_string())
+    let items = state
+        .search_use_case
+        .execute(&query.engine, &query.keyword)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(axum::Json(items))
 }
 
 #[derive(serde::Deserialize)]

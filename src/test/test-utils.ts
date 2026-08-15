@@ -49,7 +49,7 @@ import type { SettingsRepository } from "../domain/settings/SettingsRepository";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import type { UpdateRepository } from "../domain/update/UpdateRepository";
 import { FetchAiClient } from "../infrastructure/ai/FetchAiClient";
-import { HttpClient } from "../infrastructure/http/HttpClient";
+import { FetchHttpClient } from "../infrastructure/http/HttpClient";
 import { InMemoryCacheStore } from "./InMemoryCacheStore";
 
 const dummyLogger: Logger = {
@@ -245,7 +245,7 @@ export function createDIContainerForTest(
     new SearchTorrentsWithAiUseCase(
       torrentRepo,
       settingsRepo,
-      new FetchAiClient(new HttpClient()),
+      new FetchAiClient(new FetchHttpClient()),
       dummyLogger,
     );
   const subscribeTorrentsUseCase =
@@ -279,7 +279,7 @@ export function createDIContainerForTest(
     params.saveSettingsUseCase || new SaveSettingsUseCase(settingsRepo);
   const selectDirectoryUseCase =
     params.selectDirectoryUseCase || new SelectDirectoryUseCase(settingsRepo);
-  const aiClient = params.aiClient || new FetchAiClient(new HttpClient());
+  const aiClient = params.aiClient || new FetchAiClient(new FetchHttpClient());
   const verifyAiConnectionUseCase =
     params.verifyAiConnectionUseCase || new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase =

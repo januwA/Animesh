@@ -4,18 +4,14 @@ import {
   type Settings,
   SettingsSchema,
 } from "../../domain/settings/SettingsSchemas";
-import { HttpClient } from "../http/HttpClient";
+import type { HttpClient } from "../http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"
   : (import.meta.env.VITE_API_BASE_URL as string) || "/api";
 
 export class HttpSettingsRepository implements SettingsRepository {
-  private readonly httpClient: HttpClient;
-
-  constructor() {
-    this.httpClient = new HttpClient();
-  }
+  constructor(private readonly httpClient: HttpClient) {}
   setTheme(_theme?: "light" | "dark" | null): Promise<void> {
     throw new Error("Method not implemented.");
   }

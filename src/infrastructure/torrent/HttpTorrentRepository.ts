@@ -14,60 +14,32 @@ import {
   type VideoMetadata,
   VideoMetadataSchema,
 } from "../../domain/torrent/TorrentSchemas";
-import { HttpClient } from "../http/HttpClient";
+import type { HttpClient } from "../http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"
   : (import.meta.env.VITE_API_BASE_URL as string) || "/api";
 
 export class HttpTorrentRepository implements TorrentRepository {
-  private readonly httpClient: HttpClient;
-
-  constructor() {
-    this.httpClient = new HttpClient();
-  }
-
-  private registerSearchCancellation(
-    ctx: Context,
-    traceId: string,
-    status: { isFinished: boolean },
-  ): void {
-    ctx.done().then(() => {
-      if (!status.isFinished) {
-        this.httpClient
-          .request(`${baseUrl}/torrents/search/${traceId}`, {
-            method: "DELETE",
-          })
-          .catch(() => {});
-      }
-    });
-  }
+  constructor(private readonly httpClient: HttpClient) {}
 
   async search(
     ctx: Context,
     keyword: string,
     engine: TorrentSearchEngine,
   ): Promise<SearchResultItem[]> {
-    const traceId = ctx.value<string>("traceId") || "";
-    const status = { isFinished: false };
-    this.registerSearchCancellation(ctx, traceId, status);
-
-    try {
-      const query = new URLSearchParams({ trace_id: traceId, keyword, engine });
-      const raw = await this.httpClient.getJson<unknown>(
-        `${baseUrl}/torrents/search?${query.toString()}`,
-        { ctx },
-      );
-      const result = z.array(SearchResultItemSchema).safeParse(raw);
-      if (!result.success) {
-        throw new Error("search_torrents API structure mismatch", {
-          cause: result.error,
-        });
-      }
-      return result.data;
-    } finally {
-      status.isFinished = true;
+    const query = new URLSearchParams({ keyword, engine });
+    const raw = await this.httpClient.getJson<unknown>(
+      `${baseUrl}/torrents/search?${query.toString()}`,
+      { ctx },
+    );
+    const result = z.array(SearchResultItemSchema).safeParse(raw);
+    if (!result.success) {
+      throw new Error("search_torrents API structure mismatch", {
+        cause: result.error,
+      });
     }
+    return result.data;
   }
 
   async pauseTorrent(infoHash: string): Promise<void> {
