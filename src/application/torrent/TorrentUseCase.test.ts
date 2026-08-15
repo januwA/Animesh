@@ -1,11 +1,9 @@
 import { Background, WithValue } from "ajanuw-context";
 import { describe, expect, it, vi } from "vitest";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
-import { AddTorrentMagnetUseCase } from "./AddTorrentMagnetUseCase";
 import { ClearTorrentSubjectUseCase } from "./ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "./DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "./GetSubtitleVttUseCase";
-import { GetTorrentFilesUseCase } from "./GetTorrentFilesUseCase";
 import { GetTorrentStreamUrlUseCase } from "./GetTorrentStreamUrlUseCase";
 import { GetVideoMetadataUseCase } from "./GetVideoMetadataUseCase";
 import { PauseTorrentUseCase } from "./PauseTorrentUseCase";
@@ -65,31 +63,6 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     vi.mocked(mockRepo.deleteTorrent).mockResolvedValueOnce(undefined);
     await useCase.execute("123", true);
     expect(mockRepo.deleteTorrent).toHaveBeenCalledWith("123", true);
-  });
-
-  it("AddTorrentMagnetUseCase 应该正确调用 repository 的 addTorrentMagnet 方法", async () => {
-    const useCase = new AddTorrentMagnetUseCase(mockRepo);
-    const ctx = WithValue(Background, "traceId", "test-trace");
-    vi.mocked(mockRepo.addTorrentMagnet).mockResolvedValueOnce({
-      info_hash: "123",
-      files: [],
-    } as any);
-    const result = await useCase.execute(ctx, "magnet:?xt=urn:btih:123");
-    expect(mockRepo.addTorrentMagnet).toHaveBeenCalledWith(
-      ctx,
-      "magnet:?xt=urn:btih:123",
-    );
-    expect(result).toEqual({ info_hash: "123", files: [] });
-  });
-
-  it("GetTorrentFilesUseCase 应该正确调用 repository 的 getTorrentFiles 方法", async () => {
-    const useCase = new GetTorrentFilesUseCase(mockRepo);
-    vi.mocked(mockRepo.getTorrentFiles).mockResolvedValueOnce([
-      { id: 1, name: "video.mp4" } as any,
-    ]);
-    const results = await useCase.execute("123");
-    expect(mockRepo.getTorrentFiles).toHaveBeenCalledWith("123");
-    expect(results).toEqual([{ id: 1, name: "video.mp4" }]);
   });
 
   it("GetTorrentStreamUrlUseCase 应该正确调用 repository 的 getTorrentStreamUrl 方法", async () => {

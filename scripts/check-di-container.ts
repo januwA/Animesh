@@ -9,6 +9,9 @@ export interface DIErrorLocation {
 	message: string;
 }
 
+export type DIKeyError = DIErrorLocation &
+	Pick<DIContainerKeyInfo, "name" | "typeName">;
+
 export interface DIContainerKeyInfo {
 	name: string;
 	typeName: string | null;
@@ -199,8 +202,8 @@ export function collectUsedDIKeys(
 
 export function checkDIContainer(
 	keys: DIContainerKeyInfo[],
-): DIErrorLocation[] {
-	const errors: DIErrorLocation[] = [];
+): DIKeyError[] {
+	const errors: DIKeyError[] = [];
 	for (const key of keys) {
 		if (key.typeName?.endsWith("Repository")) {
 			errors.push({
@@ -216,8 +219,8 @@ export function checkDIContainer(
 export function checkDeadCode(
 	keys: DIContainerKeyInfo[],
 	usedKeys: Set<string>,
-): DIErrorLocation[] {
-	const errors: DIErrorLocation[] = [];
+): DIKeyError[] {
+	const errors: DIKeyError[] = [];
 	for (const key of keys) {
 		if (!usedKeys.has(key.name)) {
 			errors.push({
