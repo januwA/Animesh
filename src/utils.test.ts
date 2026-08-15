@@ -49,9 +49,9 @@ describe("节流函数 createThrottleByChange", () => {
 
 describe("格式化字节大小函数 formatBytes", () => {
   it("应该正确格式化字节数为可读字符串", () => {
-    expect(formatBytes(null)).toBe("未知大小");
-    expect(formatBytes(undefined)).toBe("未知大小");
-    expect(formatBytes(0)).toBe("未知大小");
+    expect(formatBytes(null)).toBe("0 B");
+    expect(formatBytes(undefined)).toBe("0 B");
+    expect(formatBytes(0)).toBe("0 B");
     expect(formatBytes(512)).toBe("512 B");
     expect(formatBytes(1024)).toBe("1 KB");
     expect(formatBytes(1536)).toBe("1.5 KB");

@@ -203,7 +203,8 @@ describe("Downloads 页面组件", () => {
       await vi.advanceTimersByTimeAsync(1500);
     });
 
-    expect(screen.getByText(/进度: 80/)).toBeInTheDocument();
+    // 进度文字已移除，通过下载速度变化验证轮询更新生效
+    expect(screen.getByText(/200 B\/s/)).toBeInTheDocument();
 
     // 下一次轮询 getTorrentsRef 抛错 → 静默忽略，保持数据
     getTorrentsRef = () => Promise.reject(new Error("Network polling error"));
@@ -520,7 +521,9 @@ describe("Downloads 页面组件", () => {
     await waitFor(() => {
       expect(screen.getByText("已完成视频")).toBeInTheDocument();
       expect(screen.getByText("零大小视频")).toBeInTheDocument();
-      expect(screen.getAllByText("已完成").length).toBe(2);
+      // 状态徽章已移除，只通过任务名称确认渲染
+      expect(screen.queryByText("做种中")).not.toBeInTheDocument();
+      expect(screen.queryByText("已完成")).not.toBeInTheDocument();
     });
   });
 
@@ -697,5 +700,248 @@ describe("Downloads 页面组件", () => {
     await waitFor(() => {
       expect(screen.getByText("没有正在进行的下载任务")).toBeInTheDocument();
     });
+  });
+
+  it("info_hash 应截断显示前 8 位而非完整 40 字符", async () => {
+    const fullHash = "0123456789abcdef0123456789abcdef01234567";
+    const mockTorrents = [
+      {
+        info_hash: fullHash,
+        name: "哈希截断测试",
+        progress_bytes: 0,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("哈希截断测试")).toBeInTheDocument();
+    });
+
+    // 应显示前 8 位 + 省略号
+    expect(screen.getByText(/Hash: 01234567…/)).toBeInTheDocument();
+    // 不应显示完整 40 字符哈希
+    expect(
+      screen.queryByText(new RegExp(`Hash: ${fullHash}`)),
+    ).not.toBeInTheDocument();
+  });
+
+  it("存储行应合并为单元素，避免窄屏断裂", async () => {
+    const mockTorrents = [
+      {
+        info_hash: "hashStorage",
+        name: "存储行测试",
+        progress_bytes: 500,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("存储行测试")).toBeInTheDocument();
+    });
+
+    // 已下载与总大小应在同一元素内（"已下载 X / Y" 形式），不应有独立的 "/" 分隔符 span
+    const storageText = screen.getByText(/已下载:.*\/.*总大小:/);
+    expect(storageText).toBeInTheDocument();
+    // 不应存在独立的 "/" 分隔元素
+    expect(screen.queryByText(/^\s*\/\s*$/)).not.toBeInTheDocument();
+  });
+
+  it("分组默认展开策略：含未完成任务分组默认展开，全已完成分组默认折叠", async () => {
+    const mockTorrents = [
+      // 动漫A：含未完成任务 → 默认展开
+      {
+        info_hash: "hashA1",
+        name: "动漫A-未完成",
+        progress_bytes: 500,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        subject_id: 42,
+        subject_name: "动漫A",
+        created_at: 1000,
+      },
+      // 动漫B：全部完成 → 默认折叠
+      {
+        info_hash: "hashB1",
+        name: "动漫B-已完成",
+        progress_bytes: 1000,
+        total_bytes: 1000,
+        finished: true,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        subject_id: 43,
+        subject_name: "动漫B",
+        created_at: 2000,
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("动漫A")).toBeInTheDocument();
+      expect(screen.getByText("动漫B")).toBeInTheDocument();
+    });
+
+    // 动漫A 分组默认展开 → 任务卡片立即可见
+    expect(screen.getByText("动漫A-未完成")).toBeInTheDocument();
+    // 动漫B 分组默认折叠 → 任务卡片不应立即可见
+    expect(screen.queryByText("动漫B-已完成")).not.toBeInTheDocument();
+
+    // 展开动漫B 分组后任务卡片可见
+    fireEvent.click(screen.getByText("动漫B"));
+    await waitFor(() => {
+      expect(screen.getByText("动漫B-已完成")).toBeInTheDocument();
+    });
+  });
+
+  it("暂停操作进行中时，仅禁用对应卡片的按钮，不影响其他卡片", async () => {
+    const mockTorrents = [
+      {
+        info_hash: "hashA",
+        name: "任务A",
+        progress_bytes: 100,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+      {
+        info_hash: "hashB",
+        name: "任务B",
+        progress_bytes: 200,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("任务A")).toBeInTheDocument();
+      expect(screen.getByText("任务B")).toBeInTheDocument();
+    });
+
+    // pauseTorrent 永不 resolve，保持 loading 状态
+    vi.mocked(mockTorrentRepository.pauseTorrent).mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    const pauseBtnsBefore = screen.getAllByTitle("暂停下载");
+    expect(pauseBtnsBefore.length).toBe(2);
+
+    // 点击任务A 的暂停按钮
+    fireEvent.click(pauseBtnsBefore[0]);
+
+    // A 的按钮应禁用，B 的按钮应保持可用
+    await waitFor(() => {
+      const pauseBtns = screen.getAllByTitle("暂停下载");
+      expect(pauseBtns[0]).toBeDisabled();
+      expect(pauseBtns[1]).not.toBeDisabled();
+    });
+  });
+
+  it("删除成功后，被删卡片应立即从列表消失（乐观更新）", async () => {
+    const mockTorrents = [
+      {
+        info_hash: "hashDel",
+        name: "待删除任务",
+        progress_bytes: 500,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+      {
+        info_hash: "hashKeep",
+        name: "保留任务",
+        progress_bytes: 200,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("待删除任务")).toBeInTheDocument();
+      expect(screen.getByText("保留任务")).toBeInTheDocument();
+    });
+
+    vi.useFakeTimers();
+
+    // 打开删除弹窗并确认
+    fireEvent.click(screen.getAllByTitle("删除下载")[0]);
+    fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockTorrentRepository.deleteTorrent).toHaveBeenCalledWith(
+      "hashDel",
+      false,
+    );
+
+    // 乐观更新：被删卡片立即消失
+    expect(screen.queryByText("待删除任务")).not.toBeInTheDocument();
+    // 保留的卡片仍可见
+    expect(screen.getByText("保留任务")).toBeInTheDocument();
   });
 });

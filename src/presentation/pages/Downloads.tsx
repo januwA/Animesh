@@ -95,8 +95,9 @@ interface TorrentCardProps {
   onViewFiles: (torrent: TorrentStatusInfo) => void;
   onTogglePause: (torrent: TorrentStatusInfo) => void;
   onDelete: (torrent: TorrentStatusInfo) => void;
-  pauseLoading: boolean;
-  resumeLoading: boolean;
+  pendingPauseHash: string | null;
+  pendingResumeHash: string | null;
+  pendingDeleteHash: string | null;
 }
 
 function TorrentCard({
@@ -104,8 +105,9 @@ function TorrentCard({
   onViewFiles,
   onTogglePause,
   onDelete,
-  pauseLoading,
-  resumeLoading,
+  pendingPauseHash,
+  pendingResumeHash,
+  pendingDeleteHash,
 }: TorrentCardProps) {
   const progress = torrent.total_bytes
     ? (torrent.progress_bytes / torrent.total_bytes) * 100
@@ -123,48 +125,31 @@ function TorrentCard({
               {torrent.name}
             </CardTitle>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-muted-foreground">
-              <span>Hash: {torrent.info_hash}</span>
+              <span title={torrent.info_hash}>
+                Hash: {torrent.info_hash.slice(0, 8)}…
+              </span>
               {torrent.created_at && (
                 <span>创建时间: {formatLocalDate(torrent.created_at)}</span>
               )}
             </div>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {torrent.finished ? (
-              <Badge className="bg-success/10 text-success border-success/20 text-xs">
-                已完成
-              </Badge>
-            ) : torrent.paused ? (
-              <Badge className="bg-warning/10 text-warning border-warning/20 text-xs">
-                已暂停
-              </Badge>
-            ) : (
-              <Badge className="bg-info/10 text-info border-info/20 text-xs flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                下载中
-              </Badge>
-            )}
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="px-5 pb-5 pt-0 flex flex-col gap-4">
         {/* Progress Info */}
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between text-xs font-medium">
-            <span className="flex items-center gap-1.5 text-muted-foreground">
+        <div className="flex  flex-col gap-2">
+          <div className="flex flex-start gap-2 text-xs font-medium">
+            <span className="flex items-center gap-2 text-muted-foreground">
               <Download className="h-3.5 w-3.5 text-primary" />
-              进度: {progress.toFixed(2)}%
+              {formatBytes(torrent.download_speed_bytes_per_sec)}/s
             </span>
-            <span className="flex items-center gap-1 text-muted-foreground">
-              下载: {formatBytes(torrent.download_speed_bytes_per_sec)}/s
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              {formatBytes(torrent.upload_speed_bytes_per_sec)}/s
             </span>
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <Upload className="h-3.5 w-3.5 text-info" />
-              上传: {formatBytes(torrent.upload_speed_bytes_per_sec)}/s
-              <span className="text-info/80">
-                (同伴: {torrent.peers_connected}/{torrent.peers_total})
-              </span>
+            <span>
+              (同伴: {torrent.peers_connected}/{torrent.peers_total})
             </span>
           </div>
           <Progress value={progress} className="h-2" />
@@ -173,12 +158,11 @@ function TorrentCard({
         {/* Storage Info & Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-1 text-xs">
           <div className="flex gap-4 text-muted-foreground items-center">
-            <span className="flex items-center gap-1">
-              <HardDrive className="h-3.5 w-3.5" />
-              已下载: {formatBytes(torrent.progress_bytes)}
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <HardDrive className="h-3.5 w-3.5 shrink-0" />
+              已下载: {formatBytes(torrent.progress_bytes)} / 总大小:{" "}
+              {formatBytes(torrent.total_bytes)}
             </span>
-            <span>/</span>
-            <span>总大小: {formatBytes(torrent.total_bytes)}</span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -199,7 +183,11 @@ function TorrentCard({
               size="sm"
               onClick={() => onTogglePause(torrent)}
               className="h-8 w-8 p-0"
-              disabled={torrent.paused ? resumeLoading : pauseLoading}
+              disabled={
+                torrent.paused
+                  ? torrent.info_hash === pendingResumeHash
+                  : torrent.info_hash === pendingPauseHash
+              }
               title={torrent.paused ? "开始下载" : "暂停下载"}
             >
               {torrent.paused ? (
@@ -215,9 +203,14 @@ function TorrentCard({
               size="sm"
               onClick={() => onDelete(torrent)}
               className="h-8 w-8 p-0"
+              disabled={torrent.info_hash === pendingDeleteHash}
               title="删除下载"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              {torrent.info_hash === pendingDeleteHash ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
             </Button>
           </div>
         </div>
@@ -238,6 +231,19 @@ export default function Downloads() {
   );
   const [deleteFiles, setDeleteFiles] = useState(false);
 
+  // Per-card pending state：避免全局 loading 串扰禁用其他卡片
+  const [pendingPauseHash, setPendingPauseHash] = useState<string | null>(null);
+  const [pendingResumeHash, setPendingResumeHash] = useState<string | null>(
+    null,
+  );
+  const [pendingDeleteHash, setPendingDeleteHash] = useState<string | null>(
+    null,
+  );
+  // 删除乐观更新：成功后立即隐藏卡片，不等下一轮推送
+  const [hiddenHashes, setHiddenHashes] = useState<Set<string>>(
+    () => new Set(),
+  );
+
   const pause = useMutation(
     (_ctx: Context, p: { infoHash: string; name: string }) =>
       pauseTorrentUseCase.execute(p.infoHash),
@@ -245,6 +251,7 @@ export default function Downloads() {
       onSuccess: (_data, p) =>
         toast(`已暂停任务: ${p.name || p.infoHash.slice(0, 8)}`),
       onError: (err) => toast.error(`暂停失败: ${formatError(err)}`),
+      onSettled: () => setPendingPauseHash(null),
     },
   );
 
@@ -255,6 +262,7 @@ export default function Downloads() {
       onSuccess: (_data, p) =>
         toast.success(`已开始下载任务: ${p.name || p.infoHash.slice(0, 8)}`),
       onError: (err) => toast.error(`启动失败: ${formatError(err)}`),
+      onSettled: () => setPendingResumeHash(null),
     },
   );
 
@@ -262,17 +270,29 @@ export default function Downloads() {
     (_ctx: Context, p: { target: TorrentStatusInfo; deleteFiles: boolean }) =>
       deleteTorrentUseCase.execute(p.target.info_hash, p.deleteFiles),
     {
-      onSuccess: () => {
+      onSuccess: (_data, p) => {
         toast.success("已删除任务");
+        setHiddenHashes((prev) => {
+          const next = new Set(prev);
+          next.add(p.target.info_hash);
+          return next;
+        });
         setDeleteTarget(null);
       },
       onError: (err) => toast.error(`删除任务失败: ${formatError(err)}`),
+      onSettled: () => setPendingDeleteHash(null),
     },
   );
 
+  // 过滤掉已乐观删除的卡片
+  const visibleTorrents = useMemo(
+    () => torrents.filter((t) => !hiddenHashes.has(t.info_hash)),
+    [torrents, hiddenHashes],
+  );
+
   const { groups, unbound } = useMemo(
-    () => groupTorrents(torrents),
-    [torrents],
+    () => groupTorrents(visibleTorrents),
+    [visibleTorrents],
   );
 
   const handleViewFiles = (torrent: TorrentStatusInfo) => {
@@ -283,8 +303,10 @@ export default function Downloads() {
 
   const handleTogglePause = (torrent: TorrentStatusInfo) => {
     if (torrent.paused) {
+      setPendingResumeHash(torrent.info_hash);
       resume.execute({ infoHash: torrent.info_hash, name: torrent.name });
     } else {
+      setPendingPauseHash(torrent.info_hash);
       pause.execute({ infoHash: torrent.info_hash, name: torrent.name });
     }
   };
@@ -312,8 +334,9 @@ export default function Downloads() {
       onViewFiles={handleViewFiles}
       onTogglePause={handleTogglePause}
       onDelete={handleDelete}
-      pauseLoading={pause.loading}
-      resumeLoading={resume.loading}
+      pendingPauseHash={pendingPauseHash}
+      pendingResumeHash={pendingResumeHash}
+      pendingDeleteHash={pendingDeleteHash}
     />
   );
 
@@ -352,10 +375,11 @@ export default function Downloads() {
         <div className="flex flex-col gap-6">
           {/* Bound subject groups */}
           {groups.map((group) => {
+            const hasUnfinished = group.items.some((t) => !t.finished);
             return (
               <Collapsible
                 key={group.subjectId}
-                defaultOpen
+                defaultOpen={hasUnfinished}
                 className="flex flex-col gap-3"
               >
                 <div className="flex items-center gap-2 flex-wrap">
@@ -465,10 +489,12 @@ export default function Downloads() {
             </Button>
             <Button
               variant="destructive"
-              onClick={() =>
-                deleteTarget &&
-                del.execute({ target: deleteTarget, deleteFiles })
-              }
+              onClick={() => {
+                // v8 ignore next
+                if (!deleteTarget) return;
+                setPendingDeleteHash(deleteTarget.info_hash);
+                del.execute({ target: deleteTarget, deleteFiles });
+              }}
               disabled={del.loading}
             >
               {del.loading && <Loader2 className="h-3 w-3 animate-spin" />}

@@ -210,10 +210,8 @@ describe("Player 页面组件", () => {
     });
 
     expect(screen.getByText("下载进度: 100.00%")).toBeInTheDocument();
-    expect(screen.getByText("下载: 未知大小/s")).toBeInTheDocument();
-    expect(
-      screen.getByText("上传: 未知大小/s (连接: 0/0)"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("下载: 0 B/s")).toBeInTheDocument();
+    expect(screen.getByText("上传: 0 B/s (连接: 0/0)")).toBeInTheDocument();
     expect(screen.getByText("已完成")).toBeInTheDocument();
 
     // Polling error (should not crash page)
