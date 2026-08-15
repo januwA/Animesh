@@ -1,6 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use animesh_core::application::collection_service::CollectionService;
-use animesh_core::application::search_service::SearchService;
+use animesh_core::application::search_use_case::SearchUseCase;
 use animesh_core::application::settings_service::{AiConfig, AppSettings, SettingsService};
 use animesh_core::application::stream_service::StreamService;
 use animesh_core::application::subtitle_service::SubtitleService;
@@ -80,7 +80,7 @@ async fn search_torrents(
     trace_id: String,
     keyword: &str,
     engine: &str,
-    search_service: tauri::State<'_, Arc<SearchService>>,
+    search_use_case: tauri::State<'_, Arc<SearchUseCase>>,
     tracker: tauri::State<'_, SearchTracker>,
 ) -> Result<Vec<SearchResultItem>, CoreError> {
     trace_log(&format!(
@@ -88,12 +88,15 @@ async fn search_torrents(
         trace_id, keyword, engine
     ));
 
-    let service_clone = search_service.inner().clone();
+    let use_case_clone = search_use_case.inner().clone();
     let keyword_string = keyword.to_string();
     let engine_string = engine.to_string();
 
-    let task =
-        tokio::spawn(async move { service_clone.search(&engine_string, &keyword_string).await });
+    let task = tokio::spawn(async move {
+        use_case_clone
+            .execute(&engine_string, &keyword_string)
+            .await
+    });
 
     let abort_handle = task.abort_handle();
     if let Ok(mut handles) = tracker.handles.lock() {
@@ -587,7 +590,7 @@ pub fn run() {
                 // 设置仓储：从 DB 加载或初始化默认值
                 let settings_repo: Arc<dyn SettingsRepository> =
                     Arc::new(SqliteSettingsRepository::new(&db));
-                let (download_dir, proxy, max_download_speed, max_upload_speed) =
+                let (download_dir, _proxy, max_download_speed, max_upload_speed) =
                     load_or_init_settings(&settings_repo, &app_data_dir).await?;
 
                 tokio::fs::create_dir_all(&download_dir).await.ok();
@@ -624,17 +627,13 @@ pub fn run() {
                     dyn animesh_core::domain::stream::StreamProber,
                 > = Arc::new(hls_proxy);
 
-                // 代理地址内存状态:与 SettingsService / SearchService 共享
-                let proxy_lock = Arc::new(RwLock::new(proxy));
-
                 let torrent_manager = TorrentManager::new(torrent_repo.clone(), subject_binding_repo);
                 let settings_service = SettingsService::new(
-                    settings_repo,
+                    settings_repo.clone(),
                     torrent_repo.clone(),
                     download_dir_lock.clone(),
-                    proxy_lock.clone(),
                 );
-                let search_service = SearchService::new(crawler_repo, proxy_lock.clone());
+                let search_use_case = SearchUseCase::new(crawler_repo, settings_repo);
                 let subtitle_service = SubtitleService::new(
                     torrent_repo.clone(),
                     subtitle_cache,
@@ -656,7 +655,7 @@ pub fn run() {
 
                 app.manage(Arc::new(torrent_manager));
                 app.manage(Arc::new(settings_service));
-                app.manage(Arc::new(search_service));
+                app.manage(Arc::new(search_use_case));
                 app.manage(Arc::new(subtitle_service));
                 app.manage(Arc::new(stream_service));
                 app.manage(Arc::new(collection_service));

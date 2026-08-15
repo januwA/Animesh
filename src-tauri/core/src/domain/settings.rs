@@ -42,6 +42,8 @@ pub trait SettingsRepository: Send + Sync {
     async fn update_download_dir(&self, dir: &str) -> Result<(), CoreError>;
     /// 原子更新 proxy。
     async fn update_proxy(&self, proxy: Option<&str>) -> Result<(), CoreError>;
+    /// 读取当前 proxy 配置。行不存在时返回 `None`。
+    async fn get_proxy(&self) -> Result<Option<String>, CoreError>;
     /// 原子更新 ai_configs。
     async fn update_ai_configs(&self, configs: Option<&[AiConfig]>) -> Result<(), CoreError>;
     /// 原子更新 max_download_speed。

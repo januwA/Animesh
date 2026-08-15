@@ -106,6 +106,16 @@ impl SettingsRepository for SqliteSettingsRepository {
         Ok(())
     }
 
+    async fn get_proxy(&self) -> CoreResult<Option<String>> {
+        let row = sqlx::query("SELECT proxy FROM app_settings WHERE id = 1")
+            .fetch_optional(&self.pool)
+            .await?;
+        match row {
+            None => Ok(None),
+            Some(row) => Ok(row.try_get("proxy")?),
+        }
+    }
+
     async fn update_ai_configs(&self, configs: Option<&[AiConfig]>) -> CoreResult<()> {
         self.ensure_row_exists().await?;
         let json = serialize_ai_configs(configs)?;
@@ -304,6 +314,24 @@ mod tests {
         );
         repo.update_proxy(None).await.unwrap();
         assert!(repo.get().await.unwrap().unwrap().proxy.is_none());
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_get_proxy_空库返回None且读取已存值() {
+        let repo = setup().await;
+        assert_eq!(repo.get_proxy().await.expect("查询应成功"), None);
+
+        repo.update_proxy(Some("http://127.0.0.1:7890"))
+            .await
+            .unwrap();
+        assert_eq!(
+            repo.get_proxy().await.expect("查询应成功").as_deref(),
+            Some("http://127.0.0.1:7890")
+        );
+
+        repo.update_proxy(None).await.unwrap();
+        assert_eq!(repo.get_proxy().await.expect("查询应成功"), None);
     }
 
     #[tokio::test]

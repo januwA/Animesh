@@ -10,13 +10,12 @@ pub use crate::domain::settings::{AiConfig, AppSettings};
 /// 应用设置用例:管理下载目录、代理、AI 配置、限速等持久化设置。
 ///
 /// 限速类操作需要同时更新 `settings_repo`(持久化)与 `torrent_repo`(实时生效),
-/// 此编排责任属于本服务。`download_dir_lock` 与 `proxy_lock` 是与 `SubtitleService`、
-/// `SearchService` 共享的内存状态,设置变更后立即对其他服务可见。
+/// 此编排责任属于本服务。`download_dir_lock` 与 `SubtitleService` 共享,
+/// 下载目录变更后立即对其他服务可见;代理配置直接读写 `settings_repo`,无需内存缓存。
 pub struct SettingsService {
     settings_repo: Arc<dyn SettingsRepository>,
     torrent_repo: Arc<dyn TorrentRepository>,
     download_dir_lock: Arc<RwLock<PathBuf>>,
-    proxy_lock: Arc<RwLock<Option<String>>>,
 }
 
 impl SettingsService {
@@ -24,13 +23,11 @@ impl SettingsService {
         settings_repo: Arc<dyn SettingsRepository>,
         torrent_repo: Arc<dyn TorrentRepository>,
         download_dir_lock: Arc<RwLock<PathBuf>>,
-        proxy_lock: Arc<RwLock<Option<String>>>,
     ) -> Self {
         Self {
             settings_repo,
             torrent_repo,
             download_dir_lock,
-            proxy_lock,
         }
     }
 
@@ -71,14 +68,11 @@ impl SettingsService {
     }
 
     pub async fn get_proxy(&self) -> Option<String> {
-        self.proxy_lock.read().unwrap().clone()
+        self.settings_repo.get_proxy().await.ok().flatten()
     }
 
     pub async fn set_proxy(&self, proxy: Option<String>) -> CoreResult<()> {
-        self.settings_repo.update_proxy(proxy.as_deref()).await?;
-
-        *self.proxy_lock.write().unwrap() = proxy;
-        Ok(())
+        self.settings_repo.update_proxy(proxy.as_deref()).await
     }
 
     pub async fn get_settings(&self) -> CoreResult<AppSettings> {
@@ -155,7 +149,6 @@ mod tests {
     async fn build_service(dir: PathBuf) -> SettingsService {
         std::fs::create_dir_all(&dir).unwrap();
         let download_dir_lock = Arc::new(RwLock::new(dir.clone()));
-        let proxy_lock = Arc::new(RwLock::new(None));
         let db = Arc::new(
             AppDatabase::connect_in_memory()
                 .await
@@ -167,7 +160,7 @@ mod tests {
             .expect("创建 torrent repo 应成功");
         let settings_repo: Arc<dyn SettingsRepository> =
             Arc::new(SqliteSettingsRepository::new(&db));
-        SettingsService::new(settings_repo, torrent_repo, download_dir_lock, proxy_lock)
+        SettingsService::new(settings_repo, torrent_repo, download_dir_lock)
     }
 
     #[tokio::test]
