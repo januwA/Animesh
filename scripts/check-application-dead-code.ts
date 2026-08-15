@@ -175,6 +175,9 @@ function main() {
 				const isTestFile = /\.(test|spec)\.[jt]sx?$/.test(f);
 				return isUnderTarget && isSourceFile && !isTestFile && fs.existsSync(f);
 			});
+		if (filesToCheck.length === 0) {
+			filesToCheck = targetDirs.flatMap((dir) => globFiles(dir));
+		}
 	} else {
 		filesToCheck = targetDirs.flatMap((dir) => globFiles(dir));
 	}

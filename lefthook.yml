@@ -44,6 +44,10 @@ pre-push:
       run: pnpm check:di
     "前端_应用层死代码检查":
       run: pnpm check:application-dead-code
+    "前端_接口实现契约检查":
+      run: pnpm check:interface-conformance {push_files}
+    "前端_基础设施死代码检查":
+      run: pnpm check:infrastructure-dead-code {push_files}
     "后端_异步命令检查":
       run: pnpm check:tauri-commands
     "前端_单元测试与覆盖率":
