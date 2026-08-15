@@ -19,11 +19,15 @@ export function FavoriteButton({
   subject,
   showLabel = true,
 }: FavoriteButtonProps) {
-  const { collectionRepository } = useDI();
+  const {
+    getFavoriteStatusUseCase,
+    addFavoriteUseCase,
+    removeFavoriteUseCase,
+  } = useDI();
 
   const { data, loading, refetch } = useQuery(
-    () => collectionRepository.isFavorited(subject.subjectId),
-    [collectionRepository, subject.subjectId],
+    () => getFavoriteStatusUseCase.execute(subject.subjectId),
+    [getFavoriteStatusUseCase, subject.subjectId],
     {
       onSuccess: () => setOptimistic(null),
     },
@@ -36,13 +40,13 @@ export function FavoriteButton({
     const next = !favorited;
     setOptimistic(next);
     if (next) {
-      await collectionRepository.add({
+      await addFavoriteUseCase.execute({
         subjectId: subject.subjectId,
         name: subject.name,
         imageUrl: subject.imageUrl,
       });
     } else {
-      await collectionRepository.remove(subject.subjectId);
+      await removeFavoriteUseCase.execute(subject.subjectId);
     }
     refetch();
   };

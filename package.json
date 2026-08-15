@@ -24,6 +24,7 @@
     "check:tauri-commands": "tsx scripts/check-tauri-commands.ts",
     "check:presentation-styles": "tsx scripts/check-presentation-styles.ts",
     "check:function-length": "tsx scripts/check-function-length.ts",
+    "check:di": "tsx scripts/check-di-container.ts",
     "typecheck": "tsc --noEmit",
     "test:coverage": "vitest run --coverage",
     "bump-version": "tsx scripts/bump-version.ts"

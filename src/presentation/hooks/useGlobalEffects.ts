@@ -5,7 +5,7 @@ import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 
 export function useGlobalEffects() {
   const {
-    notificationRepository,
+    requestNotificationPermissionUseCase,
     notifyDownloadCompletionUseCase,
     setThemeUseCase,
   } = useDI();
@@ -22,8 +22,8 @@ export function useGlobalEffects() {
 
   // 请求系统通知权限
   useEffect(() => {
-    notificationRepository.requestPermission();
-  }, [notificationRepository]);
+    requestNotificationPermissionUseCase.execute();
+  }, [requestNotificationPermissionUseCase]);
 
   // 下载完成监听（通过全局 TorrentStatusContext 消费数据，无需独立订阅）
   useEffect(() => {

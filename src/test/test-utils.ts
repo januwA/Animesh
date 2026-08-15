@@ -12,17 +12,16 @@ import { GetIptvChannelsUseCase } from "../application/iptv/GetIptvChannelsUseCa
 import { GetIptvCountriesUseCase } from "../application/iptv/GetIptvCountriesUseCase";
 import { ResolvePlayableStreamUrlUseCase } from "../application/iptv/ResolvePlayableStreamUrlUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
+import { RequestNotificationPermissionUseCase } from "../application/notification/RequestNotificationPermissionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
-import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
-import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUseCase";
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
 import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
@@ -71,16 +70,15 @@ export interface CreateContainerParamsForTest {
   logger?: Logger;
 
   notifyDownloadCompletionUseCase?: NotifyDownloadCompletionUseCase;
+  requestNotificationPermissionUseCase?: RequestNotificationPermissionUseCase;
   searchTorrentsUseCase?: SearchTorrentsUseCase;
   searchTorrentsWithAiUseCase?: SearchTorrentsWithAiUseCase;
   subscribeTorrentsUseCase?: SubscribeTorrentsUseCase;
   pauseTorrentUseCase?: PauseTorrentUseCase;
   resumeTorrentUseCase?: ResumeTorrentUseCase;
   deleteTorrentUseCase?: DeleteTorrentUseCase;
-  addTorrentMagnetUseCase?: AddTorrentMagnetUseCase;
   setTorrentSubjectUseCase?: SetTorrentSubjectUseCase;
   clearTorrentSubjectUseCase?: ClearTorrentSubjectUseCase;
-  getTorrentFilesUseCase?: GetTorrentFilesUseCase;
   resolveTorrentUseCase?: ResolveTorrentUseCase;
   getTorrentStreamUrlUseCase?: GetTorrentStreamUrlUseCase;
   getSubtitleVttUseCase?: GetSubtitleVttUseCase;
@@ -236,6 +234,9 @@ export function createDIContainerForTest(
   const notifyUseCase =
     params.notifyDownloadCompletionUseCase ||
     new NotifyDownloadCompletionUseCase(notificationRepo);
+  const requestNotificationPermissionUseCase =
+    params.requestNotificationPermissionUseCase ||
+    new RequestNotificationPermissionUseCase(notificationRepo);
 
   const searchTorrentsUseCase =
     params.searchTorrentsUseCase || new SearchTorrentsUseCase(torrentRepo);
@@ -256,16 +257,12 @@ export function createDIContainerForTest(
     params.resumeTorrentUseCase || new ResumeTorrentUseCase(torrentRepo);
   const deleteTorrentUseCase =
     params.deleteTorrentUseCase || new DeleteTorrentUseCase(torrentRepo);
-  const addTorrentMagnetUseCase =
-    params.addTorrentMagnetUseCase || new AddTorrentMagnetUseCase(torrentRepo);
   const setTorrentSubjectUseCase =
     params.setTorrentSubjectUseCase ||
     new SetTorrentSubjectUseCase(torrentRepo);
   const clearTorrentSubjectUseCase =
     params.clearTorrentSubjectUseCase ||
     new ClearTorrentSubjectUseCase(torrentRepo);
-  const getTorrentFilesUseCase =
-    params.getTorrentFilesUseCase || new GetTorrentFilesUseCase(torrentRepo);
   const resolveTorrentUseCase =
     params.resolveTorrentUseCase || new ResolveTorrentUseCase(torrentRepo);
   const getTorrentStreamUrlUseCase =
@@ -341,8 +338,6 @@ export function createDIContainerForTest(
     new GetFavoriteStatusUseCase(collectionRepo);
 
   return {
-    collectionRepository: collectionRepo,
-    notificationRepository: notificationRepo,
     logger: params.logger || dummyLogger,
 
     getCollectionsUseCase,
@@ -350,16 +345,15 @@ export function createDIContainerForTest(
     removeFavoriteUseCase,
     getFavoriteStatusUseCase,
     notifyDownloadCompletionUseCase: notifyUseCase,
+    requestNotificationPermissionUseCase,
     searchTorrentsUseCase,
     searchTorrentsWithAiUseCase,
     subscribeTorrentsUseCase,
     pauseTorrentUseCase,
     resumeTorrentUseCase,
     deleteTorrentUseCase,
-    addTorrentMagnetUseCase,
     setTorrentSubjectUseCase,
     clearTorrentSubjectUseCase,
-    getTorrentFilesUseCase,
     resolveTorrentUseCase,
     getTorrentStreamUrlUseCase,
     getSubtitleVttUseCase,
@@ -370,7 +364,6 @@ export function createDIContainerForTest(
     selectDirectoryUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,
-    aiClient,
     clearCacheUseCase,
 
     getBangumiCalendarUseCase,

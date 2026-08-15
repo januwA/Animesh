@@ -1,14 +1,20 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
+import { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
+import { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
+import { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import { InMemoryCollectionRepository } from "@/test/InMemoryCollectionRepository";
 import { FavoriteButton } from "./FavoriteButton";
 
-function createContainer(): DIContainer {
-  const collectionRepository = new InMemoryCollectionRepository();
+function createContainer(
+  repo: InMemoryCollectionRepository = new InMemoryCollectionRepository(),
+): DIContainer {
   return {
-    collectionRepository,
+    getFavoriteStatusUseCase: new GetFavoriteStatusUseCase(repo),
+    addFavoriteUseCase: new AddFavoriteUseCase(repo),
+    removeFavoriteUseCase: new RemoveFavoriteUseCase(repo),
   } as unknown as DIContainer;
 }
 
@@ -24,10 +30,9 @@ describe("FavoriteButton 收藏按钮", () => {
     summary: "剧情简介",
   };
 
-  function renderWithProvider() {
-    const container = createContainer();
+  function renderWithProvider(repo?: InMemoryCollectionRepository) {
     return render(
-      <DIProvider value={container}>
+      <DIProvider value={createContainer(repo)}>
         <FavoriteButton subject={mockSubject} />
       </DIProvider>,
     );
@@ -52,17 +57,13 @@ describe("FavoriteButton 收藏按钮", () => {
   });
 
   it("已收藏状态下点击按钮应取消收藏", async () => {
-    const container = createContainer();
-    await (container.collectionRepository as InMemoryCollectionRepository).add({
+    const repo = new InMemoryCollectionRepository();
+    await repo.add({
       subjectId: mockSubject.subjectId,
       name: "已收藏",
       imageUrl: null,
     });
-    render(
-      <DIProvider value={container}>
-        <FavoriteButton subject={mockSubject} />
-      </DIProvider>,
-    );
+    renderWithProvider(repo);
     await screen.findByText("已收藏");
     act(() => screen.getByRole("button").click());
     await waitFor(() => {

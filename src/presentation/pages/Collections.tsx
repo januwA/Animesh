@@ -14,10 +14,10 @@ import {
 import { useQuery } from "@/presentation/hooks/useQuery";
 
 export default function Collections() {
-  const { collectionRepository } = useDI();
+  const { getCollectionsUseCase } = useDI();
   const { data } = useQuery(
-    () => collectionRepository.getAll(),
-    [collectionRepository],
+    () => getCollectionsUseCase.execute(),
+    [getCollectionsUseCase],
   );
   const items = data ?? [];
   const navigate = useNavigate();

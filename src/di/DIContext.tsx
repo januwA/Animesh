@@ -25,17 +25,16 @@ import { GetIptvChannelsUseCase } from "../application/iptv/GetIptvChannelsUseCa
 import { GetIptvCountriesUseCase } from "../application/iptv/GetIptvCountriesUseCase";
 import { ResolvePlayableStreamUrlUseCase } from "../application/iptv/ResolvePlayableStreamUrlUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
+import { RequestNotificationPermissionUseCase } from "../application/notification/RequestNotificationPermissionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
-import { AddTorrentMagnetUseCase } from "../application/torrent/AddTorrentMagnetUseCase";
 import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
-import { GetTorrentFilesUseCase } from "../application/torrent/GetTorrentFilesUseCase";
 import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
 import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
@@ -49,9 +48,7 @@ import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { AiClient } from "../domain/ai/AiClient";
-import type { CollectionRepository } from "../domain/collection/CollectionRepository";
 import type { Logger } from "../domain/logger/logger";
-import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import { BrowserBangumiCache } from "../infrastructure/bangumi/BrowserBangumiCache";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpClient } from "../infrastructure/http/HttpClient";
@@ -60,12 +57,11 @@ import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 import { IndexedDbCacheStore } from "../infrastructure/storage/IndexedDbCacheStore";
 
 export interface DIContainer {
-  notificationRepository: NotificationRepository;
   logger: Logger;
-  collectionRepository: CollectionRepository;
 
   // UseCases
   notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
+  requestNotificationPermissionUseCase: RequestNotificationPermissionUseCase;
   getCollectionsUseCase: GetCollectionsUseCase;
   addFavoriteUseCase: AddFavoriteUseCase;
   removeFavoriteUseCase: RemoveFavoriteUseCase;
@@ -76,10 +72,8 @@ export interface DIContainer {
   pauseTorrentUseCase: PauseTorrentUseCase;
   resumeTorrentUseCase: ResumeTorrentUseCase;
   deleteTorrentUseCase: DeleteTorrentUseCase;
-  addTorrentMagnetUseCase: AddTorrentMagnetUseCase;
   setTorrentSubjectUseCase: SetTorrentSubjectUseCase;
   clearTorrentSubjectUseCase: ClearTorrentSubjectUseCase;
-  getTorrentFilesUseCase: GetTorrentFilesUseCase;
   resolveTorrentUseCase: ResolveTorrentUseCase;
   getTorrentStreamUrlUseCase: GetTorrentStreamUrlUseCase;
   getSubtitleVttUseCase: GetSubtitleVttUseCase;
@@ -90,7 +84,6 @@ export interface DIContainer {
   selectDirectoryUseCase: SelectDirectoryUseCase;
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
-  aiClient: AiClient;
   clearCacheUseCase: ClearCacheUseCase;
 
   getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
@@ -123,6 +116,8 @@ export function createDefaultDIContainer(): DIContainer {
   const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
     notificationRepository,
   );
+  const requestNotificationPermissionUseCase =
+    new RequestNotificationPermissionUseCase(notificationRepository);
   const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
 
   const aiClient: AiClient = isTauri
@@ -141,16 +136,12 @@ export function createDefaultDIContainer(): DIContainer {
   const pauseTorrentUseCase = new PauseTorrentUseCase(torrentRepository);
   const resumeTorrentUseCase = new ResumeTorrentUseCase(torrentRepository);
   const deleteTorrentUseCase = new DeleteTorrentUseCase(torrentRepository);
-  const addTorrentMagnetUseCase = new AddTorrentMagnetUseCase(
-    torrentRepository,
-  );
   const setTorrentSubjectUseCase = new SetTorrentSubjectUseCase(
     torrentRepository,
   );
   const clearTorrentSubjectUseCase = new ClearTorrentSubjectUseCase(
     torrentRepository,
   );
-  const getTorrentFilesUseCase = new GetTorrentFilesUseCase(torrentRepository);
   const resolveTorrentUseCase = new ResolveTorrentUseCase(torrentRepository);
   const getTorrentStreamUrlUseCase = new GetTorrentStreamUrlUseCase(
     torrentRepository,
@@ -217,21 +208,18 @@ export function createDefaultDIContainer(): DIContainer {
   const openUrlUseCase = new OpenUrlUseCase(openerRepository);
 
   return {
-    collectionRepository,
-    notificationRepository,
     logger,
 
     notifyDownloadCompletionUseCase,
+    requestNotificationPermissionUseCase,
     searchTorrentsUseCase,
     searchTorrentsWithAiUseCase,
     subscribeTorrentsUseCase,
     pauseTorrentUseCase,
     resumeTorrentUseCase,
     deleteTorrentUseCase,
-    addTorrentMagnetUseCase,
     setTorrentSubjectUseCase,
     clearTorrentSubjectUseCase,
-    getTorrentFilesUseCase,
     resolveTorrentUseCase,
     getTorrentStreamUrlUseCase,
     getSubtitleVttUseCase,
@@ -242,7 +230,6 @@ export function createDefaultDIContainer(): DIContainer {
     selectDirectoryUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,
-    aiClient,
     clearCacheUseCase,
 
     getBangumiCalendarUseCase,

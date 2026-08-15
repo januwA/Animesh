@@ -40,6 +40,8 @@ pre-push:
     "前端_表现层样式检查":
       glob: "src/presentation/**/*.{ts,tsx}"
       run: pnpm check:presentation-styles {push_files}
+    "前端_DI容器架构检查":
+      run: pnpm check:di
     "后端_异步命令检查":
       run: pnpm check:tauri-commands
     "前端_单元测试与覆盖率":
