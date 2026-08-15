@@ -28,6 +28,7 @@
     "check:application-dead-code": "tsx scripts/check-application-dead-code.ts",
     "check:interface-conformance": "tsx scripts/check-interface-conformance.ts",
     "check:infrastructure-dead-code": "tsx scripts/check-infrastructure-dead-code.ts",
+    "check:dependency-injection": "tsx scripts/check-dependency-injection.ts",
     "typecheck": "tsc --noEmit",
     "test:coverage": "vitest run --coverage",
     "bump-version": "tsx scripts/bump-version.ts"
