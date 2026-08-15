@@ -1,98 +1,19 @@
 use crate::domain::torrent::{
-    format_hash, AddTorrentResult, AsyncReadSeek, FileDetails, SubjectBinding, TorrentRepository,
-    TorrentStatusInfo,
+    format_hash, AddTorrentResult, AsyncReadSeek, FileDetails, TorrentRepository, TorrentStatusInfo,
 };
 use crate::error::CoreError;
-use crate::infrastructure::db::AppDatabase;
 use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
-use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::sync::{Arc, RwLock};
 
 use std::path::PathBuf;
-
-/// 下载资源与条目的绑定关系存储，按 info_hash（小写）唯一标识。
-/// 启动时从 SQLite 加载到内存作为读缓存，写入时直写内存与数据库（失败回滚内存）。
-struct SubjectBindingStore {
-    bindings: RwLock<HashMap<String, SubjectBinding>>,
-    pool: sqlx::SqlitePool,
-}
-
-impl SubjectBindingStore {
-    async fn new(db: &AppDatabase) -> Self {
-        let pool = db.pool().clone();
-        let rows = sqlx::query_as::<_, (String, i64, String)>(
-            "SELECT info_hash, subject_id, subject_name FROM torrent_subject_bindings",
-        )
-        .fetch_all(&pool)
-        .await
-        .unwrap_or_default();
-        let mut bindings = HashMap::with_capacity(rows.len());
-        for (hash, subject_id, subject_name) in rows {
-            bindings.insert(
-                hash,
-                SubjectBinding {
-                    subject_id: subject_id as u64,
-                    subject_name,
-                },
-            );
-        }
-        Self {
-            bindings: RwLock::new(bindings),
-            pool,
-        }
-    }
-
-    fn get(&self, info_hash: &str) -> Option<SubjectBinding> {
-        self.bindings
-            .read()
-            .unwrap()
-            .get(&info_hash.to_lowercase())
-            .cloned()
-    }
-
-    async fn set(&self, info_hash: &str, binding: SubjectBinding) {
-        let key = info_hash.to_lowercase();
-        {
-            let mut bindings = self.bindings.write().unwrap();
-            bindings.insert(key.clone(), binding.clone());
-        }
-        let result = sqlx::query(
-            "INSERT INTO torrent_subject_bindings (info_hash, subject_id, subject_name) VALUES (?, ?, ?)
-             ON CONFLICT(info_hash) DO UPDATE SET subject_id = excluded.subject_id, subject_name = excluded.subject_name",
-        )
-        .bind(&key)
-        .bind(binding.subject_id as i64)
-        .bind(&binding.subject_name)
-        .execute(&self.pool)
-        .await;
-        if result.is_err() {
-            self.bindings.write().unwrap().remove(&key);
-        }
-    }
-
-    async fn clear(&self, info_hash: &str) {
-        let key = info_hash.to_lowercase();
-        let removed = self.bindings.write().unwrap().remove(&key);
-        let result = sqlx::query("DELETE FROM torrent_subject_bindings WHERE info_hash = ?")
-            .bind(&key)
-            .execute(&self.pool)
-            .await;
-        if result.is_err() {
-            if let Some(binding) = removed {
-                self.bindings.write().unwrap().insert(key, binding);
-            }
-        }
-    }
-}
 
 pub struct RqbitTorrentRepository {
     session: Arc<Session>,
     get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
     persistence_dir: PathBuf,
     start_time: std::time::Instant,
-    subject_bindings: SubjectBindingStore,
 }
 
 /// 创建基于 librqbit 的种子仓储，由组合根调用。
@@ -100,7 +21,6 @@ pub struct RqbitTorrentRepository {
 pub async fn create_torrent_repository(
     download_dir_lock: Arc<RwLock<PathBuf>>,
     persistence_dir: PathBuf,
-    db: &AppDatabase,
 ) -> Result<Arc<dyn TorrentRepository>, CoreError> {
     tokio::fs::create_dir_all(&persistence_dir).await.ok();
 
@@ -125,7 +45,7 @@ pub async fn create_torrent_repository(
     };
 
     Ok(Arc::new(
-        RqbitTorrentRepository::new(session, download_dir_fn, persistence_dir, db).await,
+        RqbitTorrentRepository::new(session, download_dir_fn, persistence_dir).await,
     ))
 }
 
@@ -134,19 +54,13 @@ impl RqbitTorrentRepository {
         session: Arc<Session>,
         get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
         persistence_dir: PathBuf,
-        db: &AppDatabase,
     ) -> Self {
         Self {
             session,
             get_download_dir_fn,
             persistence_dir: persistence_dir.clone(),
             start_time: std::time::Instant::now(),
-            subject_bindings: SubjectBindingStore::new(db).await,
         }
-    }
-
-    fn get_subject_binding(&self, info_hash_hex: &str) -> Option<SubjectBinding> {
-        self.subject_bindings.get(info_hash_hex)
     }
 
     fn find_torrent_by_hex(&self, hex_hash: &str) -> Option<Arc<ManagedTorrent>> {
@@ -274,7 +188,6 @@ impl TorrentRepository for RqbitTorrentRepository {
                     .iter()
                     .map(|u| u.to_string())
                     .collect::<Vec<_>>();
-                let binding = self.get_subject_binding(&hex);
                 TorrentStatusInfo {
                     info_hash: hex,
                     name: torrent.name().unwrap_or_default(),
@@ -288,8 +201,8 @@ impl TorrentRepository for RqbitTorrentRepository {
                     peers_total,
                     created_at: 0,
                     trackers,
-                    subject_id: binding.as_ref().map(|b| b.subject_id),
-                    subject_name: binding.map(|b| b.subject_name),
+                    subject_id: None,
+                    subject_name: None,
                 }
             })
             .collect()
@@ -324,7 +237,6 @@ impl TorrentRepository for RqbitTorrentRepository {
         use librqbit::api::TorrentIdOrHash;
         let id = TorrentIdOrHash::try_from(info_hash_hex)?;
         self.session.delete(id, delete_files).await?;
-        self.subject_bindings.clear(info_hash_hex).await;
         Ok(())
     }
 
@@ -377,116 +289,5 @@ impl TorrentRepository for RqbitTorrentRepository {
     async fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>) {
         let bps = bytes_per_sec.and_then(NonZeroU32::new);
         self.session.ratelimits.set_upload_bps(bps);
-    }
-
-    async fn set_subject_binding(&self, info_hash: &str, subject_id: u64, subject_name: String) {
-        self.subject_bindings
-            .set(
-                info_hash,
-                SubjectBinding {
-                    subject_id,
-                    subject_name,
-                },
-            )
-            .await;
-    }
-
-    async fn clear_subject_binding(&self, info_hash: &str) {
-        self.subject_bindings.clear(info_hash).await;
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::infrastructure::db::AppDatabase;
-
-    async fn setup_store() -> SubjectBindingStore {
-        let db = AppDatabase::connect_in_memory()
-            .await
-            .expect("内存库应成功");
-        SubjectBindingStore::new(&db).await
-    }
-
-    #[tokio::test]
-    #[allow(non_snake_case)]
-    async fn 测试_绑定存储_设置读取与清除() {
-        let store = setup_store().await;
-
-        let hash = "ABC123";
-        assert_eq!(store.get(hash), None);
-
-        store
-            .set(
-                hash,
-                SubjectBinding {
-                    subject_id: 42,
-                    subject_name: "测试条目".to_string(),
-                },
-            )
-            .await;
-
-        // 大小写不敏感查找
-        let binding = store.get("abc123").expect("应能查到绑定");
-        assert_eq!(binding.subject_id, 42);
-        assert_eq!(binding.subject_name, "测试条目");
-
-        store.clear(hash).await;
-        assert_eq!(store.get(hash), None);
-    }
-
-    #[tokio::test]
-    #[allow(non_snake_case)]
-    async fn 测试_绑定存储_覆盖已有绑定() {
-        let store = setup_store().await;
-
-        store
-            .set(
-                "hash1",
-                SubjectBinding {
-                    subject_id: 1,
-                    subject_name: "旧条目".to_string(),
-                },
-            )
-            .await;
-        store
-            .set(
-                "hash1",
-                SubjectBinding {
-                    subject_id: 2,
-                    subject_name: "新条目".to_string(),
-                },
-            )
-            .await;
-
-        let binding = store.get("hash1").expect("应能查到绑定");
-        assert_eq!(binding.subject_id, 2);
-        assert_eq!(binding.subject_name, "新条目");
-    }
-
-    #[tokio::test]
-    #[allow(non_snake_case)]
-    async fn 测试_绑定存储_持久化跨实例重载() {
-        let db = AppDatabase::connect_in_memory()
-            .await
-            .expect("内存库应成功");
-        {
-            let store = SubjectBindingStore::new(&db).await;
-            store
-                .set(
-                    "persist_hash",
-                    SubjectBinding {
-                        subject_id: 99,
-                        subject_name: "持久化条目".to_string(),
-                    },
-                )
-                .await;
-        }
-
-        // 模拟重启：新实例从数据库重载
-        let reloaded = SubjectBindingStore::new(&db).await;
-        let binding = reloaded.get("PERSIST_HASH").expect("重启后应保留绑定");
-        assert_eq!(binding.subject_id, 99);
-        assert_eq!(binding.subject_name, "持久化条目");
     }
 }

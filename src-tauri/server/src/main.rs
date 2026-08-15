@@ -5,7 +5,9 @@ use animesh_core::application::stream_service::StreamService;
 use animesh_core::application::subtitle_service::SubtitleService;
 use animesh_core::application::torrent_manager::TorrentManager;
 use animesh_core::domain::settings::SettingsRepository;
+use animesh_core::domain::torrent::SubjectBindingRepository;
 use animesh_core::infrastructure::settings_repository::SqliteSettingsRepository;
+use animesh_core::infrastructure::subject_binding_repository::SqliteSubjectBindingRepository;
 use anyhow::Context;
 use axum::{
     extract::{Path, Query, State},
@@ -125,10 +127,11 @@ async fn main() -> anyhow::Result<()> {
     let torrent_repo = animesh_core::infrastructure::rqbit_torrent::create_torrent_repository(
         download_dir_lock.clone(),
         persistence_dir,
-        &db,
     )
     .await
     .context("初始化 TorrentRepository 失败")?;
+    let subject_binding_repo: Arc<dyn SubjectBindingRepository> =
+        Arc::new(SqliteSubjectBindingRepository::new(&db).await);
 
     let (port, hls_proxy) =
         animesh_core::infrastructure::stream_server::start_stream_server(torrent_repo.clone())
@@ -145,7 +148,7 @@ async fn main() -> anyhow::Result<()> {
     // 代理地址内存状态:与 SettingsService / SearchService 共享
     let proxy_lock = Arc::new(RwLock::new(proxy));
 
-    let torrent_manager = TorrentManager::new(torrent_repo.clone());
+    let torrent_manager = TorrentManager::new(torrent_repo.clone(), subject_binding_repo);
     let settings_service = SettingsService::new(
         settings_repo,
         torrent_repo.clone(),

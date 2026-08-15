@@ -162,10 +162,9 @@ mod tests {
                 .expect("内存库应成功"),
         );
         let persistence_dir = dir.join(".torrents");
-        let torrent_repo =
-            create_torrent_repository(download_dir_lock.clone(), persistence_dir, &db)
-                .await
-                .expect("创建 torrent repo 应成功");
+        let torrent_repo = create_torrent_repository(download_dir_lock.clone(), persistence_dir)
+            .await
+            .expect("创建 torrent repo 应成功");
         let settings_repo: Arc<dyn SettingsRepository> =
             Arc::new(SqliteSettingsRepository::new(&db));
         SettingsService::new(settings_repo, torrent_repo, download_dir_lock, proxy_lock)

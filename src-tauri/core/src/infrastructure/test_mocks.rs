@@ -10,7 +10,8 @@ use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
 use crate::domain::stream::{StreamKind, StreamProber};
 use crate::domain::subtitles::{SubtitleCache, SubtitleExtractor, VideoInfo, VideoMetadata};
 use crate::domain::torrent::{
-    AddTorrentResult, AsyncReadSeek, FileDetails, TorrentRepository, TorrentStatusInfo,
+    AddTorrentResult, AsyncReadSeek, FileDetails, SubjectBinding, SubjectBindingRepository,
+    TorrentRepository, TorrentStatusInfo,
 };
 use crate::error::{CoreError, CoreResult};
 use std::path::Path;
@@ -30,8 +31,6 @@ pub struct MockTorrentRepository {
     pub files: Option<Vec<FileDetails>>,
     pub status: Option<TorrentStatusInfo>,
     pub add_result: CoreResult<AddTorrentResult>,
-    pub subject_bindings: Arc<Mutex<Vec<(String, u64, String)>>>,
-    pub cleared: Arc<Mutex<Vec<String>>>,
     pub max_download_speed_calls: Arc<Mutex<Vec<Option<u32>>>>,
     pub max_upload_speed_calls: Arc<Mutex<Vec<Option<u32>>>>,
 }
@@ -42,8 +41,6 @@ impl Default for MockTorrentRepository {
             files: None,
             status: None,
             add_result: Err("未配置".to_string().into()),
-            subject_bindings: Arc::new(Mutex::new(vec![])),
-            cleared: Arc::new(Mutex::new(vec![])),
             max_download_speed_calls: Arc::new(Mutex::new(vec![])),
             max_upload_speed_calls: Arc::new(Mutex::new(vec![])),
         }
@@ -106,15 +103,41 @@ impl TorrentRepository for MockTorrentRepository {
             .unwrap()
             .push(bytes_per_sec);
     }
-    async fn set_subject_binding(&self, info_hash: &str, subject_id: u64, subject_name: String) {
-        self.subject_bindings.lock().unwrap().push((
+}
+
+// ============================================================================
+// MockSubjectBindingRepository
+// ============================================================================
+
+/// 可配置的 `SubjectBindingRepository` 测试替身。
+#[derive(Default, Clone)]
+pub struct MockSubjectBindingRepository {
+    pub get_result: Option<SubjectBinding>,
+    pub set_calls: Arc<Mutex<Vec<(String, u64, String)>>>,
+    pub cleared: Arc<Mutex<Vec<String>>>,
+}
+
+#[async_trait::async_trait]
+impl SubjectBindingRepository for MockSubjectBindingRepository {
+    async fn get(&self, _info_hash: &str) -> Option<SubjectBinding> {
+        self.get_result.clone()
+    }
+    async fn set(&self, info_hash: &str, binding: SubjectBinding) {
+        self.set_calls.lock().unwrap().push((
             info_hash.to_string(),
-            subject_id,
-            subject_name,
+            binding.subject_id,
+            binding.subject_name,
         ));
     }
-    async fn clear_subject_binding(&self, info_hash: &str) {
+    async fn clear(&self, info_hash: &str) {
         self.cleared.lock().unwrap().push(info_hash.to_string());
+    }
+}
+
+impl MockSubjectBindingRepository {
+    pub fn with_get_result(mut self, result: SubjectBinding) -> Self {
+        self.get_result = Some(result);
+        self
     }
 }
 
