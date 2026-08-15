@@ -10,13 +10,11 @@ import {
   FileDetailsSchema,
   type SearchResultItem,
   SearchResultItemSchema,
-  type SubtitleTrackInfo,
-  SubtitleTrackInfoSchema,
   type TorrentStatusInfo,
   TorrentStatusInfoSchema,
+  type VideoMetadata,
+  VideoMetadataSchema,
 } from "../../domain/torrent/TorrentSchemas";
-
-const sessionId = crypto.randomUUID();
 
 export class TauriTorrentRepository implements TorrentRepository {
   async search(
@@ -48,17 +46,6 @@ export class TauriTorrentRepository implements TorrentRepository {
     } finally {
       isFinished = true;
     }
-  }
-
-  async listTorrents(): Promise<TorrentStatusInfo[]> {
-    const raw = await invoke<unknown>("torrent_list");
-    const result = z.array(TorrentStatusInfoSchema).safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_list API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
   }
 
   async pauseTorrent(infoHash: string): Promise<void> {
@@ -110,28 +97,17 @@ export class TauriTorrentRepository implements TorrentRepository {
     return invoke<string>("torrent_get_stream_url", { infoHash, fileId });
   }
 
-  async getTorrentStatus(infoHash: string): Promise<TorrentStatusInfo> {
-    const raw = await invoke<unknown>("torrent_get_status", { infoHash });
-    const result = TorrentStatusInfoSchema.safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_get_status API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
-  }
-
-  async getSubtitleTracks(
+  async getVideoMetadata(
     infoHash: string,
     fileId: number,
-  ): Promise<SubtitleTrackInfo[]> {
-    const raw = await invoke<unknown>("torrent_get_subtitle_tracks", {
+  ): Promise<VideoMetadata> {
+    const raw = await invoke<unknown>("torrent_get_video_metadata", {
       infoHash,
       fileId,
     });
-    const result = z.array(SubtitleTrackInfoSchema).safeParse(raw);
+    const result = VideoMetadataSchema.safeParse(raw);
     if (!result.success) {
-      throw new Error("torrent_get_subtitle_tracks API structure mismatch", {
+      throw new Error("torrent_get_video_metadata API structure mismatch", {
         cause: result.error,
       });
     }
@@ -150,10 +126,25 @@ export class TauriTorrentRepository implements TorrentRepository {
     });
   }
 
+  async setTorrentSubject(
+    infoHash: string,
+    subject_id: number,
+    subject_name: string,
+  ): Promise<void> {
+    return invoke<void>("torrent_set_subject", {
+      infoHash,
+      subjectId: subject_id,
+      subjectName: subject_name,
+    });
+  }
+
+  async clearTorrentSubject(infoHash: string): Promise<void> {
+    return invoke<void>("torrent_clear_subject", { infoHash });
+  }
+
   async subscribeTorrents(
     onUpdate: (torrents: TorrentStatusInfo[]) => void,
   ): Promise<() => void> {
-    const subscriptionId = crypto.randomUUID();
     const channel = new Channel<unknown>((data) => {
       const result = z.array(TorrentStatusInfoSchema).safeParse(data);
       if (!result.success) {
@@ -165,13 +156,10 @@ export class TauriTorrentRepository implements TorrentRepository {
     });
 
     await invoke<void>("torrent_subscribe", {
-      subscriptionId,
-      sessionId,
       onEvent: channel,
     });
 
-    return () => {
-      invoke<void>("torrent_unsubscribe", { subscriptionId }).catch(() => {});
-    };
+    // 订阅贯穿整个应用生命周期，后端 loop 依赖 Channel 关闭自动退出，无需手动取消
+    return () => {};
   }
 }

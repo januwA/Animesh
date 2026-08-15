@@ -12,9 +12,9 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { BangumiRepository } from "@/domain/bangumi/BangumiRepository";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import CalendarPage from "./Calendar";
 
 const currentLocation = {
@@ -30,6 +30,7 @@ describe("Calendar 页面组件", () => {
 
   beforeEach(() => {
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
     vi.spyOn(window, "open").mockImplementation(() => null);
   });
@@ -47,20 +48,18 @@ describe("Calendar 页面组件", () => {
 
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/calendar"]}>
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="calendar" element={<CalendarPage />} />
-              </Route>
-              <Route
-                path="/subject/:subjectId"
-                element={<div>Subject Detail</div>}
-              />
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/calendar"]}>
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="calendar" element={<CalendarPage />} />
+            </Route>
+            <Route
+              path="/subject/:subjectId"
+              element={<div>Subject Detail</div>}
+            />
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };

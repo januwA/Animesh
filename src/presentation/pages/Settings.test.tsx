@@ -6,29 +6,22 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import { ACCENT_STORAGE_KEY } from "@/presentation/hooks/useAccentTheme";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import Settings from "./Settings";
-
-const currentLocation = {
-  current: null as { pathname: string; search: string } | null,
-};
-const LocationTracker = () => {
-  currentLocation.current = useLocation();
-  return null;
-};
 
 describe("Settings 页面组件", () => {
   let mockSettingsRepository: SettingsRepository;
   let mockAiClient: { post: any };
+  let mockClearCacheUseCase: { execute: ReturnType<typeof vi.fn> };
   let mockContainer: DIContainer;
 
   beforeEach(() => {
@@ -36,36 +29,13 @@ describe("Settings 页面组件", () => {
       getSettings: vi.fn().mockResolvedValue({
         download_dir: "/default/download",
         proxy: "",
-        trackers: [],
-        tracker_source_type: "best",
-        tracker_custom_url: "",
-        tracker_auto_update: false,
-        tracker_last_update_time: 0,
         max_download_speed: 0,
       }),
-      getDefaultTrackers: vi
-        .fn()
-        .mockResolvedValue([
-          "udp://tracker.opentrackr.org:1337/announce",
-          "http://tracker.gbitt.info:80/announce",
-          "udp://open.stealth.si:80/announce",
-          "udp://tracker.coppersurfer.tk:6969/announce",
-          "udp://exodus.desync.com:6969/announce",
-          "udp://tracker.leechers-paradise.org:6969/announce",
-          "udp://tracker.internetwarriors.net:1337/announce",
-          "udp://tracker.cyberia.is:6969/announce",
-          "udp://tracker.torrent.eu.org:451/announce",
-          "udp://tracker.moack.co.kr:80/announce",
-          "udp://explodie.org:6969/announce",
-          "http://tracker.openbittorrent.com:80/announce",
-        ]),
       setDownloadDir: vi.fn(),
       setProxy: vi.fn(),
-      setTrackers: vi.fn(),
-      setTrackerOptions: vi.fn(),
       setAiConfigs: vi.fn(),
       setMaxDownloadSpeed: vi.fn(),
-      fetchTrackers: vi.fn(),
+      setMaxUploadSpeed: vi.fn(),
       selectDirectory: vi.fn(),
       setTheme: vi.fn(),
     };
@@ -74,12 +44,17 @@ describe("Settings 页面组件", () => {
       post: vi.fn(),
     };
 
+    mockClearCacheUseCase = {
+      execute: vi.fn().mockResolvedValue(undefined),
+    };
+
     mockContainer = createDIContainerForTest({
       settingsRepository: mockSettingsRepository,
       aiClient: mockAiClient as any,
+      clearCacheUseCase: mockClearCacheUseCase as any,
     });
 
-    currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
   });
 
@@ -88,23 +63,35 @@ describe("Settings 页面组件", () => {
   });
 
   const renderSettings = () => {
-    return render(
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          element: <NavBarLayout />,
+          children: [
+            { index: true, element: <div>Home Page</div> },
+            {
+              path: "settings",
+              element: (
+                <>
+                  <Settings />
+                </>
+              ),
+            },
+          ],
+        },
+      ],
+      { initialEntries: ["/settings"] },
+    );
+
+    render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-            <MemoryRouter initialEntries={["/settings"]}>
-              <LocationTracker />
-              <Routes>
-                <Route path="/" element={<NavBarLayout />}>
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-                <Route path="/" element={<div>Home Page</div>} />
-              </Routes>
-            </MemoryRouter>
-          </ThemeProvider>
-        </AppContextProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <RouterProvider router={router} />
+        </ThemeProvider>
       </DIProvider>,
     );
+    return router;
   };
 
   it("应该在加载时渲染加载指示器", async () => {
@@ -137,14 +124,12 @@ describe("Settings 页面组件", () => {
   it("应该成功加载并显示当前下载目录与代理设置，且支持输入更改与保存（成功分支）", async () => {
     let currentDir = "C:\\Downloads";
     let currentProxy = "http://127.0.0.1:7890";
-    let currentTrackers: string[] = ["udp://tracker1"];
 
     vi.mocked(mockSettingsRepository.getSettings).mockImplementation(
       async () => {
         return {
           download_dir: currentDir,
           proxy: currentProxy,
-          trackers: currentTrackers,
         };
       },
     );
@@ -160,11 +145,6 @@ describe("Settings 页面组件", () => {
     ).mockImplementation(async (proxy) => {
       currentProxy = proxy || "";
     });
-    vi.mocked(mockSettingsRepository.setTrackers).mockImplementation(
-      async (trackers) => {
-        currentTrackers = trackers;
-      },
-    );
 
     renderSettings();
 
@@ -175,9 +155,6 @@ describe("Settings 页面组件", () => {
       expect(
         screen.getByPlaceholderText(/例如 http:\/\/127.0.0.1:7890/),
       ).toHaveValue("http://127.0.0.1:7890");
-      expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
-        "udp://tracker1",
-      );
     });
 
     const input = screen.getByPlaceholderText(/选择或输入下载路径/);
@@ -190,12 +167,7 @@ describe("Settings 页面组件", () => {
       target: { value: "socks5://127.0.0.1:1080" },
     });
 
-    const trackersInput = screen.getByPlaceholderText(/请输入 Tracker 地址/);
-    fireEvent.change(trackersInput, {
-      target: { value: "udp://tracker2\nhttp://tracker3" },
-    });
-
-    const speedInput = screen.getByPlaceholderText("0");
+    const speedInput = screen.getByLabelText("后台下载速度限制");
     fireEvent.change(speedInput, { target: { value: "2048" } });
 
     const saveBtn = screen.getByRole("button", { name: "保存设置" });
@@ -208,10 +180,6 @@ describe("Settings 页面组件", () => {
       expect(mockSettingsRepository.setProxy).toHaveBeenCalledWith(
         "socks5://127.0.0.1:1080",
       );
-      expect(mockSettingsRepository.setTrackers).toHaveBeenCalledWith([
-        "udp://tracker2",
-        "http://tracker3",
-      ]);
       expect(mockSettingsRepository.setMaxDownloadSpeed).toHaveBeenCalledWith(
         2048,
       );
@@ -219,6 +187,46 @@ describe("Settings 页面组件", () => {
     expect(toast.success).toHaveBeenCalledWith(
       "设置已保存，后续下载任务将使用新路径",
     );
+  });
+
+  it("应该支持修改后台上传速度限制并在保存时调用 setMaxUploadSpeed", async () => {
+    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+      download_dir: "C:\\Downloads",
+      max_upload_speed: 512,
+    });
+
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("后台上传速度限制")).toHaveValue(512);
+    });
+
+    const uploadInput = screen.getByLabelText("后台上传速度限制");
+    fireEvent.change(uploadInput, { target: { value: "1024" } });
+
+    const saveBtn = screen.getByRole("button", { name: "保存设置" });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockSettingsRepository.setMaxUploadSpeed).toHaveBeenCalledWith(
+        1024,
+      );
+      expect(mockSettingsRepository.setDownloadDir).toHaveBeenCalledWith(
+        "C:\\Downloads",
+      );
+    });
+  });
+
+  it("当载入设置未含上传限制时，上传速度限制应该默认为 0", async () => {
+    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
+      download_dir: "C:\\Downloads",
+    });
+
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("后台上传速度限制")).toHaveValue(0);
+    });
   });
 
   it("当保存下载目录为空时，应该拦截并提示不能为空", async () => {
@@ -330,218 +338,6 @@ describe("Settings 页面组件", () => {
       expect(toast.error).toHaveBeenCalledWith(
         expect.stringContaining("选择文件夹失败"),
       );
-    });
-  });
-
-  it("应该支持点击“重置为默认值”按钮以一键还原默认 Tracker 列表，并能成功保存", async () => {
-    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
-      trackers: ["udp://oldtracker"],
-    });
-
-    renderSettings();
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
-        "udp://oldtracker",
-      );
-    });
-
-    const resetBtn = screen.getByRole("button", { name: "重置为默认值" });
-    fireEvent.click(resetBtn);
-
-    // Expect default trackers list value
-    const trackersInput = screen.getByPlaceholderText(
-      /请输入 Tracker 地址/,
-    ) as HTMLTextAreaElement;
-    await waitFor(() => {
-      expect(trackersInput.value).toContain(
-        "udp://tracker.opentrackr.org:1337/announce",
-      );
-      expect(trackersInput.value).toContain(
-        "http://tracker.openbittorrent.com:80/announce",
-      );
-    });
-
-    const saveBtn = screen.getByRole("button", { name: "保存设置" });
-    fireEvent.click(saveBtn);
-
-    await waitFor(() => {
-      expect(mockSettingsRepository.setTrackers).toHaveBeenCalled();
-    });
-    expect(toast.success).toHaveBeenCalledWith(
-      "设置已保存，后续下载任务将使用新路径",
-    );
-  });
-
-  it("当点击“重置为默认值”按钮且获取默认 Tracker 列表失败时，应该妥善提示错误信息", async () => {
-    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
-      trackers: ["udp://oldtracker"],
-    });
-    vi.mocked(mockSettingsRepository.getDefaultTrackers).mockRejectedValueOnce(
-      new Error("Backend error"),
-    );
-
-    renderSettings();
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
-        "udp://oldtracker",
-      );
-    });
-
-    const resetBtn = screen.getByRole("button", { name: "重置为默认值" });
-    fireEvent.click(resetBtn);
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        expect.stringContaining("获取默认 Tracker 列表失败"),
-      );
-    });
-  });
-
-  it("应该支持选择不同的 Tracker 列表源，并进行在线同步", async () => {
-    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
-      trackers: ["udp://oldtracker"],
-      tracker_source_type: "best",
-      tracker_custom_url: "",
-      tracker_auto_update: false,
-      tracker_last_update_time: 0,
-      max_download_speed: 0,
-    });
-
-    vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([
-      "udp://newtracker1",
-      "http://newtracker2",
-    ]);
-
-    renderSettings();
-
-    await waitFor(() => {
-      expect(screen.getByText("选择列表源")).toBeInTheDocument();
-    });
-
-    // Click "立即同步并替换"
-    const syncBtn = screen.getByRole("button", { name: /立即同步并替换/ });
-    fireEvent.click(syncBtn);
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
-        "udp://newtracker1\nhttp://newtracker2",
-      );
-    });
-    expect(toast.success).toHaveBeenCalledWith(
-      expect.stringMatching(/同步成功：已替换为最新的 2 个 Tracker/),
-    );
-  });
-
-  it("应该支持切换不同的 Tracker 列表源，更改自动更新选项，更改自定义URL，并测试追加同步以及各类失败校验", async () => {
-    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
-      trackers: ["udp://oldtracker"],
-      tracker_source_type: "best",
-      tracker_custom_url: "",
-      tracker_auto_update: false,
-      tracker_last_update_time: 0,
-      max_download_speed: 0,
-    });
-
-    vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([
-      "udp://newtracker1",
-      "http://newtracker2",
-    ]);
-
-    renderSettings();
-
-    await waitFor(() => {
-      expect(screen.getByText("选择列表源")).toBeInTheDocument();
-    });
-
-    // 1. 切换列表源预设 (例如：完整列表)
-    const allBtn = screen.getByText("完整列表");
-    fireEvent.click(allBtn);
-    await waitFor(() => {
-      expect(allBtn).toHaveAttribute("data-state", "on");
-    });
-
-    // 2. 勾选自动更新
-    const autoUpdateCheckbox = screen.getByLabelText(
-      "启动时自动更新 (每24小时)",
-    );
-    fireEvent.click(autoUpdateCheckbox);
-    await waitFor(() => {
-      expect(autoUpdateCheckbox).toBeChecked();
-    });
-
-    // 4. 追加同步按钮点击
-    const appendBtn = screen.getByRole("button", { name: /追加同步/ });
-    fireEvent.click(appendBtn);
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText(/请输入 Tracker 地址/)).toHaveValue(
-        "udp://oldtracker\nudp://newtracker1\nhttp://newtracker2",
-      );
-    });
-    expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/已追加/));
-
-    // 5. 切换为自定义源，且自定义 URL 为空时点击同步，应该提示请输入 URL
-    const customBtn = screen.getByText("自定义");
-    fireEvent.click(customBtn);
-    await waitFor(() => {
-      expect(customBtn).toHaveAttribute("data-state", "on");
-    });
-
-    const syncBtn = screen.getByRole("button", { name: /立即同步并替换/ });
-    fireEvent.click(syncBtn);
-
-    expect(toast.warning).toHaveBeenCalledWith("请输入自定义 Tracker 列表 URL");
-
-    // 6. 输入自定义 URL
-    const customUrlInput = screen.getByLabelText("自定义 URL 地址");
-    fireEvent.change(customUrlInput, {
-      target: { value: "https://custom.com/trackers.txt" },
-    });
-    expect(customUrlInput).toHaveValue("https://custom.com/trackers.txt");
-
-    // 7. 当拉取在线列表铺出异常时，应该进行相应的提示处理
-    vi.mocked(mockSettingsRepository.fetchTrackers).mockRejectedValueOnce(
-      new Error("Fetch failed"),
-    );
-    fireEvent.click(syncBtn);
-
-    await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith(
-        expect.stringMatching(/同步 Tracker 失败: Fetch failed/),
-      );
-    });
-  });
-
-  it("当同步在线 Tracker 列表返回为空时，应该进行相应的提示处理", async () => {
-    vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
-      trackers: ["udp://oldtracker"],
-      tracker_source_type: "best",
-      tracker_custom_url: "",
-      tracker_auto_update: false,
-      tracker_last_update_time: 0,
-      max_download_speed: 0,
-    });
-
-    vi.mocked(mockSettingsRepository.fetchTrackers).mockResolvedValue([]);
-
-    renderSettings();
-
-    await waitFor(() => {
-      expect(screen.getByText("选择列表源")).toBeInTheDocument();
-    });
-
-    const syncBtn = screen.getByRole("button", { name: /立即同步并替换/ });
-    fireEvent.click(syncBtn);
-
-    await waitFor(() => {
-      expect(toast.warning).toHaveBeenCalledWith("未获取到有效的 Tracker 地址");
     });
   });
 
@@ -803,20 +599,7 @@ describe("Settings 页面组件", () => {
       } as any,
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/settings"]}>
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="settings" element={<Settings />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
-      </DIProvider>,
-    );
+    renderSettings();
 
     await waitFor(() => {
       expect(screen.queryByText("正在加载设置面版...")).not.toBeInTheDocument();
@@ -1347,5 +1130,227 @@ describe("Settings 页面组件", () => {
       "true",
     );
     expect(document.documentElement.dataset.accent).toBe("rose");
+  });
+
+  it("未修改设置时离开页面，不应弹出离开确认对话框", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Home Page")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
+  });
+
+  it("修改设置后离开页面，应弹出离开确认对话框并停留在设置页", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("放弃未保存的更改？")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Home Page")).not.toBeInTheDocument();
+  });
+
+  it("在离开确认对话框点击取消，应关闭对话框并停留在设置页", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("放弃未保存的更改？")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText("Home Page")).not.toBeInTheDocument();
+  });
+
+  it("在离开确认对话框按 Esc 关闭时，应关闭对话框并停留在设置页", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("放弃未保存的更改？")).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: "Escape",
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText("Home Page")).not.toBeInTheDocument();
+  });
+
+  it("在离开确认对话框点击确认离开，应跳转到目标页面", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("放弃未保存的更改？")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "确认离开" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Home Page")).toBeInTheDocument();
+    });
+  });
+
+  it("修改并保存成功后离开页面，不应弹出离开确认对话框", async () => {
+    const router = renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText(/选择或输入下载路径/),
+      ).toBeInTheDocument();
+    });
+
+    const input = screen.getByPlaceholderText(/选择或输入下载路径/);
+    fireEvent.change(input, { target: { value: "E:\\ChangedDir" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        "设置已保存，后续下载任务将使用新路径",
+      );
+    });
+
+    await act(async () => {
+      router.navigate("/");
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Home Page")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("放弃未保存的更改？")).not.toBeInTheDocument();
+  });
+
+  it("应该渲染缓存管理卡片与清理缓存按钮", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存管理")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("button", { name: "清理缓存" }),
+    ).toBeInTheDocument();
+  });
+
+  it("点击清理缓存应弹出确认对话框，取消时不执行清理", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存管理")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "清理缓存" }));
+    expect(screen.getByText("确定清理缓存数据？")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("确定清理缓存数据？")).not.toBeInTheDocument();
+    });
+    expect(mockClearCacheUseCase.execute).not.toHaveBeenCalled();
+  });
+
+  it("确认清理缓存后应该调用用例并提示成功", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存管理")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "清理缓存" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认清理" }));
+
+    await waitFor(() => {
+      expect(mockClearCacheUseCase.execute).toHaveBeenCalled();
+    });
+    expect(toast.success).toHaveBeenCalledWith("缓存已清理");
+  });
+
+  it("清理缓存失败时应该提示错误信息", async () => {
+    vi.mocked(mockClearCacheUseCase.execute).mockRejectedValueOnce(
+      new Error("IndexedDB 清理失败"),
+    );
+
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("缓存管理")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "清理缓存" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认清理" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        expect.stringContaining("清理缓存失败: IndexedDB 清理失败"),
+      );
+    });
   });
 });

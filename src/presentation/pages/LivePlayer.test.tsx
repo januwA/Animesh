@@ -11,9 +11,9 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { ResolvedStreamUrl } from "@/domain/iptv/IptvStreamUrlRepository";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import LivePlayer from "./LivePlayer";
 
 Object.defineProperty(navigator, "clipboard", {
@@ -44,6 +44,7 @@ describe("LivePlayer 页面组件", () => {
   beforeEach(() => {
     mockContainer = createDIContainerForTest({});
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
     vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
   });
@@ -51,20 +52,18 @@ describe("LivePlayer 页面组件", () => {
   const renderLivePlayer = (search = "", initialEntries?: string[]) => {
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter
-            initialEntries={initialEntries ?? [`/live/play${search}`]}
-            initialIndex={initialEntries ? initialEntries.length - 1 : 0}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="live" element={<div>Live List</div>} />
-                <Route path="live/play" element={<LivePlayer />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter
+          initialEntries={initialEntries ?? [`/live/play${search}`]}
+          initialIndex={initialEntries ? initialEntries.length - 1 : 0}
+        >
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="live" element={<div>Live List</div>} />
+              <Route path="live/play" element={<LivePlayer />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };

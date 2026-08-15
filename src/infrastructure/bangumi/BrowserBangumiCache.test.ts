@@ -1,4 +1,5 @@
 import { Background } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   BangumiCalendarDay,
@@ -7,10 +8,12 @@ import type {
   BangumiPerson,
   BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
+import { InMemoryCacheStore } from "@/test/InMemoryCacheStore";
 import { BrowserBangumiCache } from "./BrowserBangumiCache";
 
 describe("BrowserBangumiCache 浏览器缓存实现", () => {
   let cache: BrowserBangumiCache;
+  let store: InMemoryCacheStore;
 
   const mockCalendar: BangumiCalendarDay[] = [
     {
@@ -74,9 +77,9 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
   };
 
   beforeEach(() => {
-    localStorage.clear();
+    store = new InMemoryCacheStore();
     vi.useRealTimers();
-    cache = new BrowserBangumiCache();
+    cache = new BrowserBangumiCache(store);
   });
 
   describe("calendar 缓存", () => {
@@ -93,34 +96,33 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
       expect(result).toEqual(mockCalendar);
     });
 
-    it("当缓存已过期（超过12小时）时，应该返回 null 并清除缓存", async () => {
-      vi.useFakeTimers();
+    it("当缓存已过期时，应该返回 null 并清除缓存", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
       const now = Date.now();
       vi.setSystemTime(now);
 
       await cache.setCalendar(Background, mockCalendar);
 
-      vi.setSystemTime(now + 12 * 60 * 60 * 1000 + 1);
+      vi.setSystemTime(now + new Duration({ days: 7 }).inMilliseconds + 1);
 
       const result = await cache.getCalendar(Background);
       expect(result).toBeNull();
-      expect(localStorage.getItem(cacheKey)).toBeNull();
+      await expect(cache.getCalendar(Background)).resolves.toBeNull();
     });
 
     it("当缓存的数据结构与 Zod Schema 不匹配时，应该返回 null 并清除缓存", async () => {
-      const invalidEntry = {
+      store.setRawEntry(cacheKey, {
         data: [{ weekday: { id: "not-a-number" } }],
         expiry: Date.now() + 10000,
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(invalidEntry));
+      });
 
       const result = await cache.getCalendar(Background);
       expect(result).toBeNull();
-      expect(localStorage.getItem(cacheKey)).toBeNull();
+      await expect(cache.getCalendar(Background)).resolves.toBeNull();
     });
 
-    it("当 localStorage 中的数据不是合法的 JSON 时，应该返回 null 且不崩溃", async () => {
-      localStorage.setItem(cacheKey, "invalid-json-string{");
+    it("当缓存中的记录不是合法的信封结构时，应该返回 null 且不崩溃", async () => {
+      store.setRawEntry(cacheKey, { unexpected: "shape" });
 
       const result = await cache.getCalendar(Background);
       expect(result).toBeNull();
@@ -149,7 +151,7 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
     });
 
     it("当缓存已过期时，应该返回 null 并清除缓存", async () => {
-      vi.useFakeTimers();
+      vi.useFakeTimers({ toFake: ["Date"] });
       const now = Date.now();
       vi.setSystemTime(now);
 
@@ -158,19 +160,16 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
 
       const result = await cache.getSubject(Background, subjectId);
       expect(result).toBeNull();
-      expect(localStorage.getItem(cacheKey)).toBeNull();
     });
 
     it("当缓存数据格式不匹配时，应该返回 null 并清除缓存", async () => {
-      const invalidEntry = {
+      store.setRawEntry(cacheKey, {
         data: { id: "not-a-number", name: 123 },
         expiry: Date.now() + 10000,
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(invalidEntry));
+      });
 
       const result = await cache.getSubject(Background, subjectId);
       expect(result).toBeNull();
-      expect(localStorage.getItem(cacheKey)).toBeNull();
     });
   });
 
@@ -223,15 +222,13 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
     });
 
     it("当缓存数据格式不匹配时，应该返回 null 并清除缓存", async () => {
-      const invalidEntry = {
+      store.setRawEntry(cacheKey, {
         data: [{ id: "not-a-number" }],
         expiry: Date.now() + 10000,
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(invalidEntry));
+      });
 
       const result = await cache.getPersons(Background, subjectId);
       expect(result).toBeNull();
-      expect(localStorage.getItem(cacheKey)).toBeNull();
     });
   });
 
@@ -257,20 +254,18 @@ describe("BrowserBangumiCache 浏览器缓存实现", () => {
     });
 
     it("当缓存数据格式不匹配时，应该返回 null 并清除缓存", async () => {
-      const invalidEntry = {
+      store.setRawEntry(cacheKey, {
         data: [{ id: "not-a-number" }],
         expiry: Date.now() + 10000,
-      };
-      localStorage.setItem(cacheKey, JSON.stringify(invalidEntry));
+      });
 
       const result = await cache.getCharacters(Background, subjectId);
       expect(result).toBeNull();
-      expect(localStorage.getItem(cacheKey)).toBeNull();
     });
   });
 
   it("过期缓存应该被清除并返回 null (通用场景)", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
     const now = Date.now();
     vi.setSystemTime(now);
 

@@ -1,15 +1,20 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
+import { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
+import { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
+import { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
-import { COLLECTION_STORAGE_KEY } from "@/domain/collection/CollectionSchemas";
-import { LocalStorageCollectionRepository } from "@/infrastructure/collection/LocalStorageCollectionRepository";
+import { InMemoryCollectionRepository } from "@/test/InMemoryCollectionRepository";
 import { FavoriteButton } from "./FavoriteButton";
 
-function createContainer(): DIContainer {
-  const collectionRepository = new LocalStorageCollectionRepository();
+function createContainer(
+  repo: InMemoryCollectionRepository = new InMemoryCollectionRepository(),
+): DIContainer {
   return {
-    collectionRepository,
+    getFavoriteStatusUseCase: new GetFavoriteStatusUseCase(repo),
+    addFavoriteUseCase: new AddFavoriteUseCase(repo),
+    removeFavoriteUseCase: new RemoveFavoriteUseCase(repo),
   } as unknown as DIContainer;
 }
 
@@ -25,10 +30,9 @@ describe("FavoriteButton 收藏按钮", () => {
     summary: "剧情简介",
   };
 
-  function renderWithProvider() {
-    const container = createContainer();
+  function renderWithProvider(repo?: InMemoryCollectionRepository) {
     return render(
-      <DIProvider value={container}>
+      <DIProvider value={createContainer(repo)}>
         <FavoriteButton subject={mockSubject} />
       </DIProvider>,
     );
@@ -38,39 +42,32 @@ describe("FavoriteButton 收藏按钮", () => {
     localStorage.clear();
   });
 
-  it("初始状态应该显示'收藏'文字", () => {
+  it("初始状态应该显示'收藏'文字", async () => {
     renderWithProvider();
-    expect(screen.getByText("收藏")).toBeInTheDocument();
+    expect(await screen.findByText("收藏")).toBeInTheDocument();
   });
 
-  it("点击未收藏按钮后应显示已收藏", () => {
+  it("点击未收藏按钮后应显示已收藏", async () => {
     renderWithProvider();
+    await screen.findByText("收藏");
     act(() => screen.getByRole("button").click());
-    expect(screen.getByText("已收藏")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("已收藏")).toBeInTheDocument();
+    });
   });
 
-  it("已收藏状态下点击按钮应取消收藏", () => {
-    localStorage.setItem(
-      COLLECTION_STORAGE_KEY,
-      JSON.stringify({
-        items: [
-          {
-            subjectId: mockSubject.subjectId,
-            name: "Original",
-            nameCn: "已收藏",
-            imageUrl: null,
-            rating: null,
-            platform: null,
-            date: null,
-            summary: null,
-            addedAt: Date.now(),
-          },
-        ],
-        lastUpdatedAt: Date.now(),
-      }),
-    );
-    renderWithProvider();
+  it("已收藏状态下点击按钮应取消收藏", async () => {
+    const repo = new InMemoryCollectionRepository();
+    await repo.add({
+      subjectId: mockSubject.subjectId,
+      name: "已收藏",
+      imageUrl: null,
+    });
+    renderWithProvider(repo);
+    await screen.findByText("已收藏");
     act(() => screen.getByRole("button").click());
-    expect(screen.getByText("收藏")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("收藏")).toBeInTheDocument();
+    });
   });
 });

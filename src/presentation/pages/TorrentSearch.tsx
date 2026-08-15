@@ -1,16 +1,20 @@
 import {
+  Bot,
+  ChevronDown,
+  ChevronsUpDown,
   Clock,
   ExternalLink,
   Globe,
-  HardDrive,
+  Layers,
   Loader2,
   Magnet,
   Play,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import type { SubmitEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
@@ -31,6 +35,11 @@ import {
   CardTitle,
 } from "@/presentation/components/ui/card";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/presentation/components/ui/collapsible";
+import {
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -47,8 +56,11 @@ import {
 import { Separator } from "@/presentation/components/ui/separator";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { formatBytes, formatLocalDate } from "@/utils";
-import { useAppContext } from "../context/AppContext";
+import { sanitizeHtml } from "@/presentation/lib/sanitizeHtml";
+import { cn } from "@/presentation/lib/utils";
+import { formatLocalDate } from "@/utils";
+import type { TorrentResultGroup } from "../store/searchStore";
+import { useSearchStore } from "../store/searchStore";
 
 const ENGINE_LABELS: Record<TorrentSearchEngine, string> = {
   dmhy: "动漫花园",
@@ -138,7 +150,7 @@ function SearchForm({
 }
 
 interface SearchLoadingProps {
-  onCancel?: () => void;
+  onCancel: () => void;
 }
 
 // 搜索加载指示器
@@ -149,16 +161,14 @@ function SearchLoading({ onCancel }: SearchLoadingProps) {
       <p className="text-sm text-muted-foreground font-medium">
         正在获取资源列表...
       </p>
-      {onCancel && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onCancel}
-          className="text-xs text-muted-foreground hover:text-foreground mt-2"
-        >
-          取消搜索
-        </Button>
-      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onCancel}
+        className="text-xs text-muted-foreground hover:text-foreground mt-2"
+      >
+        取消搜索
+      </Button>
     </div>
   );
 }
@@ -223,38 +233,47 @@ function SearchResultCard({
   return (
     <Card
       id={`torrent-item-${index}`}
-      className={
+      className={cn(
+        "group transition-all duration-300",
         isBestAi
-          ? "bg-linear-to-br from-cyan-950/10 via-card/50 to-indigo-950/10 border-primary/20 shadow-[0_0_15px_rgba(var(--primary),0.1)] hover:border-primary/40 transition-all duration-300 group"
-          : "bg-card/50 hover:bg-accent/10 border-border hover:border-muted-foreground/30 transition-all duration-300 group"
-      }
+          ? "border-primary/30 bg-linear-to-br from-primary/10 via-card to-accent/20 shadow-sm hover:border-primary/50"
+          : "border-border bg-card/60 hover:border-primary/25 hover:bg-accent/40",
+      )}
     >
       <CardHeader className="p-5 pb-3">
         {item.ai_score !== undefined && (
-          <div className="flex items-center gap-2 mb-2 flex-wrap text-[10px]">
-            {isBestAi ? (
-              <span className="bg-primary/20 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                ✨ AI 智能精选推荐
-              </span>
-            ) : (
-              <span className="bg-secondary text-muted-foreground border border-border px-2 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                🤖 AI 评分过滤
-              </span>
-            )}
-            <span
-              className={`px-2.5 py-0.5 rounded-full font-mono font-bold ${
-                item.ai_score >= 80
-                  ? "bg-success/20 text-success border border-success/30"
-                  : "bg-warning/15 text-warning border border-warning/30"
-              }`}
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              variant="outline"
+              className={cn(
+                "gap-1.5 px-2.5 py-0.5 font-medium",
+                isBestAi
+                  ? "border-primary/30 bg-primary/10 text-primary"
+                  : "border-border bg-secondary text-muted-foreground",
+              )}
+            >
+              {isBestAi ? (
+                <Sparkles className="h-3 w-3" />
+              ) : (
+                <Bot className="h-3 w-3" />
+              )}
+              {isBestAi ? "AI 智能精选推荐" : "AI 评分过滤"}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn("gap-1 px-2.5 py-0.5 font-mono font-semibold")}
             >
               匹配度: {item.ai_score}分
-            </span>
+            </Badge>
           </div>
         )}
         <CardTitle className="text-base font-semibold leading-relaxed group-hover:text-primary transition-colors">
           {item.title}
         </CardTitle>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Clock className="h-3.5 w-3.5" />
+          <span>{formatLocalDate(item.pub_date)}</span>
+        </div>
       </CardHeader>
       <CardContent className="px-5 pb-4 pt-0 flex flex-col gap-3">
         {item.ai_reason && (
@@ -265,18 +284,34 @@ function SearchResultCard({
             </AlertDescription>
           </Alert>
         )}
-        <div className="flex flex-wrap gap-4 text-xs text-muted-foreground items-center">
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" />
-            <span>{formatLocalDate(item.pub_date)}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <HardDrive className="h-3.5 w-3.5" />
-            <span>{formatBytes(item.size)}</span>
-          </div>
-        </div>
+        {item.description && (
+          <Collapsible
+            className="group/desc"
+            data-testid={`torrent-desc-${index}`}
+          >
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                data-testid={`torrent-desc-toggle-${index}`}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                描述
+                <ChevronDown className="h-3.5 w-3.5 transition-transform duration-300 group-data-[state=open]/desc:rotate-180" />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div
+                className="mt-2 text-xs text-muted-foreground leading-relaxed break-words"
+                // biome-ignore lint/security/noDangerouslySetInnerHtml: 内容已通过 sanitizeHtml 使用 DOMPurify 净化
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(item.description),
+                }}
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
-      <CardFooter className="px-5 py-3.5 bg-muted/30 border-t border-border flex items-center justify-between gap-4">
+      <CardFooter className="px-5 py-3.5 border-t border-border flex items-center justify-between gap-4 bg-muted/30">
         <a
           href={String(item.link)}
           target="_blank"
@@ -313,6 +348,70 @@ function SearchResultCard({
   );
 }
 
+// 按字幕组分组的可折叠结果区
+interface SearchResultGroupProps {
+  group: TorrentResultGroup;
+  open: boolean;
+  onOpenChange: () => void;
+  onCopyMagnet: (magnet: string) => void;
+  onPlay: (magnet: string, title: string) => void;
+  showBestAi: boolean;
+}
+
+function SearchResultGroup({
+  group,
+  open,
+  onOpenChange,
+  onCopyMagnet,
+  onPlay,
+  showBestAi,
+}: SearchResultGroupProps) {
+  return (
+    <Collapsible open={open} onOpenChange={onOpenChange}>
+      <CollapsibleTrigger asChild>
+        <Button
+          variant="ghost"
+          data-testid={`group-trigger-${group.name}`}
+          className="w-full justify-between gap-2 rounded-xl bg-card/60 border border-border px-3.5 py-2.5 h-auto hover:bg-accent/10 hover:border-muted-foreground/30 transition-all duration-300 cursor-pointer"
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground min-w-0">
+            <Layers className="h-4 w-4 text-primary shrink-0" />
+            <span className="truncate">{group.name}</span>
+          </span>
+          <span className="flex items-center gap-2 shrink-0">
+            <Badge variant="secondary">{group.items.length} 个</Badge>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-300",
+                open && "rotate-180",
+              )}
+            />
+          </span>
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-3">
+        <div className="grid gap-4">
+          {group.items.map((item, innerIndex) => {
+            const flatIndex = group.startIndex + innerIndex;
+            const isBest =
+              showBestAi && flatIndex === 0 && item.ai_score !== undefined;
+            return (
+              <SearchResultCard
+                key={flatIndex.toString()}
+                item={item}
+                index={flatIndex}
+                onCopyMagnet={onCopyMagnet}
+                onPlay={onPlay}
+                isBestAi={isBest}
+              />
+            );
+          })}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 export default function TorrentSearch() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -322,16 +421,14 @@ export default function TorrentSearch() {
     getSettingsUseCase,
   } = useDI();
 
-  const {
-    searchKeyword,
-    setSearchKeyword,
-    searchEngine,
-    setSearchEngine,
-    searchResults,
-    setSearchResults,
-    searchHasSearched,
-    setSearchHasSearched,
-  } = useAppContext();
+  const searchKeyword = useSearchStore((s) => s.searchKeyword);
+  const setSearchKeyword = useSearchStore((s) => s.setSearchKeyword);
+  const searchEngine = useSearchStore((s) => s.searchEngine);
+  const setSearchEngine = useSearchStore((s) => s.setSearchEngine);
+  const searchResults = useSearchStore((s) => s.searchResults);
+  const setSearchResults = useSearchStore((s) => s.setSearchResults);
+  const searchHasSearched = useSearchStore((s) => s.searchHasSearched);
+  const setSearchHasSearched = useSearchStore((s) => s.setSearchHasSearched);
 
   const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
     () => localStorage.getItem("animesh_selected_ai_alias") || "none",
@@ -370,6 +467,27 @@ export default function TorrentSearch() {
       return [];
     }
   });
+
+  const groups = useSearchStore((s) => s.groups);
+
+  const collapsedGroups = useSearchStore((s) => s.collapsedGroups);
+  const toggleGroup = useSearchStore((s) => s.toggleGroup);
+  const collapseAllGroups = useSearchStore((s) => s.collapseAllGroups);
+  const expandAllGroups = useSearchStore((s) => s.expandAllGroups);
+
+  // 仅当搜索结果集合变化（新一次搜索）时重置为全部展开
+  const prevResultsRef = useRef(searchResults);
+  useEffect(() => {
+    if (prevResultsRef.current !== searchResults) {
+      prevResultsRef.current = searchResults;
+      expandAllGroups();
+    }
+  }, [searchResults, expandAllGroups]);
+
+  const allGroupsCollapsed =
+    groups.length > 0 && collapsedGroups.size === groups.length;
+
+  const groupNames = groups.map((g) => g.name);
 
   const keywordParam = searchParams.get("keyword");
 
@@ -468,8 +586,9 @@ export default function TorrentSearch() {
       {aiConfigs.length > 0 && (
         <div className="mx-auto w-full mb-6 -mt-4 flex items-center justify-end animate-in fade-in duration-200">
           <div className="flex items-center gap-2 bg-card border border-border backdrop-blur-md px-3 py-1 rounded-lg shadow-sm hover:border-muted-foreground/30 transition-all duration-300">
-            <span className="text-[11px] font-medium text-muted-foreground select-none pl-1 flex items-center gap-1">
-              ✨ AI 智能过滤:
+            <span className="text-[11px] font-medium text-muted-foreground select-none pl-1 flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              AI 智能过滤:
             </span>
             <Select
               value={selectedAiAlias}
@@ -595,27 +714,40 @@ export default function TorrentSearch() {
                 <span className="font-semibold text-primary">
                   {searchResults.length}
                 </span>{" "}
-                个资源
+                个资源，共{" "}
+                <span className="font-semibold text-primary">
+                  {groups.length}
+                </span>{" "}
+                个字幕组
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                data-testid="toggle-all-groups"
+                onClick={
+                  allGroupsCollapsed
+                    ? expandAllGroups
+                    : () => collapseAllGroups(groupNames)
+                }
+                className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+              >
+                <ChevronsUpDown className="h-3.5 w-3.5" />
+                {allGroupsCollapsed ? "全部展开" : "全部折叠"}
+              </Button>
             </div>
 
-            <div className="grid gap-4">
-              {searchResults.map((item, index) => {
-                const isBest =
-                  selectedAiAlias !== "none" &&
-                  index === 0 &&
-                  item.ai_score !== undefined;
-                return (
-                  <SearchResultCard
-                    key={index.toString()}
-                    item={item}
-                    index={index}
-                    onCopyMagnet={handleCopyMagnet}
-                    onPlay={handlePlay}
-                    isBestAi={isBest}
-                  />
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              {groups.map((group) => (
+                <SearchResultGroup
+                  key={group.name}
+                  group={group}
+                  open={!collapsedGroups.has(group.name)}
+                  onOpenChange={() => toggleGroup(group.name)}
+                  onCopyMagnet={handleCopyMagnet}
+                  onPlay={handlePlay}
+                  showBestAi={selectedAiAlias !== "none"}
+                />
+              ))}
             </div>
           </section>
         )}

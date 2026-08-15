@@ -12,6 +12,16 @@ export interface StyleErrorLocation {
 // Regex to detect forbidden layout color utilities (hardcoded white/black background/border, or hardcoded color opacity)
 const FORBIDDEN_STYLE_REGEX = /\b(?:bg|border|outline|ring|divide)-(?:white|black)(?:\/\d+)?\b|\b(?:bg|border|outline|ring|divide)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)(?:-\d+)?\/\d+/g;
 
+// shadcn/ui 组件目录，脚本忽略该目录下的所有文件
+const IGNORED_DIRS = ["src/presentation/components/ui"];
+
+function isIgnoredFile(filepath: string): boolean {
+	const normalized = path.resolve(filepath).replace(/\\/g, "/");
+	return IGNORED_DIRS.some((dir) =>
+		normalized.startsWith(path.resolve(process.cwd(), dir).replace(/\\/g, "/")),
+	);
+}
+
 export function checkCode(
 	code: string,
 	filepath: string,
@@ -113,8 +123,11 @@ function globFiles(dir: string): string[] {
 		if (stat && stat.isDirectory()) {
 			results.push(...globFiles(filePath));
 		} else if (/\.(js|jsx|ts|tsx)$/.test(file)) {
-			// 排除测试文件
-			if (!/\.(test|spec)\.[jt]sx?$/.test(file)) {
+			// 排除测试文件和 ui 组件目录
+			if (
+				!/\.(test|spec)\.[jt]sx?$/.test(file) &&
+				!isIgnoredFile(filePath)
+			) {
 				results.push(filePath);
 			}
 		}
@@ -149,7 +162,13 @@ function main() {
 				const isUnderTarget = targetDirs.some((dir) => f.startsWith(dir));
 				const isSourceFile = /\.(js|jsx|ts|tsx)$/.test(f);
 				const isTestFile = /\.(test|spec)\.[jt]sx?$/.test(f);
-				return isUnderTarget && isSourceFile && !isTestFile && fs.existsSync(f);
+				return (
+					isUnderTarget &&
+					isSourceFile &&
+					!isTestFile &&
+					!isIgnoredFile(f) &&
+					fs.existsSync(f)
+				);
 			});
 	} else {
 		filesToCheck = targetDirs.flatMap((dir) => globFiles(dir));

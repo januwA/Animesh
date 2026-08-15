@@ -1,5 +1,4 @@
 import { Heart, Tv } from "lucide-react";
-import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
@@ -12,13 +11,15 @@ import {
   EmptyContent,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
+import { useQuery } from "@/presentation/hooks/useQuery";
 
 export default function Collections() {
-  const { collectionRepository } = useDI();
-  const items = useMemo(
-    () => collectionRepository.getAll(),
-    [collectionRepository],
+  const { getCollectionsUseCase } = useDI();
+  const { data } = useQuery(
+    () => getCollectionsUseCase.execute(),
+    [getCollectionsUseCase],
   );
+  const items = data ?? [];
   const navigate = useNavigate();
 
   return (

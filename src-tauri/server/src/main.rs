@@ -1,4 +1,14 @@
-use animesh_core::torrent_manager::TorrentManager;
+use animesh_core::application::collection_service::CollectionService;
+use animesh_core::application::search_use_case::SearchUseCase;
+use animesh_core::application::settings_service::{AiConfig, AppSettings, SettingsService};
+use animesh_core::application::stream_service::StreamService;
+use animesh_core::application::subtitle_service::SubtitleService;
+use animesh_core::application::torrent_manager::TorrentManager;
+use animesh_core::domain::settings::SettingsRepository;
+use animesh_core::domain::torrent::SubjectBindingRepository;
+use animesh_core::infrastructure::settings_repository::SqliteSettingsRepository;
+use animesh_core::infrastructure::subject_binding_repository::SqliteSubjectBindingRepository;
+use anyhow::Context;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -7,33 +17,57 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use tokio_stream::StreamExt;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
 
-struct SearchTracker {
-    pub handles: Mutex<HashMap<String, tokio::task::AbortHandle>>,
-}
-
-impl Default for SearchTracker {
-    fn default() -> Self {
-        Self {
-            handles: Mutex::new(HashMap::new()),
-        }
-    }
-}
-
 struct AppState {
-    manager: Arc<TorrentManager>,
-    search_tracker: Arc<SearchTracker>,
+    torrent_manager: Arc<TorrentManager>,
+    settings_service: Arc<SettingsService>,
+    search_use_case: Arc<SearchUseCase>,
+    subtitle_service: Arc<SubtitleService>,
+    stream_service: Arc<StreamService>,
+    collection_service: Arc<CollectionService>,
+}
+
+/// 启动时加载或初始化设置。DB 已有记录则读取，否则写入默认值。
+async fn load_or_init_settings(
+    settings_repo: &Arc<dyn SettingsRepository>,
+    app_data_dir: &std::path::Path,
+) -> Result<
+    (std::path::PathBuf, Option<String>, Option<u32>, Option<u32>),
+    animesh_core::error::CoreError,
+> {
+    // DB 已有记录
+    if let Some(existing) = settings_repo.get().await? {
+        log::info!("从数据库加载已有设置");
+        return Ok((
+            std::path::PathBuf::from(existing.download_dir),
+            existing.proxy,
+            existing.max_download_speed,
+            existing.max_upload_speed,
+        ));
+    }
+
+    // 初始化默认值
+    let default_dir = app_data_dir.join("downloads");
+    let default_settings = AppSettings {
+        download_dir: default_dir.to_string_lossy().to_string(),
+        proxy: None,
+        ai_configs: None,
+        max_download_speed: None,
+        max_upload_speed: None,
+    };
+    settings_repo.ensure_initialized(&default_settings).await?;
+    log::info!("使用默认设置初始化数据库");
+    Ok((default_dir, None, None, None))
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     // 初始化日志
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info");
@@ -50,67 +84,91 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap_or_else(|_| std::env::temp_dir())
                 .join("data")
         });
-    std::fs::create_dir_all(&app_data_dir).ok();
+    tokio::fs::create_dir_all(&app_data_dir).await.ok();
     log::info!("Data directory: {:?}", app_data_dir);
-
-    let settings_path = app_data_dir.join("settings.json");
-    let mut download_dir = app_data_dir.join("downloads");
-    let mut proxy = None;
-    let mut max_download_speed = None;
-
-    if settings_path.exists() {
-        if let Ok(file) = std::fs::File::open(&settings_path) {
-            if let Ok(settings) =
-                serde_json::from_reader::<_, animesh_core::torrent_manager::AppSettings>(file)
-            {
-                download_dir = std::path::PathBuf::from(settings.download_dir);
-                proxy = settings.proxy;
-                max_download_speed = settings.max_download_speed;
-                log::info!("Loaded settings from settings.json");
-            }
-        }
-    } else {
-        let settings = animesh_core::torrent_manager::AppSettings {
-            download_dir: download_dir.to_string_lossy().to_string(),
-            proxy: None,
-            trackers: Some(animesh_core::torrent_manager::get_default_trackers()),
-            tracker_source_type: None,
-            tracker_custom_url: None,
-            tracker_auto_update: None,
-            tracker_last_update_time: None,
-            ai_configs: None,
-            max_download_speed: None,
-        };
-        if let Ok(file) = std::fs::File::create(&settings_path) {
-            let _ = serde_json::to_writer_pretty(file, &settings);
-            log::info!("Created default settings.json");
-        }
-    }
-    std::fs::create_dir_all(&download_dir).ok();
-    log::info!("Download directory: {:?}", download_dir);
 
     // 默认如果未设置流媒体端口，我们在服务器模式下可以使用 3000
     if std::env::var("ANIMESH_STREAM_PORT").is_err() {
         std::env::set_var("ANIMESH_STREAM_PORT", "3000");
     }
 
-    let manager = TorrentManager::new(download_dir, settings_path, proxy, max_download_speed)
+    let db = Arc::new(
+        animesh_core::infrastructure::db::AppDatabase::connect(
+            &app_data_dir.join("animesh.sqlite"),
+        )
         .await
-        .expect("Failed to initialize TorrentManager");
+        .context("初始化 AppDatabase 失败")?,
+    );
+
+    // 设置仓储：从 DB 加载或初始化默认值
+    let settings_repo: Arc<dyn SettingsRepository> = Arc::new(SqliteSettingsRepository::new(&db));
+    let (download_dir, _proxy, max_download_speed, max_upload_speed) =
+        load_or_init_settings(&settings_repo, &app_data_dir).await?;
+
+    tokio::fs::create_dir_all(&download_dir).await.ok();
+    log::info!("Download directory: {:?}", download_dir);
+
+    let download_dir_lock = Arc::new(RwLock::new(download_dir));
+    let persistence_dir = app_data_dir.join("torrents");
+    let torrent_repo = animesh_core::infrastructure::rqbit_torrent::create_torrent_repository(
+        download_dir_lock.clone(),
+        persistence_dir,
+    )
+    .await
+    .context("初始化 TorrentRepository 失败")?;
+    let subject_binding_repo: Arc<dyn SubjectBindingRepository> =
+        Arc::new(SqliteSubjectBindingRepository::new(&db).await);
+
+    let (port, hls_proxy) =
+        animesh_core::infrastructure::stream_server::start_stream_server(torrent_repo.clone())
+            .await
+            .context("初始化流媒体服务器失败")?;
+
+    let crawler_repo = animesh_core::infrastructure::http_crawler::create_crawler_repository();
+    let subtitle_cache: Arc<dyn animesh_core::domain::subtitles::SubtitleCache> =
+        Arc::new(animesh_core::infrastructure::subtitle_cache::InMemorySubtitleCache::new());
+    let subtitle_extractor: Arc<dyn animesh_core::domain::subtitles::SubtitleExtractor> =
+        Arc::new(animesh_core::infrastructure::matroska_subtitles::MatroskaSubtitleExtractor);
+    let stream_prober: Arc<dyn animesh_core::domain::stream::StreamProber> = Arc::new(hls_proxy);
+
+    let torrent_manager = TorrentManager::new(torrent_repo.clone(), subject_binding_repo);
+    let settings_service = SettingsService::new(
+        settings_repo.clone(),
+        torrent_repo.clone(),
+        download_dir_lock.clone(),
+    );
+    let search_use_case = SearchUseCase::new(crawler_repo, settings_repo);
+    let subtitle_service = SubtitleService::new(
+        torrent_repo.clone(),
+        subtitle_cache,
+        subtitle_extractor,
+        download_dir_lock.clone(),
+    );
+    let stream_service = StreamService::new(stream_prober, port);
+
+    // 应用启动时持久化的初始速度限制（DB 已存值）
+    settings_service
+        .apply_initial_speed_limits(max_download_speed, max_upload_speed)
+        .await;
+
+    let collection_service = CollectionService::new(Arc::new(
+        animesh_core::infrastructure::collection_repository::SqliteCollectionRepository::new(&db),
+    ));
 
     let state = Arc::new(AppState {
-        manager: Arc::new(manager),
-        search_tracker: Arc::new(SearchTracker::default()),
+        torrent_manager: Arc::new(torrent_manager),
+        settings_service: Arc::new(settings_service),
+        search_use_case: Arc::new(search_use_case),
+        subtitle_service: Arc::new(subtitle_service),
+        stream_service: Arc::new(stream_service),
+        collection_service: Arc::new(collection_service),
     });
 
     // 路由定义
     let api_router = Router::new()
         .route("/torrents/search", get(search_torrents_handler))
-        .route("/torrents/search/:trace_id", delete(cancel_search_handler))
         .route("/torrents", post(torrent_add_magnet_handler))
-        .route("/torrents", get(torrent_list_handler))
         .route("/torrents/subscribe", get(torrent_subscribe_handler))
-        .route("/torrents/:hash/status", get(torrent_get_status_handler))
         .route("/torrents/:hash/files", get(torrent_get_files_handler))
         .route(
             "/torrents/:hash/files/:id/stream-url",
@@ -118,10 +176,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route("/torrents/:hash/pause", post(torrent_pause_handler))
         .route("/torrents/:hash/resume", post(torrent_resume_handler))
+        .route("/torrents/:hash/subject", put(torrent_set_subject_handler))
+        .route(
+            "/torrents/:hash/subject",
+            delete(torrent_clear_subject_handler),
+        )
         .route("/torrents/:hash", delete(torrent_delete_handler))
         .route(
-            "/torrents/:hash/files/:id/subtitles",
-            get(torrent_get_subtitle_tracks_handler),
+            "/torrents/:hash/files/:id/metadata",
+            get(torrent_get_video_metadata_handler),
         )
         .route(
             "/torrents/:hash/files/:id/subtitles/:track_id",
@@ -129,23 +192,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .route("/settings", get(settings_get_handler))
         .route(
-            "/settings/default-trackers",
-            get(settings_get_default_trackers_handler),
-        )
-        .route(
             "/settings/download-dir",
             put(settings_set_download_dir_handler),
         )
         .route("/settings/proxy", put(settings_set_proxy_handler))
-        .route("/settings/trackers", put(settings_set_trackers_handler))
-        .route(
-            "/settings/tracker-options",
-            put(settings_set_tracker_options_handler),
-        )
         .route("/settings/ai-configs", put(settings_set_ai_configs_handler))
         .route(
             "/settings/max-download-speed",
             put(settings_set_max_download_speed_handler),
+        )
+        .route(
+            "/settings/max-upload-speed",
+            put(settings_set_max_upload_speed_handler),
+        )
+        .route("/collections", get(collection_get_all_handler))
+        .route("/collections", put(collection_add_handler))
+        .route(
+            "/collections/:subject_id",
+            delete(collection_remove_handler),
         )
         .route("/ai/chat-request", post(ai_chat_request_handler))
         .layer(
@@ -188,77 +252,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 #[derive(serde::Deserialize)]
 struct SearchQuery {
-    trace_id: String,
     keyword: String,
     engine: String,
 }
 
+/// 客户端断开连接时 handler future 会被 hyper 自动取消，
+/// 无需额外维护取消句柄。
 async fn search_torrents_handler(
     State(state): State<Arc<AppState>>,
     Query(query): Query<SearchQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let manager = state.manager.clone();
-    let tracker = state.search_tracker.clone();
-    let trace_id = query.trace_id.clone();
-    let keyword = query.keyword.clone();
-    let engine = query.engine.clone();
-
-    let task = tokio::spawn(async move {
-        let proxy = manager.get_proxy();
-        match engine.as_str() {
-            "dmhy" => manager.crawler_repo.search_dmhy(&keyword, proxy).await,
-            "bangumi_moe" => {
-                manager
-                    .crawler_repo
-                    .search_bangumi_moe(&keyword, proxy)
-                    .await
-            }
-            "mikan" => manager.crawler_repo.search_mikan(&keyword, proxy).await,
-            "nyaa" => manager.crawler_repo.search_nyaa(&keyword, proxy).await,
-            "acgrip" => manager.crawler_repo.search_acgrip(&keyword, proxy).await,
-            "anibt" => manager.crawler_repo.search_anibt(&keyword, proxy).await,
-            _ => Err(format!("Unsupported search engine: {}", engine)),
-        }
-    });
-
-    let abort_handle = task.abort_handle();
-    if let Ok(mut handles) = tracker.handles.lock() {
-        handles.insert(trace_id.clone(), abort_handle);
-    }
-
-    let res = task.await;
-
-    if let Ok(mut handles) = tracker.handles.lock() {
-        handles.remove(&trace_id);
-    }
-
-    match res {
-        Ok(Ok(items)) => Ok(axum::Json(items)),
-        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
-        Err(join_err) => {
-            if join_err.is_cancelled() {
-                Err((StatusCode::BAD_REQUEST, "Search cancelled".to_string()))
-            } else {
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Search task panicked".to_string(),
-                ))
-            }
-        }
-    }
-}
-
-async fn cancel_search_handler(
-    State(state): State<Arc<AppState>>,
-    Path(trace_id): Path<String>,
-) -> impl IntoResponse {
-    if let Ok(mut handles) = state.search_tracker.handles.lock() {
-        if let Some(handle) = handles.remove(&trace_id) {
-            handle.abort();
-            return (StatusCode::OK, "Cancelled".to_string());
-        }
-    }
-    (StatusCode::NOT_FOUND, "No active search found".to_string())
+    let items = state
+        .search_use_case
+        .execute(&query.engine, &query.keyword)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(axum::Json(items))
 }
 
 #[derive(serde::Deserialize)]
@@ -271,42 +280,30 @@ async fn torrent_add_magnet_handler(
     axum::Json(payload): axum::Json<AddMagnetInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let res = state
-        .manager
+        .torrent_manager
         .add_magnet(&payload.magnet)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(axum::Json(res))
 }
 
-async fn torrent_list_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    axum::Json(state.manager.list_torrents())
-}
-
 async fn torrent_subscribe_handler(
     State(state): State<Arc<AppState>>,
 ) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
-    let manager = state.manager.clone();
+    let torrent_manager = state.torrent_manager.clone();
     let stream = tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(
-        std::time::Duration::from_millis(1500),
+        std::time::Duration::from_millis(3000),
     ))
-    .map(move |_| {
-        let torrents = manager.list_torrents();
-        let json = serde_json::to_string(&torrents).unwrap_or_default();
-        Ok(Event::default().data(json))
+    .then(move |_| {
+        let torrents_mgr = torrent_manager.clone();
+        async move {
+            let torrents = torrents_mgr.list_torrents().await;
+            let json = serde_json::to_string(&torrents).unwrap_or_default();
+            Ok::<_, Infallible>(Event::default().data(json))
+        }
     });
 
     Sse::new(stream).keep_alive(KeepAlive::default())
-}
-
-async fn torrent_get_status_handler(
-    State(state): State<Arc<AppState>>,
-    Path(info_hash): Path<String>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let status = state
-        .manager
-        .get_torrent_status(&info_hash)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
-    Ok(axum::Json(status))
 }
 
 async fn torrent_get_files_handler(
@@ -314,8 +311,9 @@ async fn torrent_get_files_handler(
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let files = state
-        .manager
+        .torrent_manager
         .get_torrent_files(&info_hash)
+        .await
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
     Ok(axum::Json(files))
 }
@@ -325,7 +323,7 @@ async fn torrent_get_stream_url_handler(
     Path((info_hash, file_id)): Path<(String, usize)>,
 ) -> impl IntoResponse {
     let external_url = std::env::var("ANIMESH_EXTERNAL_URL")
-        .unwrap_or_else(|_| format!("http://localhost:{}", state.manager.port));
+        .unwrap_or_else(|_| format!("http://localhost:{}", state.stream_service.port()));
     format!("{}/stream/{}/{}", external_url, info_hash, file_id)
 }
 
@@ -334,7 +332,7 @@ async fn torrent_pause_handler(
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .torrent_manager
         .pause_torrent(&info_hash)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -346,7 +344,7 @@ async fn torrent_resume_handler(
     Path(info_hash): Path<String>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .torrent_manager
         .resume_torrent(&info_hash)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -359,6 +357,35 @@ struct DeleteQuery {
     delete_files: Option<bool>,
 }
 
+#[derive(serde::Deserialize)]
+struct SetSubjectInput {
+    subject_id: u64,
+    subject_name: String,
+}
+
+async fn torrent_set_subject_handler(
+    State(state): State<Arc<AppState>>,
+    Path(info_hash): Path<String>,
+    axum::Json(payload): axum::Json<SetSubjectInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .torrent_manager
+        .set_subject_binding(&info_hash, payload.subject_id, payload.subject_name)
+        .await;
+    Ok(StatusCode::OK)
+}
+
+async fn torrent_clear_subject_handler(
+    State(state): State<Arc<AppState>>,
+    Path(info_hash): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .torrent_manager
+        .clear_subject_binding(&info_hash)
+        .await;
+    Ok(StatusCode::OK)
+}
+
 async fn torrent_delete_handler(
     State(state): State<Arc<AppState>>,
     Path(info_hash): Path<String>,
@@ -366,130 +393,46 @@ async fn torrent_delete_handler(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let delete_files = query.delete_files.unwrap_or(false);
     state
-        .manager
+        .torrent_manager
         .delete_torrent(&info_hash, delete_files)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
 
-async fn torrent_get_subtitle_tracks_handler(
+async fn torrent_get_video_metadata_handler(
     State(state): State<Arc<AppState>>,
     Path((info_hash, file_id)): Path<(String, usize)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let files = state
-        .manager
-        .get_torrent_files(&info_hash)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
-    let file_details = files
-        .iter()
-        .find(|f| f.id == file_id)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "File not found".to_string()))?;
-
-    let name_lower = file_details.name.to_lowercase();
-    if !name_lower.ends_with(".mkv") {
-        return Ok(axum::Json(
-            Vec::<animesh_core::subtitles::SubtitleTrackInfo>::new(),
-        ));
-    }
-
-    let download_dir = state.manager.get_download_dir();
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err((
-            StatusCode::NOT_FOUND,
-            "Video file not downloaded or doesn't exist yet".to_string(),
-        ));
-    }
-
-    let cache = state.manager.subtitle_cache.clone();
-    let cache_path = path.clone();
-    if let Some(tracks) = cache.get_tracks(&info_hash, file_id, &cache_path) {
-        return Ok(axum::Json(tracks));
-    }
-
-    match tokio::task::spawn_blocking(move || {
-        let file = std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
-        let reader = std::io::BufReader::new(file);
-        animesh_core::subtitles::extract_subtitle_tracks_from_reader(reader, true)
-    })
-    .await
-    {
-        Ok(Ok(tracks)) => {
-            cache.set_tracks(&info_hash, file_id, &cache_path, tracks.clone());
-            Ok(axum::Json(tracks))
-        }
-        Ok(Err(e)) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to extract tracks: {}", e),
-        )),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Task spawn error: {}", e),
-        )),
-    }
+    let metadata = state
+        .subtitle_service
+        .get_video_metadata(&info_hash, file_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(axum::Json(metadata))
 }
 
 async fn torrent_get_subtitle_vtt_handler(
     State(state): State<Arc<AppState>>,
     Path((info_hash, file_id, track_id)): Path<(String, usize, u64)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let download_dir = state.manager.get_download_dir();
-    let files = state
-        .manager
-        .get_torrent_files(&info_hash)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
-    let file_details = files
-        .iter()
-        .find(|f| f.id == file_id)
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "File not found".to_string()))?;
-
-    let path = std::path::PathBuf::from(download_dir).join(&file_details.name);
-    if !path.exists() {
-        return Err((
-            StatusCode::NOT_FOUND,
-            "Video file not downloaded or doesn't exist yet".to_string(),
-        ));
-    }
-
-    let cache = state.manager.subtitle_cache.clone();
-    let cache_path = path.clone();
-    if let Some(vtt) = cache.get_vtt(&info_hash, file_id, track_id, &cache_path) {
-        return Ok(vtt);
-    }
-
-    match tokio::task::spawn_blocking(move || {
-        animesh_core::subtitles::extract_subtitle_vtt(&path, track_id)
-    })
-    .await
-    {
-        Ok(Ok(vtt)) => {
-            cache.set_vtt(&info_hash, file_id, track_id, &cache_path, vtt.clone());
-            Ok(vtt)
-        }
-        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Task spawn error: {}", e),
-        )),
-    }
+    let vtt = state
+        .subtitle_service
+        .get_subtitle_vtt(&info_hash, file_id, track_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(vtt)
 }
 
 async fn settings_get_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let settings = state
-        .manager
+        .settings_service
         .get_settings()
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(axum::Json(settings))
-}
-
-async fn settings_get_default_trackers_handler() -> Result<impl IntoResponse, (StatusCode, String)>
-{
-    Ok(axum::Json(
-        animesh_core::torrent_manager::get_default_trackers(),
-    ))
 }
 
 #[derive(serde::Deserialize)]
@@ -502,8 +445,9 @@ async fn settings_set_download_dir_handler(
     axum::Json(payload): axum::Json<SetDownloadDirInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_download_dir(payload.dir)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
@@ -518,55 +462,16 @@ async fn settings_set_proxy_handler(
     axum::Json(payload): axum::Json<SetProxyInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_proxy(payload.proxy)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    Ok(StatusCode::OK)
-}
-
-#[derive(serde::Deserialize)]
-struct SetTrackersInput {
-    trackers: Vec<String>,
-}
-
-async fn settings_set_trackers_handler(
-    State(state): State<Arc<AppState>>,
-    axum::Json(payload): axum::Json<SetTrackersInput>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    state
-        .manager
-        .set_trackers(payload.trackers)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    Ok(StatusCode::OK)
-}
-
-#[derive(serde::Deserialize)]
-struct SetTrackerOptionsInput {
-    source_type: Option<String>,
-    custom_url: Option<String>,
-    auto_update: Option<bool>,
-    last_update_time: Option<i64>,
-}
-
-async fn settings_set_tracker_options_handler(
-    State(state): State<Arc<AppState>>,
-    axum::Json(payload): axum::Json<SetTrackerOptionsInput>,
-) -> Result<impl IntoResponse, (StatusCode, String)> {
-    state
-        .manager
-        .set_tracker_options(
-            payload.source_type,
-            payload.custom_url,
-            payload.auto_update,
-            payload.last_update_time,
-        )
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
 
 #[derive(serde::Deserialize)]
 struct SetAiConfigsInput {
-    configs: Option<Vec<animesh_core::torrent_manager::AiConfig>>,
+    configs: Option<Vec<AiConfig>>,
 }
 
 async fn settings_set_ai_configs_handler(
@@ -574,8 +479,9 @@ async fn settings_set_ai_configs_handler(
     axum::Json(payload): axum::Json<SetAiConfigsInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_ai_configs(payload.configs)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }
@@ -590,8 +496,72 @@ async fn settings_set_max_download_speed_handler(
     axum::Json(payload): axum::Json<SetMaxDownloadSpeedInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
-        .manager
+        .settings_service
         .set_max_download_speed(payload.max_speed)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
+#[derive(serde::Deserialize)]
+struct SetMaxUploadSpeedInput {
+    max_speed: Option<u32>,
+}
+
+async fn settings_set_max_upload_speed_handler(
+    State(state): State<Arc<AppState>>,
+    axum::Json(payload): axum::Json<SetMaxUploadSpeedInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .settings_service
+        .set_max_upload_speed(payload.max_speed)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
+async fn collection_get_all_handler(
+    State(state): State<Arc<AppState>>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let items = state
+        .collection_service
+        .list()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(axum::Json(items))
+}
+
+#[derive(serde::Deserialize)]
+struct CollectionAddInput {
+    subject_id: i64,
+    name: String,
+    image_url: Option<String>,
+}
+
+async fn collection_add_handler(
+    State(state): State<Arc<AppState>>,
+    axum::Json(payload): axum::Json<CollectionAddInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .collection_service
+        .add(animesh_core::domain::collection::NewCollectionItem {
+            subject_id: payload.subject_id,
+            name: payload.name,
+            image_url: payload.image_url,
+        })
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
+async fn collection_remove_handler(
+    State(state): State<Arc<AppState>>,
+    Path(subject_id): Path<i64>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .collection_service
+        .remove(subject_id)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)
 }

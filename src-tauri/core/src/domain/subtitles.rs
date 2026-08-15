@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::time::SystemTime;
+
+use crate::error::CoreError;
+use async_trait::async_trait;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SubtitleTrackInfo {
@@ -9,9 +13,93 @@ pub struct SubtitleTrackInfo {
     pub codec: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct ChapterInfo {
+    pub start_ms: u64,
+    pub end_ms: Option<u64>,
+    pub title: String,
+    pub language: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct VideoInfo {
+    /// Unix 时间戳（秒）。源数据为纳秒级自 2001-01-01 起算。
+    pub date_utc: Option<i64>,
+    pub muxing_app: String,
+    pub writing_app: String,
+    pub video_tracks: Vec<VideoTrackInfo>,
+    pub audio_tracks: Vec<AudioTrackInfo>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct VideoTrackInfo {
+    pub track_id: u64,
+    pub codec: String,
+    pub width: u32,
+    pub height: u32,
+    pub language: Option<String>,
+    pub default: bool,
+    pub forced: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AudioTrackInfo {
+    pub track_id: u64,
+    pub codec: String,
+    pub channels: u64,
+    pub sampling_rate: u64,
+    pub language: Option<String>,
+    pub default: bool,
+}
+
+/// 一次打开文件同时提取的字幕轨道、视频信息与章节。
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct VideoMetadata {
+    pub tracks: Vec<SubtitleTrackInfo>,
+    pub chapters: Vec<ChapterInfo>,
+    pub video_info: VideoInfo,
+}
+
+#[async_trait]
 pub trait SubtitleExtractor: Send + Sync {
-    fn extract_subtitle_tracks(&self, path: &Path) -> Result<Vec<SubtitleTrackInfo>, String>;
-    fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, String>;
+    async fn extract_video_metadata(&self, path: &Path) -> Result<VideoMetadata, CoreError>;
+    async fn extract_subtitle_vtt(&self, path: &Path, track_id: u64) -> Result<String, CoreError>;
+}
+
+/// 字幕提取结果的缓存，由基础设施层（内存缓存）实现。
+#[async_trait]
+pub trait SubtitleCache: Send + Sync {
+    async fn get_vtt(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+        track_id: u64,
+        file_path: &Path,
+    ) -> Option<String>;
+
+    async fn set_vtt(
+        &self,
+        info_hash: &str,
+        file_id: usize,
+        track_id: u64,
+        file_path: &Path,
+        data: String,
+    );
+
+    async fn set_failure(
+        &self,
+        key: &str,
+        file_path: &Path,
+        error: String,
+        now: Option<SystemTime>,
+    );
+
+    async fn get_failure(
+        &self,
+        key: &str,
+        file_path: &Path,
+        now: Option<SystemTime>,
+    ) -> Option<String>;
 }
 
 pub fn strip_ass_tags(text: &str) -> String {

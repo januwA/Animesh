@@ -1,5 +1,10 @@
 import "@testing-library/jest-dom";
+import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
+
+afterEach(() => {
+  cleanup();
+});
 
 // Mock fetch globally to prevent network calls in tests
 globalThis.fetch = vi.fn().mockImplementation(() =>
@@ -39,6 +44,7 @@ const __vjsMock = vi.hoisted(() => {
       _error = err;
     },
     getError: () => _error,
+    seek: (time: number) => Promise.resolve(time),
     trigger: () => _trigger?.(),
     _setTrigger: (fn: (() => void) | null) => {
       _trigger = fn;
@@ -70,6 +76,11 @@ vi.mock("@videojs/react", async () => {
     selectError: (s: any) => ({
       error: s.error,
       dismissError: () => __vjsMock.setError(null),
+    }),
+    selectTime: (s: any) => ({
+      currentTime: s.currentTime ?? 0,
+      duration: s.duration ?? 0,
+      seek: (time: number) => __vjsMock.seek(time),
     }),
   };
 });

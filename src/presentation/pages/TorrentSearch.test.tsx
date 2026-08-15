@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import {
   act,
   fireEvent,
@@ -18,9 +19,9 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import { TORRENT_SEARCH_ENGINES } from "@/domain/torrent/TorrentEngines";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import TorrentSearch from "./TorrentSearch";
 
 // Mock clipboard API
@@ -96,15 +97,15 @@ describe("TorrentSearch 页面组件", () => {
       search: vi.fn(),
       addTorrentMagnet: vi.fn(),
       getTorrentFiles: vi.fn(),
-      listTorrents: vi.fn(),
       pauseTorrent: vi.fn(),
       resumeTorrent: vi.fn(),
       deleteTorrent: vi.fn(),
       getTorrentStreamUrl: vi.fn(),
-      getTorrentStatus: vi.fn(),
-      getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
+      getVideoMetadata: vi.fn(),
       subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
+      setTorrentSubject: vi.fn(),
+      clearTorrentSubject: vi.fn(),
     };
 
     mockContainer = createDIContainerForTest({
@@ -112,6 +113,7 @@ describe("TorrentSearch 页面组件", () => {
     });
 
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
     vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
   });
@@ -123,25 +125,23 @@ describe("TorrentSearch 页面组件", () => {
   const renderHome = (initialRoute = "/") => {
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={[initialRoute]}>
-            {initialRoute === "/" && <LocationTracker />}
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route index element={<TorrentSearch />} />
-                <Route
-                  path="torrent"
-                  element={
-                    <>
-                      <div>TorrentDetail Page</div>
-                      <BackButton />
-                    </>
-                  }
-                />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={[initialRoute]}>
+          {initialRoute === "/" && <LocationTracker />}
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route index element={<TorrentSearch />} />
+              <Route
+                path="torrent"
+                element={
+                  <>
+                    <div>TorrentDetail Page</div>
+                    <BackButton />
+                  </>
+                }
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };
@@ -160,6 +160,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -184,6 +185,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -204,7 +206,7 @@ describe("TorrentSearch 页面组件", () => {
     });
 
     expect(document.querySelector(".results-count")?.textContent?.trim()).toBe(
-      "找到 1 个资源",
+      "找到 1 个资源，共 1 个字幕组",
     );
     expect(mockTorrentRepository.search).toHaveBeenCalledWith(
       expect.any(Object),
@@ -283,6 +285,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -318,6 +321,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -355,6 +359,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -391,6 +396,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -427,6 +433,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 350000000,
       },
     ];
@@ -493,6 +500,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://bangumi.moe/torrent/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TESTBM",
+        description: "",
         size: 500000000,
       },
     ];
@@ -525,6 +533,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://mikanani.me/Home/Episode/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TESTMIKAN",
+        description: "",
         size: 600000000,
       },
     ];
@@ -557,6 +566,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://nyaa.si/view/1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TESTNYAA",
+        description: "",
         size: 700000000,
       },
     ];
@@ -589,6 +599,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://acg.rip/t/1",
         pub_date: "2026-06-23",
         magnet: "https://acg.rip/t/1.torrent",
+        description: "",
         size: 800000000,
       },
     ];
@@ -621,6 +632,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "https://anibt.net/release/rel_1",
         pub_date: "2026-06-23",
         magnet: "magnet:?xt=urn:btih:TESTANIBT",
+        description: "",
         size: 900000000,
       },
     ];
@@ -881,7 +893,6 @@ describe("TorrentSearch 页面组件", () => {
     // Mock getSettingsUseCase 返回配置好的 AI 选项，使 UI 中的 AI 开关得以显示
     vi.spyOn(mockContainer.getSettingsUseCase, "execute").mockResolvedValue({
       download_dir: "/mock",
-      trackers: [],
       ai_configs: [
         {
           alias: "Test AI",
@@ -898,6 +909,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/1",
         pub_date: "2026-07-10",
         magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
         size: 1500000000,
         ai_score: 95,
         ai_reason: "匹配 1080p 清晰度与简中字幕",
@@ -907,6 +919,7 @@ describe("TorrentSearch 页面组件", () => {
         link: "http://example.com/2",
         pub_date: "2026-07-10",
         magnet: "magnet:?xt=urn:btih:TEST2",
+        description: "",
         size: 800000000,
         ai_score: 75,
         ai_reason: "匹配 720p 资源",
@@ -949,12 +962,380 @@ describe("TorrentSearch 页面组件", () => {
         screen.getByText("匹配 1080p 清晰度与简中字幕"),
       ).toBeInTheDocument();
       expect(screen.getByText("AI 推荐：昨日青空 720p")).toBeInTheDocument();
-      expect(screen.getByText("🤖 AI 评分过滤")).toBeInTheDocument();
+      expect(screen.getByText("AI 评分过滤")).toBeInTheDocument();
       expect(screen.getByText("匹配度: 75分")).toBeInTheDocument();
     });
 
     expect(
       mockContainer.searchTorrentsWithAiUseCase.execute,
     ).toHaveBeenCalled();
+  });
+
+  it("搜索结果应该按字幕组数量降序分组，并在组头显示组名与计数", async () => {
+    const mockResults = [
+      {
+        title: "[GroupB] 某番 01",
+        link: "http://example.com/b1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:B1",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "[GroupA] 某番 01",
+        link: "http://example.com/a1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:A1",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "[GroupA] 某番 02",
+        link: "http://example.com/a2",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:A2",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "[GroupA] 某番 03",
+        link: "http://example.com/a3",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:A3",
+        description: "",
+        size: 100,
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "某番" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/某番 03/)).toBeInTheDocument();
+    });
+
+    const triggers = screen.getAllByTestId(/^group-trigger-/);
+    expect(triggers).toHaveLength(2);
+    expect(triggers[0]).toHaveTextContent("GroupA");
+    expect(triggers[0]).toHaveTextContent("3 个");
+    expect(triggers[1]).toHaveTextContent("GroupB");
+    expect(triggers[1]).toHaveTextContent("1 个");
+  });
+
+  it("无前缀标题应该归入未标注组，且未标注组即使数量更多也排在最后", async () => {
+    const mockResults = [
+      {
+        title: "某番 无前缀1",
+        link: "http://example.com/x1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:X1",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "某番 无前缀2",
+        link: "http://example.com/x2",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:X2",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "[GroupX] 某番 01",
+        link: "http://example.com/gx1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:GX1",
+        description: "",
+        size: 100,
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "某番" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/某番 无前缀1/)).toBeInTheDocument();
+    });
+
+    const triggers = screen.getAllByTestId(/^group-trigger-/);
+    expect(triggers).toHaveLength(2);
+    expect(triggers[0]).toHaveTextContent("GroupX");
+    expect(triggers[1]).toHaveTextContent("未标注");
+    expect(triggers[1]).toHaveTextContent("2 个");
+  });
+
+  it("无前缀标题出现在带前缀结果之后时，未标注组仍应排在最末", async () => {
+    const mockResults = [
+      {
+        title: "[GroupX] 某番 01",
+        link: "http://example.com/gx1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:GX1",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "某番 无前缀1",
+        link: "http://example.com/x1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:X1",
+        description: "",
+        size: 100,
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "某番" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/某番 无前缀1/)).toBeInTheDocument();
+    });
+
+    const triggers = screen.getAllByTestId(/^group-trigger-/);
+    expect(triggers).toHaveLength(2);
+    expect(triggers[0]).toHaveTextContent("GroupX");
+    expect(triggers[1]).toHaveTextContent("未标注");
+  });
+
+  it("应该识别【】形式的中文组前缀与开头多个空格", async () => {
+    const mockResults = [
+      {
+        title: "【字幕组】 某番 01",
+        link: "http://example.com/z1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:Z1",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "[ANi]  某番 02",
+        link: "http://example.com/an1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:AN1",
+        description: "",
+        size: 100,
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "某番" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/某番 01/)).toBeInTheDocument();
+    });
+
+    const triggers = screen.getAllByTestId(/^group-trigger-/);
+    expect(triggers).toHaveLength(2);
+    expect(triggers[0]).toHaveTextContent("字幕组");
+    expect(triggers[1]).toHaveTextContent("ANi");
+  });
+
+  it("点击组头应该折叠或展开该组的结果", async () => {
+    const mockResults = [
+      {
+        title: "[GroupA] 某番 01",
+        link: "http://example.com/a1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:A1",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "[GroupA] 某番 02",
+        link: "http://example.com/a2",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:A2",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "[GroupB] 某番 10",
+        link: "http://example.com/b1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:B1",
+        description: "",
+        size: 100,
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "某番" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/某番 01/)).toBeInTheDocument();
+    });
+
+    const trigger = screen.getByTestId("group-trigger-GroupA");
+    fireEvent.click(trigger);
+    expect(screen.queryByText(/某番 01/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/某番 02/)).not.toBeInTheDocument();
+    expect(screen.getByText(/某番 10/)).toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    expect(screen.getByText(/某番 01/)).toBeInTheDocument();
+    expect(screen.getByText(/某番 02/)).toBeInTheDocument();
+  });
+
+  it("当结果包含 description 时，默认折叠展示，点击可展开查看全文，且 HTML 被正确渲染", async () => {
+    const mockResults = [
+      {
+        title: "xxx 第1集",
+        link: "http://example.com/1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "<p>1080P 简体内封字幕，共 13 集合集</p>",
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "xxx" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("torrent-desc-toggle-0")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText("1080P 简体内封字幕，共 13 集合集"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("torrent-desc-toggle-0"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("1080P 简体内封字幕，共 13 集合集"),
+      ).toBeInTheDocument();
+    });
+    // 原始 HTML 标签不应作为文本暴露
+    expect(
+      screen.queryByText("<p>1080P 简体内封字幕，共 13 集合集</p>"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("渲染 description 时应该剥离 script 等危险标签", async () => {
+    const mockResults = [
+      {
+        title: "xxx 第1集",
+        link: "http://example.com/1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:TEST1",
+        description:
+          "<p>安全描述</p><script>window.__xss_injected = true</script>",
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "xxx" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("torrent-desc-toggle-0")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("torrent-desc-toggle-0"));
+
+    await waitFor(() => {
+      expect(screen.getByText("安全描述")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByTestId("torrent-desc-toggle-0")?.parentElement,
+    ).not.toHaveTextContent("__xss_injected");
+    expect(
+      screen.queryByText("window.__xss_injected = true"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("当结果 description 为空时，不应渲染描述折叠区", async () => {
+    const mockResults = [
+      {
+        title: "xxx 第1集",
+        link: "http://example.com/1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:TEST1",
+        description: "",
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "xxx" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("torrent-desc-toggle-0"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("点击全部折叠按钮应该折叠所有组，再次点击全部展开应该恢复", async () => {
+    const mockResults = [
+      {
+        title: "[GroupA] 某番 01",
+        link: "http://example.com/a1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:A1",
+        description: "",
+        size: 100,
+      },
+      {
+        title: "[GroupB] 某番 10",
+        link: "http://example.com/b1",
+        pub_date: "2026-06-23",
+        magnet: "magnet:?xt=urn:btih:B1",
+        description: "",
+        size: 100,
+      },
+    ];
+    vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
+
+    renderHome();
+
+    const input = screen.getByPlaceholderText("输入动漫名称");
+    fireEvent.change(input, { target: { value: "某番" } });
+    fireEvent.submit(input.closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/某番 01/)).toBeInTheDocument();
+    });
+
+    const toggleBtn = screen.getByTestId("toggle-all-groups");
+    fireEvent.click(toggleBtn);
+    expect(screen.queryByText(/某番 01/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/某番 10/)).not.toBeInTheDocument();
+
+    fireEvent.click(toggleBtn);
+    expect(screen.getByText(/某番 01/)).toBeInTheDocument();
+    expect(screen.getByText(/某番 10/)).toBeInTheDocument();
   });
 });

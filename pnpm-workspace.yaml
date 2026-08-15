@@ -2,5 +2,7 @@ allowBuilds:
   esbuild: true
   lefthook: true
   ajanuw-context: true
+minimumReleaseAgeExclude:
+  - zustand@5.0.15
 overrides:
   webworkify-webpack: npm:webworkify-webpack@2.1.5

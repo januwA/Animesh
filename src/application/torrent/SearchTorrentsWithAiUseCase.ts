@@ -330,10 +330,7 @@ export class SearchTorrentsWithAiUseCase {
     const toolContent =
       itemsToEvaluate.length > 0
         ? itemsToEvaluate
-            .map(
-              (r, idx) =>
-                `[索引: ${idx}] 标题: "${r.title}", 大小: ${r.size ? `${(r.size / 1024 / 1024).toFixed(1)}MB` : "未知"}`,
-            )
+            .map((r, idx) => `[索引: ${idx}] 标题: "${r.title}"`)
             .join("\n")
         : "没有搜到任何结果，列表为空";
 

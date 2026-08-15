@@ -9,72 +9,33 @@ import {
   FileDetailsSchema,
   type SearchResultItem,
   SearchResultItemSchema,
-  type SubtitleTrackInfo,
-  SubtitleTrackInfoSchema,
   type TorrentStatusInfo,
   TorrentStatusInfoSchema,
+  type VideoMetadata,
+  VideoMetadataSchema,
 } from "../../domain/torrent/TorrentSchemas";
-import { HttpClient } from "../http/HttpClient";
+import type { HttpClient } from "../http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"
   : (import.meta.env.VITE_API_BASE_URL as string) || "/api";
 
 export class HttpTorrentRepository implements TorrentRepository {
-  private readonly httpClient: HttpClient;
-
-  constructor() {
-    this.httpClient = new HttpClient();
-  }
-
-  private registerSearchCancellation(
-    ctx: Context,
-    traceId: string,
-    status: { isFinished: boolean },
-  ): void {
-    ctx.done().then(() => {
-      if (!status.isFinished) {
-        this.httpClient
-          .request(`${baseUrl}/torrents/search/${traceId}`, {
-            method: "DELETE",
-          })
-          .catch(() => {});
-      }
-    });
-  }
+  constructor(private readonly httpClient: HttpClient) {}
 
   async search(
     ctx: Context,
     keyword: string,
     engine: TorrentSearchEngine,
   ): Promise<SearchResultItem[]> {
-    const traceId = ctx.value<string>("traceId") || "";
-    const status = { isFinished: false };
-    this.registerSearchCancellation(ctx, traceId, status);
-
-    try {
-      const query = new URLSearchParams({ trace_id: traceId, keyword, engine });
-      const raw = await this.httpClient.getJson<unknown>(
-        `${baseUrl}/torrents/search?${query.toString()}`,
-        { ctx },
-      );
-      const result = z.array(SearchResultItemSchema).safeParse(raw);
-      if (!result.success) {
-        throw new Error("search_torrents API structure mismatch", {
-          cause: result.error,
-        });
-      }
-      return result.data;
-    } finally {
-      status.isFinished = true;
-    }
-  }
-
-  async listTorrents(): Promise<TorrentStatusInfo[]> {
-    const raw = await this.httpClient.getJson<unknown>(`${baseUrl}/torrents`);
-    const result = z.array(TorrentStatusInfoSchema).safeParse(raw);
+    const query = new URLSearchParams({ keyword, engine });
+    const raw = await this.httpClient.getJson<unknown>(
+      `${baseUrl}/torrents/search?${query.toString()}`,
+      { ctx },
+    );
+    const result = z.array(SearchResultItemSchema).safeParse(raw);
     if (!result.success) {
-      throw new Error("torrent_list API structure mismatch", {
+      throw new Error("search_torrents API structure mismatch", {
         cause: result.error,
       });
     }
@@ -153,29 +114,16 @@ export class HttpTorrentRepository implements TorrentRepository {
     return response.text();
   }
 
-  async getTorrentStatus(infoHash: string): Promise<TorrentStatusInfo> {
-    const raw = await this.httpClient.getJson<unknown>(
-      `${baseUrl}/torrents/${infoHash}/status`,
-    );
-    const result = TorrentStatusInfoSchema.safeParse(raw);
-    if (!result.success) {
-      throw new Error("torrent_get_status API structure mismatch", {
-        cause: result.error,
-      });
-    }
-    return result.data;
-  }
-
-  async getSubtitleTracks(
+  async getVideoMetadata(
     infoHash: string,
     fileId: number,
-  ): Promise<SubtitleTrackInfo[]> {
+  ): Promise<VideoMetadata> {
     const raw = await this.httpClient.getJson<unknown>(
-      `${baseUrl}/torrents/${infoHash}/files/${fileId}/subtitles`,
+      `${baseUrl}/torrents/${infoHash}/files/${fileId}/metadata`,
     );
-    const result = z.array(SubtitleTrackInfoSchema).safeParse(raw);
+    const result = VideoMetadataSchema.safeParse(raw);
     if (!result.success) {
-      throw new Error("torrent_get_subtitle_tracks API structure mismatch", {
+      throw new Error("torrent_get_video_metadata API structure mismatch", {
         cause: result.error,
       });
     }
@@ -191,6 +139,26 @@ export class HttpTorrentRepository implements TorrentRepository {
       `${baseUrl}/torrents/${infoHash}/files/${fileId}/subtitles/${trackId}`,
     );
     return response.text();
+  }
+
+  async setTorrentSubject(
+    infoHash: string,
+    subject_id: number,
+    subject_name: string,
+  ): Promise<void> {
+    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ subject_id, subject_name }),
+    });
+  }
+
+  async clearTorrentSubject(infoHash: string): Promise<void> {
+    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
+      method: "DELETE",
+    });
   }
 
   async subscribeTorrents(

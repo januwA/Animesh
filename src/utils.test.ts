@@ -4,6 +4,7 @@ import {
   formatBytes,
   formatError,
   formatLocalDate,
+  formatPlaybackTime,
 } from "./utils";
 
 describe("节流函数 createThrottleByChange", () => {
@@ -48,9 +49,9 @@ describe("节流函数 createThrottleByChange", () => {
 
 describe("格式化字节大小函数 formatBytes", () => {
   it("应该正确格式化字节数为可读字符串", () => {
-    expect(formatBytes(null)).toBe("未知大小");
-    expect(formatBytes(undefined)).toBe("未知大小");
-    expect(formatBytes(0)).toBe("未知大小");
+    expect(formatBytes(null)).toBe("0 B");
+    expect(formatBytes(undefined)).toBe("0 B");
+    expect(formatBytes(0)).toBe("0 B");
     expect(formatBytes(512)).toBe("512 B");
     expect(formatBytes(1024)).toBe("1 KB");
     expect(formatBytes(1536)).toBe("1.5 KB");
@@ -134,6 +135,23 @@ describe("格式化本地时间函数 formatLocalDate", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("格式化播放时长函数 formatPlaybackTime", () => {
+  it("应格式化为 HH:mm:ss", () => {
+    expect(formatPlaybackTime(0)).toBe("00:00:00");
+    expect(formatPlaybackTime(1000)).toBe("00:00:01");
+    expect(formatPlaybackTime(61000)).toBe("00:01:01");
+    expect(formatPlaybackTime(3600000)).toBe("01:00:00");
+    expect(formatPlaybackTime(3661000)).toBe("01:01:01");
+    expect(formatPlaybackTime(90061000)).toBe("25:01:01");
+  });
+
+  it("应处理负数或无效输入为 00:00:00", () => {
+    expect(formatPlaybackTime(-1000)).toBe("00:00:00");
+    expect(formatPlaybackTime(Number.NaN)).toBe("00:00:00");
+    expect(formatPlaybackTime(Number.POSITIVE_INFINITY)).toBe("00:00:00");
   });
 });
 

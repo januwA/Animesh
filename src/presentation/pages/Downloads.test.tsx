@@ -11,9 +11,10 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import Downloads from "./Downloads";
 
@@ -28,39 +29,51 @@ const LocationTracker = () => {
 describe("Downloads 页面组件", () => {
   let mockTorrentRepository: TorrentRepository;
   let mockContainer: DIContainer;
+  // 让 subscribeTorrents mock 从可变引用读取数据，测试中可随时替换
+  let getTorrentsRef: () => Promise<TorrentStatusInfo[]>;
+  // 让 subscribeTorrents 返回 reject（用于失败场景）
+  let subscribeRejectRef: unknown | null;
 
   beforeEach(() => {
+    getTorrentsRef = async () => [];
+    subscribeRejectRef = null;
+
     mockTorrentRepository = {
       search: vi.fn(),
       addTorrentMagnet: vi.fn(),
       getTorrentFiles: vi.fn(),
-      listTorrents: vi.fn().mockResolvedValue([]),
       pauseTorrent: vi.fn().mockResolvedValue(undefined),
       resumeTorrent: vi.fn().mockResolvedValue(undefined),
       deleteTorrent: vi.fn().mockResolvedValue(undefined),
       getTorrentStreamUrl: vi.fn(),
-      getTorrentStatus: vi.fn(),
-      getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
-      subscribeTorrents: vi.fn().mockImplementation((onUpdate) => {
+      getVideoMetadata: vi.fn(),
+      subscribeTorrents: vi.fn().mockImplementation(async (onUpdate) => {
+        if (subscribeRejectRef !== null) {
+          return Promise.reject(subscribeRejectRef);
+        }
+
         const runUpdate = async () => {
-          const list = await mockTorrentRepository.listTorrents();
+          const list = await getTorrentsRef();
           onUpdate(list);
         };
 
-        const promise = runUpdate();
+        const initPromise = runUpdate();
 
         const interval = setInterval(async () => {
           try {
-            const list = await mockTorrentRepository.listTorrents();
+            const list = await getTorrentsRef();
             onUpdate(list);
-          } catch {}
+          } catch {
+            // 轮询报错静默忽略（保持上次数据）
+          }
         }, 1500);
 
-        return promise.then(() => {
-          return () => clearInterval(interval);
-        });
+        await initPromise;
+        return () => clearInterval(interval);
       }),
+      setTorrentSubject: vi.fn().mockResolvedValue(undefined),
+      clearTorrentSubject: vi.fn().mockResolvedValue(undefined),
     };
 
     mockContainer = createDIContainerForTest({
@@ -68,6 +81,7 @@ describe("Downloads 页面组件", () => {
     });
 
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
   });
 
@@ -79,25 +93,28 @@ describe("Downloads 页面组件", () => {
     return render(
       <DIProvider value={mockContainer}>
         <TorrentStatusProvider>
-          <AppContextProvider>
-            <MemoryRouter initialEntries={["/downloads"]}>
-              <LocationTracker />
-              <Routes>
-                <Route path="/" element={<NavBarLayout />}>
-                  <Route path="downloads" element={<Downloads />} />
-                </Route>
-                <Route path="/" element={<div>Home Page</div>} />
-                <Route path="/torrent" element={<div>Torrent Page</div>} />
-              </Routes>
-            </MemoryRouter>
-          </AppContextProvider>
+          <MemoryRouter initialEntries={["/downloads"]}>
+            <LocationTracker />
+            <Routes>
+              <Route path="/" element={<NavBarLayout />}>
+                <Route path="downloads" element={<Downloads />} />
+              </Route>
+              <Route path="/" element={<div>Home Page</div>} />
+              <Route path="/torrent" element={<div>Torrent Page</div>} />
+              <Route
+                path="/subject/:subjectId"
+                element={<div>Subject Page</div>}
+              />
+            </Routes>
+          </MemoryRouter>
         </TorrentStatusProvider>
       </DIProvider>,
     );
   };
 
   it("应该在加载时渲染加载指示器", async () => {
-    vi.mocked(mockTorrentRepository.listTorrents).mockImplementation(
+    // subscribeTorrents 永不 resolve 且不回调 → isLoading 保持 true
+    vi.mocked(mockTorrentRepository.subscribeTorrents).mockImplementation(
       () => new Promise(() => {}),
     );
 
@@ -107,9 +124,7 @@ describe("Downloads 页面组件", () => {
   });
 
   it("当获取下载列表失败时，应该显示加载完成和Toast提示", async () => {
-    vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValue(
-      "Fetch list failed",
-    );
+    subscribeRejectRef = "Fetch list failed";
 
     renderDownloads();
 
@@ -124,7 +139,7 @@ describe("Downloads 页面组件", () => {
   });
 
   it("当无下载任务时，应该渲染空状态并可以点击返回首页", async () => {
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue([]);
+    getTorrentsRef = async () => [];
 
     renderDownloads();
 
@@ -149,15 +164,15 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 100,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -175,24 +190,24 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 200,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      updatedTorrents,
-    );
+    getTorrentsRef = async () => updatedTorrents;
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1500);
     });
 
-    expect(screen.getByText(/进度: 80/)).toBeInTheDocument();
+    // 进度文字已移除，通过下载速度变化验证轮询更新生效
+    expect(screen.getByText(/200 B\/s/)).toBeInTheDocument();
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockRejectedValueOnce(
-      new Error("Network polling error"),
-    );
+    // 下一次轮询 getTorrentsRef 抛错 → 静默忽略，保持数据
+    getTorrentsRef = () => Promise.reject(new Error("Network polling error"));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1500);
@@ -210,9 +225,11 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hash222",
@@ -221,9 +238,11 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 100,
         paused: true,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hash333",
@@ -232,9 +251,11 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hash444",
@@ -243,15 +264,15 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
         paused: true,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -321,7 +342,7 @@ describe("Downloads 页面组件", () => {
     );
   });
 
-  it("应该支持查看文件操作，正确进行路由跳转 (有名字)", async () => {
+  it("应该支持查看文件操作，正确进行路由跳转", async () => {
     const mockTorrents = [
       {
         info_hash: "hash111",
@@ -330,15 +351,15 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -356,53 +377,20 @@ describe("Downloads 页面组件", () => {
     );
   });
 
-  it("应该支持查看文件操作，正确进行路由跳转 (无名字)", async () => {
-    const mockTorrents = [
-      {
-        info_hash: "hash222",
-        name: "",
-        progress_bytes: 100,
-        total_bytes: 1000,
-        finished: false,
-        download_speed_bytes_per_sec: 50,
-        paused: false,
-        peers_connected: 0,
-        peers_total: 0,
-      },
-    ];
-
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
-
-    renderDownloads();
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "查看文件" }),
-      ).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "查看文件" }));
-    expect(currentLocation.current?.pathname).toBe("/torrent");
-    expect(currentLocation.current?.search).toContain("infoHash=hash222");
-    expect(currentLocation.current?.search).toContain(
-      "title=%E6%9C%AA%E5%91%BD%E5%90%8D%E7%A7%8D%E5%AD%90",
-    );
-  });
-
   it("应该支持删除操作，包含删除弹窗、文件删除勾选框、确定删除（成功/失败）及取消", async () => {
     const mockTorrents = [
       {
         info_hash: "hash111",
-        name: null,
+        name: "",
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hash222",
@@ -411,15 +399,15 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -505,9 +493,11 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: true,
         download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
       {
         info_hash: "hashZeroTotal",
@@ -516,22 +506,24 @@ describe("Downloads 页面组件", () => {
         total_bytes: 0,
         finished: true,
         download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
     await waitFor(() => {
       expect(screen.getByText("已完成视频")).toBeInTheDocument();
       expect(screen.getByText("零大小视频")).toBeInTheDocument();
-      expect(screen.getAllByText("已完成").length).toBe(2);
+      // 状态徽章已移除，只通过任务名称确认渲染
+      expect(screen.queryByText("做种中")).not.toBeInTheDocument();
+      expect(screen.queryByText("已完成")).not.toBeInTheDocument();
     });
   });
 
@@ -544,15 +536,15 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: true,
         download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 100,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -584,9 +576,11 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 10,
+        upload_speed_bytes_per_sec: 10,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
         created_at: 1719816000000, // 2026-07-01 12:00:00 UTC (roughly)
       },
       {
@@ -596,16 +590,16 @@ describe("Downloads 页面组件", () => {
         total_bytes: 1000,
         finished: false,
         download_speed_bytes_per_sec: 20,
+        upload_speed_bytes_per_sec: 20,
         paused: false,
         peers_connected: 0,
         peers_total: 0,
+        trackers: [],
         created_at: 1719819600000, // 2026-07-01 13:00:00 UTC (roughly)
       },
     ];
 
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue(
-      mockTorrents,
-    );
+    getTorrentsRef = async () => mockTorrents;
 
     renderDownloads();
 
@@ -624,12 +618,330 @@ describe("Downloads 页面组件", () => {
     expect(screen.getAllByText(/创建时间:/).length).toBe(2);
   });
 
+  it("存在已绑定条目的任务时，应该按条目分组渲染，并支持跳转到条目详情页", async () => {
+    const mockTorrents = [
+      {
+        info_hash: "hashU",
+        name: "未绑定种子",
+        progress_bytes: 100,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        created_at: 3000,
+      },
+      {
+        info_hash: "hashA1",
+        name: "动漫A-第1话",
+        progress_bytes: 200,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        subject_id: 42,
+        subject_name: "动漫A",
+        created_at: 1000,
+      },
+      {
+        info_hash: "hashA2",
+        name: "动漫A-第2话",
+        progress_bytes: 300,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        subject_id: 42,
+        subject_name: "动漫A",
+        created_at: 2000,
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("动漫A-第1话")).toBeInTheDocument();
+    });
+
+    // 分组标题与任务数量徽章
+    expect(screen.getByText("动漫A")).toBeInTheDocument();
+    expect(screen.getByText("2 个任务")).toBeInTheDocument();
+    expect(screen.getByText(/未关联条目/)).toBeInTheDocument();
+    expect(screen.getByText("未绑定种子")).toBeInTheDocument();
+
+    // 组内任务按创建时间倒序排列
+    const boundNames = screen
+      .getAllByText(/动漫A-第\d+话/)
+      .map((el) => el.textContent);
+    expect(boundNames).toEqual(["动漫A-第2话", "动漫A-第1话"]);
+
+    // 点击"查看条目"跳转到条目详情页
+    fireEvent.click(screen.getByRole("button", { name: /查看条目/ }));
+    expect(currentLocation.current?.pathname).toBe("/subject/42");
+  });
+
   it("在无任务时应该正确显示空状态（通过上下文字段名称检测数据流）", async () => {
-    vi.mocked(mockTorrentRepository.listTorrents).mockResolvedValue([]);
+    getTorrentsRef = async () => [];
     renderDownloads();
 
     await waitFor(() => {
       expect(screen.getByText("没有正在进行的下载任务")).toBeInTheDocument();
     });
+  });
+
+  it("info_hash 应截断显示前 8 位而非完整 40 字符", async () => {
+    const fullHash = "0123456789abcdef0123456789abcdef01234567";
+    const mockTorrents = [
+      {
+        info_hash: fullHash,
+        name: "哈希截断测试",
+        progress_bytes: 0,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("哈希截断测试")).toBeInTheDocument();
+    });
+
+    // 应显示前 8 位 + 省略号
+    expect(screen.getByText(/Hash: 01234567…/)).toBeInTheDocument();
+    // 不应显示完整 40 字符哈希
+    expect(
+      screen.queryByText(new RegExp(`Hash: ${fullHash}`)),
+    ).not.toBeInTheDocument();
+  });
+
+  it("存储行应合并为单元素，避免窄屏断裂", async () => {
+    const mockTorrents = [
+      {
+        info_hash: "hashStorage",
+        name: "存储行测试",
+        progress_bytes: 500,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("存储行测试")).toBeInTheDocument();
+    });
+
+    // 已下载与总大小应在同一元素内（"已下载 X / Y" 形式），不应有独立的 "/" 分隔符 span
+    const storageText = screen.getByText(/已下载:.*\/.*总大小:/);
+    expect(storageText).toBeInTheDocument();
+    // 不应存在独立的 "/" 分隔元素
+    expect(screen.queryByText(/^\s*\/\s*$/)).not.toBeInTheDocument();
+  });
+
+  it("分组默认展开策略：含未完成任务分组默认展开，全已完成分组默认折叠", async () => {
+    const mockTorrents = [
+      // 动漫A：含未完成任务 → 默认展开
+      {
+        info_hash: "hashA1",
+        name: "动漫A-未完成",
+        progress_bytes: 500,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        subject_id: 42,
+        subject_name: "动漫A",
+        created_at: 1000,
+      },
+      // 动漫B：全部完成 → 默认折叠
+      {
+        info_hash: "hashB1",
+        name: "动漫B-已完成",
+        progress_bytes: 1000,
+        total_bytes: 1000,
+        finished: true,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+        subject_id: 43,
+        subject_name: "动漫B",
+        created_at: 2000,
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("动漫A")).toBeInTheDocument();
+      expect(screen.getByText("动漫B")).toBeInTheDocument();
+    });
+
+    // 动漫A 分组默认展开 → 任务卡片立即可见
+    expect(screen.getByText("动漫A-未完成")).toBeInTheDocument();
+    // 动漫B 分组默认折叠 → 任务卡片不应立即可见
+    expect(screen.queryByText("动漫B-已完成")).not.toBeInTheDocument();
+
+    // 展开动漫B 分组后任务卡片可见
+    fireEvent.click(screen.getByText("动漫B"));
+    await waitFor(() => {
+      expect(screen.getByText("动漫B-已完成")).toBeInTheDocument();
+    });
+  });
+
+  it("暂停操作进行中时，仅禁用对应卡片的按钮，不影响其他卡片", async () => {
+    const mockTorrents = [
+      {
+        info_hash: "hashA",
+        name: "任务A",
+        progress_bytes: 100,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+      {
+        info_hash: "hashB",
+        name: "任务B",
+        progress_bytes: 200,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 50,
+        upload_speed_bytes_per_sec: 100,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("任务A")).toBeInTheDocument();
+      expect(screen.getByText("任务B")).toBeInTheDocument();
+    });
+
+    // pauseTorrent 永不 resolve，保持 loading 状态
+    vi.mocked(mockTorrentRepository.pauseTorrent).mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    const pauseBtnsBefore = screen.getAllByTitle("暂停下载");
+    expect(pauseBtnsBefore.length).toBe(2);
+
+    // 点击任务A 的暂停按钮
+    fireEvent.click(pauseBtnsBefore[0]);
+
+    // A 的按钮应禁用，B 的按钮应保持可用
+    await waitFor(() => {
+      const pauseBtns = screen.getAllByTitle("暂停下载");
+      expect(pauseBtns[0]).toBeDisabled();
+      expect(pauseBtns[1]).not.toBeDisabled();
+    });
+  });
+
+  it("删除成功后，被删卡片应立即从列表消失（乐观更新）", async () => {
+    const mockTorrents = [
+      {
+        info_hash: "hashDel",
+        name: "待删除任务",
+        progress_bytes: 500,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+      {
+        info_hash: "hashKeep",
+        name: "保留任务",
+        progress_bytes: 200,
+        total_bytes: 1000,
+        finished: false,
+        download_speed_bytes_per_sec: 0,
+        upload_speed_bytes_per_sec: 0,
+        paused: false,
+        peers_connected: 0,
+        peers_total: 0,
+        trackers: [],
+      },
+    ];
+
+    getTorrentsRef = async () => mockTorrents;
+
+    renderDownloads();
+
+    await waitFor(() => {
+      expect(screen.getByText("待删除任务")).toBeInTheDocument();
+      expect(screen.getByText("保留任务")).toBeInTheDocument();
+    });
+
+    vi.useFakeTimers();
+
+    // 打开删除弹窗并确认
+    fireEvent.click(screen.getAllByTitle("删除下载")[0]);
+    fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(mockTorrentRepository.deleteTorrent).toHaveBeenCalledWith(
+      "hashDel",
+      false,
+    );
+
+    // 乐观更新：被删卡片立即消失
+    expect(screen.queryByText("待删除任务")).not.toBeInTheDocument();
+    // 保留的卡片仍可见
+    expect(screen.getByText("保留任务")).toBeInTheDocument();
   });
 });

@@ -18,14 +18,20 @@ librqbit = { version = "8.1.1", default-features = false, features = ["rust-tls"
 axum = "0.7"
 tokio-util = { version = "0.7", features = ["io"] }
 tower = { version = "0.5", features = ["util"] }
-matroska-demuxer = "0.7.0"
+matroska-demuxer = "0.8.1"
 flate2 = "1"
 encoding_rs = "0.8"
 chardetng = "1"
 log = "0.4"
 async-trait = "0.1"
+  thiserror = "2"
+anyhow = "1"
 local-ip-address = "0.6.13"
 tower-http = { version = "0.7.0", features = ["cors"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util", "full"] }
 
 [target.'cfg(all(target_os = "android", target_arch = "aarch64"))'.dependencies]
 aws-lc-sys = { version = "0.42.0", features = ["prebuilt-nasm"] }

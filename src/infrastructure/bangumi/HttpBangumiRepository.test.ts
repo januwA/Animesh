@@ -1,6 +1,6 @@
 import { Background, Canceled, WithCancel } from "ajanuw-context";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HttpClient } from "../http/HttpClient";
+import { createFakeHttpClient } from "../../test/FakeHttpClient";
 import { HttpBangumiRepository } from "./HttpBangumiRepository";
 
 describe("HttpBangumiRepository", () => {
@@ -25,13 +25,10 @@ describe("HttpBangumiRepository", () => {
       },
     ];
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue(mockResponse);
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     const result = await repository.getCalendar(Background);
 
     expect(result).toHaveLength(1);
@@ -40,42 +37,35 @@ describe("HttpBangumiRepository", () => {
   });
 
   it("getCalendar 在 API 返回结构不匹配时应抛出错误", async () => {
-    const mockResponse = { invalid: "structure" };
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue({ invalid: "structure" });
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
-
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     await expect(repository.getCalendar(Background)).rejects.toThrow(
       "Calendar API response structure mismatch",
     );
   });
 
   it("getCalendar 在网络请求失败时应抛出带 cause 的错误", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: "Internal Server Error",
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockRejectedValue(
+      new Error("HTTP error! status: 500 Internal Server Error"),
+    );
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     await expect(repository.getCalendar(Background)).rejects.toThrow(
       "Failed to fetch calendar",
     );
   });
 
   it("getCalendar 在 Context 取消时应抛出 Context 错误而不进行二次包装", async () => {
-    const mockFetch = vi.fn();
-    vi.stubGlobal("fetch", mockFetch);
-
     const [ctx, cancel] = WithCancel(Background);
     cancel();
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const client = createFakeHttpClient();
+    client.getJson.mockRejectedValue(ctx.err());
+
+    const repository = new HttpBangumiRepository(client);
     await expect(repository.getCalendar(ctx)).rejects.toThrow(Canceled.message);
   });
 });
@@ -109,18 +99,15 @@ describe("getEpisodes", () => {
       offset: 50,
     };
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue(mockResponse);
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     const result = await repository.getEpisodes(Background, "42", 50, 50);
 
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(client.getJson).toHaveBeenCalledWith(
       "https://api.bgm.tv/v0/episodes?subject_id=42&limit=50&offset=50",
-      expect.anything(),
+      expect.objectContaining({ ctx: Background }),
     );
     expect(result.items).toHaveLength(2);
     expect(result.items[0].name_cn).toBe("第一集 中文");
@@ -128,29 +115,22 @@ describe("getEpisodes", () => {
   });
 
   it("在 API 返回结构不匹配时应抛出错误", async () => {
-    const mockResponse = { invalid: "structure" };
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue({ invalid: "structure" });
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
-
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     await expect(
       repository.getEpisodes(Background, "42", 0, 50),
     ).rejects.toThrow("Episodes API response structure mismatch");
   });
 
   it("在网络请求失败时应抛出带 cause 的错误", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: "Internal Server Error",
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockRejectedValue(
+      new Error("HTTP error! status: 500 Internal Server Error"),
+    );
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     await expect(
       repository.getEpisodes(Background, "42", 0, 50),
     ).rejects.toThrow("Failed to fetch episodes");
@@ -176,13 +156,10 @@ describe("getSubjectPersons", () => {
       },
     ];
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue(mockResponse);
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     const result = await repository.getSubjectPersons(Background, "622206");
 
     expect(result).toHaveLength(1);
@@ -191,29 +168,22 @@ describe("getSubjectPersons", () => {
   });
 
   it("在 API 返回结构不匹配时应抛出错误", async () => {
-    const mockResponse = { invalid: "structure" };
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue({ invalid: "structure" });
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
-
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     await expect(
       repository.getSubjectPersons(Background, "622206"),
     ).rejects.toThrow("Persons API response structure mismatch");
   });
 
   it("在网络请求失败时应抛出带 cause 的错误", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: "Internal Server Error",
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockRejectedValue(
+      new Error("HTTP error! status: 500 Internal Server Error"),
+    );
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     await expect(
       repository.getSubjectPersons(Background, "622206"),
     ).rejects.toThrow("Failed to fetch subject persons");
@@ -254,13 +224,10 @@ describe("getSubjectCharacters", () => {
       },
     ];
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue(mockResponse);
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     const result = await repository.getSubjectCharacters(Background, "622206");
 
     expect(result).toHaveLength(1);
@@ -269,29 +236,22 @@ describe("getSubjectCharacters", () => {
   });
 
   it("在 API 返回结构不匹配时应抛出错误", async () => {
-    const mockResponse = { invalid: "structure" };
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue({ invalid: "structure" });
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
-
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     await expect(
       repository.getSubjectCharacters(Background, "622206"),
     ).rejects.toThrow("Characters API response structure mismatch");
   });
 
   it("在网络请求失败时应抛出带 cause 的错误", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: "Internal Server Error",
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockRejectedValue(
+      new Error("HTTP error! status: 500 Internal Server Error"),
+    );
 
-    const repository = new HttpBangumiRepository(new HttpClient());
+    const repository = new HttpBangumiRepository(client);
     await expect(
       repository.getSubjectCharacters(Background, "622206"),
     ).rejects.toThrow("Failed to fetch subject characters");

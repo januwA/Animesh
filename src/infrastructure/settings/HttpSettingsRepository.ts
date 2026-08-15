@@ -4,18 +4,16 @@ import {
   type Settings,
   SettingsSchema,
 } from "../../domain/settings/SettingsSchemas";
-import { parseTrackers } from "../../domain/settings/TrackerSettings";
-import { HttpClient } from "../http/HttpClient";
+import type { HttpClient } from "../http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"
   : (import.meta.env.VITE_API_BASE_URL as string) || "/api";
 
 export class HttpSettingsRepository implements SettingsRepository {
-  private readonly httpClient: HttpClient;
-
-  constructor() {
-    this.httpClient = new HttpClient();
+  constructor(private readonly httpClient: HttpClient) {}
+  setTheme(_theme?: "light" | "dark" | null): Promise<void> {
+    throw new Error("Method not implemented.");
   }
 
   async getSettings(): Promise<Settings> {
@@ -30,12 +28,6 @@ export class HttpSettingsRepository implements SettingsRepository {
       });
     }
     return result.data;
-  }
-
-  async getDefaultTrackers(): Promise<string[]> {
-    return this.httpClient.getJson<string[]>(
-      `${baseUrl}/settings/default-trackers`,
-    );
   }
 
   async setDownloadDir(dir: string): Promise<void> {
@@ -55,36 +47,6 @@ export class HttpSettingsRepository implements SettingsRepository {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ proxy }),
-    });
-  }
-
-  async setTrackers(trackers: string[]): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/trackers`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ trackers }),
-    });
-  }
-
-  async setTrackerOptions(options: {
-    sourceType: string | null;
-    customUrl: string | null;
-    autoUpdate: boolean | null;
-    lastUpdateTime: number | null;
-  }): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/tracker-options`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        source_type: options.sourceType,
-        custom_url: options.customUrl,
-        auto_update: options.autoUpdate,
-        last_update_time: options.lastUpdateTime,
-      }),
     });
   }
 
@@ -108,28 +70,18 @@ export class HttpSettingsRepository implements SettingsRepository {
     });
   }
 
-  async fetchTrackers(url: string): Promise<string[]> {
-    if (!url) {
-      throw new Error("Tracker URL 不能为空");
-    }
-    const response = await fetch(url).catch((err) => {
-      throw new Error("获取 Tracker 列表网络连接失败", { cause: err });
+  async setMaxUploadSpeed(speed: number | null): Promise<void> {
+    await this.httpClient.request(`${baseUrl}/settings/max-upload-speed`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ max_speed: speed }),
     });
-    if (!response.ok) {
-      throw new Error(
-        `获取 Tracker 列表失败: HTTP ${response.status} ${response.statusText}`,
-      );
-    }
-    const text = await response.text();
-    return parseTrackers(text);
   }
 
   async selectDirectory(): Promise<string | null> {
     // Web version doesn't support directory selection dialog
     return null;
-  }
-
-  async setTheme(_theme: string): Promise<void> {
-    // Web version doesn't support native window theme sync
   }
 }

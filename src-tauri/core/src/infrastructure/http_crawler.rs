@@ -1,12 +1,19 @@
-use crate::crawler::{
+use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
+use crate::error::CoreError;
+use crate::infrastructure::crawler_parsers::{
     parse_acgrip_rss, parse_anibt_rss, parse_bangumi_moe_json, parse_dmhy_rss, parse_mikan_rss,
     parse_nyaa_rss,
 };
-use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
 use crate::infrastructure::http_client::HttpClient;
 use async_trait::async_trait;
 use std::sync::Arc;
 use urlencoding::encode;
+
+/// 构建默认的爬虫仓储（真实 HTTP 客户端），由组合根调用。
+pub fn create_crawler_repository() -> Arc<dyn CrawlerRepository> {
+    let client = Arc::new(crate::infrastructure::http_client::ReqwestHttpClient);
+    Arc::new(HttpCrawlerRepository::new(client))
+}
 
 pub struct HttpCrawlerRepository {
     client: Arc<dyn HttpClient>,
@@ -24,7 +31,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!(
             "https://share.dmhy.org/topics/rss/rss.xml?keyword={}",
@@ -39,7 +46,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let payload = serde_json::json!({
             "query": keyword
         });
@@ -62,7 +69,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!(
             "https://mikanani.me/RSS/Search?searchstr={}",
@@ -77,7 +84,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!("https://nyaa.si/?page=rss&q={}&c=0_0&f=0", encoded_keyword);
 
@@ -89,7 +96,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!("https://acg.rip/.xml?term={}", encoded_keyword);
 
@@ -101,7 +108,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
         &self,
         keyword: &str,
         proxy: Option<String>,
-    ) -> Result<Vec<SearchResultItem>, String> {
+    ) -> Result<Vec<SearchResultItem>, CoreError> {
         let encoded_keyword = encode(keyword);
         let url = format!("https://anibt.net/rss/magnets.xml?q={}", encoded_keyword);
 
@@ -122,7 +129,7 @@ mod tests {
             get_handler: Arc::new(|_url, proxy| {
                 if let Some(p) = proxy {
                     if p.contains("://bad") {
-                        return Err("Invalid proxy".to_string());
+                        return Err("Invalid proxy".to_string().into());
                     }
                 }
                 Ok(String::new())
@@ -133,7 +140,7 @@ mod tests {
         let repo = HttpCrawlerRepository::new(Arc::new(mock_client));
         let result = repo.search_dmhy("xxx", Some("://bad".to_string())).await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid proxy"));
+        assert!(result.unwrap_err().to_string().contains("Invalid proxy"));
     }
 
     #[tokio::test]
@@ -143,7 +150,7 @@ mod tests {
             post_handler: Arc::new(|_url, _body, _ct, proxy| {
                 if let Some(p) = proxy {
                     if p.contains("://bad") {
-                        return Err("Invalid proxy".to_string());
+                        return Err("Invalid proxy".to_string().into());
                     }
                 }
                 Ok(String::new())
@@ -156,7 +163,7 @@ mod tests {
             .search_bangumi_moe("xxx", Some("://bad".to_string()))
             .await;
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid proxy"));
+        assert!(result.unwrap_err().to_string().contains("Invalid proxy"));
     }
 
     #[tokio::test]
@@ -323,7 +330,6 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].title, "[jibaketa合成] xxx - 10 END");
         assert_eq!(results[0].magnet, "https://acg.rip/t/355679.torrent");
-        assert_eq!(results[0].size, Some(875401216));
     }
 
     #[tokio::test]
@@ -363,6 +369,5 @@ mod tests {
             results[0].magnet,
             "magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e"
         );
-        assert_eq!(results[0].size, Some(123456789));
     }
 }

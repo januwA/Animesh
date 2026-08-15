@@ -11,9 +11,9 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import TorrentDetail from "./TorrentDetail";
 
 const currentLocation = {
@@ -34,15 +34,15 @@ describe("TorrentDetail 页面组件", () => {
       search: vi.fn(),
       addTorrentMagnet: vi.fn(),
       getTorrentFiles: vi.fn(),
-      listTorrents: vi.fn(),
       pauseTorrent: vi.fn(),
       resumeTorrent: vi.fn(),
       deleteTorrent: vi.fn(),
       getTorrentStreamUrl: vi.fn(),
-      getTorrentStatus: vi.fn(),
-      getSubtitleTracks: vi.fn(),
       getSubtitleVtt: vi.fn(),
+      getVideoMetadata: vi.fn(),
       subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
+      setTorrentSubject: vi.fn(),
+      clearTorrentSubject: vi.fn(),
     };
 
     mockContainer = createDIContainerForTest({
@@ -50,6 +50,7 @@ describe("TorrentDetail 页面组件", () => {
     });
 
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
   });
 
@@ -63,25 +64,23 @@ describe("TorrentDetail 页面组件", () => {
   ) => {
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter
-            initialEntries={initialEntries}
-            initialIndex={initialEntries.indexOf(initialEntry)}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route index element={<div>Home Page</div>} />
-                <Route path="torrent" element={<TorrentDetail />} />
-                <Route path="downloads" element={<div>Downloads Page</div>} />
-                <Route
-                  path="play/:infoHash/:fileId"
-                  element={<div>Play Page</div>}
-                />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter
+          initialEntries={initialEntries}
+          initialIndex={initialEntries.indexOf(initialEntry)}
+        >
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route index element={<div>Home Page</div>} />
+              <Route path="torrent" element={<TorrentDetail />} />
+              <Route path="downloads" element={<div>Downloads Page</div>} />
+              <Route
+                path="play/:infoHash/:fileId"
+                element={<div>Play Page</div>}
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };
@@ -359,7 +358,7 @@ describe("TorrentDetail 页面组件", () => {
   it("当种子名称为 null 且 URL 无 title 时，应该成功点击播放并使用空字符作为 title 降级", async () => {
     vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValueOnce({
       info_hash: "hash123",
-      name: null,
+      name: "",
       files: [{ id: 0, name: "file1.mp4", len: 1000 }],
     });
 

@@ -1,6 +1,6 @@
 import { Background, Canceled, WithCancel } from "ajanuw-context";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HttpClient } from "../http/HttpClient";
+import { createFakeHttpClient } from "../../test/FakeHttpClient";
 import { HttpIptvRepository } from "./HttpIptvRepository";
 
 describe("HttpIptvRepository", () => {
@@ -14,45 +14,37 @@ describe("HttpIptvRepository", () => {
       { name: "Japan", code: "JP", flag: "🇯🇵" },
     ];
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => mockResponse,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue(mockResponse);
 
-    const repository = new HttpIptvRepository(new HttpClient());
+    const repository = new HttpIptvRepository(client);
     const result = await repository.getCountries(Background);
 
     expect(result).toHaveLength(2);
     expect(result[0].code).toBe("CN");
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(client.getJson).toHaveBeenCalledWith(
       expect.stringContaining("countries.json"),
-      expect.any(Object),
+      expect.anything(),
     );
   });
 
   it("getCountries 在响应结构不匹配时应抛出带 cause 的错误", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [{ name: "No Code" }],
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockResolvedValue([{ name: "No Code" }]);
 
-    const repository = new HttpIptvRepository(new HttpClient());
+    const repository = new HttpIptvRepository(client);
     await expect(repository.getCountries(Background)).rejects.toThrow(
       "IPTV countries response structure mismatch",
     );
   });
 
   it("getCountries 在网络请求失败时应抛出带 cause 的错误", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: "Internal Server Error",
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.getJson.mockRejectedValue(
+      new Error("HTTP error! status: 500 Internal Server Error"),
+    );
 
-    const repository = new HttpIptvRepository(new HttpClient());
+    const repository = new HttpIptvRepository(client);
     await expect(repository.getCountries(Background)).rejects.toThrow(
       "Failed to fetch IPTV countries",
     );
@@ -63,46 +55,41 @@ describe("HttpIptvRepository", () => {
 #EXTINF:-1 tvg-id="CCTV1.cn@HD" tvg-logo="https://i.imgur.com/TpA3cUl.png" group-title="General",CCTV-1 (1080p)
 http://69.30.245.50/live/cctv1.m3u8`;
 
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => m3u,
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.request.mockResolvedValue({ text: async () => m3u } as Response);
 
-    const repository = new HttpIptvRepository(new HttpClient());
+    const repository = new HttpIptvRepository(client);
     const result = await repository.getChannels(Background, "CN");
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe("CCTV-1 (1080p)");
     expect(result[0].category).toBe("General");
-    expect(mockFetch).toHaveBeenCalledWith(
+    expect(client.request).toHaveBeenCalledWith(
       expect.stringContaining("countries/cn.m3u"),
-      expect.any(Object),
+      expect.anything(),
     );
   });
 
   it("getChannels 在网络请求失败时应抛出带 cause 的错误", async () => {
-    const mockFetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: "Not Found",
-    } as Response);
-    vi.stubGlobal("fetch", mockFetch);
+    const client = createFakeHttpClient();
+    client.request.mockRejectedValue(
+      new Error("HTTP error! status: 404 Not Found"),
+    );
 
-    const repository = new HttpIptvRepository(new HttpClient());
+    const repository = new HttpIptvRepository(client);
     await expect(repository.getChannels(Background, "XX")).rejects.toThrow(
       "Failed to fetch IPTV channels",
     );
   });
 
   it("getCountries 在 Context 取消时应透传取消错误而不二次包装", async () => {
-    const mockFetch = vi.fn();
-    vi.stubGlobal("fetch", mockFetch);
-
     const [ctx, cancel] = WithCancel(Background);
     cancel();
 
-    const repository = new HttpIptvRepository(new HttpClient());
+    const client = createFakeHttpClient();
+    client.getJson.mockRejectedValue(ctx.err());
+
+    const repository = new HttpIptvRepository(client);
     await expect(repository.getCountries(ctx)).rejects.toThrow(
       Canceled.message,
     );

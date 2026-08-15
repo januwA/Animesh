@@ -1,6 +1,6 @@
 import { Background, Canceled, WithCancel } from "ajanuw-context";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HttpClient } from "./HttpClient";
+import { FetchHttpClient } from "./HttpClient";
 
 describe("HttpClient", () => {
   afterEach(() => {
@@ -15,7 +15,7 @@ describe("HttpClient", () => {
     } as Response);
     vi.stubGlobal("fetch", mockFetch);
 
-    const client = new HttpClient();
+    const client = new FetchHttpClient();
     const result = await client.getJson("https://api.example.com/test");
 
     expect(mockFetch).toHaveBeenCalledWith(
@@ -36,7 +36,7 @@ describe("HttpClient", () => {
     } as Response);
     vi.stubGlobal("fetch", mockFetch);
 
-    const client = new HttpClient();
+    const client = new FetchHttpClient();
     await expect(
       client.getJson("https://api.example.com/test"),
     ).rejects.toThrow("HTTP error! status: 404 Not Found");
@@ -49,7 +49,7 @@ describe("HttpClient", () => {
     const [ctx, cancel] = WithCancel(Background);
     cancel();
 
-    const client = new HttpClient();
+    const client = new FetchHttpClient();
     await expect(
       client.getJson("https://api.example.com/test", { ctx }),
     ).rejects.toThrow(Canceled.message);

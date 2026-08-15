@@ -3,7 +3,7 @@ import type { CollectionRepository } from "@/domain/collection/CollectionReposit
 export class RemoveFavoriteUseCase {
   constructor(private readonly repo: CollectionRepository) {}
 
-  execute(subjectId: number): void {
-    this.repo.remove(subjectId);
+  async execute(subjectId: number): Promise<void> {
+    await this.repo.remove(subjectId);
   }
 }

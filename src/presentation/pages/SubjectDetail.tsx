@@ -2,10 +2,13 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  Download,
+  FolderOpen,
   Globe,
   Loader2,
   Star,
   Tv,
+  Unlink,
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +18,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
+import { toast } from "sonner";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import type {
@@ -22,12 +26,20 @@ import type {
   BangumiEpisode,
   BangumiPerson,
 } from "@/domain/bangumi/BangumiSchemas";
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { EpisodePaginationBar } from "@/presentation/components/EpisodePaginationBar";
 import { FavoriteButton } from "@/presentation/components/FavoriteButton";
 import { LazyImage } from "@/presentation/components/LazyImage";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/presentation/components/ui/dialog";
 import {
   Empty,
   EmptyContent,
@@ -40,9 +52,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/presentation/components/ui/tabs";
+import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
+import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
+import { formatError } from "@/utils";
 import { ErrorState } from "../components/ErrorState";
 import { InvalidParamsView } from "../components/InvalidParamsView";
+import { ScrollArea } from "../components/ui/scroll-area";
 
 /** Deduplicate staff by (id, relation), then group by person ID to collect all roles. */
 function consolidateStaff(persons: BangumiPerson[]) {
@@ -123,7 +139,7 @@ function CharacterCard({ character }: { character: BangumiCharacter }) {
         {/* Voice actor */}
         {mainActor && (
           <div className="mt-auto pt-2 border-t border-border/50">
-            <p className="text-[11px] font-medium text-muted-foreground leading-tight truncate">
+            <p className="text-[11px] font-medium text-muted-foreground leading-tight">
               CV: {mainActor.name}
             </p>
           </div>
@@ -199,6 +215,178 @@ function StaffSkeleton() {
   );
 }
 
+interface SubjectResourcesTabProps {
+  subjectId: number;
+  subjectName: string;
+}
+
+function SubjectResourcesTab({
+  subjectId,
+  subjectName,
+}: SubjectResourcesTabProps) {
+  const navigate = useNavigate();
+  const { torrents } = useTorrentStatus();
+  const { setTorrentSubjectUseCase, clearTorrentSubjectUseCase } = useDI();
+  const [bindOpen, setBindOpen] = useState(false);
+
+  const bind = useMutation(
+    (_ctx, p: { infoHash: string }) =>
+      setTorrentSubjectUseCase.execute({
+        infoHash: p.infoHash,
+        subjectId,
+        subjectName,
+      }),
+    {
+      onSuccess: () => toast.success("已绑定下载资源"),
+      onError: (err) => toast.error(`绑定失败: ${formatError(err)}`),
+    },
+  );
+
+  const unbind = useMutation(
+    (_ctx, p: { infoHash: string }) =>
+      clearTorrentSubjectUseCase.execute(p.infoHash),
+    {
+      onSuccess: () => toast.success("已解除绑定"),
+      onError: (err) => toast.error(`解绑失败: ${formatError(err)}`),
+    },
+  );
+
+  const bound = torrents.filter((t) => t.subject_id === subjectId);
+  const unbound = torrents.filter((t) => !t.subject_id);
+
+  const handleOpenTorrent = (torrent: TorrentStatusInfo) => {
+    navigate(
+      `/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name)}`,
+    );
+  };
+
+  const handleUnbind = (infoHash: string) => {
+    unbind.execute({ infoHash });
+  };
+
+  return (
+    <div className="flex flex-col gap-4 pt-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-muted-foreground">
+          已绑定资源
+          {bound.length > 0 && (
+            <span className="ml-1.5 text-[10px] font-normal text-muted-foreground/60">
+              {bound.length}
+            </span>
+          )}
+        </h2>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-8 gap-1.5 text-xs font-medium"
+          onClick={() => setBindOpen(true)}
+        >
+          <Download className="h-3.5 w-3.5" />
+          绑定下载
+        </Button>
+      </div>
+
+      {bound.length === 0 ? (
+        <Empty className="py-8">
+          <EmptyContent>
+            <EmptyTitle>暂未绑定下载资源</EmptyTitle>
+          </EmptyContent>
+        </Empty>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {bound.map((torrent) => (
+            <div
+              key={torrent.info_hash}
+              className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card transition-colors hover:bg-muted/30"
+            >
+              <button
+                type="button"
+                data-testid="bound-torrent-row"
+                className="flex-1 min-w-0 text-left flex items-center gap-3"
+                onClick={() => handleOpenTorrent(torrent)}
+              >
+                <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+                <span className="min-w-0 flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-foreground">
+                    {torrent.name}
+                  </span>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    {torrent.info_hash}
+                  </span>
+                </span>
+              </button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive shrink-0"
+                disabled={unbind.loading}
+                onClick={() => handleUnbind(torrent.info_hash)}
+              >
+                <Unlink className="h-3.5 w-3.5" />
+                解绑
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={bindOpen} onOpenChange={setBindOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-foreground">
+              绑定下载资源
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              选择要绑定到《{subjectName}
+              》的下载任务，一个下载只能属于一个条目。
+            </DialogDescription>
+          </DialogHeader>
+
+          {unbound.length === 0 ? (
+            <Empty className="py-8">
+              <EmptyContent>
+                <EmptyTitle>暂无下载任务</EmptyTitle>
+              </EmptyContent>
+            </Empty>
+          ) : (
+            <ScrollArea className="h-72 w-full">
+              <div className="flex flex-col gap-1.5">
+                {unbound.map((torrent) => {
+                  return (
+                    <div
+                      key={torrent.info_hash}
+                      className="flex items-center gap-3 p-2.5 rounded-lg bg-card border border-border"
+                    >
+                      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+                        <span className="text-sm font-medium text-foreground">
+                          {torrent.name}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {torrent.info_hash}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="h-7 px-2.5 text-xs shrink-0"
+                        disabled={bind.loading}
+                        onClick={() =>
+                          bind.execute({ infoHash: torrent.info_hash })
+                        }
+                      >
+                        绑定
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 const subjectParamsSchema = z.object({
   subjectId: z
     .string({ message: "缺少条目 ID 参数" })
@@ -265,6 +453,7 @@ function SubjectDetailView({
     getBangumiCharactersUseCase,
     openUrlUseCase,
   } = useDI();
+  const { torrents } = useTorrentStatus();
 
   const subjectQuery = useQuery(
     (ctx) => getBangumiSubjectUseCase.execute(ctx, subjectId),
@@ -331,6 +520,11 @@ function SubjectDetailView({
   const consolidatedStaff = useMemo(
     () => (persons.length > 0 ? consolidateStaff(persons) : []),
     [persons],
+  );
+
+  const boundResourcesCount = useMemo(
+    () => torrents.filter((t) => t.subject_id === Number(subjectId)).length,
+    [torrents, subjectId],
   );
 
   const staffGroupedByRole = useMemo(() => {
@@ -734,6 +928,12 @@ function SubjectDetailView({
               <Badge variant="secondary">{consolidatedStaff.length}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="resources">
+            资源
+            {boundResourcesCount > 0 && (
+              <Badge variant="secondary">{boundResourcesCount}</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="pt-4">
@@ -827,6 +1027,13 @@ function SubjectDetailView({
               </EmptyContent>
             </Empty>
           )}
+        </TabsContent>
+
+        <TabsContent value="resources" className="pt-0">
+          <SubjectResourcesTab
+            subjectId={Number(subjectId)}
+            subjectName={displayName}
+          />
         </TabsContent>
       </Tabs>
     </div>

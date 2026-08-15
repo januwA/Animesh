@@ -1,5 +1,5 @@
 import type { Context } from "ajanuw-context";
-import { z } from "zod";
+import { Duration } from "ajanuw-duration";
 import type { IptvCache } from "@/domain/iptv/IptvCache";
 import {
   type IptvChannel,
@@ -7,76 +7,30 @@ import {
   IptvCountriesResponseSchema,
   type IptvCountry,
 } from "@/domain/iptv/IptvSchemas";
-
-const CacheEnvelopeSchema = z.object({
-  data: z.unknown(),
-  expiry: z.number(),
-});
-
-function getItem<T>(key: string, schema: z.ZodType<T>): T | null {
-  try {
-    const serialized = localStorage.getItem(key);
-    if (!serialized) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(serialized);
-    const envelopeResult = CacheEnvelopeSchema.safeParse(parsed);
-    if (!envelopeResult.success) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    const { data, expiry } = envelopeResult.data;
-    if (Date.now() > expiry) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    const validationResult = schema.safeParse(data);
-    if (!validationResult.success) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    return validationResult.data;
-  } catch {
-    return null;
-  }
-}
-
-function setItem<T>(key: string, data: T, ttlMs: number): void {
-  const entry = {
-    data,
-    expiry: Date.now() + ttlMs,
-  };
-  localStorage.setItem(key, JSON.stringify(entry));
-}
+import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 
 export class BrowserIptvCache implements IptvCache {
-  private readonly countriesTtlMs = 30 * 24 * 60 * 60 * 1000; // 30 days
-  private readonly channelsTtlMs = 12 * 60 * 60 * 1000; // 12 hours
+  constructor(private readonly store: CacheStore) {}
 
   getCountries(_ctx: Context): Promise<IptvCountry[] | null> {
-    return Promise.resolve(
-      getItem("iptv:countries", IptvCountriesResponseSchema),
-    );
+    return this.store.getItem("iptv:countries", IptvCountriesResponseSchema);
   }
 
   setCountries(_ctx: Context, countries: IptvCountry[]): Promise<void> {
-    setItem("iptv:countries", countries, this.countriesTtlMs);
-    return Promise.resolve();
+    return this.store.setItem(
+      "iptv:countries",
+      countries,
+      new Duration({ days: 30 }).inMilliseconds,
+    );
   }
 
   getChannels(
     _ctx: Context,
     countryCode: string,
   ): Promise<IptvChannel[] | null> {
-    return Promise.resolve(
-      getItem(
-        `iptv:channels:${countryCode.toLowerCase()}`,
-        IptvChannelsResponseSchema,
-      ),
+    return this.store.getItem(
+      `iptv:channels:${countryCode.toLowerCase()}`,
+      IptvChannelsResponseSchema,
     );
   }
 
@@ -85,11 +39,10 @@ export class BrowserIptvCache implements IptvCache {
     countryCode: string,
     channels: IptvChannel[],
   ): Promise<void> {
-    setItem(
+    return this.store.setItem(
       `iptv:channels:${countryCode.toLowerCase()}`,
       channels,
-      this.channelsTtlMs,
+      new Duration({ hours: 12 }).inMilliseconds,
     );
-    return Promise.resolve();
   }
 }

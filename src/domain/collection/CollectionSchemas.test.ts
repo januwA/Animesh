@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  CollectionsStateSchema,
+  CollectionRecordSchema,
   FavoriteItemSchema,
+  toFavoriteItem,
 } from "./CollectionSchemas";
 
 describe("FavoriteItemSchema 收藏条目 Schema", () => {
@@ -40,37 +41,47 @@ describe("FavoriteItemSchema 收藏条目 Schema", () => {
   });
 });
 
-describe("CollectionsStateSchema 收藏状态 Schema", () => {
-  it("应该能正确解析有效的收藏状态数据", () => {
-    const mockState = {
-      items: [
-        {
-          subjectId: 101,
-          name: "Name",
-          nameCn: "名称",
-          imageUrl: null,
-          rating: null,
-          addedAt: 1700000000000,
-        },
-      ],
-      lastUpdatedAt: 1700000000001,
+describe("CollectionRecordSchema 后端收藏记录 Schema", () => {
+  it("应该能正确解析后端返回的 snake_case 记录", () => {
+    const mockRecord = {
+      subject_id: 101,
+      name: "Name",
+      image_url: "https://example.com/cover.jpg",
+      added_at: 1700000000000,
     };
 
-    const result = CollectionsStateSchema.safeParse(mockState);
+    const result = CollectionRecordSchema.safeParse(mockRecord);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.items).toHaveLength(1);
-      expect(result.data.items[0].subjectId).toBe(101);
+      expect(result.data.subject_id).toBe(101);
     }
   });
 
-  it("当 items 为空数组时应该校验通过", () => {
-    const mockState = {
-      items: [],
-      lastUpdatedAt: 1700000000000,
+  it("当 image_url 为 null 时应该校验通过", () => {
+    const mockRecord = {
+      subject_id: 101,
+      name: "Name",
+      image_url: null,
+      added_at: 1700000000000,
     };
 
-    const result = CollectionsStateSchema.safeParse(mockState);
+    const result = CollectionRecordSchema.safeParse(mockRecord);
     expect(result.success).toBe(true);
+  });
+
+  it("toFavoriteItem 应正确映射字段为 camelCase", () => {
+    const record = {
+      subject_id: 101,
+      name: "Name",
+      image_url: null,
+      added_at: 1700000000000,
+    };
+
+    expect(toFavoriteItem(record)).toEqual({
+      subjectId: 101,
+      name: "Name",
+      imageUrl: null,
+      addedAt: 1700000000000,
+    });
   });
 });

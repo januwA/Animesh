@@ -12,13 +12,9 @@ export type AiConfig = z.infer<typeof AiConfigSchema>;
 export const SettingsSchema = z.object({
   download_dir: z.string(),
   proxy: z.string().nullable().optional(),
-  trackers: z.array(z.string()).optional(),
-  tracker_source_type: z.string().nullable().optional(),
-  tracker_custom_url: z.string().nullable().optional(),
-  tracker_auto_update: z.boolean().nullable().optional(),
-  tracker_last_update_time: z.number().nullable().optional(),
   ai_configs: z.array(AiConfigSchema).nullable().optional(),
   max_download_speed: z.number().nullable().optional(),
+  max_upload_speed: z.number().nullable().optional(),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
@@ -51,12 +47,6 @@ export const SettingsFormSchema = z.object({
     )
     .nullable()
     .or(z.literal("")),
-  trackers: z.array(z.string().trim().url("Tracker 地址必须是合法的 URL")),
-  trackerSourceType: z.string().nullable().optional(),
-  trackerCdn: z.string().nullable().optional(),
-  trackerCustomUrl: z.string().nullable().optional(),
-  trackerAutoUpdate: z.boolean().nullable().optional(),
-  trackerLastUpdateTime: z.number().nullable().optional(),
   aiConfigs: z
     .array(
       z.object({
@@ -72,6 +62,12 @@ export const SettingsFormSchema = z.object({
     .number()
     .int("下载速度限制必须是整数")
     .min(0, "下载速度限制不能为负数")
+    .nullable()
+    .optional(),
+  maxUploadSpeed: z
+    .number()
+    .int("上传速度限制必须是整数")
+    .min(0, "上传速度限制不能为负数")
     .nullable()
     .optional(),
 });

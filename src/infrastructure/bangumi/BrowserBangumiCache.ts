@@ -1,5 +1,5 @@
 import type { Context } from "ajanuw-context";
-import { z } from "zod";
+import { Duration } from "ajanuw-duration";
 import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
 import {
   type BangumiCalendarDay,
@@ -13,70 +13,32 @@ import {
   type BangumiSubject,
   BangumiSubjectSchema,
 } from "@/domain/bangumi/BangumiSchemas";
-
-const CacheEnvelopeSchema = z.object({
-  data: z.unknown(),
-  expiry: z.number(),
-});
-
-function getItem<T>(key: string, schema: z.ZodType<T>): T | null {
-  try {
-    const serialized = localStorage.getItem(key);
-    if (!serialized) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(serialized);
-    const envelopeResult = CacheEnvelopeSchema.safeParse(parsed);
-    if (!envelopeResult.success) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    const { data, expiry } = envelopeResult.data;
-    if (Date.now() > expiry) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    const validationResult = schema.safeParse(data);
-    if (!validationResult.success) {
-      localStorage.removeItem(key);
-      return null;
-    }
-
-    return validationResult.data;
-  } catch {
-    return null;
-  }
-}
-
-function setItem<T>(key: string, data: T, ttlMs: number): void {
-  const entry = {
-    data,
-    expiry: Date.now() + ttlMs,
-  };
-  localStorage.setItem(key, JSON.stringify(entry));
-}
+import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 
 export class BrowserBangumiCache implements BangumiCache {
-  private readonly ttlMs = 12 * 60 * 60 * 1000; // 12 hours
-  private readonly ttl1MMs = 30 * 24 * 60 * 60 * 1000; // 30 days
+  private readonly ttl1MMs = new Duration({ days: 30 }).inMilliseconds;
+
+  constructor(private readonly store: CacheStore) {}
 
   getCalendar(_ctx: Context): Promise<BangumiCalendarDay[] | null> {
-    return Promise.resolve(
-      getItem("bangumi:calendar", BangumiCalendarResponseSchema),
+    return this.store.getItem(
+      "bangumi:calendar",
+      BangumiCalendarResponseSchema,
     );
   }
 
   setCalendar(_ctx: Context, calendar: BangumiCalendarDay[]): Promise<void> {
-    setItem("bangumi:calendar", calendar, this.ttlMs);
-    return Promise.resolve();
+    return this.store.setItem(
+      "bangumi:calendar",
+      calendar,
+      new Duration({ days: 7 }).inMilliseconds,
+    );
   }
 
   getSubject(_ctx: Context, subjectId: string): Promise<BangumiSubject | null> {
-    return Promise.resolve(
-      getItem(`bangumi:subject:${subjectId}`, BangumiSubjectSchema),
+    return this.store.getItem(
+      `bangumi:subject:${subjectId}`,
+      BangumiSubjectSchema,
     );
   }
 
@@ -85,8 +47,11 @@ export class BrowserBangumiCache implements BangumiCache {
     subjectId: string,
     subject: BangumiSubject,
   ): Promise<void> {
-    setItem(`bangumi:subject:${subjectId}`, subject, this.ttl1MMs);
-    return Promise.resolve();
+    return this.store.setItem(
+      `bangumi:subject:${subjectId}`,
+      subject,
+      this.ttl1MMs,
+    );
   }
 
   getEpisodes(
@@ -95,11 +60,9 @@ export class BrowserBangumiCache implements BangumiCache {
     offset: number,
     limit: number,
   ): Promise<BangumiEpisodesPage | null> {
-    return Promise.resolve(
-      getItem(
-        `bangumi:episodes:${subjectId}:${offset}:${limit}`,
-        BangumiEpisodesPageSchema,
-      ),
+    return this.store.getItem(
+      `bangumi:episodes:${subjectId}:${offset}:${limit}`,
+      BangumiEpisodesPageSchema,
     );
   }
 
@@ -110,20 +73,20 @@ export class BrowserBangumiCache implements BangumiCache {
     limit: number,
     page: BangumiEpisodesPage,
   ): Promise<void> {
-    setItem(
+    return this.store.setItem(
       `bangumi:episodes:${subjectId}:${offset}:${limit}`,
       page,
-      this.ttlMs,
+      new Duration({ days: 1 }).inMilliseconds,
     );
-    return Promise.resolve();
   }
 
   getPersons(
     _ctx: Context,
     subjectId: string,
   ): Promise<BangumiPerson[] | null> {
-    return Promise.resolve(
-      getItem(`bangumi:persons:${subjectId}`, BangumiPersonsResponseSchema),
+    return this.store.getItem(
+      `bangumi:persons:${subjectId}`,
+      BangumiPersonsResponseSchema,
     );
   }
 
@@ -132,19 +95,20 @@ export class BrowserBangumiCache implements BangumiCache {
     subjectId: string,
     persons: BangumiPerson[],
   ): Promise<void> {
-    setItem(`bangumi:persons:${subjectId}`, persons, this.ttl1MMs);
-    return Promise.resolve();
+    return this.store.setItem(
+      `bangumi:persons:${subjectId}`,
+      persons,
+      this.ttl1MMs,
+    );
   }
 
   getCharacters(
     _ctx: Context,
     subjectId: string,
   ): Promise<BangumiCharacter[] | null> {
-    return Promise.resolve(
-      getItem(
-        `bangumi:characters:${subjectId}`,
-        BangumiCharactersResponseSchema,
-      ),
+    return this.store.getItem(
+      `bangumi:characters:${subjectId}`,
+      BangumiCharactersResponseSchema,
     );
   }
 
@@ -153,7 +117,10 @@ export class BrowserBangumiCache implements BangumiCache {
     subjectId: string,
     characters: BangumiCharacter[],
   ): Promise<void> {
-    setItem(`bangumi:characters:${subjectId}`, characters, this.ttl1MMs);
-    return Promise.resolve();
+    return this.store.setItem(
+      `bangumi:characters:${subjectId}`,
+      characters,
+      this.ttl1MMs,
+    );
   }
 }

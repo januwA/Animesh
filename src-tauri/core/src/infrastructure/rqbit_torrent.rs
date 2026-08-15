@@ -1,32 +1,64 @@
-use crate::domain::torrent::TorrentRepository;
-use crate::torrent::{format_hash, AddTorrentResult, FileDetails, TorrentStatusInfo};
+use crate::domain::torrent::{
+    format_hash, AddTorrentResult, AsyncReadSeek, FileDetails, TorrentRepository, TorrentStatusInfo,
+};
+use crate::error::CoreError;
 use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
 use std::num::NonZeroU32;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use std::path::PathBuf;
 
 pub struct RqbitTorrentRepository {
     session: Arc<Session>,
     get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
-    get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
     persistence_dir: PathBuf,
     start_time: std::time::Instant,
 }
 
+/// 创建基于 librqbit 的种子仓储，由组合根调用。
+/// 内部完成 Session 初始化、下载目录闭包构建与持久化目录准备。
+pub async fn create_torrent_repository(
+    download_dir_lock: Arc<RwLock<PathBuf>>,
+    persistence_dir: PathBuf,
+) -> Result<Arc<dyn TorrentRepository>, CoreError> {
+    tokio::fs::create_dir_all(&persistence_dir).await.ok();
+
+    #[allow(unused_mut)]
+    let mut opts = librqbit::SessionOptions {
+        persistence: Some(librqbit::SessionPersistenceConfig::Json {
+            folder: Some(persistence_dir.clone()),
+        }),
+        disable_dht_persistence: true,
+        ..Default::default()
+    };
+    #[cfg(test)]
+    {
+        opts.disable_dht = true;
+    }
+    let download_dir = download_dir_lock.read().unwrap().clone();
+    let session = librqbit::Session::new_with_opts(download_dir.clone(), opts).await?;
+
+    let download_dir_fn = {
+        let dl = download_dir_lock.clone();
+        Arc::new(move || dl.read().unwrap().to_string_lossy().to_string())
+    };
+
+    Ok(Arc::new(
+        RqbitTorrentRepository::new(session, download_dir_fn, persistence_dir).await,
+    ))
+}
+
 impl RqbitTorrentRepository {
-    pub fn new(
+    pub async fn new(
         session: Arc<Session>,
         get_download_dir_fn: Arc<dyn Fn() -> String + Send + Sync>,
-        get_trackers_fn: Arc<dyn Fn() -> Vec<String> + Send + Sync>,
         persistence_dir: PathBuf,
     ) -> Self {
         Self {
             session,
             get_download_dir_fn,
-            get_trackers_fn,
-            persistence_dir,
+            persistence_dir: persistence_dir.clone(),
             start_time: std::time::Instant::now(),
         }
     }
@@ -43,12 +75,13 @@ impl RqbitTorrentRepository {
         })
     }
 
-    fn get_creation_time(&self, info_hash_hex: &str) -> u64 {
-        if let Ok(entries) = std::fs::read_dir(&self.persistence_dir) {
-            for entry in entries.flatten() {
+    async fn get_creation_time(&self, info_hash_hex: &str) -> u64 {
+        let target = info_hash_hex.to_lowercase();
+        if let Ok(mut entries) = tokio::fs::read_dir(&self.persistence_dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
                 if let Some(name) = entry.file_name().to_str() {
-                    if name.to_lowercase().contains(&info_hash_hex.to_lowercase()) {
-                        if let Ok(metadata) = entry.metadata() {
+                    if name.to_lowercase().contains(&target) {
+                        if let Ok(metadata) = entry.metadata().await {
                             if let Ok(created) = metadata.created().or_else(|_| metadata.modified())
                             {
                                 if let Ok(duration) = created.duration_since(std::time::UNIX_EPOCH)
@@ -70,7 +103,7 @@ impl RqbitTorrentRepository {
 
 #[async_trait]
 impl TorrentRepository for RqbitTorrentRepository {
-    async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, String> {
+    async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, CoreError> {
         let output_folder = (self.get_download_dir_fn)();
         let options = librqbit::AddTorrentOptions {
             overwrite: true,
@@ -78,18 +111,14 @@ impl TorrentRepository for RqbitTorrentRepository {
             ..Default::default()
         };
 
-        let trackers = (self.get_trackers_fn)();
-        let magnet_with_trackers = append_default_trackers(magnet, &trackers);
-
         let response = self
             .session
-            .add_torrent(AddTorrent::from_url(&magnet_with_trackers), Some(options))
-            .await
-            .map_err(|e| format!("Failed to add torrent: {}", e))?;
+            .add_torrent(AddTorrent::from_url(magnet), Some(options))
+            .await?;
 
         let handle = response
             .into_handle()
-            .ok_or_else(|| "Failed to get torrent handle".to_string())?;
+            .ok_or_else(|| CoreError::Message("Failed to get torrent handle".to_string()))?;
 
         // Wait with a 20s timeout
         tokio::time::timeout(
@@ -97,25 +126,25 @@ impl TorrentRepository for RqbitTorrentRepository {
             handle.wait_until_initialized(),
         )
         .await
-        .map_err(|_| "解析种子元数据超时，可能该种子目前没有在线的做种者".to_string())?
-        .map_err(|e| format!("解析种子失败: {}", e))?;
+        .map_err(|_| {
+            CoreError::Message("解析种子元数据超时，可能该种子目前没有在线的做种者".to_string())
+        })?
+        .map_err(CoreError::from)?;
 
         let info_hash = format_hash(&handle.info_hash().0);
-        let name = handle.name();
+        let name = handle.name().unwrap_or_default();
 
-        let files = handle
-            .with_metadata(|meta| {
-                meta.file_infos
-                    .iter()
-                    .enumerate()
-                    .map(|(id, fi)| FileDetails {
-                        id,
-                        name: fi.relative_filename.to_string_lossy().to_string(),
-                        len: fi.len,
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .map_err(|e| format!("Failed to read metadata: {}", e))?;
+        let files = handle.with_metadata(|meta| {
+            meta.file_infos
+                .iter()
+                .enumerate()
+                .map(|(id, fi)| FileDetails {
+                    id,
+                    name: fi.relative_filename.to_string_lossy().to_string(),
+                    len: fi.len,
+                })
+                .collect::<Vec<_>>()
+        })?;
 
         Ok(AddTorrentResult {
             info_hash,
@@ -124,55 +153,20 @@ impl TorrentRepository for RqbitTorrentRepository {
         })
     }
 
-    fn get_torrent_status(&self, info_hash_hex: &str) -> Option<TorrentStatusInfo> {
-        let torrent = self.find_torrent_by_hex(info_hash_hex)?;
-        let stats = torrent.stats();
-
-        let speed = stats
-            .live
-            .as_ref()
-            .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
-            .unwrap_or(0);
-
-        let (peers_connected, peers_total) = stats
-            .live
-            .as_ref()
-            .map(|l| {
-                (
-                    l.snapshot.peer_stats.live as u32,
-                    l.snapshot.peer_stats.seen as u32,
-                )
-            })
-            .unwrap_or((0, 0));
-
-        let created_at = self.get_creation_time(info_hash_hex);
+    async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
         let is_startup = self.start_time.elapsed().as_secs() < 15;
-        let finished = stats.finished
-            || (is_startup && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
-
-        Some(TorrentStatusInfo {
-            info_hash: info_hash_hex.to_string(),
-            name: torrent.name(),
-            progress_bytes: stats.progress_bytes,
-            total_bytes: stats.total_bytes,
-            finished,
-            download_speed_bytes_per_sec: speed,
-            paused: torrent.is_paused(),
-            peers_connected,
-            peers_total,
-            created_at,
-        })
-    }
-
-    fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
-        let is_startup = self.start_time.elapsed().as_secs() < 15;
-        self.session.with_torrents(|iter| {
+        let mut torrents: Vec<TorrentStatusInfo> = self.session.with_torrents(|iter| {
             iter.map(|(_, torrent)| {
                 let stats = torrent.stats();
                 let speed = stats
                     .live
                     .as_ref()
                     .map(|l| (l.download_speed.mbps * 1024.0 * 1024.0) as u64)
+                    .unwrap_or(0);
+                let upload_speed = stats
+                    .live
+                    .as_ref()
+                    .map(|l| (l.upload_speed.mbps * 1024.0 * 1024.0) as u64)
                     .unwrap_or(0);
                 let (peers_connected, peers_total) = stats
                     .live
@@ -185,61 +179,68 @@ impl TorrentRepository for RqbitTorrentRepository {
                     })
                     .unwrap_or((0, 0));
                 let hex = format_hash(&torrent.info_hash().0);
-                let created_at = self.get_creation_time(&hex);
                 let finished = stats.finished
                     || (is_startup
                         && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
+                let trackers = torrent
+                    .shared()
+                    .trackers
+                    .iter()
+                    .map(|u| u.to_string())
+                    .collect::<Vec<_>>();
                 TorrentStatusInfo {
                     info_hash: hex,
-                    name: torrent.name(),
+                    name: torrent.name().unwrap_or_default(),
                     progress_bytes: stats.progress_bytes,
                     total_bytes: stats.total_bytes,
                     finished,
                     download_speed_bytes_per_sec: speed,
+                    upload_speed_bytes_per_sec: upload_speed,
                     paused: torrent.is_paused(),
                     peers_connected,
                     peers_total,
-                    created_at,
+                    created_at: 0,
+                    trackers,
+                    subject_id: None,
+                    subject_name: None,
                 }
             })
             .collect()
-        })
+        });
+        for torrent in &mut torrents {
+            torrent.created_at = self.get_creation_time(&torrent.info_hash).await;
+        }
+        torrents
     }
 
-    async fn pause_torrent(&self, info_hash_hex: &str) -> Result<(), String> {
+    async fn pause_torrent(&self, info_hash_hex: &str) -> Result<(), CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash_hex)
-            .ok_or_else(|| "Torrent not found".to_string())?;
-        self.session
-            .pause(&torrent)
-            .await
-            .map_err(|e| format!("Failed to pause torrent: {}", e))?;
+            .ok_or(CoreError::TorrentNotFound)?;
+        self.session.pause(&torrent).await?;
         Ok(())
     }
 
-    async fn resume_torrent(&self, info_hash_hex: &str) -> Result<(), String> {
+    async fn resume_torrent(&self, info_hash_hex: &str) -> Result<(), CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash_hex)
-            .ok_or_else(|| "Torrent not found".to_string())?;
-        self.session
-            .unpause(&torrent)
-            .await
-            .map_err(|e| format!("Failed to resume torrent: {}", e))?;
+            .ok_or(CoreError::TorrentNotFound)?;
+        self.session.unpause(&torrent).await?;
         Ok(())
     }
 
-    async fn delete_torrent(&self, info_hash_hex: &str, delete_files: bool) -> Result<(), String> {
+    async fn delete_torrent(
+        &self,
+        info_hash_hex: &str,
+        delete_files: bool,
+    ) -> Result<(), CoreError> {
         use librqbit::api::TorrentIdOrHash;
-        let id = TorrentIdOrHash::try_from(info_hash_hex)
-            .map_err(|e| format!("Invalid info hash format: {}", e))?;
-        self.session
-            .delete(id, delete_files)
-            .await
-            .map_err(|e| format!("Failed to delete torrent: {}", e))?;
+        let id = TorrentIdOrHash::try_from(info_hash_hex)?;
+        self.session.delete(id, delete_files).await?;
         Ok(())
     }
 
-    fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
+    async fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
         let torrent = self.find_torrent_by_hex(info_hash_hex)?;
         torrent
             .with_metadata(|meta| {
@@ -256,89 +257,37 @@ impl TorrentRepository for RqbitTorrentRepository {
             .ok()
     }
 
-    fn get_file_reader(
+    async fn get_file_reader(
         &self,
         info_hash: &str,
         file_id: usize,
-    ) -> Result<Box<dyn crate::domain::torrent::AsyncReadSeek>, String> {
+    ) -> Result<Box<dyn AsyncReadSeek>, CoreError> {
         let torrent = self
             .find_torrent_by_hex(info_hash)
-            .ok_or_else(|| "Torrent not found".to_string())?;
+            .ok_or(CoreError::TorrentNotFound)?;
 
         let relative_path = torrent
             .with_metadata(|meta| {
                 meta.file_infos
                     .get(file_id)
                     .map(|fi| fi.relative_filename.clone())
-            })
-            .map_err(|e| format!("Failed to get metadata: {}", e))?
-            .ok_or_else(|| "File id not found in metadata".to_string())?;
+            })?
+            .ok_or_else(|| CoreError::Message("File id not found in metadata".to_string()))?;
 
         let download_dir = (self.get_download_dir_fn)();
         let absolute_path = std::path::PathBuf::from(download_dir).join(relative_path);
 
-        let std_file = std::fs::File::open(&absolute_path).map_err(|e| {
-            format!(
-                "Failed to open local file: {}, path: {:?}",
-                e, absolute_path
-            )
-        })?;
-        let tokio_file = tokio::fs::File::from_std(std_file);
+        let tokio_file = tokio::fs::File::open(&absolute_path).await?;
         Ok(Box::new(tokio_file))
     }
 
-    fn set_max_download_speed(&self, bytes_per_sec: Option<u32>) {
+    async fn set_max_download_speed(&self, bytes_per_sec: Option<u32>) {
         let bps = bytes_per_sec.and_then(NonZeroU32::new);
         self.session.ratelimits.set_download_bps(bps);
     }
-}
 
-fn append_default_trackers(magnet: &str, default_trackers: &[String]) -> String {
-    let mut magnet_with_trackers = magnet.to_string();
-
-    for tracker in default_trackers {
-        let encoded_tracker = urlencoding::encode(tracker);
-        // Only append if the tracker is not already present (both in raw and encoded form)
-        if !magnet.contains(tracker) && !magnet.contains(&encoded_tracker.to_string()) {
-            if !magnet_with_trackers.contains('?') {
-                magnet_with_trackers.push('?');
-            } else if !magnet_with_trackers.ends_with('&') && !magnet_with_trackers.ends_with('?') {
-                magnet_with_trackers.push('&');
-            }
-            magnet_with_trackers.push_str("tr=");
-            magnet_with_trackers.push_str(&encoded_tracker);
-        }
-    }
-
-    magnet_with_trackers
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    #[allow(non_snake_case)]
-    fn 测试_追加默认Tracker_应成功() {
-        let raw_magnet = "magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff";
-        let default_trackers = vec![
-            "udp://tracker.opentrackr.org:1337/announce".to_string(),
-            "http://tracker.gbitt.info:80/announce".to_string(),
-        ];
-        let with_trackers = append_default_trackers(raw_magnet, &default_trackers);
-
-        assert!(with_trackers.contains("tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce"));
-        assert!(with_trackers.contains("tr=http%3A%2F%2Ftracker.gbitt.info%3A80%2Fannounce"));
-
-        // If it already has trackers, it shouldn't duplicate
-        let raw_magnet_2 = format!(
-            "{}&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce",
-            raw_magnet
-        );
-        let with_trackers_2 = append_default_trackers(&raw_magnet_2, &default_trackers);
-
-        // Count occurrences of opentrackr
-        let occurrences = with_trackers_2.matches("tracker.opentrackr.org").count();
-        assert_eq!(occurrences, 1);
+    async fn set_max_upload_speed(&self, bytes_per_sec: Option<u32>) {
+        let bps = bytes_per_sec.and_then(NonZeroU32::new);
+        self.session.ratelimits.set_upload_bps(bps);
     }
 }

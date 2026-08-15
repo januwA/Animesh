@@ -18,12 +18,12 @@ describe("收藏相关的 UseCase 业务编排", () => {
   });
 
   describe("GetCollectionsUseCase 获取所有收藏", () => {
-    it("应该调用 repo.getAll() 并返回结果", () => {
+    it("应该调用 repo.getAll() 并返回结果", async () => {
       const fakeData = [{ subjectId: 1 }] as any;
-      vi.mocked(mockRepo.getAll).mockReturnValue(fakeData);
+      vi.mocked(mockRepo.getAll).mockResolvedValue(fakeData);
 
       const useCase = new GetCollectionsUseCase(mockRepo);
-      const result = useCase.execute();
+      const result = await useCase.execute();
 
       expect(mockRepo.getAll).toHaveBeenCalledOnce();
       expect(result).toBe(fakeData);
@@ -31,7 +31,7 @@ describe("收藏相关的 UseCase 业务编排", () => {
   });
 
   describe("AddFavoriteUseCase 添加收藏", () => {
-    it("应该添加收藏条目", () => {
+    it("应该添加收藏条目", async () => {
       const useCase = new AddFavoriteUseCase(mockRepo);
       const item = {
         subjectId: 101,
@@ -44,36 +44,36 @@ describe("收藏相关的 UseCase 业务编排", () => {
         summary: null,
       };
 
-      useCase.execute(item);
+      await useCase.execute(item);
 
       expect(mockRepo.add).toHaveBeenCalledWith(item);
     });
   });
 
   describe("RemoveFavoriteUseCase 移除收藏", () => {
-    it("应该使用 subjectId 调用 repo.remove()", () => {
+    it("应该使用 subjectId 调用 repo.remove()", async () => {
       const useCase = new RemoveFavoriteUseCase(mockRepo);
-      useCase.execute(101);
+      await useCase.execute(101);
 
       expect(mockRepo.remove).toHaveBeenCalledWith(101);
     });
   });
 
   describe("GetFavoriteStatusUseCase 查询收藏状态", () => {
-    it("当条目已被收藏时应该返回 true", () => {
-      vi.mocked(mockRepo.isFavorited).mockReturnValue(true);
+    it("当条目已被收藏时应该返回 true", async () => {
+      vi.mocked(mockRepo.isFavorited).mockResolvedValue(true);
 
       const useCase = new GetFavoriteStatusUseCase(mockRepo);
-      const result = useCase.execute(101);
+      const result = await useCase.execute(101);
 
       expect(result).toBe(true);
     });
 
-    it("当条目未被收藏时应该返回 false", () => {
-      vi.mocked(mockRepo.isFavorited).mockReturnValue(false);
+    it("当条目未被收藏时应该返回 false", async () => {
+      vi.mocked(mockRepo.isFavorited).mockResolvedValue(false);
 
       const useCase = new GetFavoriteStatusUseCase(mockRepo);
-      const result = useCase.execute(101);
+      const result = await useCase.execute(101);
 
       expect(result).toBe(false);
     });

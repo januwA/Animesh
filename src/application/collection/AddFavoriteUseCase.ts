@@ -4,7 +4,7 @@ import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
 export class AddFavoriteUseCase {
   constructor(private readonly repo: CollectionRepository) {}
 
-  execute(item: Omit<FavoriteItem, "addedAt">): void {
-    this.repo.add(item);
+  async execute(item: Omit<FavoriteItem, "addedAt">): Promise<void> {
+    await this.repo.add(item);
   }
 }

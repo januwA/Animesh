@@ -16,9 +16,9 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { IptvRepository } from "@/domain/iptv/IptvRepository";
+import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { NavBarLayout } from "../components/Layout";
-import { AppContextProvider } from "../context/AppContext";
 import IptvPage from "./Iptv";
 
 const currentLocation = {
@@ -85,31 +85,30 @@ describe("Iptv 页面组件", () => {
 
     return render(
       <DIProvider value={mockContainer}>
-        <AppContextProvider>
-          <MemoryRouter initialEntries={["/live"]}>
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="live" element={<IptvPage />} />
-                <Route
-                  path="live/play"
-                  element={
-                    <>
-                      <div>Live Play</div>
-                      <BackButton />
-                    </>
-                  }
-                />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AppContextProvider>
+        <MemoryRouter initialEntries={["/live"]}>
+          <LocationTracker />
+          <Routes>
+            <Route path="/" element={<NavBarLayout />}>
+              <Route path="live" element={<IptvPage />} />
+              <Route
+                path="live/play"
+                element={
+                  <>
+                    <div>Live Play</div>
+                    <BackButton />
+                  </>
+                }
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>
       </DIProvider>,
     );
   };
 
   beforeEach(() => {
     currentLocation.current = null;
+    resetAppStores();
     vi.clearAllMocks();
   });
 

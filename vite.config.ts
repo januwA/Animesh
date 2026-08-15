@@ -2,6 +2,7 @@
 
 import path from "node:path";
 import process from "node:process";
+
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -10,7 +11,9 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  console.log(mode, process.env);
+  if (process.env.CI) {
+    console.log(mode, process.env);
+  }
 
   const isWeb = mode === "web";
 
@@ -22,9 +25,9 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@/di/repositories": isWeb
-          ? path.resolve(__dirname, "./src/di/repositories.web.ts")
-          : path.resolve(__dirname, "./src/di/repositories.ts"),
-        "@": path.resolve(__dirname, "./src"),
+          ? path.resolve(import.meta.dirname, "./src/di/repositories.web.ts")
+          : path.resolve(import.meta.dirname, "./src/di/repositories.ts"),
+        "@": path.resolve(import.meta.dirname, "./src"),
       },
     },
 

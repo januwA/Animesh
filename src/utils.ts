@@ -33,7 +33,7 @@ export function createThrottleByChange<T>(
 }
 
 export function formatBytes(bytes: number | null | undefined): string {
-  if (bytes === null || bytes === undefined || bytes === 0) return "未知大小";
+  if (bytes === null || bytes === undefined || bytes === 0) return "0 B";
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -72,6 +72,22 @@ export function formatLocalDate(
   const month = pad(date.getMonth() + 1);
   const day = pad(date.getDate());
   return `${year}-${month}-${day} ${timeStr}`;
+}
+
+function padTimePart(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** 将毫秒时长格式化为 HH:mm:ss（无效或负数输入归一化为 00:00:00） */
+export function formatPlaybackTime(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "00:00:00";
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${padTimePart(hours)}:${padTimePart(minutes)}:${padTimePart(
+    seconds,
+  )}`;
 }
 
 export function formatError(err: unknown): string {
