@@ -563,8 +563,8 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                   </span>
                   <span className="font-semibold wrap-break-word">
                     {entry.lines.map((line, i) => (
-                      <Fragment key={line}>
-                        {line}
+                      <Fragment key={line.key}>
+                        {line.text}
                         {i < entry.lines.length - 1 && <br />}
                       </Fragment>
                     ))}
@@ -652,44 +652,56 @@ function CollapsibleSection({
   );
 }
 
+interface MediaEntryLine {
+  key: string;
+  text: string;
+}
+
 interface MediaEntry {
   label: string;
-  lines: string[];
+  lines: MediaEntryLine[];
+}
+
+function toLines(...texts: string[]): MediaEntryLine[] {
+  return texts.map((text, index) => ({ key: `${index}-${text}`, text }));
 }
 
 function buildMediaInfoEntries(videoInfo: VideoInfo): MediaEntry[] {
   return [
     {
       label: "创建时间",
-      lines: [
+      lines: toLines(
         videoInfo.date_utc !== null
           ? new Date(videoInfo.date_utc * 1000).toLocaleString()
           : "未知",
-      ],
+      ),
     },
     {
       label: "视频轨道",
-      lines: [
+      lines: toLines(
         videoInfo.video_tracks.length > 0
           ? videoInfo.video_tracks
               .map((t) => `${t.codec} ${t.width}x${t.height}`)
               .join(" / ")
           : "无",
-      ],
+      ),
     },
     {
       label: "音频轨道",
-      lines: [
+      lines: toLines(
         videoInfo.audio_tracks.length > 0
           ? videoInfo.audio_tracks
               .map((t) => `${t.codec} ${t.channels}ch ${t.sampling_rate}Hz`)
               .join(" / ")
           : "无",
-      ],
+      ),
     },
     {
       label: "封装工具",
-      lines: [videoInfo.muxing_app || "未知", videoInfo.writing_app || "未知"],
+      lines: toLines(
+        videoInfo.muxing_app || "未知",
+        videoInfo.writing_app || "未知",
+      ),
     },
   ];
 }

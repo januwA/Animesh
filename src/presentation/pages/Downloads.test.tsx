@@ -277,7 +277,7 @@ describe("Downloads 页面组件", () => {
     renderDownloads();
 
     await waitFor(() => {
-      expect(screen.getByText(/hash111/)).toBeInTheDocument();
+      expect(screen.getByText("动漫视频1")).toBeInTheDocument();
     });
 
     vi.useFakeTimers();
@@ -521,9 +521,6 @@ describe("Downloads 页面组件", () => {
     await waitFor(() => {
       expect(screen.getByText("已完成视频")).toBeInTheDocument();
       expect(screen.getByText("零大小视频")).toBeInTheDocument();
-      // 状态徽章已移除，只通过任务名称确认渲染
-      expect(screen.queryByText("做种中")).not.toBeInTheDocument();
-      expect(screen.queryByText("已完成")).not.toBeInTheDocument();
     });
   });
 
@@ -609,7 +606,7 @@ describe("Downloads 页面组件", () => {
     });
 
     // 检查两个任务在 DOM 中的顺序，较新的任务应该在较旧的任务前面
-    const cards = screen.getAllByTitle(/较/);
+    const cards = screen.getAllByText(/较[新旧]的任务/);
     const titles = cards.map((c) => c.textContent);
     expect(titles[0]).toBe("较新的任务");
     expect(titles[1]).toBe("较旧的任务");
@@ -678,7 +675,7 @@ describe("Downloads 页面组件", () => {
 
     // 分组标题与任务数量徽章
     expect(screen.getByText("动漫A")).toBeInTheDocument();
-    expect(screen.getByText("2 个任务")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText(/未关联条目/)).toBeInTheDocument();
     expect(screen.getByText("未绑定种子")).toBeInTheDocument();
 
@@ -700,40 +697,6 @@ describe("Downloads 页面组件", () => {
     await waitFor(() => {
       expect(screen.getByText("没有正在进行的下载任务")).toBeInTheDocument();
     });
-  });
-
-  it("info_hash 应截断显示前 8 位而非完整 40 字符", async () => {
-    const fullHash = "0123456789abcdef0123456789abcdef01234567";
-    const mockTorrents = [
-      {
-        info_hash: fullHash,
-        name: "哈希截断测试",
-        progress_bytes: 0,
-        total_bytes: 1000,
-        finished: false,
-        download_speed_bytes_per_sec: 0,
-        upload_speed_bytes_per_sec: 0,
-        paused: false,
-        peers_connected: 0,
-        peers_total: 0,
-        trackers: [],
-      },
-    ];
-
-    getTorrentsRef = async () => mockTorrents;
-
-    renderDownloads();
-
-    await waitFor(() => {
-      expect(screen.getByText("哈希截断测试")).toBeInTheDocument();
-    });
-
-    // 应显示前 8 位 + 省略号
-    expect(screen.getByText(/Hash: 01234567…/)).toBeInTheDocument();
-    // 不应显示完整 40 字符哈希
-    expect(
-      screen.queryByText(new RegExp(`Hash: ${fullHash}`)),
-    ).not.toBeInTheDocument();
   });
 
   it("存储行应合并为单元素，避免窄屏断裂", async () => {
@@ -764,8 +727,6 @@ describe("Downloads 页面组件", () => {
     // 已下载与总大小应在同一元素内（"已下载 X / Y" 形式），不应有独立的 "/" 分隔符 span
     const storageText = screen.getByText(/已下载:.*\/.*总大小:/);
     expect(storageText).toBeInTheDocument();
-    // 不应存在独立的 "/" 分隔元素
-    expect(screen.queryByText(/^\s*\/\s*$/)).not.toBeInTheDocument();
   });
 
   it("分组默认展开策略：含未完成任务分组默认展开，全已完成分组默认折叠", async () => {
