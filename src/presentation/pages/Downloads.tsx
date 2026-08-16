@@ -5,14 +5,13 @@ import {
   ExternalLink,
   FolderOpen,
   HardDrive,
-  Layers,
   Loader2,
   Pause,
   Play,
   Trash2,
   Upload,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
@@ -115,28 +114,18 @@ function TorrentCard({
 
   return (
     <Card className="bg-card hover:bg-muted/30 border-border transition-all duration-300">
-      <CardHeader className="p-5 pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-            <CardTitle
-              className="text-base font-bold text-foreground leading-normal"
-              title={torrent.name}
-            >
-              {torrent.name}
-            </CardTitle>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-muted-foreground">
-              <span title={torrent.info_hash}>
-                Hash: {torrent.info_hash.slice(0, 8)}…
-              </span>
-              {torrent.created_at && (
-                <span>创建时间: {formatLocalDate(torrent.created_at)}</span>
-              )}
-            </div>
+      <CardHeader>
+        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+          <CardTitle>{torrent.name}</CardTitle>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            {torrent.created_at && (
+              <span>创建时间: {formatLocalDate(torrent.created_at)}</span>
+            )}
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="px-5 pb-5 pt-0 flex flex-col gap-4">
+      <CardContent className="flex flex-col gap-4">
         {/* Progress Info */}
         <div className="flex  flex-col gap-2">
           <div className="flex flex-start gap-2 text-xs font-medium">
@@ -216,6 +205,51 @@ function TorrentCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+interface GroupPanelProps {
+  title: string;
+  items: TorrentStatusInfo[];
+  defaultOpen: boolean;
+  action?: ReactNode;
+  children: ReactNode;
+}
+
+/** 分组面板：可折叠头部 + 聚合进度/操作条 + 任务卡片网格，自适应 PC 与手机。 */
+function GroupPanel({
+  title,
+  items,
+  defaultOpen,
+  action,
+  children,
+}: GroupPanelProps) {
+  const total = items.length;
+
+  return (
+    <Collapsible defaultOpen={defaultOpen} className="flex flex-col gap-3">
+      <div className="overflow-hidden rounded-xl border border-border bg-card/60 transition-colors hover:bg-card">
+        <div className="flex items-center gap-2 px-4 py-3.5">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="group flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 rounded-lg py-1 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+                {title}
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                <Badge variant="secondary">{total}</Badge>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 group-data-[state=open]:rotate-180" />
+              </span>
+            </button>
+          </CollapsibleTrigger>
+          {action}
+        </div>
+      </div>
+
+      <CollapsibleContent className="grid gap-4">{children}</CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -377,68 +411,34 @@ export default function Downloads() {
           {groups.map((group) => {
             const hasUnfinished = group.items.some((t) => !t.finished);
             return (
-              <Collapsible
+              <GroupPanel
                 key={group.subjectId}
+                title={group.subjectName}
+                items={group.items}
                 defaultOpen={hasUnfinished}
-                className="flex flex-col gap-3"
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="group flex-1 justify-between gap-2 rounded-xl bg-card/60 border border-border px-3.5 py-2.5 h-auto hover:bg-accent/10 cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2 text-sm font-semibold text-foreground min-w-0">
-                        <Layers className="h-4 w-4 text-primary shrink-0" />
-                        <span className="truncate">{group.subjectName}</span>
-                      </span>
-                      <span className="flex items-center gap-2 shrink-0 text-xs font-medium text-muted-foreground">
-                        <Badge variant="secondary">
-                          {group.items.length} 个任务
-                        </Badge>
-                        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-300 group-data-[state=open]:rotate-180" />
-                      </span>
-                    </Button>
-                  </CollapsibleTrigger>
+                action={
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="h-auto py-2.5 gap-1.5 text-xs font-medium shrink-0"
+                    size="icon"
+                    className="shrink-0"
+                    aria-label="查看条目"
+                    title="查看条目"
                     onClick={() => navigate(`/subject/${group.subjectId}`)}
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
-                    查看条目
                   </Button>
-                </div>
-                <CollapsibleContent className="grid gap-4">
-                  {group.items.map(renderCard)}
-                </CollapsibleContent>
-              </Collapsible>
+                }
+              >
+                {group.items.map(renderCard)}
+              </GroupPanel>
             );
           })}
 
           {/* Unbound group */}
           {unbound.length > 0 && (
-            <Collapsible defaultOpen className="flex flex-col gap-3">
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="group flex-1 justify-between gap-2 rounded-xl bg-card/60 border border-border px-3.5 py-2.5 h-auto hover:bg-accent/10 cursor-pointer"
-                >
-                  <span className="flex items-center gap-2 text-sm font-semibold text-muted-foreground min-w-0">
-                    <Layers className="h-4 w-4 shrink-0" />
-                    <span className="truncate">未关联条目</span>
-                  </span>
-                  <span className="flex items-center gap-2 shrink-0 text-xs font-medium text-muted-foreground">
-                    <Badge variant="secondary">{unbound.length} 个任务</Badge>
-                    <ChevronDown className="h-4 w-4 transition-transform duration-300 group-data-[state=open]:rotate-180" />
-                  </span>
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="grid gap-4">
-                {unbound.map(renderCard)}
-              </CollapsibleContent>
-            </Collapsible>
+            <GroupPanel title="未关联条目" items={unbound} defaultOpen>
+              {unbound.map(renderCard)}
+            </GroupPanel>
           )}
         </div>
       )}
