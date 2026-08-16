@@ -1,16 +1,40 @@
-import { ArrowLeft, Clipboard, Download, Loader2, Upload } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  Clipboard,
+  Download,
+  Info,
+  List,
+  Loader2,
+  Server,
+  Upload,
+} from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import type {
   ChapterInfo,
+  VideoInfo,
   VideoMetadata,
 } from "@/domain/torrent/TorrentSchemas";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/presentation/components/ui/collapsible";
 import {
   Item,
   ItemContent,
@@ -153,6 +177,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   const subtitleTracks = metadata?.tracks ?? [];
   const chapters = metadata?.chapters ?? [];
   const videoInfo = metadata?.video_info ?? null;
+  const mediaEntries = videoInfo ? buildMediaInfoEntries(videoInfo) : [];
 
   // Subtitle VTT sources (lazy per-track load + auto-refresh as download progresses)
   const [subtitleSources, setSubtitleSources] = useState<
@@ -395,88 +420,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
           </div>
         </div>
 
-        {/* Chapters */}
-        {chapters.length > 0 && (
-          <div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-foreground">章节</h2>
-            <div className="flex flex-col divide-y divide-border">
-              {chapters.map((chapter, index) => (
-                <ChapterButton
-                  key={chapter.start_ms}
-                  chapter={chapter}
-                  index={index}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Media Info */}
-        {videoInfo && (
-          <div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-4">
-            <h2 className="text-sm font-semibold text-foreground">媒体信息</h2>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              <Card className="bg-muted/50 border-border">
-                <CardContent className="flex flex-col items-center justify-center p-3">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-                    创建时间
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold text-center">
-                    {videoInfo.date_utc !== null
-                      ? new Date(videoInfo.date_utc * 1000).toLocaleString()
-                      : "未知"}
-                  </span>
-                </CardContent>
-              </Card>
-              <Card className="bg-muted/50 border-border">
-                <CardContent className="flex flex-col items-center justify-center p-3">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-                    视频轨道
-                  </span>
-                  <span className="text-sm font-semibold whitespace-nowrap">
-                    {videoInfo.video_tracks.length > 0
-                      ? videoInfo.video_tracks
-                          .map((t) => `${t.codec} ${t.width}x${t.height}`)
-                          .join(" / ")
-                      : "无"}
-                  </span>
-                </CardContent>
-              </Card>
-              <Card className="bg-muted/50 border-border">
-                <CardContent className="flex flex-col items-center justify-center p-3">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-                    音频轨道
-                  </span>
-                  <span className="text-sm font-semibold whitespace-nowrap">
-                    {videoInfo.audio_tracks.length > 0
-                      ? videoInfo.audio_tracks
-                          .map(
-                            (t) =>
-                              `${t.codec} ${t.channels}ch ${t.sampling_rate}Hz`,
-                          )
-                          .join(" / ")
-                      : "无"}
-                  </span>
-                </CardContent>
-              </Card>
-              <Card className="bg-muted/50 border-border col-span-2 sm:col-span-1">
-                <CardContent className="flex flex-col items-center justify-center p-3">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
-                    封装工具
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold text-center break-all">
-                    {videoInfo.muxing_app || "未知"}
-                  </span>
-                  <span className="text-xs sm:text-sm font-semibold text-center break-all">
-                    {videoInfo.writing_app || "未知"}
-                  </span>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        )}
-
         {/* Progress & Stats */}
         <div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -562,29 +505,75 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
               </CardContent>
             </Card>
           </div>
-
-          {/* Tracker 列表 */}
-          <div className="flex flex-col gap-2">
-            <h3 className="text-xs font-semibold text-foreground">
-              Tracker 服务器
-            </h3>
-            {torrentStatus && torrentStatus.trackers.length > 0 ? (
-              <ItemGroup>
-                {torrentStatus.trackers.map((tracker) => (
-                  <Item key={tracker} variant="outline" size="sm">
-                    <ItemContent>
-                      <ItemTitle className="truncate font-mono">
-                        {tracker}
-                      </ItemTitle>
-                    </ItemContent>
-                  </Item>
-                ))}
-              </ItemGroup>
-            ) : (
-              <p className="text-xs text-muted-foreground">暂无 Tracker 信息</p>
-            )}
-          </div>
         </div>
+
+        {/* Tracker 列表 */}
+        <CollapsibleSection
+          title="Tracker 服务器"
+          icon={<Server className="h-4 w-4 text-muted-foreground" />}
+          badge={torrentStatus?.trackers.length || undefined}
+        >
+          {torrentStatus && torrentStatus.trackers.length > 0 ? (
+            <ItemGroup>
+              {torrentStatus.trackers.map((tracker) => (
+                <Item key={tracker} variant="outline" size="sm">
+                  <ItemContent>
+                    <ItemTitle className="truncate font-mono">
+                      {tracker}
+                    </ItemTitle>
+                  </ItemContent>
+                </Item>
+              ))}
+            </ItemGroup>
+          ) : (
+            <p className="text-xs text-muted-foreground">暂无 Tracker 信息</p>
+          )}
+        </CollapsibleSection>
+
+        {/* Chapters */}
+        {chapters.length > 0 && (
+          <CollapsibleSection
+            title="章节"
+            icon={<List className="h-4 w-4 text-muted-foreground" />}
+            badge={chapters.length}
+          >
+            <div className="flex flex-col divide-y divide-border">
+              {chapters.map((chapter, index) => (
+                <ChapterButton
+                  key={chapter.start_ms}
+                  chapter={chapter}
+                  index={index}
+                />
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Media Info */}
+        {videoInfo && (
+          <CollapsibleSection
+            title="媒体信息"
+            icon={<Info className="h-4 w-4 text-muted-foreground" />}
+          >
+            <div className="flex flex-col divide-y divide-border">
+              {mediaEntries.map((entry) => (
+                <div key={entry.label} className="flex flex-col gap-1 py-2">
+                  <span className="tracking-wider text-muted-foreground">
+                    {entry.label}
+                  </span>
+                  <span className="font-semibold wrap-break-word">
+                    {entry.lines.map((line, i) => (
+                      <Fragment key={line}>
+                        {line}
+                        {i < entry.lines.length - 1 && <br />}
+                      </Fragment>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
       </div>
 
       {canPlay && <JsPlayerErrorMonitor />}
@@ -623,6 +612,86 @@ function JsPlayerErrorMonitor() {
   }, [errorState?.error, monitorLogger, errorState?.dismissError]);
 
   return null;
+}
+
+interface CollapsibleSectionProps {
+  title: string;
+  icon: ReactNode;
+  badge?: number;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}
+
+/** 页面底部的可折叠信息区块，默认收起，点击标题展开。 */
+function CollapsibleSection({
+  title,
+  icon,
+  badge,
+  defaultOpen = false,
+  children,
+}: CollapsibleSectionProps) {
+  return (
+    <Collapsible
+      defaultOpen={defaultOpen}
+      className="rounded-xl border border-border bg-muted/50"
+    >
+      <CollapsibleTrigger className="group flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3.5 text-left">
+        <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-foreground">
+          {icon}
+          {title}
+          {badge !== undefined && (
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {badge}
+            </span>
+          )}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-4 pb-4">{children}</CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+interface MediaEntry {
+  label: string;
+  lines: string[];
+}
+
+function buildMediaInfoEntries(videoInfo: VideoInfo): MediaEntry[] {
+  return [
+    {
+      label: "创建时间",
+      lines: [
+        videoInfo.date_utc !== null
+          ? new Date(videoInfo.date_utc * 1000).toLocaleString()
+          : "未知",
+      ],
+    },
+    {
+      label: "视频轨道",
+      lines: [
+        videoInfo.video_tracks.length > 0
+          ? videoInfo.video_tracks
+              .map((t) => `${t.codec} ${t.width}x${t.height}`)
+              .join(" / ")
+          : "无",
+      ],
+    },
+    {
+      label: "音频轨道",
+      lines: [
+        videoInfo.audio_tracks.length > 0
+          ? videoInfo.audio_tracks
+              .map((t) => `${t.codec} ${t.channels}ch ${t.sampling_rate}Hz`)
+              .join(" / ")
+          : "无",
+      ],
+    },
+    {
+      label: "封装工具",
+      lines: [videoInfo.muxing_app || "未知", videoInfo.writing_app || "未知"],
+    },
+  ];
 }
 
 interface ChapterButtonProps {

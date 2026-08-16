@@ -142,6 +142,15 @@ describe("Player 页面组件", () => {
     );
   };
 
+  // 折叠区块默认收起，断言内部内容前先点击标题展开
+  const expandSection = (title: string) => {
+    const trigger = screen.getByText(title).closest("button");
+    expect(trigger).not.toBeNull();
+    act(() => {
+      fireEvent.click(trigger!);
+    });
+  };
+
   it("当缺少播放参数时，应该渲染参数错误提示", async () => {
     renderPlayer("/play/invalid");
 
@@ -1657,6 +1666,7 @@ describe("Player 页面组件", () => {
       0,
     );
     expect(screen.getByText("章节")).toBeInTheDocument();
+    expandSection("章节");
     expect(screen.getByText("开场")).toBeInTheDocument();
     expect(screen.getByText("正片")).toBeInTheDocument();
     expect(screen.getByText("01:01:01")).toBeInTheDocument();
@@ -1712,6 +1722,7 @@ describe("Player 页面组件", () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
+    expandSection("章节");
     expect(screen.getByText("正片")).toBeInTheDocument();
 
     const vjsMock = (globalThis as any).__vjsMock;
@@ -1767,6 +1778,7 @@ describe("Player 页面组件", () => {
     const originalSeek = vjsMock.seek;
     vjsMock.seek = vi.fn().mockRejectedValue(new Error("seek failed"));
 
+    expandSection("章节");
     const chapterButton = screen.getByText("开场").closest("button");
     expect(chapterButton).not.toBeNull();
 
@@ -1848,6 +1860,7 @@ describe("Player 页面组件", () => {
       0,
     );
     expect(screen.getByText("媒体信息")).toBeInTheDocument();
+    expandSection("媒体信息");
     expect(screen.getByText("V_MPEG4/ISO/AVC 1920x1080")).toBeInTheDocument();
     expect(screen.getByText("A_AAC 2ch 48000Hz")).toBeInTheDocument();
   });
@@ -1883,7 +1896,14 @@ describe("Player 页面组件", () => {
     });
 
     expect(screen.getByText("媒体信息")).toBeInTheDocument();
-    expect(screen.getAllByText("未知").length).toBeGreaterThanOrEqual(3);
+    expandSection("媒体信息");
+    // 空值字段应显示回退文本
+    expect(screen.getByText("创建时间")).toBeInTheDocument();
+    expect(screen.getByText("视频轨道")).toBeInTheDocument();
+    expect(screen.getByText("音频轨道")).toBeInTheDocument();
+    expect(screen.getByText("封装工具")).toBeInTheDocument();
+    expect(screen.getAllByText("无").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/未知/).length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("标题:")).not.toBeInTheDocument();
   });
 
@@ -2113,6 +2133,7 @@ describe("Player 页面组件", () => {
     });
 
     expect(screen.getByText("Tracker 服务器")).toBeInTheDocument();
+    expandSection("Tracker 服务器");
     expect(
       screen.getByText("udp://tracker1.example.com:6969"),
     ).toBeInTheDocument();
@@ -2149,6 +2170,7 @@ describe("Player 页面组件", () => {
     });
 
     expect(screen.getByText("Tracker 服务器")).toBeInTheDocument();
+    expandSection("Tracker 服务器");
     expect(screen.getByText("暂无 Tracker 信息")).toBeInTheDocument();
 
     vi.useRealTimers();
@@ -2210,6 +2232,7 @@ describe("Player 页面组件", () => {
     });
 
     expect(screen.getByText("媒体信息")).toBeInTheDocument();
+    expandSection("媒体信息");
     const unknownTexts = screen.getAllByText("未知");
     expect(unknownTexts.length).toBeGreaterThanOrEqual(1);
 
