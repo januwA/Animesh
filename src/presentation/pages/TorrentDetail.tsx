@@ -12,7 +12,6 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
-import { ScrollArea } from "@/presentation/components/ui/scroll-area";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatBytes } from "@/utils";
 import { InvalidParamsView } from "../components/InvalidParamsView";
@@ -152,45 +151,39 @@ function TorrentDetailView({ magnet, title, infoHash }: TorrentDetailParams) {
                 共 {torrent.files.length} 个文件
               </Badge>
             </div>
-            <ScrollArea className="border border-border rounded-lg bg-muted/30 p-3">
-              <div className="flex flex-col gap-2">
-                {torrent.files.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg hover:bg-accent border border-transparent hover:border-border transition-all group gap-3"
-                  >
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className="text-sm font-medium text-foreground break-all"
-                          title={file.name}
-                        >
-                          {file.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatBytes(file.len)}
-                        </p>
-                      </div>
+            <div className="border border-border rounded-lg bg-muted/30 p-3 flex flex-col gap-2">
+              {torrent.files.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg hover:bg-accent border border-transparent hover:border-border transition-all group gap-3"
+                >
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <FileVideo className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="text-sm font-medium text-foreground break-all"
+                        title={file.name}
+                      >
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatBytes(file.len)}
+                      </p>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        handleStartPlayback(
-                          torrent.info_hash,
-                          file.id,
-                          file.name,
-                        )
-                      }
-                      className="gap-1.5 h-8 shrink-0 w-full sm:w-auto"
-                    >
-                      <Play className="h-3.5 w-3.5 fill-current" />
-                      播放
-                    </Button>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      handleStartPlayback(torrent.info_hash, file.id, file.name)
+                    }
+                    className="gap-1.5 h-8 shrink-0 w-full sm:w-auto"
+                  >
+                    <Play className="h-3.5 w-3.5 fill-current" />
+                    播放
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
       )}
