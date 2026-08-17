@@ -154,7 +154,18 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
   });
 
   it("GetSubtitleVttUseCase 应该正确调用 repository 的 getSubtitleVtt 方法", async () => {
-    const useCase = new GetSubtitleVttUseCase(mockRepo);
+    const mockSubtitleTranslationRepository = {
+      getById: vi.fn(),
+      listByTorrent: vi.fn(),
+      save: vi.fn(),
+      deleteById: vi.fn(),
+      deleteByTorrent: vi.fn(),
+      deleteByInfoHash: vi.fn(),
+    };
+    const useCase = new GetSubtitleVttUseCase(
+      mockRepo,
+      mockSubtitleTranslationRepository,
+    );
     vi.mocked(mockRepo.getSubtitleVtt).mockResolvedValueOnce("WEBVTT\n...");
     const result = await useCase.execute({
       infoHash: "123",

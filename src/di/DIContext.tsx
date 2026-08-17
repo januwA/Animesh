@@ -166,7 +166,10 @@ export function createDefaultDIContainer(): DIContainer {
   const getTorrentStreamUrlUseCase = new GetTorrentStreamUrlUseCase(
     torrentRepository,
   );
-  const getSubtitleVttUseCase = new GetSubtitleVttUseCase(torrentRepository);
+  const getSubtitleVttUseCase = new GetSubtitleVttUseCase(
+    torrentRepository,
+    subtitleTranslationRepository,
+  );
   const getVideoMetadataUseCase = new GetVideoMetadataUseCase(
     torrentRepository,
   );

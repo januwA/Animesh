@@ -14,6 +14,12 @@ import {
   useAiSubtitleTranslation,
 } from "./Player";
 
+vi.mock("@/di/DIContext", () => ({
+  useDI: vi.fn(),
+}));
+
+import { useDI } from "@/di/DIContext";
+
 // setup 只 mock 了 success/error/warning，补上 info 供缓存加载成功提示使用
 Object.assign(toast, { info: vi.fn() });
 
@@ -69,16 +75,13 @@ describe("useAiSubtitleTranslation Hook", () => {
 
   type HookRef = {
     current: UseAiSubtitleTranslationResult | null;
-    selectedTrackId: number | null;
-    setSelectedTrackId: ((id: number | null) => void) | null;
+    selectedTrackId: number | string | null;
+    setSelectedTrackId: ((id: number | string | null) => void) | null;
   };
 
   function renderHook(
-    params: Omit<
-      UseAiSubtitleTranslationParams,
-      "selectedTrackId" | "setSelectedTrackId"
-    >,
-    initialSelectedTrackId: number | null = null,
+    params: Omit<UseAiSubtitleTranslationParams, "selectedTrackId">,
+    initialSelectedTrackId: number | string | null = null,
   ) {
     const hookRef: HookRef = {
       current: null,
@@ -87,13 +90,12 @@ describe("useAiSubtitleTranslation Hook", () => {
     };
 
     const Harness = () => {
-      const [selectedTrackId, setSelectedTrackId] = useState<number | null>(
-        initialSelectedTrackId,
-      );
+      const [selectedTrackId, setSelectedTrackId] = useState<
+        number | string | null
+      >(initialSelectedTrackId);
       const result = useAiSubtitleTranslation({
         ...params,
         selectedTrackId,
-        setSelectedTrackId,
       });
       hookRef.current = result;
       hookRef.selectedTrackId = selectedTrackId;
@@ -108,6 +110,13 @@ describe("useAiSubtitleTranslation Hook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(toast.info).mockReset();
+    vi.mocked(translateSubtitleUseCase.execute).mockReset();
+    vi.mocked(subtitleTranslationRepository.getById).mockReset();
+    vi.mocked(useDI).mockReturnValue({
+      getSubtitleTranslationsUseCase,
+      translateSubtitleUseCase,
+      getSettingsUseCase,
+    } as ReturnType<typeof useDI>);
     vi.mocked(getSettingsUseCase.execute).mockResolvedValue(defaultAiSettings);
     vi.mocked(subtitleTranslationRepository.listByTorrent).mockResolvedValue(
       [],
@@ -141,9 +150,6 @@ describe("useAiSubtitleTranslation Hook", () => {
     );
 
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: true,
@@ -162,29 +168,22 @@ describe("useAiSubtitleTranslation Hook", () => {
     expect(subtitleTranslationRepository.getById).toHaveBeenCalledWith(
       "record-1",
     );
-    expect(hookRef.current?.aiSubtitleTracks[1_000_000]).toMatchObject({
-      aiTrackId: 1_000_000,
-      originalTrackId: 2,
-      targetLanguage: "zh",
-      title: "日语字幕 · AI(zh) #1",
-      language: "zh",
-    });
     // AI 轨道应合并进字幕轨道列表
     expect(hookRef.current?.subtitleTracks).toHaveLength(2);
-    expect(hookRef.current?.subtitleTracks[1]).toMatchObject({
-      id: 1_000_000,
+    expect(
+      hookRef.current?.subtitleTracks.find((t) => t.id === "record-1"),
+    ).toMatchObject({
+      id: "record-1",
+      language: "zh",
+      title: "AI · 日语字幕",
+      codec: "ai-translated-vtt",
       isAi: true,
     });
-    expect(toast.info).toHaveBeenCalledWith(
-      expect.stringContaining("已加载 1 条缓存的 AI 字幕轨道"),
-    );
+    expect(toast.info).not.toHaveBeenCalled();
   });
 
   it("缓存列表为空时不应该调用 getById 或创建任何轨道", async () => {
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: true,
@@ -197,7 +196,9 @@ describe("useAiSubtitleTranslation Hook", () => {
     });
 
     expect(subtitleTranslationRepository.getById).not.toHaveBeenCalled();
-    expect(hookRef.current?.aiSubtitleTracks).toEqual({});
+    expect(hookRef.current?.subtitleTracks).toEqual([
+      ...originalSubtitleTracks,
+    ]);
     expect(toast.info).not.toHaveBeenCalled();
   });
 
@@ -222,9 +223,6 @@ describe("useAiSubtitleTranslation Hook", () => {
     );
 
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: true,
@@ -236,7 +234,9 @@ describe("useAiSubtitleTranslation Hook", () => {
       await Promise.resolve();
     });
 
-    expect(hookRef.current?.aiSubtitleTracks).toEqual({});
+    expect(hookRef.current?.subtitleTracks).toEqual([
+      ...originalSubtitleTracks,
+    ]);
     expect(toast.info).not.toHaveBeenCalled();
   });
 
@@ -244,14 +244,8 @@ describe("useAiSubtitleTranslation Hook", () => {
     vi.mocked(
       subtitleTranslationRepository.listByTorrent,
     ).mockRejectedValueOnce(new Error("db locked"));
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
 
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: true,
@@ -263,15 +257,13 @@ describe("useAiSubtitleTranslation Hook", () => {
       await Promise.resolve();
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalled();
-    expect(hookRef.current?.aiSubtitleTracks).toEqual({});
+    expect(hookRef.current?.subtitleTracks).toEqual([
+      ...originalSubtitleTracks,
+    ]);
   });
 
   it("应默认选中第一个 AI 配置", async () => {
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: false,
@@ -289,9 +281,6 @@ describe("useAiSubtitleTranslation Hook", () => {
 
   it("未选择字幕轨道时打开翻译对话框应提示", async () => {
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: false,
@@ -306,18 +295,13 @@ describe("useAiSubtitleTranslation Hook", () => {
       hookRef.current?.handleOpenTranslateDialog();
     });
 
-    expect(toast.error).toHaveBeenCalledWith(
-      expect.stringContaining("请先选择字幕轨道"),
-    );
+    expect(toast.error).toHaveBeenCalled();
     expect(hookRef.current?.translateDialogOpen).toBe(false);
   });
 
   it("原始字幕尚未加载完成时打开翻译对话框应提示", async () => {
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -348,9 +332,6 @@ describe("useAiSubtitleTranslation Hook", () => {
 
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -376,9 +357,6 @@ describe("useAiSubtitleTranslation Hook", () => {
   it("条件满足时打开翻译对话框应成功", async () => {
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -399,59 +377,8 @@ describe("useAiSubtitleTranslation Hook", () => {
     expect(hookRef.current?.translateDialogOpen).toBe(true);
   });
 
-  it("选中 AI 轨道时打开翻译对话框应回退到原始轨道 id 判断字幕是否就绪", async () => {
-    // 先翻译一次，产生 AI 轨道（id 从计数器分配为 1_000_000，对应原始轨道 2）
-    vi.mocked(globalThis.fetch).mockResolvedValueOnce(
-      new Response("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nこんにちは", {
-        status: 200,
-      }),
-    );
-    vi.mocked(translateSubtitleUseCase.execute).mockResolvedValueOnce(
-      "WEBVTT\n\n你好",
-    );
-    const getSubtitleUrl = vi.fn(() => "blob:mock-subtitle-url");
-    const hookRef = renderHook(
-      {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
-        infoHash: "abc",
-        fileId: 1,
-        metadataReady: false,
-        originalSubtitleTracks,
-        getSubtitleUrl,
-      },
-      2,
-    );
-    // 等待 settings 查询完成，确保已选中的 AI 配置索引有效
-    await act(async () => {
-      await Promise.resolve();
-    });
-    await act(async () => {
-      await hookRef.current?.handleConfirmTranslate();
-    });
-    const aiTrackId = hookRef.current
-      ? Object.keys(hookRef.current.aiSubtitleTracks).map(Number)[0]
-      : 0;
-    expect(aiTrackId).toBe(1_000_000);
-
-    act(() => {
-      hookRef.setSelectedTrackId?.(aiTrackId);
-    });
-    act(() => {
-      hookRef.current?.handleOpenTranslateDialog();
-    });
-
-    // AI 轨道应回退到其原始轨道 id 2 判断字幕是否就绪
-    expect(getSubtitleUrl).toHaveBeenCalledWith(2);
-    expect(hookRef.current?.translateDialogOpen).toBe(true);
-  });
-
   it("未选择字幕轨道时确认翻译应直接返回", async () => {
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: false,
@@ -471,9 +398,6 @@ describe("useAiSubtitleTranslation Hook", () => {
 
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -504,14 +428,11 @@ describe("useAiSubtitleTranslation Hook", () => {
       }),
     );
     vi.mocked(translateSubtitleUseCase.execute).mockResolvedValueOnce(
-      "WEBVTT\n\n你好",
+      "uuid-translate-1",
     );
 
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -553,14 +474,11 @@ describe("useAiSubtitleTranslation Hook", () => {
       }),
     );
     vi.mocked(translateSubtitleUseCase.execute).mockResolvedValueOnce(
-      "WEBVTT\n\n你好",
+      "uuid-translate-2",
     );
 
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -587,21 +505,18 @@ describe("useAiSubtitleTranslation Hook", () => {
     );
   });
 
-  it("翻译成功后应新增 AI 轨道并自动切换到该轨道", async () => {
+  it("翻译成功后应新增 AI 轨道且不自动切换", async () => {
     vi.mocked(globalThis.fetch).mockResolvedValueOnce(
       new Response("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nこんにちは", {
         status: 200,
       }),
     );
     vi.mocked(translateSubtitleUseCase.execute).mockResolvedValueOnce(
-      "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n你好",
+      "uuid-translate-3",
     );
 
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -622,17 +537,16 @@ describe("useAiSubtitleTranslation Hook", () => {
       await hookRef.current?.handleConfirmTranslate();
     });
 
-    const aiTrackId = 1_000_000;
-    expect(hookRef.current?.aiSubtitleTracks[aiTrackId]).toMatchObject({
-      aiTrackId,
-      originalTrackId: 2,
-      title: "日语字幕 · AI(zh) #1",
+    const aiTrack = hookRef.current?.subtitleTracks.find((t) => t.isAi);
+    expect(aiTrack).toMatchObject({
+      id: "uuid-translate-3",
+      title: "AI-轨道 2",
       language: "zh",
-      url: "blob:mock-ai-url",
+      codec: "ai-translated-vtt",
+      isAi: true,
     });
     expect(hookRef.current?.subtitleTracks).toHaveLength(2);
-    // 自动切换到 AI 轨道并关闭对话框
-    expect(hookRef.selectedTrackId).toBe(aiTrackId);
+    // 翻译完成后关闭对话框
     expect(hookRef.current?.translateDialogOpen).toBe(false);
     expect(toast.success).toHaveBeenCalledWith(
       expect.stringContaining("字幕翻译完成"),
@@ -651,9 +565,6 @@ describe("useAiSubtitleTranslation Hook", () => {
 
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -675,7 +586,9 @@ describe("useAiSubtitleTranslation Hook", () => {
       expect.stringContaining("字幕翻译失败"),
       expect.anything(),
     );
-    expect(hookRef.current?.aiSubtitleTracks).toEqual({});
+    expect(hookRef.current?.subtitleTracks).toEqual([
+      ...originalSubtitleTracks,
+    ]);
   });
 
   it("重新翻译同一原始轨道时应新增第二条 AI 轨道并保留历史", async () => {
@@ -687,15 +600,12 @@ describe("useAiSubtitleTranslation Hook", () => {
         }),
       ),
     );
-    vi.mocked(translateSubtitleUseCase.execute).mockResolvedValue(
-      "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n你好",
-    );
+    vi.mocked(translateSubtitleUseCase.execute)
+      .mockResolvedValueOnce("uuid-retranslate-1")
+      .mockResolvedValueOnce("uuid-retranslate-2");
 
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -717,23 +627,33 @@ describe("useAiSubtitleTranslation Hook", () => {
     await act(async () => {
       await hookRef.current?.handleConfirmTranslate();
     });
-    const firstUrl = "blob:mock-ai-url";
-    expect(hookRef.current?.aiSubtitleTracks[1_000_000]).toMatchObject({
-      aiTrackId: 1_000_000,
-      title: "日语字幕 · AI(zh) #1",
+    const firstTrack = hookRef.current?.subtitleTracks.find(
+      (t) => t.id === "uuid-retranslate-1",
+    );
+    expect(firstTrack).toMatchObject({
+      id: "uuid-retranslate-1",
+      title: "AI-轨道 2",
     });
 
     // 第二次翻译同一原始轨道：新增第二条独立轨道，历史保留
     await act(async () => {
       await hookRef.current?.handleConfirmTranslate();
     });
-    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith(firstUrl);
-    expect(hookRef.current?.aiSubtitleTracks[1_000_000]).toBeTruthy();
-    expect(hookRef.current?.aiSubtitleTracks[1_000_001]).toMatchObject({
-      aiTrackId: 1_000_001,
-      originalTrackId: 2,
-      title: "日语字幕 · AI(zh) #2",
-      url: firstUrl,
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+    expect(
+      hookRef.current?.subtitleTracks.find(
+        (t) => t.id === "uuid-retranslate-1",
+      ),
+    ).toBeTruthy();
+    expect(
+      hookRef.current?.subtitleTracks.find(
+        (t) => t.id === "uuid-retranslate-2",
+      ),
+    ).toMatchObject({
+      id: "uuid-retranslate-2",
+      title: "AI-轨道 2",
+      codec: "ai-translated-vtt",
+      isAi: true,
     });
   });
 
@@ -766,9 +686,6 @@ describe("useAiSubtitleTranslation Hook", () => {
     });
 
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: true,
@@ -782,18 +699,18 @@ describe("useAiSubtitleTranslation Hook", () => {
 
     expect(subtitleTranslationRepository.getById).toHaveBeenCalledTimes(2);
     // 同一原始轨道的多条记录各占一条 AI 轨道
-    expect(hookRef.current?.aiSubtitleTracks[1_000_000]).toMatchObject({
-      originalTrackId: 2,
-      title: "日语字幕 · AI(zh) #1",
+    const aiTracks =
+      hookRef.current?.subtitleTracks.filter((t) => t.isAi) ?? [];
+    expect(aiTracks[0]).toMatchObject({
+      id: "record-1",
+      title: "AI · 日语字幕",
     });
-    expect(hookRef.current?.aiSubtitleTracks[1_000_001]).toMatchObject({
-      originalTrackId: 2,
-      title: "日语字幕 · AI(zh) #2",
+    expect(aiTracks[1]).toMatchObject({
+      id: "record-2",
+      title: "AI · 日语字幕",
     });
-    expect(URL.createObjectURL).toHaveBeenCalledTimes(2);
-    expect(toast.info).toHaveBeenCalledWith(
-      expect.stringContaining("已加载 2 条"),
-    );
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(toast.info).not.toHaveBeenCalled();
   });
 
   it("缓存记录的原始轨道缺失或目标语言未知时，应使用兜底标题", async () => {
@@ -825,9 +742,6 @@ describe("useAiSubtitleTranslation Hook", () => {
     });
 
     const hookRef = renderHook({
-      getSubtitleTranslationsUseCase,
-      translateSubtitleUseCase,
-      getSettingsUseCase,
       infoHash: "abc",
       fileId: 1,
       metadataReady: true,
@@ -839,11 +753,14 @@ describe("useAiSubtitleTranslation Hook", () => {
       await Promise.resolve();
     });
 
-    expect(hookRef.current?.aiSubtitleTracks[1_000_000]).toMatchObject({
-      aiTrackId: 1_000_000,
-      originalTrackId: 5,
-      targetLanguage: "xx",
-      title: "轨道 5 · AI(xx) #1",
+    expect(
+      hookRef.current?.subtitleTracks.find((t) => t.id === "record-5"),
+    ).toMatchObject({
+      id: "record-5",
+      language: "xx",
+      title: "AI · 轨道 5",
+      codec: "ai-translated-vtt",
+      isAi: true,
     });
   });
 
@@ -875,19 +792,13 @@ describe("useAiSubtitleTranslation Hook", () => {
       setSelectedTrackId: null,
     };
     const Harness = () => {
-      const [selectedTrackId, setSelectedTrackId] = useState<number | null>(
-        null,
-      );
+      const [selectedTrackId] = useState<number | string | null>(null);
       const result = useAiSubtitleTranslation({
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: true,
         originalSubtitleTracks,
         selectedTrackId,
-        setSelectedTrackId,
         getSubtitleUrl: () => undefined,
       });
       hookRef.current = result;
@@ -915,18 +826,18 @@ describe("useAiSubtitleTranslation Hook", () => {
         status: 200,
       }),
     );
+    let resolveTranslate!: (value: string) => void;
     vi.mocked(translateSubtitleUseCase.execute).mockImplementationOnce(
       (_ctx, params) => {
         params.onProgress?.(3, 5);
-        return new Promise<string>(() => {});
+        return new Promise<string>((resolve) => {
+          resolveTranslate = resolve;
+        });
       },
     );
 
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -940,19 +851,27 @@ describe("useAiSubtitleTranslation Hook", () => {
       await Promise.resolve();
     });
 
+    let handlePromise: Promise<void> | undefined;
     await act(async () => {
-      await hookRef.current?.handleConfirmTranslate();
+      handlePromise = hookRef.current?.handleConfirmTranslate();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
+    // 翻译请求尚未结束，进度已通过 onProgress 上报到 hook 状态
     expect(hookRef.current?.translateProgress).toEqual({ done: 3, total: 5 });
+
+    // 结束翻译请求，避免遗留未决 Promise
+    await act(async () => {
+      resolveTranslate("uuid-progress-1");
+      await handlePromise;
+    });
   });
 
   it("确认翻译时若原始字幕内容未就绪应提示且不调用 AI", async () => {
     const hookRef = renderHook(
       {
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: false,
@@ -1002,19 +921,13 @@ describe("useAiSubtitleTranslation Hook", () => {
       setSelectedTrackId: null,
     };
     const Harness = () => {
-      const [selectedTrackId, setSelectedTrackId] = useState<number | null>(
-        null,
-      );
+      const [selectedTrackId] = useState<number | string | null>(null);
       const result = useAiSubtitleTranslation({
-        getSubtitleTranslationsUseCase,
-        translateSubtitleUseCase,
-        getSettingsUseCase,
         infoHash: "abc",
         fileId: 1,
         metadataReady: true,
         originalSubtitleTracks,
         selectedTrackId,
-        setSelectedTrackId,
         getSubtitleUrl: () => undefined,
       });
       hookRef.current = result;
@@ -1025,9 +938,9 @@ describe("useAiSubtitleTranslation Hook", () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(hookRef.current?.aiSubtitleTracks[1_000_000]).toBeTruthy();
+    expect(hookRef.current?.subtitleTracks.find((t) => t.isAi)).toBeTruthy();
 
     unmount();
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-ai-url");
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
   });
 });

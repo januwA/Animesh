@@ -287,7 +287,8 @@ export function createDIContainerForTest(
     params.getTorrentStreamUrlUseCase ||
     new GetTorrentStreamUrlUseCase(torrentRepo);
   const getSubtitleVttUseCase =
-    params.getSubtitleVttUseCase || new GetSubtitleVttUseCase(torrentRepo);
+    params.getSubtitleVttUseCase ||
+    new GetSubtitleVttUseCase(torrentRepo, subtitleTranslationRepo);
   const getVideoMetadataUseCase =
     params.getVideoMetadataUseCase || new GetVideoMetadataUseCase(torrentRepo);
 

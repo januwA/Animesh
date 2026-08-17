@@ -71,6 +71,14 @@ describe("TranslateSubtitleUseCase 测试", () => {
     };
   }
 
+  /** execute 返回记录 id，翻译结果通过 save 写入；此函数取出最近一次保存的 VTT 内容 */
+  function getSavedVtt(): string {
+    return (
+      vi.mocked(mockTranslationRepo.save).mock.calls.at(-1)?.[0].vtt_content ??
+      ""
+    );
+  }
+
   it("AI 配置缺少 api_key 时，应该抛出明确错误提示用户先配置 AI", async () => {
     const useCase = new TranslateSubtitleUseCase(
       mockAiClient,
@@ -103,7 +111,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -124,7 +132,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       "test-key",
       expect.objectContaining({ model: "gpt-3.5-turbo" }),
     );
-    expect(result).toContain("你好");
+    expect(getSavedVtt()).toContain("你好");
   });
 
   it("AI 返回空内容时，应该保留原文且不抛错", async () => {
@@ -138,7 +146,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -153,7 +161,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 0,
     });
 
-    expect(result).toContain("こんにちは");
+    expect(getSavedVtt()).toContain("こんにちは");
     expect(mockLogger.warn).not.toHaveBeenCalled();
     expect(mockAiClient.post).toHaveBeenCalledTimes(1);
   });
@@ -169,7 +177,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -185,7 +193,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
     });
 
     expect(mockAiClient.post).toHaveBeenCalledTimes(1);
-    expect(result).toContain("你好");
+    expect(getSavedVtt()).toContain("你好");
   });
 
   it("应该解析 VTT、去重文本、调 AI 翻译并回填重建 VTT", async () => {
@@ -203,7 +211,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: sampleVtt,
       sourceLanguage: "ja",
       targetLanguage: "zh",
@@ -216,11 +224,12 @@ describe("TranslateSubtitleUseCase 测试", () => {
 
     // AI 只被调用一次（去重后一批就完成）
     expect(mockAiClient.post).toHaveBeenCalledTimes(1);
-    expect(result).toContain("你好");
+    const savedVtt = getSavedVtt();
+    expect(savedVtt).toContain("你好");
     // 去重的"こんにちは"对应两条 cue 都应该是"你好"
-    const youLines = result.match(/你好/g) ?? [];
+    const youLines = savedVtt.match(/你好/g) ?? [];
     expect(youLines.length).toBe(2);
-    expect(result).not.toContain("こんにちは");
+    expect(savedVtt).not.toContain("こんにちは");
   });
 
   it("当文本数量超过批次大小时，应该分批调用 AI", async () => {
@@ -259,7 +268,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt,
       sourceLanguage: "ja",
       targetLanguage: "zh",
@@ -271,9 +280,10 @@ describe("TranslateSubtitleUseCase 测试", () => {
     });
 
     expect(mockAiClient.post).toHaveBeenCalledTimes(3);
-    expect(result).toContain("译文0");
-    expect(result).toContain("译文64");
-    expect(result).not.toContain("原文0");
+    const savedVtt = getSavedVtt();
+    expect(savedVtt).toContain("译文0");
+    expect(savedVtt).toContain("译文64");
+    expect(savedVtt).not.toContain("原文0");
   });
 
   it("应该通过 onProgress 报告翻译进度（done, total）", async () => {
@@ -325,7 +335,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -340,7 +350,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 0,
     });
 
-    expect(result).toContain("你好");
+    expect(getSavedVtt()).toContain("你好");
     expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining("AI 返回内容无法解析为翻译结果"),
       expect.anything(),
@@ -359,7 +369,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -377,9 +387,10 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 0,
     });
 
-    expect(result).toContain("Hello");
+    const savedVtt = getSavedVtt();
+    expect(savedVtt).toContain("Hello");
     // 缺失翻译的"世界"应保留原文
-    expect(result).toContain("世界");
+    expect(savedVtt).toContain("世界");
   });
 
   it("当 context 被取消时，应该停止后续批次并抛出取消错误", async () => {
@@ -522,7 +533,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -538,7 +549,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
     });
 
     // 429 是暂时性错误，降级保留原文
-    expect(result).toContain("你好");
+    expect(getSavedVtt()).toContain("你好");
   });
 
   it("当 AI 返回网络错误（非 HTTP 状态码）时，应该降级保留原文", async () => {
@@ -552,7 +563,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -567,7 +578,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 0,
     });
 
-    expect(result).toContain("你好");
+    expect(getSavedVtt()).toContain("你好");
   });
 
   it("使用传入的 aiConfig 时，应该使用对应配置的接口地址与模型", async () => {
@@ -653,14 +664,14 @@ describe("TranslateSubtitleUseCase 测试", () => {
     expect(firstId).not.toBe(secondId);
   });
 
-  it("字幕没有任何 cue 时，应该直接返回空 VTT 且不调用 AI", async () => {
+  it("字幕没有任何 cue 时，应该保存空 VTT 记录且不调用 AI", async () => {
     const useCase = new TranslateSubtitleUseCase(
       mockAiClient,
       mockTranslationRepo,
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: "WEBVTT",
       sourceLanguage: "ja",
       targetLanguage: "zh",
@@ -671,7 +682,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 0,
     });
 
-    expect(result).toBe("WEBVTT\n");
+    expect(getSavedVtt()).toBe("WEBVTT\n");
     expect(mockAiClient.post).not.toHaveBeenCalled();
   });
 
@@ -686,7 +697,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -701,7 +712,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 2,
     });
 
-    expect(result).toContain("你好");
+    expect(getSavedVtt()).toContain("你好");
     expect(mockTranslationRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
         id: expect.stringMatching(
@@ -760,7 +771,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -775,7 +786,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 0,
     });
 
-    expect(result).toContain("你好");
+    expect(getSavedVtt()).toContain("你好");
     expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining("无法解析为翻译结果"),
       expect.anything(),
@@ -791,7 +802,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       mockLogger,
     );
 
-    const result = await useCase.execute(ctx, {
+    await useCase.execute(ctx, {
       vtt: `WEBVTT
 
 00:00:01.000 --> 00:00:02.000
@@ -806,7 +817,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 0,
     });
 
-    expect(result).toContain("你好");
+    expect(getSavedVtt()).toContain("你好");
   });
 
   it("即使 infoHash 为空，翻译成功后也会无条件保存记录", async () => {

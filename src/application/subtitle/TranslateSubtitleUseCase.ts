@@ -74,15 +74,19 @@ export class TranslateSubtitleUseCase {
     const uniqueTexts = extractUniqueTexts(doc);
 
     if (uniqueTexts.length === 0) {
-      return buildVtt(doc, new Map());
+      const record = await this.saveTranslationRecord(
+        dto,
+        buildVtt(doc, new Map()),
+      );
+      return record.id;
     }
 
     const translatedVtt = await this.translateAll(ctx, dto, doc, uniqueTexts);
 
     // 2. 写入一条新记录（即使译文质量不佳也保留，用户已消耗 Token）
-    await this.saveTranslationRecord(dto, translatedVtt);
+    const record = await this.saveTranslationRecord(dto, translatedVtt);
 
-    return translatedVtt;
+    return record.id;
   }
 
   private logStart(dto: TranslateSubtitleDto): void {
@@ -132,7 +136,7 @@ export class TranslateSubtitleUseCase {
   private async saveTranslationRecord(
     dto: TranslateSubtitleDto,
     translatedVtt: string,
-  ): Promise<void> {
+  ): Promise<SubtitleTranslationRecord> {
     const record = this.buildTranslationRecord(dto, translatedVtt);
     await this.translationRepository.save(record);
     this.logger.info("字幕翻译结果已保存为新记录", {
@@ -140,6 +144,7 @@ export class TranslateSubtitleUseCase {
       targetLang: dto.targetLanguage,
       aiConfig: dto.aiConfig.alias,
     });
+    return record;
   }
 
   private buildTranslationRecord(

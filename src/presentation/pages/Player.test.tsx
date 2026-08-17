@@ -612,7 +612,7 @@ describe("Player 页面组件", () => {
     const translateSubtitleUseCaseMock = {
       execute: vi
         .fn()
-        .mockResolvedValue("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n你好"),
+        .mockResolvedValue("11111111-2222-4333-8444-555555555555"),
     } as unknown as TranslateSubtitleUseCase;
     const fetchMock = vi.fn().mockResolvedValue(
       new Response("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nこんにちは", {
@@ -677,7 +677,7 @@ describe("Player 页面组件", () => {
     vi.useRealTimers();
   });
 
-  it("点击开始翻译后应新增 AI 轨道并自动切换（不走后端字幕加载）", async () => {
+  it("点击开始翻译后应新增 AI 轨道（不走后端字幕加载）", async () => {
     vi.useFakeTimers();
     const mockStatus = {
       info_hash: "hash123",
@@ -710,7 +710,7 @@ describe("Player 页面组件", () => {
     const translateSubtitleUseCaseMock = {
       execute: vi
         .fn()
-        .mockResolvedValue("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n你好"),
+        .mockResolvedValue("11111111-2222-4333-8444-555555555555"),
     } as unknown as TranslateSubtitleUseCase;
     const fetchMock = vi.fn().mockResolvedValue(
       new Response("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nこんにちは", {
@@ -718,10 +718,26 @@ describe("Player 页面组件", () => {
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
+    const aiRecord = {
+      id: "11111111-2222-4333-8444-555555555555",
+      info_hash: "hash123",
+      file_id: 0,
+      original_track_id: 1,
+      source_lang: "eng",
+      target_lang: "zh",
+      vtt_content: "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nこんにちは",
+      created_at: 1000,
+      last_accessed_at: 1000,
+    };
+    const subtitleTranslationRepositoryMock = {
+      getById: vi.fn().mockResolvedValue(aiRecord),
+      listByTorrent: vi.fn().mockResolvedValue([]),
+    };
     mockContainer = createDIContainerForTest({
       torrentRepository: mockTorrentRepository,
       getSettingsUseCase: getSettingsUseCaseMock,
       translateSubtitleUseCase: translateSubtitleUseCaseMock,
+      subtitleTranslationRepository: subtitleTranslationRepositoryMock as never,
     });
 
     vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
@@ -757,22 +773,36 @@ describe("Player 页面组件", () => {
     fireEvent.change(screen.getByLabelText("目标语言"), {
       target: { value: "zh" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "开始翻译" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "开始翻译" }));
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(0);
+    });
 
+    // AI 轨道应出现在字幕下拉中
+    fireEvent.click(screen.getByRole("combobox"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(screen.queryByText("翻译中")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("listbox")).getByText("AI-轨道 1 (zh)"),
+    ).toBeInTheDocument();
+
+    // 手动重新选择 AI 轨道应触发加载：先切到 AI 轨道，验证不走后端 getSubtitleVtt
+    fireEvent.click(
+      within(screen.getByRole("listbox")).getByText("AI-轨道 1 (zh)"),
+    );
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
-
-    // 翻译使用内存 Blob 字幕，无需再次调用后端 getSubtitleVtt
     expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
-    expect(translateSubtitleUseCaseMock.execute).toHaveBeenCalled();
-    // AI 轨道应出现在字幕下拉中并自动选中
-    expect(screen.getByText("English · AI(zh) #1 (zh)")).toBeInTheDocument();
-    expect(screen.queryByText("翻译中")).not.toBeInTheDocument();
 
-    // 手动重新选择 AI 轨道应命中"AI 轨道不走后端加载"的守卫：
-    // 先选回原字幕轨道，再切回 AI 轨道
-    fireEvent.click(screen.getByText("English · AI(zh) #1 (zh)"));
+    // 再切回原字幕轨道，验证后端加载仍生效（+1）
+    fireEvent.click(screen.getByRole("combobox"));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
     });
@@ -784,17 +814,17 @@ describe("Player 页面组件", () => {
     });
     expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
 
-    fireEvent.click(screen.getByText("English (eng)"));
+    // 最后切回 AI 轨道，确认仍不会触发后端 getSubtitleVtt（停留在 2 次）
+    fireEvent.click(screen.getByRole("combobox"));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
     });
     fireEvent.click(
-      within(screen.getByRole("listbox")).getByText("English · AI(zh) #1 (zh)"),
+      within(screen.getByRole("listbox")).getByText("AI-轨道 1 (zh)"),
     );
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
-    // AI 轨道不会触发后端 getSubtitleVtt（仍停留在 2 次）
     expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
     vi.unstubAllGlobals();
     vi.useRealTimers();

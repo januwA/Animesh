@@ -22,9 +22,6 @@ import {
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
-import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
-import type { GetSubtitleTranslationsUseCase } from "@/application/subtitle/GetSubtitleTranslationsUseCase";
-import type { TranslateSubtitleUseCase } from "@/application/subtitle/TranslateSubtitleUseCase";
 import { useDI } from "@/di/DIContext";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type {
@@ -78,21 +75,10 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 
 const JsPlayer = createPlayer({ features: videoFeatures });
 
-/**
- * AI 翻译轨道使用的基础偏移 id。原始 MKV 轨道 id 基本 < 100，
- * 这里取足够大的偏移量避免冲突。AI 轨道 id 通过递增计数器分配，
- * 使同一原始轨道的多次翻译各自拥有唯一 id。
- */
-const AI_TRACK_BASE = 1_000_000;
-
-function isAiTrackId(trackId: number): boolean {
-  return trackId >= AI_TRACK_BASE;
-}
-
 interface SubtitleVttDto {
   infoHash: string;
   fileId: number;
-  trackId: number;
+  trackId: number | string;
 }
 
 interface SubtitleSource {
@@ -136,24 +122,10 @@ export default function Player() {
   return <PlayerShell {...parsed.data} />;
 }
 
-/**
- * AI 翻译出来的字幕轨道。
- * - key: 合成后的 AI 轨道 id（通过计数器从 AI_TRACK_BASE 递增分配）
- * - value: 合成轨道的 display 信息与 Blob URL
- */
-export interface AiSubtitleTrack {
-  aiTrackId: number;
-  /** 对应原始轨道的 id（用于用户知道它基于哪条轨道翻译） */
-  originalTrackId: number;
-  targetLanguage: string;
-  title: string;
-  language: string;
-  url: string;
-}
-
 /** 最终呈现给用户的字幕轨道：原始轨道 + AI 翻译轨道 */
 export interface SubtitleTrackItem {
-  id: number;
+  /** 原始轨道为数字 id，AI 翻译轨道为 UUID */
+  id: number | string;
   language: string;
   title: string;
   codec: string;
@@ -161,17 +133,13 @@ export interface SubtitleTrackItem {
 }
 
 export interface UseAiSubtitleTranslationParams {
-  getSubtitleTranslationsUseCase: GetSubtitleTranslationsUseCase;
-  translateSubtitleUseCase: TranslateSubtitleUseCase;
-  getSettingsUseCase: GetSettingsUseCase;
   infoHash: string;
   fileId: number;
   /** 元数据是否已就绪（记录加载在就绪后触发） */
   metadataReady: boolean;
   /** 当前可用的原始字幕轨道 */
   originalSubtitleTracks: readonly SubtitleTrackItem[];
-  selectedTrackId: number | null;
-  setSelectedTrackId: (id: number | null) => void;
+  selectedTrackId: number | string | null;
   /** 获取某原始字幕轨道的 Blob URL，未加载完返回 undefined */
   getSubtitleUrl: (trackId: number) => string | undefined;
 }
@@ -179,7 +147,6 @@ export interface UseAiSubtitleTranslationParams {
 export interface UseAiSubtitleTranslationResult {
   /** 原始 + AI 合成后的字幕轨道列表 */
   subtitleTracks: SubtitleTrackItem[];
-  aiSubtitleTracks: Record<number, AiSubtitleTrack>;
   translateDialogOpen: boolean;
   setTranslateDialogOpen: (open: boolean) => void;
   translateSourceLang: string;
@@ -199,86 +166,44 @@ export interface UseAiSubtitleTranslationResult {
  * AI 字幕翻译的状态机 Hook。
  *
  * 职责：
- * - 维护 AI 翻译轨道列表（aiSubtitleTracks）与原始轨道合并后的 subtitleTracks。
- * - 进入播放器时加载该种子+文件下的所有翻译记录，全部作为独立 AI 轨道呈现。
+ * - 进入播放器时加载该种子+文件下的所有翻译记录，添加 AI 轨道到列表。
  * - 执行翻译 mutation（含进度、成功/失败/结束回调）。
- * - 打开翻译对话框、确认翻译、为每次翻译新增独立 AI 轨道（保留历史）。
- * - 卸载时清理 AI 轨道 Blob URL。
+ * - 翻译成功后添加新 AI 轨道到列表，不自动切换，用户手动选择时加载。
  */
 export function useAiSubtitleTranslation({
-  getSubtitleTranslationsUseCase,
-  translateSubtitleUseCase,
-  getSettingsUseCase,
   infoHash,
   fileId,
   metadataReady,
   originalSubtitleTracks,
   selectedTrackId,
-  setSelectedTrackId,
   getSubtitleUrl,
 }: UseAiSubtitleTranslationParams): UseAiSubtitleTranslationResult {
-  const [aiSubtitleTracks, setAiSubtitleTracks] = useState<
-    Record<number, AiSubtitleTrack>
-  >({});
-  const aiSubtitleTracksRef = useRef<Record<number, AiSubtitleTrack>>({});
-  aiSubtitleTracksRef.current = aiSubtitleTracks;
+  const {
+    getSubtitleTranslationsUseCase,
+    translateSubtitleUseCase,
+    getSettingsUseCase,
+  } = useDI();
 
-  // AI 轨道 id 通过递增计数器分配，保证同一原始轨道的多次翻译各自唯一
-  const nextAiTrackIdRef = useRef(AI_TRACK_BASE);
-
-  const allocateAiTrackId = useCallback((): number => {
-    const id = nextAiTrackIdRef.current;
-    nextAiTrackIdRef.current += 1;
-    return id;
-  }, []);
-
-  /**
-   * 生成 AI 翻译轨道标题。同一原始轨道存在多条翻译时追加序号（#1/#2/...）以便区分。
-   * 序号基于传入的轨道集合计算，加载多条历史与翻译成功后都能正确递增。
-   */
-  const buildAiTrackTitle = useCallback(
-    (
-      sourceTitle: string,
-      targetLang: string,
-      originalTrackId: number,
-      tracks: Record<number, AiSubtitleTrack>,
-    ): string => {
-      const sameTrackCount = Object.values(tracks).filter(
-        (t) => t.originalTrackId === originalTrackId,
-      ).length;
-      return `${sourceTitle} · AI(${targetLang}) #${sameTrackCount + 1}`;
-    },
-    [],
-  );
-
-  const subtitleTracks: SubtitleTrackItem[] = [
-    ...originalSubtitleTracks,
-    ...Object.values(aiSubtitleTracks).map((t) => ({
-      id: t.aiTrackId,
-      language: t.language,
-      title: t.title,
-      codec: "ai-translated-vtt",
-      isAi: true,
-    })),
-  ];
+  const [aiTracks, setAiTracks] = useState<SubtitleTrackItem[]>([]);
+  const aiTracksRef = useRef<SubtitleTrackItem[]>([]);
+  aiTracksRef.current = aiTracks;
 
   const [translateDialogOpen, setTranslateDialogOpen] = useState(false);
   const [translateSourceLang, setTranslateSourceLang] = useState("");
   const [translateTargetLang, setTranslateTargetLang] = useState("");
-  const [translateAiIndex, setTranslateAiIndex] = useState<number>(0);
+  const [translateAiIndex, setTranslateAiIndex] = useState(0);
   const [translateProgress, setTranslateProgress] = useState<{
     done: number;
     total: number;
   } | null>(null);
 
-  // 获取已配置的 AI 列表供用户在翻译时选择
   const settingsQuery = useQuery(
     () => getSettingsUseCase.execute(),
     [getSettingsUseCase],
   );
   const aiConfigs = settingsQuery.data?.ai_configs ?? [];
 
-  // 进入播放器时加载该种子+文件下的所有字幕翻译记录，作为 AI 轨道直接呈现。
+  // 进入播放器时加载历史翻译记录，只添加轨道信息
   useQuery(
     (_ctx) => getSubtitleTranslationsUseCase.execute(infoHash, fileId),
     [infoHash, fileId, getSubtitleTranslationsUseCase],
@@ -286,43 +211,31 @@ export function useAiSubtitleTranslation({
       enabled: metadataReady,
       onSuccess: (records) => {
         if (records.length === 0) return;
-        const nextAi: Record<number, AiSubtitleTrack> = {
-          ...aiSubtitleTracksRef.current,
-        };
-        for (const record of records) {
-          // 每次翻译都是一条独立记录，全部作为独立 AI 轨道展示
-          const aiTrackId = allocateAiTrackId();
-          const url = URL.createObjectURL(
-            new Blob([record.vtt_content], { type: "text/vtt" }),
-          );
+        const newTracks: SubtitleTrackItem[] = records.map((record) => {
           const originalTrack = originalSubtitleTracks.find(
             (t) => t.id === record.original_track_id,
           );
           const sourceTitle =
             originalTrack?.title || `轨道 ${record.original_track_id}`;
-          nextAi[aiTrackId] = {
-            aiTrackId,
-            originalTrackId: record.original_track_id,
-            targetLanguage: record.target_lang,
-            title: buildAiTrackTitle(
-              sourceTitle,
-              record.target_lang,
-              record.original_track_id,
-              nextAi,
-            ),
+          return {
+            id: record.id,
             language: record.target_lang,
-            url,
+            title: `AI · ${sourceTitle}`,
+            codec: "ai-translated-vtt",
+            isAi: true,
           };
-        }
-        aiSubtitleTracksRef.current = nextAi;
-        setAiSubtitleTracks(nextAi);
-        toast.info(`已加载 ${records.length} 条缓存的 AI 字幕轨道`);
-      },
-      onError: (err) => {
-        console.error("[Player] 加载字幕翻译记录失败", err);
+        });
+        const next = [...aiTracksRef.current, ...newTracks];
+        aiTracksRef.current = next;
+        setAiTracks(next);
       },
     },
   );
+
+  const subtitleTracks: SubtitleTrackItem[] = [
+    ...originalSubtitleTracks,
+    ...aiTracks,
+  ];
 
   interface TranslateParams {
     trackId: number;
@@ -332,9 +245,9 @@ export function useAiSubtitleTranslation({
     aiConfig: AiConfig;
     infoHash: string;
     fileId: number;
-    originalTrackId: number;
   }
 
+  // 翻译成功后返回 UUID，只添加轨道信息
   const translateMutation = useMutation<string, TranslateParams>(
     (ctx, params) =>
       translateSubtitleUseCase.execute(ctx, {
@@ -345,50 +258,23 @@ export function useAiSubtitleTranslation({
         onProgress: (done, total) => setTranslateProgress({ done, total }),
         infoHash: params.infoHash,
         fileId: params.fileId,
-        originalTrackId: params.originalTrackId,
+        originalTrackId: params.trackId,
       }),
     {
-      onSuccess: (translatedVtt, params) => {
-        const originalTrackId = params.trackId;
-        // 每次翻译新增一条独立轨道，保留之前的翻译历史
-        const url = URL.createObjectURL(
-          new Blob([translatedVtt], { type: "text/vtt" }),
-        );
-        const aiTrackId = allocateAiTrackId();
-        const originalTrack = originalSubtitleTracks.find(
-          (t) => t.id === originalTrackId,
-        );
-        /* v8 ignore next 4 -- 原始轨道必然存在于列表，兜底分支为防御性代码 */
-        const sourceTitle = originalTrack?.title || `轨道 ${originalTrackId}`;
-        const title = buildAiTrackTitle(
-          sourceTitle,
-          params.targetLang,
-          originalTrackId,
-          aiSubtitleTracksRef.current,
-        );
-
-        const newAiTrack: AiSubtitleTrack = {
-          aiTrackId,
-          originalTrackId,
-          targetLanguage: params.targetLang,
-          title,
+      onSuccess: (recordId, params) => {
+        const sourceTitle = `轨道 ${params.trackId}`;
+        const newTrack: SubtitleTrackItem = {
+          id: recordId,
           language: params.targetLang,
-          url,
+          title: `AI-${sourceTitle}`,
+          codec: "ai-translated-vtt",
+          isAi: true,
         };
-
-        const nextAi = {
-          ...aiSubtitleTracksRef.current,
-          [aiTrackId]: newAiTrack,
-        };
-        aiSubtitleTracksRef.current = nextAi;
-        setAiSubtitleTracks(nextAi);
-
-        // 自动切换到 AI 翻译轨道
-        setSelectedTrackId(aiTrackId);
+        const next = [...aiTracksRef.current, newTrack];
+        aiTracksRef.current = next;
+        setAiTracks(next);
         setTranslateDialogOpen(false);
-        toast.success(
-          `字幕翻译完成，已新增为独立轨道"${title}"，可随时切换回原字幕`,
-        );
+        toast.success("字幕翻译完成，请在字幕选择器中切换到新轨道");
       },
       onError: (error) => {
         toast.error(`字幕翻译失败: ${formatError(error)}`, {
@@ -402,16 +288,11 @@ export function useAiSubtitleTranslation({
   );
 
   const handleOpenTranslateDialog = useCallback(() => {
-    if (selectedTrackId === null) {
-      toast.error("请先选择字幕轨道");
+    if (!selectedTrackId || typeof selectedTrackId === "string") {
+      toast.error("请先选择一条原始字幕轨道");
       return;
     }
-    /* v8 ignore next */
-    const sourceTrackId = isAiTrackId(selectedTrackId)
-      ? (aiSubtitleTracksRef.current[selectedTrackId]?.originalTrackId ??
-        selectedTrackId)
-      : selectedTrackId;
-    const url = getSubtitleUrl(sourceTrackId);
+    const url = getSubtitleUrl(selectedTrackId);
     if (!url) {
       toast.error("字幕尚未加载完成");
       return;
@@ -424,14 +305,11 @@ export function useAiSubtitleTranslation({
   }, [selectedTrackId, aiConfigs.length, getSubtitleUrl]);
 
   const handleConfirmTranslate = useCallback(async () => {
-    if (selectedTrackId === null) return;
-    // 翻译基底始终使用原始轨道文本（即使当前选中的是 AI 轨道）
-    /* v8 ignore next */
-    const sourceTrackId = isAiTrackId(selectedTrackId)
-      ? (aiSubtitleTracksRef.current[selectedTrackId]?.originalTrackId ??
-        selectedTrackId)
-      : selectedTrackId;
-    const url = getSubtitleUrl(sourceTrackId);
+    if (selectedTrackId === null || typeof selectedTrackId === "string") {
+      toast.error("请先选择一条原始字幕轨道");
+      return;
+    }
+    const url = getSubtitleUrl(selectedTrackId);
     if (!url) {
       toast.error("字幕尚未加载完成");
       return;
@@ -445,15 +323,14 @@ export function useAiSubtitleTranslation({
       return;
     }
     const aiConfig = aiConfigs[translateAiIndex];
-    translateMutation.execute({
-      trackId: sourceTrackId,
+    await translateMutation.execute({
+      trackId: selectedTrackId,
       vtt: vttText,
       sourceLang: translateSourceLang,
       targetLang: translateTargetLang,
       aiConfig,
       infoHash,
       fileId,
-      originalTrackId: sourceTrackId,
     });
   }, [
     selectedTrackId,
@@ -467,20 +344,8 @@ export function useAiSubtitleTranslation({
     getSubtitleUrl,
   ]);
 
-  // 卸载时清理 AI 轨道 Blob URL
-  useEffect(() => {
-    return () => {
-      for (const aiTrack of Object.values(aiSubtitleTracksRef.current)) {
-        /* v8 ignore next -- AI 轨道必然携带 Blob URL，此处为防御性兜底 */
-        if (aiTrack.url) URL.revokeObjectURL(aiTrack.url);
-      }
-      aiSubtitleTracksRef.current = {};
-    };
-  }, []);
-
   return {
     subtitleTracks,
-    aiSubtitleTracks,
     translateDialogOpen,
     setTranslateDialogOpen,
     translateSourceLang,
@@ -504,9 +369,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     getTorrentStreamUrlUseCase,
     getVideoMetadataUseCase,
     getSubtitleVttUseCase,
-    translateSubtitleUseCase,
-    getSettingsUseCase,
-    getSubtitleTranslationsUseCase,
   } = useDI();
   const { torrents } = useTorrentStatus();
   const torrentStatus = torrents.find((t) => t?.info_hash === infoHash) ?? null;
@@ -570,13 +432,18 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
 
   // Subtitle VTT sources (lazy per-track load + auto-refresh as download progresses)
   const [subtitleSources, setSubtitleSources] = useState<
-    Record<number, SubtitleSource>
+    Record<number | string, SubtitleSource>
   >({});
-  const subtitleSourcesRef = useRef<Record<number, SubtitleSource>>({});
-  const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
+  const subtitleSourcesRef = useRef<Record<number | string, SubtitleSource>>(
+    {},
+  );
+  const [selectedTrackId, setSelectedTrackId] = useState<
+    number | string | null
+  >(null);
   const torrentStatusRef = useRef(torrentStatus);
   torrentStatusRef.current = torrentStatus;
-  const pendingSubtitleRef = useRef<number | null>(null);
+  // 记录当前正在加载的字幕轨道，避免自动刷新在请求挂起时发起重复请求
+  const pendingSubtitleRef = useRef<number | string | null>(null);
 
   const subtitleMutation = useMutation<string, SubtitleVttDto>(
     (_ctx, dto) => getSubtitleVttUseCase.execute(dto),
@@ -609,9 +476,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   );
 
   const loadSubtitleVtt = useCallback(
-    (trackId: number, opts: { force?: boolean } = {}) => {
-      // AI 轨道 Blob URL 已在翻译成功时直接注入 subtitleSources，无需调后端加载
-      if (isAiTrackId(trackId)) return;
+    (trackId: number | string, opts: { force?: boolean } = {}) => {
       if (!opts.force && subtitleSourcesRef.current[trackId]) return;
       if (pendingSubtitleRef.current === trackId) return;
       pendingSubtitleRef.current = trackId;
@@ -644,7 +509,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
 
   const {
     subtitleTracks,
-    aiSubtitleTracks,
     translateDialogOpen,
     setTranslateDialogOpen,
     translateSourceLang,
@@ -659,15 +523,11 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     handleOpenTranslateDialog,
     handleConfirmTranslate,
   } = useAiSubtitleTranslation({
-    getSubtitleTranslationsUseCase,
-    translateSubtitleUseCase,
-    getSettingsUseCase,
     infoHash,
     fileId,
     metadataReady: !!metadata,
     originalSubtitleTracks,
     selectedTrackId,
-    setSelectedTrackId,
     getSubtitleUrl: (trackId) => subtitleSourcesRef.current[trackId]?.url,
   });
 
@@ -692,9 +552,18 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
 
   const handleSubtitleChange = useCallback(
     (trackId: string) => {
-      const id = trackId ? parseInt(trackId, 10) : null;
+      if (!trackId) {
+        setSelectedTrackId(null);
+        return;
+      }
+      // UUID 格式的是 AI 字幕，否则尝试解析为数字
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          trackId,
+        );
+      const id = isUuid ? trackId : parseInt(trackId, 10);
       setSelectedTrackId(id);
-      if (id !== null) loadSubtitleVtt(id, { force: true });
+      loadSubtitleVtt(id, { force: true });
     },
     [loadSubtitleVtt],
   );
@@ -702,8 +571,8 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   // Auto-refresh the selected subtitle track as the download progresses
   useEffect(() => {
     if (selectedTrackId === null) return;
-    // AI 翻译轨道来自内存 Blob，不需要随下载进度刷新
-    if (isAiTrackId(selectedTrackId)) return;
+    // AI 翻译轨道（UUID）来自数据库，不需要随下载进度刷新
+    if (typeof selectedTrackId === "string") return;
     const existing = subtitleSourcesRef.current[selectedTrackId];
     if (!existing || downloadProgress <= 0) return;
 
@@ -769,11 +638,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                 {subtitleTracks
                   .filter((t) => t.id === selectedTrackId)
                   .map((track) => {
-                    const aiTrack = isAiTrackId(track.id)
-                      ? aiSubtitleTracks[track.id]
-                      : undefined;
-                    const source = subtitleSources[track.id];
-                    const url = aiTrack?.url ?? source?.url;
+                    const url = subtitleSources[track.id]?.url;
                     return (
                       <track
                         key={url ?? track.id}
@@ -832,26 +697,16 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                 {subtitleMutation.loading && (
                   <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
                 )}
-                {selectedTrackId !== null &&
-                  /* v8 ignore start -- 翻译进行中的瞬时进度态，集成测试难以稳定捕获 */
-                  (translateMutationLoading && translateProgress ? (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      翻译中 {translateProgress.done}/{translateProgress.total}
-                    </span>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleOpenTranslateDialog}
-                      disabled={translateMutationLoading}
-                      className="h-8 gap-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <Languages className="h-3.5 w-3.5" />
-                      AI 翻译
-                    </Button>
-                  ))}
-                {/* v8 ignore stop */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleOpenTranslateDialog}
+                  disabled={!selectedTrackId || !aiConfigs.length}
+                  className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+                >
+                  <Languages className="h-3.5 w-3.5" />
+                  AI 翻译
+                </Button>
               </>
             )}
 
@@ -1066,6 +921,14 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                 placeholder="如 zh / de / 中文"
               />
             </div>
+            {/* v8 ignore start */}
+            {translateProgress && (
+              <div>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                翻译中 {translateProgress.done}/{translateProgress.total}
+              </div>
+            )}
+            {/* v8 ignore stop */}
           </div>
           <DialogFooter>
             <Button
@@ -1077,9 +940,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                 translateMutationLoading
               }
             >
-              {/* v8 ignore start */}
               {translateMutationLoading ? "翻译中..." : "开始翻译"}
-              {/* v8 ignore stop */}
             </Button>
           </DialogFooter>
         </DialogContent>
