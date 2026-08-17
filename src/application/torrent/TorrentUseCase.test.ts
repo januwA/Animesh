@@ -153,7 +153,7 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     expect(results).toEqual(mockMetadata);
   });
 
-  it("GetSubtitleVttUseCase 应该正确调用 repository 的 getSubtitleVtt 方法", async () => {
+  it("GetSubtitleVttUseCase 应该正确调用 repository 的 getSubtitleVtt 方法（数字轨道）", async () => {
     const mockSubtitleTranslationRepository = {
       getById: vi.fn(),
       listByTorrent: vi.fn(),
@@ -174,6 +174,33 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     });
     expect(mockRepo.getSubtitleVtt).toHaveBeenCalledWith("123", 1, 2);
     expect(result).toBe("WEBVTT\n...");
+  });
+
+  it("GetSubtitleVttUseCase 应该正确从 subtitleTranslationRepository 获取 AI 字幕 VTT（字符串轨道）", async () => {
+    const mockSubtitleTranslationRepository = {
+      getById: vi.fn().mockResolvedValue({
+        id: "ai-track-123",
+        vtt_content: "WEBVTT\n1\n00:00:01.000 --> 00:00:02.000\nAI 译文",
+      }),
+      listByTorrent: vi.fn(),
+      save: vi.fn(),
+      deleteById: vi.fn(),
+      deleteByTorrent: vi.fn(),
+      deleteByInfoHash: vi.fn(),
+    };
+    const useCase = new GetSubtitleVttUseCase(
+      mockRepo,
+      mockSubtitleTranslationRepository,
+    );
+    const result = await useCase.execute({
+      infoHash: "123",
+      fileId: 1,
+      trackId: "ai-track-123",
+    });
+    expect(mockSubtitleTranslationRepository.getById).toHaveBeenCalledWith(
+      "ai-track-123",
+    );
+    expect(result).toBe("WEBVTT\n1\n00:00:01.000 --> 00:00:02.000\nAI 译文");
   });
 
   it("ResolveTorrentUseCase 应该在提供 magnet 时正确调用 repository 的 addTorrentMagnet 方法并返回结果", async () => {

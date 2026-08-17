@@ -23,7 +23,6 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
-import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type {
   ChapterInfo,
   VideoInfo,
@@ -38,20 +37,11 @@ import {
   CollapsibleTrigger,
 } from "@/presentation/components/ui/collapsible";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/presentation/components/ui/dialog";
-import { Input } from "@/presentation/components/ui/input";
-import {
   Item,
   ItemContent,
   ItemGroup,
   ItemTitle,
 } from "@/presentation/components/ui/item";
-import { Label } from "@/presentation/components/ui/label";
 import { Progress } from "@/presentation/components/ui/progress";
 import {
   Select,
@@ -132,236 +122,6 @@ export interface SubtitleTrackItem {
   isAi?: boolean;
 }
 
-export interface UseAiSubtitleTranslationParams {
-  infoHash: string;
-  fileId: number;
-  /** 元数据是否已就绪（记录加载在就绪后触发） */
-  metadataReady: boolean;
-  /** 当前可用的原始字幕轨道 */
-  originalSubtitleTracks: readonly SubtitleTrackItem[];
-  selectedTrackId: number | string | null;
-  /** 获取某原始字幕轨道的 Blob URL，未加载完返回 undefined */
-  getSubtitleUrl: (trackId: number) => string | undefined;
-}
-
-export interface UseAiSubtitleTranslationResult {
-  /** 原始 + AI 合成后的字幕轨道列表 */
-  subtitleTracks: SubtitleTrackItem[];
-  translateDialogOpen: boolean;
-  setTranslateDialogOpen: (open: boolean) => void;
-  translateSourceLang: string;
-  setTranslateSourceLang: (v: string) => void;
-  translateTargetLang: string;
-  setTranslateTargetLang: (v: string) => void;
-  translateAiIndex: number;
-  setTranslateAiIndex: (v: number) => void;
-  translateProgress: { done: number; total: number } | null;
-  aiConfigs: AiConfig[];
-  translateMutationLoading: boolean;
-  handleOpenTranslateDialog: () => void;
-  handleConfirmTranslate: () => Promise<void>;
-}
-
-/**
- * AI 字幕翻译的状态机 Hook。
- *
- * 职责：
- * - 进入播放器时加载该种子+文件下的所有翻译记录，添加 AI 轨道到列表。
- * - 执行翻译 mutation（含进度、成功/失败/结束回调）。
- * - 翻译成功后添加新 AI 轨道到列表，不自动切换，用户手动选择时加载。
- */
-export function useAiSubtitleTranslation({
-  infoHash,
-  fileId,
-  metadataReady,
-  originalSubtitleTracks,
-  selectedTrackId,
-  getSubtitleUrl,
-}: UseAiSubtitleTranslationParams): UseAiSubtitleTranslationResult {
-  const {
-    getSubtitleTranslationsUseCase,
-    translateSubtitleUseCase,
-    getSettingsUseCase,
-  } = useDI();
-
-  const [aiTracks, setAiTracks] = useState<SubtitleTrackItem[]>([]);
-  const aiTracksRef = useRef<SubtitleTrackItem[]>([]);
-  aiTracksRef.current = aiTracks;
-
-  const [translateDialogOpen, setTranslateDialogOpen] = useState(false);
-  const [translateSourceLang, setTranslateSourceLang] = useState("");
-  const [translateTargetLang, setTranslateTargetLang] = useState("");
-  const [translateAiIndex, setTranslateAiIndex] = useState(0);
-  const [translateProgress, setTranslateProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
-
-  const settingsQuery = useQuery(
-    () => getSettingsUseCase.execute(),
-    [getSettingsUseCase],
-  );
-  const aiConfigs = settingsQuery.data?.ai_configs ?? [];
-
-  // 进入播放器时加载历史翻译记录，只添加轨道信息
-  useQuery(
-    (_ctx) => getSubtitleTranslationsUseCase.execute(infoHash, fileId),
-    [infoHash, fileId, getSubtitleTranslationsUseCase],
-    {
-      enabled: metadataReady,
-      onSuccess: (records) => {
-        if (records.length === 0) return;
-        const newTracks: SubtitleTrackItem[] = records.map((record) => {
-          const originalTrack = originalSubtitleTracks.find(
-            (t) => t.id === record.original_track_id,
-          );
-          const sourceTitle =
-            originalTrack?.title || `轨道 ${record.original_track_id}`;
-          return {
-            id: record.id,
-            language: record.target_lang,
-            title: `AI · ${sourceTitle}`,
-            codec: "ai-translated-vtt",
-            isAi: true,
-          };
-        });
-        const next = [...aiTracksRef.current, ...newTracks];
-        aiTracksRef.current = next;
-        setAiTracks(next);
-      },
-    },
-  );
-
-  const subtitleTracks: SubtitleTrackItem[] = [
-    ...originalSubtitleTracks,
-    ...aiTracks,
-  ];
-
-  interface TranslateParams {
-    trackId: number;
-    vtt: string;
-    sourceLang: string;
-    targetLang: string;
-    aiConfig: AiConfig;
-    infoHash: string;
-    fileId: number;
-  }
-
-  // 翻译成功后返回 UUID，只添加轨道信息
-  const translateMutation = useMutation<string, TranslateParams>(
-    (ctx, params) =>
-      translateSubtitleUseCase.execute(ctx, {
-        vtt: params.vtt,
-        sourceLanguage: params.sourceLang,
-        targetLanguage: params.targetLang,
-        aiConfig: params.aiConfig,
-        onProgress: (done, total) => setTranslateProgress({ done, total }),
-        infoHash: params.infoHash,
-        fileId: params.fileId,
-        originalTrackId: params.trackId,
-      }),
-    {
-      onSuccess: (recordId, params) => {
-        const sourceTitle = `轨道 ${params.trackId}`;
-        const newTrack: SubtitleTrackItem = {
-          id: recordId,
-          language: params.targetLang,
-          title: `AI-${sourceTitle}`,
-          codec: "ai-translated-vtt",
-          isAi: true,
-        };
-        const next = [...aiTracksRef.current, newTrack];
-        aiTracksRef.current = next;
-        setAiTracks(next);
-        setTranslateDialogOpen(false);
-        toast.success("字幕翻译完成，请在字幕选择器中切换到新轨道");
-      },
-      onError: (error) => {
-        toast.error(`字幕翻译失败: ${formatError(error)}`, {
-          duration: 8000,
-        });
-      },
-      onSettled: () => {
-        setTranslateProgress(null);
-      },
-    },
-  );
-
-  const handleOpenTranslateDialog = useCallback(() => {
-    if (!selectedTrackId || typeof selectedTrackId === "string") {
-      toast.error("请先选择一条原始字幕轨道");
-      return;
-    }
-    const url = getSubtitleUrl(selectedTrackId);
-    if (!url) {
-      toast.error("字幕尚未加载完成");
-      return;
-    }
-    if (aiConfigs.length === 0) {
-      toast.error("请先在设置中配置 AI 接口");
-      return;
-    }
-    setTranslateDialogOpen(true);
-  }, [selectedTrackId, aiConfigs.length, getSubtitleUrl]);
-
-  const handleConfirmTranslate = useCallback(async () => {
-    if (selectedTrackId === null || typeof selectedTrackId === "string") {
-      toast.error("请先选择一条原始字幕轨道");
-      return;
-    }
-    const url = getSubtitleUrl(selectedTrackId);
-    if (!url) {
-      toast.error("字幕尚未加载完成");
-      return;
-    }
-    let vttText: string;
-    try {
-      const res = await fetch(url);
-      vttText = await res.text();
-    } catch {
-      toast.error("读取字幕内容失败");
-      return;
-    }
-    const aiConfig = aiConfigs[translateAiIndex];
-    await translateMutation.execute({
-      trackId: selectedTrackId,
-      vtt: vttText,
-      sourceLang: translateSourceLang,
-      targetLang: translateTargetLang,
-      aiConfig,
-      infoHash,
-      fileId,
-    });
-  }, [
-    selectedTrackId,
-    translateSourceLang,
-    translateTargetLang,
-    translateAiIndex,
-    aiConfigs,
-    translateMutation,
-    infoHash,
-    fileId,
-    getSubtitleUrl,
-  ]);
-
-  return {
-    subtitleTracks,
-    translateDialogOpen,
-    setTranslateDialogOpen,
-    translateSourceLang,
-    setTranslateSourceLang,
-    translateTargetLang,
-    setTranslateTargetLang,
-    translateAiIndex,
-    setTranslateAiIndex,
-    translateProgress,
-    aiConfigs,
-    translateMutationLoading: translateMutation.loading,
-    handleOpenTranslateDialog,
-    handleConfirmTranslate,
-  };
-}
-
 function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   const navigate = useNavigate();
 
@@ -369,6 +129,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     getTorrentStreamUrlUseCase,
     getVideoMetadataUseCase,
     getSubtitleVttUseCase,
+    getSubtitleTranslationsUseCase,
   } = useDI();
   const { torrents } = useTorrentStatus();
   const torrentStatus = torrents.find((t) => t?.info_hash === infoHash) ?? null;
@@ -391,7 +152,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   );
 
   // Video metadata (subtitle tracks + chapters + video info), single query.
-  // The backend single-flights concurrent attempts, so polling is cheap.
   const metadataQuery = useQuery<VideoMetadata>(
     (_ctx) => getVideoMetadataUseCase.execute(infoHash, fileId),
     [infoHash, fileId, getVideoMetadataUseCase],
@@ -425,10 +185,41 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     metadataQuery.refetch,
   ]);
 
-  const originalSubtitleTracks = metadata?.tracks ?? [];
+  const originalSubtitleTracks: SubtitleTrackItem[] = metadata?.tracks ?? [];
   const chapters = metadata?.chapters ?? [];
   const videoInfo = metadata?.video_info ?? null;
   const mediaEntries = videoInfo ? buildMediaInfoEntries(videoInfo) : [];
+
+  // 加载数据库中的 AI 字幕翻译记录
+  const translationsQuery = useQuery(
+    (_ctx) => getSubtitleTranslationsUseCase.execute(infoHash, fileId),
+    [infoHash, fileId, getSubtitleTranslationsUseCase],
+    {
+      enabled: !!metadata,
+    },
+  );
+
+  const aiTracks: SubtitleTrackItem[] = useMemo(() => {
+    const records = translationsQuery.data ?? [];
+    return records.map((record) => {
+      const originalTrack = originalSubtitleTracks.find(
+        (t) => t.id === record.original_track_id,
+      );
+      const sourceTitle =
+        originalTrack?.title || `轨道 ${record.original_track_id}`;
+      return {
+        id: record.id,
+        language: record.target_lang,
+        title: `AI · ${sourceTitle}`,
+        codec: "ai-translated-vtt",
+        isAi: true,
+      };
+    });
+  }, [translationsQuery.data, originalSubtitleTracks]);
+
+  const subtitleTracks: SubtitleTrackItem[] = useMemo(() => {
+    return [...originalSubtitleTracks, ...aiTracks];
+  }, [originalSubtitleTracks, aiTracks]);
 
   // Subtitle VTT sources (lazy per-track load + auto-refresh as download progresses)
   const [subtitleSources, setSubtitleSources] = useState<
@@ -491,7 +282,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
 
   const patchSubtitleSource = useCallback(
     (
-      trackId: number,
+      trackId: number | string,
       patch: Partial<
         Pick<SubtitleSource, "loadedAtFraction" | "loadedWhenFinished">
       >,
@@ -507,30 +298,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     [],
   );
 
-  const {
-    subtitleTracks,
-    translateDialogOpen,
-    setTranslateDialogOpen,
-    translateSourceLang,
-    setTranslateSourceLang,
-    translateTargetLang,
-    setTranslateTargetLang,
-    translateAiIndex,
-    setTranslateAiIndex,
-    translateProgress,
-    aiConfigs,
-    translateMutationLoading,
-    handleOpenTranslateDialog,
-    handleConfirmTranslate,
-  } = useAiSubtitleTranslation({
-    infoHash,
-    fileId,
-    metadataReady: !!metadata,
-    originalSubtitleTracks,
-    selectedTrackId,
-    getSubtitleUrl: (trackId) => subtitleSourcesRef.current[trackId]?.url,
-  });
-
   // Clean up subtitle object URLs on unmount
   useEffect(() => {
     return () => {
@@ -543,7 +310,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
 
   // Auto-select and load the first subtitle track once available
   useEffect(() => {
-    // 仅在第一次原始轨道加载后自动选中第一条原始轨道，不自动选中 AI 翻译轨道
     if (!originalSubtitleTracks.length || selectedTrackId !== null) return;
     const first = originalSubtitleTracks[0];
     setSelectedTrackId(first.id);
@@ -556,7 +322,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
         setSelectedTrackId(null);
         return;
       }
-      // UUID 格式的是 AI 字幕，否则尝试解析为数字
       const isUuid =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
           trackId,
@@ -571,7 +336,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   // Auto-refresh the selected subtitle track as the download progresses
   useEffect(() => {
     if (selectedTrackId === null) return;
-    // AI 翻译轨道（UUID）来自数据库，不需要随下载进度刷新
     if (typeof selectedTrackId === "string") return;
     const existing = subtitleSourcesRef.current[selectedTrackId];
     if (!existing || downloadProgress <= 0) return;
@@ -611,6 +375,14 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  const handleOpenAiTranslatePage = () => {
+    navigate(
+      `/play/${infoHash}/${fileId}/ai-subtitle?title=${encodeURIComponent(
+        title,
+      )}&fileName=${encodeURIComponent(fileName)}`,
+    );
   };
 
   const streamUrl = streamUrlQuery.data;
@@ -697,18 +469,18 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                 {subtitleMutation.loading && (
                   <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenTranslateDialog}
-                  disabled={!selectedTrackId || !aiConfigs.length}
-                  className="h-8 gap-1 text-muted-foreground hover:text-foreground"
-                >
-                  <Languages className="h-3.5 w-3.5" />
-                  AI 翻译
-                </Button>
               </>
             )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenAiTranslatePage}
+              className="h-8 gap-1 text-muted-foreground hover:text-foreground"
+            >
+              <Languages className="h-3.5 w-3.5" />
+              AI 翻译
+            </Button>
 
             <Button
               variant="ghost"
@@ -878,74 +650,6 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
         )}
       </div>
 
-      <Dialog open={translateDialogOpen} onOpenChange={setTranslateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>AI 字幕翻译</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="translate-ai-alias">AI 配置</Label>
-              <Select
-                value={String(translateAiIndex)}
-                // v8 ignore next
-                onValueChange={(v) => setTranslateAiIndex(Number(v))}
-              >
-                <SelectTrigger id="translate-ai-alias">
-                  <SelectValue placeholder="选择已配置的 AI" />
-                </SelectTrigger>
-                <SelectContent>
-                  {aiConfigs.map((cfg, index) => (
-                    <SelectItem key={cfg.alias} value={String(index)}>
-                      {cfg.alias} · {cfg.ai_model}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="translate-source-lang">当前字幕语言</Label>
-              <Input
-                id="translate-source-lang"
-                value={translateSourceLang}
-                onChange={(e) => setTranslateSourceLang(e.target.value.trim())}
-                placeholder="如 zh / de / 中文"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="translate-target-lang">目标语言</Label>
-              <Input
-                id="translate-target-lang"
-                value={translateTargetLang}
-                onChange={(e) => setTranslateTargetLang(e.target.value.trim())}
-                placeholder="如 zh / de / 中文"
-              />
-            </div>
-            {/* v8 ignore start */}
-            {translateProgress && (
-              <div>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                翻译中 {translateProgress.done}/{translateProgress.total}
-              </div>
-            )}
-            {/* v8 ignore stop */}
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={handleConfirmTranslate}
-              disabled={
-                !aiConfigs.length ||
-                !translateSourceLang.length ||
-                !translateTargetLang.length ||
-                translateMutationLoading
-              }
-            >
-              {translateMutationLoading ? "翻译中..." : "开始翻译"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {canPlay && <JsPlayerErrorMonitor />}
     </JsPlayer.Provider>
   );
@@ -992,7 +696,6 @@ interface CollapsibleSectionProps {
   children: ReactNode;
 }
 
-/** 页面底部的可折叠信息区块，默认收起，点击标题展开。 */
 function CollapsibleSection({
   title,
   icon,

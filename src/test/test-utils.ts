@@ -19,7 +19,10 @@ import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
+import { DeleteSubtitleTranslationUseCase } from "../application/subtitle/DeleteSubtitleTranslationUseCase";
+import { GetSubtitleTranslationByIdUseCase } from "../application/subtitle/GetSubtitleTranslationByIdUseCase";
 import { GetSubtitleTranslationsUseCase } from "../application/subtitle/GetSubtitleTranslationsUseCase";
+import { SaveSubtitleTranslationUseCase } from "../application/subtitle/SaveSubtitleTranslationUseCase";
 import { TranslateSubtitleUseCase } from "../application/subtitle/TranslateSubtitleUseCase";
 import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
@@ -96,6 +99,9 @@ export interface CreateContainerParamsForTest {
   clearCacheUseCase?: ClearCacheUseCase;
   translateSubtitleUseCase?: TranslateSubtitleUseCase;
   getSubtitleTranslationsUseCase?: GetSubtitleTranslationsUseCase;
+  deleteSubtitleTranslationUseCase?: DeleteSubtitleTranslationUseCase;
+  saveSubtitleTranslationUseCase?: SaveSubtitleTranslationUseCase;
+  getSubtitleTranslationByIdUseCase?: GetSubtitleTranslationByIdUseCase;
   subtitleTranslationRepository?: SubtitleTranslationRepository;
 
   getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
@@ -315,6 +321,15 @@ export function createDIContainerForTest(
   const getSubtitleTranslationsUseCase =
     params.getSubtitleTranslationsUseCase ||
     new GetSubtitleTranslationsUseCase(subtitleTranslationRepo);
+  const deleteSubtitleTranslationUseCase =
+    params.deleteSubtitleTranslationUseCase ||
+    new DeleteSubtitleTranslationUseCase(subtitleTranslationRepo);
+  const saveSubtitleTranslationUseCase =
+    params.saveSubtitleTranslationUseCase ||
+    new SaveSubtitleTranslationUseCase(subtitleTranslationRepo);
+  const getSubtitleTranslationByIdUseCase =
+    params.getSubtitleTranslationByIdUseCase ||
+    new GetSubtitleTranslationByIdUseCase(subtitleTranslationRepo);
 
   const getBangumiCalendarUseCase =
     params.getBangumiCalendarUseCase ||
@@ -397,6 +412,9 @@ export function createDIContainerForTest(
     setThemeUseCase,
     clearCacheUseCase,
     translateSubtitleUseCase,
+    deleteSubtitleTranslationUseCase,
+    saveSubtitleTranslationUseCase,
+    getSubtitleTranslationByIdUseCase,
 
     getBangumiCalendarUseCase,
     getBangumiSubjectUseCase,

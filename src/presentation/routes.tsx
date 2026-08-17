@@ -9,6 +9,9 @@ const Downloads = lazy(() => import("./pages/Downloads"));
 const Iptv = lazy(() => import("./pages/Iptv"));
 const LivePlayer = lazy(() => import("./pages/LivePlayer"));
 const Player = lazy(() => import("./pages/Player"));
+const AiSubtitleTranslation = lazy(
+  () => import("./pages/AiSubtitleTranslation"),
+);
 const Settings = lazy(() => import("./pages/Settings"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
 const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
@@ -28,6 +31,10 @@ export const routes: RouteObject[] = [
       {
         path: "play/:infoHash/:fileId",
         element: <Player />,
+      },
+      {
+        path: "play/:infoHash/:fileId/ai-subtitle",
+        element: <AiSubtitleTranslation />,
       },
       {
         path: "live/play",

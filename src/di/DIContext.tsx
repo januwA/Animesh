@@ -30,7 +30,10 @@ import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
+import { DeleteSubtitleTranslationUseCase } from "../application/subtitle/DeleteSubtitleTranslationUseCase";
+import { GetSubtitleTranslationByIdUseCase } from "../application/subtitle/GetSubtitleTranslationByIdUseCase";
 import { GetSubtitleTranslationsUseCase } from "../application/subtitle/GetSubtitleTranslationsUseCase";
+import { SaveSubtitleTranslationUseCase } from "../application/subtitle/SaveSubtitleTranslationUseCase";
 import { TranslateSubtitleUseCase } from "../application/subtitle/TranslateSubtitleUseCase";
 import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
@@ -93,6 +96,9 @@ export interface DIContainer {
   clearCacheUseCase: ClearCacheUseCase;
   translateSubtitleUseCase: TranslateSubtitleUseCase;
   getSubtitleTranslationsUseCase: GetSubtitleTranslationsUseCase;
+  deleteSubtitleTranslationUseCase: DeleteSubtitleTranslationUseCase;
+  saveSubtitleTranslationUseCase: SaveSubtitleTranslationUseCase;
+  getSubtitleTranslationByIdUseCase: GetSubtitleTranslationByIdUseCase;
 
   getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
   getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
@@ -188,6 +194,14 @@ export function createDefaultDIContainer(): DIContainer {
   const getSubtitleTranslationsUseCase = new GetSubtitleTranslationsUseCase(
     subtitleTranslationRepository,
   );
+  const deleteSubtitleTranslationUseCase = new DeleteSubtitleTranslationUseCase(
+    subtitleTranslationRepository,
+  );
+  const saveSubtitleTranslationUseCase = new SaveSubtitleTranslationUseCase(
+    subtitleTranslationRepository,
+  );
+  const getSubtitleTranslationByIdUseCase =
+    new GetSubtitleTranslationByIdUseCase(subtitleTranslationRepository);
 
   const bangumiCache = new BrowserBangumiCache(cacheStore);
   const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
@@ -264,6 +278,9 @@ export function createDefaultDIContainer(): DIContainer {
     clearCacheUseCase,
     translateSubtitleUseCase,
     getSubtitleTranslationsUseCase,
+    deleteSubtitleTranslationUseCase,
+    saveSubtitleTranslationUseCase,
+    getSubtitleTranslationByIdUseCase,
 
     getBangumiCalendarUseCase,
     getBangumiSubjectUseCase,

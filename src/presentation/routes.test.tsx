@@ -138,5 +138,15 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
     await waitFor(() => {
       expect(screen.getByText(/下载进度:/)).toBeInTheDocument();
     });
+
+    // 11. 跳转到 AI 字幕翻译页 /play/1/1/ai-subtitle 并等待载入 (Lazy)
+    await act(async () => {
+      router.navigate("/play/1/1/ai-subtitle?title=Test");
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "AI 字幕翻译", level: 1 }),
+      ).toBeInTheDocument();
+    });
   });
 });

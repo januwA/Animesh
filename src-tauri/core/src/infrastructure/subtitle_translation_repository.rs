@@ -94,7 +94,7 @@ impl SubtitleTranslationRepository for SqliteSubtitleTranslationRepository {
 
     async fn save(&self, record: &SubtitleTranslationRecord) -> CoreResult<()> {
         sqlx::query(
-            "INSERT INTO subtitle_translations
+            "INSERT OR REPLACE INTO subtitle_translations
                 (id, info_hash, file_id, original_track_id, source_lang, target_lang,
                  vtt_content, created_at, last_accessed_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -209,6 +209,26 @@ mod tests {
         assert_eq!(loaded.source_lang, "ja");
         // get_by_id 应更新 last_accessed_at
         assert!(loaded.last_accessed_at > 1000);
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_save更新已存在记录_覆盖原内容() {
+        let repo = setup().await;
+        let mut rec = sample_record("原始译文");
+        repo.save(&rec).await.expect("初始写入应成功");
+
+        rec.vtt_content = "修改后的译文".to_string();
+        rec.target_lang = "ja".to_string();
+        repo.save(&rec).await.expect("覆盖写入应成功");
+
+        let loaded = repo
+            .get_by_id("00000000-0000-4000-8000-000000000001")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(loaded.vtt_content, "修改后的译文");
+        assert_eq!(loaded.target_lang, "ja");
     }
 
     #[tokio::test]
