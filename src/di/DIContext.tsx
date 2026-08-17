@@ -8,6 +8,7 @@ import {
 } from "@/di/repositories";
 import { FetchAiClient } from "@/infrastructure/ai/FetchAiClient";
 import { TauriAiClient } from "@/infrastructure/ai/TauriAiClient";
+import { TauriSubtitleTranslationRepository } from "@/infrastructure/subtitle/TauriSubtitleTranslationRepository";
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
 import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCharactersUseCase";
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
@@ -29,6 +30,8 @@ import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
+import { GetSubtitleTranslationsUseCase } from "../application/subtitle/GetSubtitleTranslationsUseCase";
+import { TranslateSubtitleUseCase } from "../application/subtitle/TranslateSubtitleUseCase";
 import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
@@ -88,6 +91,8 @@ export interface DIContainer {
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
   clearCacheUseCase: ClearCacheUseCase;
+  translateSubtitleUseCase: TranslateSubtitleUseCase;
+  getSubtitleTranslationsUseCase: GetSubtitleTranslationsUseCase;
 
   getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
   getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
@@ -121,6 +126,9 @@ export function createDefaultDIContainer(): DIContainer {
   const notificationRepository = new NotificationRepositoryImpl();
   const openerRepository = new OpenerRepositoryImpl();
   const updateRepository = new UpdateRepositoryImpl(openerRepository);
+  // 字幕翻译缓存仓储：Tauri 桌面端走 IPC → SQLite；Web 端用 NoOp 空实现（不持久化，但不影响流程）
+  const subtitleTranslationRepository =
+    new TauriSubtitleTranslationRepository();
 
   const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
     notificationRepository,
@@ -144,7 +152,10 @@ export function createDefaultDIContainer(): DIContainer {
   );
   const pauseTorrentUseCase = new PauseTorrentUseCase(torrentRepository);
   const resumeTorrentUseCase = new ResumeTorrentUseCase(torrentRepository);
-  const deleteTorrentUseCase = new DeleteTorrentUseCase(torrentRepository);
+  const deleteTorrentUseCase = new DeleteTorrentUseCase(
+    torrentRepository,
+    subtitleTranslationRepository,
+  );
   const setTorrentSubjectUseCase = new SetTorrentSubjectUseCase(
     torrentRepository,
   );
@@ -166,6 +177,14 @@ export function createDefaultDIContainer(): DIContainer {
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
   const clearCacheUseCase = new ClearCacheUseCase(cacheStore);
+  const translateSubtitleUseCase = new TranslateSubtitleUseCase(
+    aiClient,
+    subtitleTranslationRepository,
+    logger.withCategory("TranslateSubtitleUseCase"),
+  );
+  const getSubtitleTranslationsUseCase = new GetSubtitleTranslationsUseCase(
+    subtitleTranslationRepository,
+  );
 
   const bangumiCache = new BrowserBangumiCache(cacheStore);
   const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
@@ -240,6 +259,8 @@ export function createDefaultDIContainer(): DIContainer {
     verifyAiConnectionUseCase,
     setThemeUseCase,
     clearCacheUseCase,
+    translateSubtitleUseCase,
+    getSubtitleTranslationsUseCase,
 
     getBangumiCalendarUseCase,
     getBangumiSubjectUseCase,

@@ -801,17 +801,25 @@ describe("Settings 页面组件", () => {
     const addBtn = screen.getByRole("button", { name: "+ 添加 AI 配置" });
     fireEvent.click(addBtn);
 
+    const aliasInput = screen.getByLabelText(
+      "配置别名 (Alias) *",
+    ) as HTMLInputElement;
     const endpointInput = screen.getByLabelText(
       "AI 接口地址 (Endpoint) *",
     ) as HTMLInputElement;
     const keyInput = screen.getByLabelText(
       "API 密钥 (API Key) *",
     ) as HTMLInputElement;
+    const modelInput = screen.getByLabelText(
+      "模型名称 (Model)",
+    ) as HTMLInputElement;
 
+    fireEvent.change(aliasInput, { target: { value: "测试别名" } });
     fireEvent.change(endpointInput, {
       target: { value: "https://api.test-form.com" },
     });
     fireEvent.change(keyInput, { target: { value: "form-key" } });
+    fireEvent.change(modelInput, { target: { value: "test-model" } });
 
     const testBtn = screen.getByRole("button", { name: "测试模型连接" });
     fireEvent.click(testBtn);
@@ -820,7 +828,7 @@ describe("Settings 页面组件", () => {
       expect(mockAiClient.post).toHaveBeenCalledWith(
         "https://api.test-form.com",
         "form-key",
-        expect.any(Object),
+        expect.objectContaining({ model: "test-model" }),
       );
     });
     expect(toast.success).toHaveBeenCalledWith("AI 模型连接测试成功！");
@@ -952,12 +960,16 @@ describe("Settings 页面组件", () => {
     const keyInput = screen.getByLabelText(
       "API 密钥 (API Key) *",
     ) as HTMLInputElement;
+    const modelInput = screen.getByLabelText(
+      "模型名称 (Model)",
+    ) as HTMLInputElement;
 
     fireEvent.change(aliasInput, { target: { value: "NewConfig" } });
     fireEvent.change(endpointInput, {
       target: { value: "https://apinew.com" },
     });
     fireEvent.change(keyInput, { target: { value: "keynew" } });
+    fireEvent.change(modelInput, { target: { value: "new-model" } });
     fireEvent.click(saveConfigBtn);
 
     // 现在有两个配置：Config1 (index 0) 和 NewConfig (index 1)
@@ -986,7 +998,7 @@ describe("Settings 页面组件", () => {
           alias: "NewConfig-Updated",
           api_endpoint: "https://apinew.com",
           api_key: "keynew",
-          ai_model: null,
+          ai_model: "new-model",
         },
       ]);
     });

@@ -63,14 +63,15 @@ describe("Settings 相关的 UseCase 业务编排", () => {
       aiConfigs: [
         {
           alias: "OpenAI",
-          apiEndpoint: "https://api.openai.com/v1",
-          apiKey: "test-key",
-          model: "gpt-4o",
+          api_endpoint: "https://api.openai.com/v1",
+          api_key: "test-key",
+          ai_model: "gpt-4o",
         },
         {
           alias: "NoModel",
-          apiEndpoint: "https://api.nomodel.com/v1",
-          apiKey: "test-key-2",
+          api_endpoint: "https://api.nomodel.com/v1",
+          api_key: "test-key-2",
+          ai_model: "",
         },
       ],
     });
@@ -87,7 +88,7 @@ describe("Settings 相关的 UseCase 业务编排", () => {
         alias: "NoModel",
         api_endpoint: "https://api.nomodel.com/v1",
         api_key: "test-key-2",
-        ai_model: null,
+        ai_model: "",
       },
     ]);
   });

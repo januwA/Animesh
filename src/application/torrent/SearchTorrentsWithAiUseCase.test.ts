@@ -573,7 +573,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           alias: "Default",
           api_endpoint: "https://api.example.com/v1/chat/completions",
           api_key: "test-key",
-          // ai_model is omitted to trigger default model fallback
+          ai_model: "",
         },
       ],
     });

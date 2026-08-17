@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 export const AiConfigSchema = z.object({
-  alias: z.string(),
-  api_endpoint: z.string(),
-  api_key: z.string(),
-  ai_model: z.string().nullable().optional(),
+  alias: z.string().trim().min(1, "别名不能为空"),
+  api_endpoint: z.string().trim().min(1, "接口地址不能为空"),
+  api_key: z.string().trim().min(1, "API 密钥不能为空"),
+  ai_model: z.string().trim().min(1, "AI 模型不能为空"),
 });
 
 export type AiConfig = z.infer<typeof AiConfigSchema>;
@@ -47,17 +47,7 @@ export const SettingsFormSchema = z.object({
     )
     .nullable()
     .or(z.literal("")),
-  aiConfigs: z
-    .array(
-      z.object({
-        alias: z.string().trim().min(1, "别名不能为空"),
-        apiEndpoint: z.string().trim().min(1, "接口地址不能为空"),
-        apiKey: z.string().trim().min(1, "API 密钥不能为空"),
-        model: z.string().trim().nullable().optional(),
-      }),
-    )
-    .nullable()
-    .optional(),
+  aiConfigs: z.array(AiConfigSchema).nullable().optional(),
   maxDownloadSpeed: z
     .number()
     .int("下载速度限制必须是整数")

@@ -1,5 +1,6 @@
 import { Background, WithValue } from "ajanuw-context";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SubtitleTranslationRepository } from "../../domain/subtitle/SubtitleTranslationRepository";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import { ClearTorrentSubjectUseCase } from "./ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "./DeleteTorrentUseCase";
@@ -13,6 +14,10 @@ import { SearchTorrentsUseCase } from "./SearchTorrentsUseCase";
 import { SetTorrentSubjectUseCase } from "./SetTorrentSubjectUseCase";
 
 describe("Torrent 相关的 UseCase 业务编排", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   const mockRepo = {
     search: vi.fn(),
     pauseTorrent: vi.fn(),
@@ -27,6 +32,15 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
     clearTorrentSubject: vi.fn(),
     subscribeTorrents: vi.fn().mockResolvedValue(() => {}),
   } as unknown as TorrentRepository;
+
+  const mockSubtitleTranslationRepo = {
+    getById: vi.fn(),
+    listByTorrent: vi.fn(),
+    save: vi.fn(),
+    deleteById: vi.fn(),
+    deleteByTorrent: vi.fn(),
+    deleteByInfoHash: vi.fn(),
+  } as unknown as SubtitleTranslationRepository;
 
   it("SearchTorrentsUseCase 应该正确调用 repository 的 search 方法", async () => {
     const useCase = new SearchTorrentsUseCase(mockRepo);
@@ -59,10 +73,59 @@ describe("Torrent 相关的 UseCase 业务编排", () => {
   });
 
   it("DeleteTorrentUseCase 应该正确调用 repository 的 deleteTorrent 方法", async () => {
-    const useCase = new DeleteTorrentUseCase(mockRepo);
+    const useCase = new DeleteTorrentUseCase(
+      mockRepo,
+      mockSubtitleTranslationRepo,
+    );
     vi.mocked(mockRepo.deleteTorrent).mockResolvedValueOnce(undefined);
+    vi.mocked(
+      mockSubtitleTranslationRepo.deleteByInfoHash,
+    ).mockResolvedValueOnce(0);
     await useCase.execute("123", true);
+    expect(mockSubtitleTranslationRepo.deleteByInfoHash).toHaveBeenCalledWith(
+      "123",
+    );
     expect(mockRepo.deleteTorrent).toHaveBeenCalledWith("123", true);
+  });
+
+  it("DeleteTorrentUseCase 应该先删除翻译缓存再删除 torrent 任务（按顺序编排）", async () => {
+    const callOrder: string[] = [];
+    vi.mocked(
+      mockSubtitleTranslationRepo.deleteByInfoHash,
+    ).mockImplementationOnce(async () => {
+      callOrder.push("deleteByInfoHash");
+      return 3;
+    });
+    vi.mocked(mockRepo.deleteTorrent).mockImplementationOnce(async () => {
+      callOrder.push("deleteTorrent");
+    });
+
+    const useCase = new DeleteTorrentUseCase(
+      mockRepo,
+      mockSubtitleTranslationRepo,
+    );
+    await useCase.execute("abc", false);
+
+    expect(callOrder).toEqual(["deleteByInfoHash", "deleteTorrent"]);
+    expect(mockSubtitleTranslationRepo.deleteByInfoHash).toHaveBeenCalledWith(
+      "abc",
+    );
+    expect(mockRepo.deleteTorrent).toHaveBeenCalledWith("abc", false);
+  });
+
+  it("DeleteTorrentUseCase 清理缓存失败时错误应向上抛出且不删除 torrent 任务", async () => {
+    vi.mocked(
+      mockSubtitleTranslationRepo.deleteByInfoHash,
+    ).mockRejectedValueOnce(new Error("db locked"));
+    vi.mocked(mockRepo.deleteTorrent).mockResolvedValueOnce(undefined);
+
+    const useCase = new DeleteTorrentUseCase(
+      mockRepo,
+      mockSubtitleTranslationRepo,
+    );
+    await expect(useCase.execute("xyz", true)).rejects.toThrow("db locked");
+
+    expect(mockRepo.deleteTorrent).not.toHaveBeenCalled();
   });
 
   it("GetTorrentStreamUrlUseCase 应该正确调用 repository 的 getTorrentStreamUrl 方法", async () => {

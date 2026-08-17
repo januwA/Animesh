@@ -8,6 +8,9 @@ use animesh_core::application::torrent_manager::TorrentManager;
 use animesh_core::domain::collection::CollectionRecord;
 use animesh_core::domain::crawler::SearchResultItem;
 use animesh_core::domain::settings::SettingsRepository;
+use animesh_core::domain::subtitle_translations::{
+    SubtitleTranslationRecord, SubtitleTranslationRepository,
+};
 use animesh_core::domain::subtitles::VideoMetadata;
 use animesh_core::domain::torrent::{
     AddTorrentResult, FileDetails, SubjectBindingRepository, TorrentStatusInfo,
@@ -15,6 +18,7 @@ use animesh_core::domain::torrent::{
 use animesh_core::error::CoreError;
 use animesh_core::infrastructure::settings_repository::SqliteSettingsRepository;
 use animesh_core::infrastructure::subject_binding_repository::SqliteSubjectBindingRepository;
+use animesh_core::infrastructure::subtitle_translation_repository::SqliteSubtitleTranslationRepository;
 use anyhow::Context;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -494,6 +498,56 @@ async fn ai_chat_request(
     animesh_core::send_ai_chat_request(&endpoint, &api_key, &body_json).await
 }
 
+#[tauri::command]
+async fn subtitle_translation_get(
+    id: String,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<Option<SubtitleTranslationRecord>, CoreError> {
+    repo.get_by_id(&id).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_list_by_torrent(
+    info_hash: String,
+    file_id: i64,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<Vec<SubtitleTranslationRecord>, CoreError> {
+    repo.list_by_torrent(&info_hash, file_id).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_save(
+    record: SubtitleTranslationRecord,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<(), CoreError> {
+    repo.save(&record).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_delete(
+    id: String,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<bool, CoreError> {
+    repo.delete_by_id(&id).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_delete_by_torrent(
+    info_hash: String,
+    file_id: i64,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<u64, CoreError> {
+    repo.delete_by_torrent(&info_hash, file_id).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_delete_by_info_hash(
+    info_hash: String,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<u64, CoreError> {
+    repo.delete_by_info_hash(&info_hash).await
+}
+
 /// 启动时加载或初始化设置。DB 已有记录则读取，否则写入默认值。
 ///
 /// 返回启动期 TorrentManager 需要的下载目录、代理、限速等字段。
@@ -652,6 +706,9 @@ pub fn run() {
                         &db,
                     ),
                 ));
+                let subtitle_translation_repo = Arc::new(
+                    SqliteSubtitleTranslationRepository::new(&db),
+                );
 
                 app.manage(Arc::new(torrent_manager));
                 app.manage(Arc::new(settings_service));
@@ -659,6 +716,7 @@ pub fn run() {
                 app.manage(Arc::new(subtitle_service));
                 app.manage(Arc::new(stream_service));
                 app.manage(Arc::new(collection_service));
+                app.manage(subtitle_translation_repo);
                 app.manage(SearchTracker::default());
                 app.manage(AddMagnetTracker::default());
                 Ok(())
@@ -692,7 +750,13 @@ pub fn run() {
             select_directory,
             torrent_get_video_metadata,
             torrent_get_subtitle_vtt,
-            ai_chat_request
+            ai_chat_request,
+            subtitle_translation_get,
+            subtitle_translation_list_by_torrent,
+            subtitle_translation_save,
+            subtitle_translation_delete,
+            subtitle_translation_delete_by_torrent,
+            subtitle_translation_delete_by_info_hash
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -20,7 +20,10 @@ import { useBlocker } from "react-router-dom";
 import { toast } from "sonner";
 import type { SaveSettingsDto } from "@/application/settings/SaveSettingsUseCase";
 import { useDI } from "@/di/DIContext";
-import { SettingsFormSchema } from "@/domain/settings/SettingsSchemas";
+import {
+  type AiConfig,
+  SettingsFormSchema,
+} from "@/domain/settings/SettingsSchemas";
 import { Button } from "@/presentation/components/ui/button";
 import {
   Card,
@@ -57,28 +60,12 @@ import { useCalendarStore } from "@/presentation/store/calendarStore";
 import { useIptvStore } from "@/presentation/store/iptvStore";
 import { formatError } from "@/utils";
 
-interface AiConfigDraft {
-  alias: string;
-  apiEndpoint: string;
-  apiKey: string;
-  model?: string | null;
-}
-
 interface FormSnapshot {
   downloadDir: string;
   proxy: string;
   maxDownloadSpeed: number;
   maxUploadSpeed: number;
-  aiConfigs: AiConfigDraft[];
-}
-
-function toAiConfigDrafts(configs: AiConfigDraft[]): AiConfigDraft[] {
-  return configs.map((c) => ({
-    alias: c.alias,
-    apiEndpoint: c.apiEndpoint,
-    apiKey: c.apiKey,
-    model: c.model ?? null,
-  }));
+  aiConfigs: AiConfig[];
 }
 
 export default function Settings() {
@@ -109,14 +96,7 @@ export default function Settings() {
   const [maxDownloadSpeed, setMaxDownloadSpeed] = useState(0);
   const [maxUploadSpeed, setMaxUploadSpeed] = useState(0);
 
-  const [aiConfigs, setAiConfigs] = useState<
-    {
-      alias: string;
-      apiEndpoint: string;
-      apiKey: string;
-      model?: string | null;
-    }[]
-  >([]);
+  const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null); // null: not editing, -1: adding, >=0: editing index
   const [aliasInput, setAliasInput] = useState("");
   const [apiEndpointInput, setApiEndpointInput] = useState("");
@@ -136,20 +116,13 @@ export default function Settings() {
         setProxy(settings.proxy || "");
         setMaxDownloadSpeed(settings.max_download_speed ?? 0);
         setMaxUploadSpeed(settings.max_upload_speed ?? 0);
-
-        const loadedConfigs = (settings.ai_configs || []).map((c) => ({
-          alias: c.alias,
-          apiEndpoint: c.api_endpoint,
-          apiKey: c.api_key,
-          model: c.ai_model,
-        }));
-        setAiConfigs(loadedConfigs);
+        setAiConfigs(settings.ai_configs || []);
         setSavedSnapshot({
           downloadDir: settings.download_dir,
           proxy: settings.proxy || "",
           maxDownloadSpeed: settings.max_download_speed ?? 0,
           maxUploadSpeed: settings.max_upload_speed ?? 0,
-          aiConfigs: toAiConfigDrafts(loadedConfigs),
+          aiConfigs: settings.ai_configs || [],
         });
       },
       onError: (err) => toast.error(`加载设置失败: ${formatError(err)}`),
@@ -167,15 +140,7 @@ export default function Settings() {
 
   // AI connection test
   const verifyAiMutation = useMutation(
-    (
-      _ctx,
-      config: { apiEndpoint: string; apiKey: string; model?: string | null },
-    ) =>
-      verifyAiConnectionUseCase.execute({
-        apiEndpoint: config.apiEndpoint,
-        apiKey: config.apiKey,
-        model: config.model || undefined,
-      }),
+    (_ctx, config: AiConfig) => verifyAiConnectionUseCase.execute(config),
     {
       onSuccess: () => toast.success("AI 模型连接测试成功！"),
       onError: (err) =>
@@ -186,18 +151,6 @@ export default function Settings() {
   );
   const testingAi = verifyAiMutation.loading;
 
-  const handleTestConfigConnection = (config: {
-    apiEndpoint: string;
-    apiKey: string;
-    model?: string | null;
-  }) => {
-    verifyAiMutation.execute({
-      apiEndpoint: config.apiEndpoint,
-      apiKey: config.apiKey,
-      model: config.model || undefined,
-    });
-  };
-
   const handleTestCurrentConnection = () => {
     if (!apiEndpointInput.trim()) {
       toast.warning("请输入 AI 接口地址");
@@ -207,10 +160,11 @@ export default function Settings() {
       toast.warning("请输入 API 密钥");
       return;
     }
-    handleTestConfigConnection({
-      apiEndpoint: apiEndpointInput,
-      apiKey: apiKeyInput,
-      model: modelInput,
+    verifyAiMutation.execute({
+      alias: aliasInput,
+      api_endpoint: apiEndpointInput,
+      api_key: apiKeyInput,
+      ai_model: modelInput,
     });
   };
 
@@ -276,7 +230,7 @@ export default function Settings() {
           proxy,
           maxDownloadSpeed,
           maxUploadSpeed,
-          aiConfigs: toAiConfigDrafts(aiConfigs),
+          aiConfigs: aiConfigs,
         });
       },
       onError: (err) =>
@@ -319,9 +273,9 @@ export default function Settings() {
     if (!config) return;
     setEditingIndex(index);
     setAliasInput(config.alias);
-    setApiEndpointInput(config.apiEndpoint);
-    setApiKeyInput(config.apiKey);
-    setModelInput(config.model || "");
+    setApiEndpointInput(config.api_endpoint);
+    setApiKeyInput(config.api_key);
+    setModelInput(config.ai_model);
   };
 
   const handleCancelEdit = () => {
@@ -339,19 +293,19 @@ export default function Settings() {
 
   const handleSaveConfig = () => {
     const alias = aliasInput.trim();
-    const apiEndpoint = apiEndpointInput.trim();
-    const apiKey = apiKeyInput.trim();
-    const model = modelInput.trim() || null;
+    const api_endpoint = apiEndpointInput.trim();
+    const api_key = apiKeyInput.trim();
+    const ai_model = modelInput.trim();
 
     if (!alias) {
       toast.warning("请输入别名");
       return;
     }
-    if (!apiEndpoint) {
+    if (!api_endpoint) {
       toast.warning("请输入接口地址");
       return;
     }
-    if (!apiKey) {
+    if (!api_key) {
       toast.warning("请输入 API 密钥");
       return;
     }
@@ -365,7 +319,7 @@ export default function Settings() {
       return;
     }
 
-    const newConfig = { alias, apiEndpoint, apiKey, model };
+    const newConfig: AiConfig = { alias, api_endpoint, api_key, ai_model };
 
     if (editingIndex === -1) {
       setAiConfigs((prev) => [...prev, newConfig]);
@@ -384,7 +338,7 @@ export default function Settings() {
     proxy,
     maxDownloadSpeed,
     maxUploadSpeed,
-    aiConfigs: toAiConfigDrafts(aiConfigs),
+    aiConfigs: aiConfigs,
   });
 
   const isDirty =
@@ -600,14 +554,14 @@ export default function Settings() {
                   <div className="flex flex-col gap-1 min-w-0 flex-1 mr-4">
                     <div className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
                       <span>{config.alias}</span>
-                      {config.model && (
+                      {config.ai_model && (
                         <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                          {config.model}
+                          {config.ai_model}
                         </span>
                       )}
                     </div>
                     <div className="text-[10px] text-muted-foreground font-mono truncate max-w-50 sm:max-w-xs md:max-w-md">
-                      {config.apiEndpoint}
+                      {config.api_endpoint}
                     </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
@@ -615,7 +569,7 @@ export default function Settings() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => handleTestConfigConnection(config)}
+                      onClick={() => verifyAiMutation.execute(config)}
                       disabled={testingAi}
                       className="h-7 px-2.5 text-[10px] font-medium border-border bg-secondary/50 text-foreground hover:bg-secondary"
                     >

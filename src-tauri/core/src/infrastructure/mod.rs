@@ -11,6 +11,7 @@ pub mod settings_repository;
 pub mod stream_server;
 pub mod subject_binding_repository;
 pub mod subtitle_cache;
+pub mod subtitle_translation_repository;
 
 #[cfg(test)]
 pub mod test_mocks;

@@ -97,7 +97,7 @@ export class SearchTorrentsWithAiUseCase {
         return {
           endpoint: config.api_endpoint,
           apiKey: config.api_key,
-          model: config.ai_model || "gpt-3.5-turbo",
+          model: config.ai_model,
         };
       }
     }

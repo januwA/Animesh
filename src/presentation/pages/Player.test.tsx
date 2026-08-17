@@ -4,10 +4,13 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
+import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
+import type { TranslateSubtitleUseCase } from "@/application/subtitle/TranslateSubtitleUseCase";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
@@ -477,6 +480,324 @@ describe("Player 页面组件", () => {
       0,
       1,
     );
+  });
+
+  it("打开翻译对话框应展示已配置的 AI 列表并可取消关闭", async () => {
+    vi.useFakeTimers();
+    const mockStatus = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      upload_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+      trackers: [],
+    };
+
+    const settingsMock = {
+      download_dir: "/mock",
+      ai_configs: [
+        {
+          alias: "OpenAI",
+          api_endpoint: "https://api.example.com/v1/chat/completions",
+          api_key: "key",
+          ai_model: "gpt-4o",
+        },
+        {
+          alias: "Local",
+          api_endpoint: "https://local.example.com",
+          api_key: "key2",
+          ai_model: "gpt-4o",
+        },
+      ],
+    };
+    const getSettingsUseCaseMock = {
+      execute: vi.fn().mockResolvedValue(settingsMock),
+    } as unknown as GetSettingsUseCase;
+    mockContainer = createDIContainerForTest({
+      torrentRepository: mockTorrentRepository,
+      getSettingsUseCase: getSettingsUseCaseMock,
+    });
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    currentStatus = mockStatus;
+    vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
+      makeVideoMetadata({
+        tracks: [
+          { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+        ],
+      }),
+    );
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+      "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+    );
+
+    renderPlayer(
+      "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
+    );
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    const translateButton = screen.getByRole("button", { name: /AI 翻译/ });
+    fireEvent.click(translateButton);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "AI 字幕翻译" }),
+    ).toBeInTheDocument();
+    // 触发器中展示默认选中的第一个配置（别名 + 模型名）
+    expect(screen.getByText("OpenAI · gpt-4o")).toBeInTheDocument();
+
+    // 展开 AI 配置下拉，SelectContent 通过 Portal 渲染到 body
+    fireEvent.click(document.getElementById("translate-ai-alias")!);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    const listbox = screen.getByRole("listbox");
+    // 展示别名 + 模型名
+    expect(within(listbox).getByText("OpenAI · gpt-4o")).toBeInTheDocument();
+    expect(within(listbox).getByText("Local · gpt-4o")).toBeInTheDocument();
+    fireEvent.keyDown(listbox, { key: "Escape", code: "Escape" });
+
+    // 点击右上角关闭按钮应关闭对话框
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(
+      screen.queryByRole("heading", { name: "AI 字幕翻译" }),
+    ).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it("翻译对话框中手动输入源/目标语言后应生效", async () => {
+    vi.useFakeTimers();
+    const mockStatus = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      upload_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+      trackers: [],
+    };
+
+    const settingsMock = {
+      download_dir: "/mock",
+      ai_configs: [
+        {
+          alias: "OpenAI",
+          api_endpoint: "https://api.example.com/v1/chat/completions",
+          api_key: "key",
+          ai_model: "gpt-4o",
+        },
+      ],
+    };
+    const getSettingsUseCaseMock = {
+      execute: vi.fn().mockResolvedValue(settingsMock),
+    } as unknown as GetSettingsUseCase;
+    const translateSubtitleUseCaseMock = {
+      execute: vi
+        .fn()
+        .mockResolvedValue("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n你好"),
+    } as unknown as TranslateSubtitleUseCase;
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nこんにちは", {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    mockContainer = createDIContainerForTest({
+      torrentRepository: mockTorrentRepository,
+      getSettingsUseCase: getSettingsUseCaseMock,
+      translateSubtitleUseCase: translateSubtitleUseCaseMock,
+    });
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    currentStatus = mockStatus;
+    vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
+      makeVideoMetadata({
+        tracks: [
+          { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+        ],
+      }),
+    );
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+      "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+    );
+
+    renderPlayer(
+      "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
+    );
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /AI 翻译/ }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    fireEvent.change(screen.getByLabelText("当前字幕语言"), {
+      target: { value: "de" },
+    });
+    fireEvent.change(screen.getByLabelText("目标语言"), {
+      target: { value: "en" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "开始翻译" }));
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(translateSubtitleUseCaseMock.execute).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        sourceLanguage: "de",
+        targetLanguage: "en",
+        aiConfig: expect.objectContaining({ alias: "OpenAI" }),
+      }),
+    );
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("点击开始翻译后应新增 AI 轨道并自动切换（不走后端字幕加载）", async () => {
+    vi.useFakeTimers();
+    const mockStatus = {
+      info_hash: "hash123",
+      name: "测试视频",
+      progress_bytes: 400,
+      total_bytes: 1000,
+      finished: false,
+      download_speed_bytes_per_sec: 100,
+      upload_speed_bytes_per_sec: 100,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+      trackers: [],
+    };
+
+    const settingsMock = {
+      download_dir: "/mock",
+      ai_configs: [
+        {
+          alias: "OpenAI",
+          api_endpoint: "https://api.example.com/v1/chat/completions",
+          api_key: "key",
+          ai_model: "gpt-4o",
+        },
+      ],
+    };
+    const getSettingsUseCaseMock = {
+      execute: vi.fn().mockResolvedValue(settingsMock),
+    } as unknown as GetSettingsUseCase;
+    const translateSubtitleUseCaseMock = {
+      execute: vi
+        .fn()
+        .mockResolvedValue("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n你好"),
+    } as unknown as TranslateSubtitleUseCase;
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nこんにちは", {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    mockContainer = createDIContainerForTest({
+      torrentRepository: mockTorrentRepository,
+      getSettingsUseCase: getSettingsUseCaseMock,
+      translateSubtitleUseCase: translateSubtitleUseCaseMock,
+    });
+
+    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockResolvedValue(
+      "http://127.0.0.1:12345/stream/hash123/0",
+    );
+    currentStatus = mockStatus;
+    vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
+      makeVideoMetadata({
+        tracks: [
+          { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
+        ],
+      }),
+    );
+    vi.mocked(mockTorrentRepository.getSubtitleVtt).mockResolvedValue(
+      "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+    );
+
+    renderPlayer(
+      "/play/hash123/0?magnet=magurl&title=test_title&fileName=video_name.mp4",
+    );
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /AI 翻译/ }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    // 新逻辑下开始翻译按钮要求源/目标语言非空才可点击
+    fireEvent.change(screen.getByLabelText("当前字幕语言"), {
+      target: { value: "eng" },
+    });
+    fireEvent.change(screen.getByLabelText("目标语言"), {
+      target: { value: "zh" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "开始翻译" }));
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    // 翻译使用内存 Blob 字幕，无需再次调用后端 getSubtitleVtt
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
+    expect(translateSubtitleUseCaseMock.execute).toHaveBeenCalled();
+    // AI 轨道应出现在字幕下拉中并自动选中
+    expect(screen.getByText("English · AI(zh) #1 (zh)")).toBeInTheDocument();
+    expect(screen.queryByText("翻译中")).not.toBeInTheDocument();
+
+    // 手动重新选择 AI 轨道应命中"AI 轨道不走后端加载"的守卫：
+    // 先选回原字幕轨道，再切回 AI 轨道
+    fireEvent.click(screen.getByText("English · AI(zh) #1 (zh)"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    fireEvent.click(
+      within(screen.getByRole("listbox")).getByText("English (eng)"),
+    );
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByText("English (eng)"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    fireEvent.click(
+      within(screen.getByRole("listbox")).getByText("English · AI(zh) #1 (zh)"),
+    );
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+    });
+    // AI 轨道不会触发后端 getSubtitleVtt（仍停留在 2 次）
+    expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("当获取元数据失败时，应该优雅处理并打印错误", async () => {

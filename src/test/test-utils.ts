@@ -19,6 +19,8 @@ import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
+import { GetSubtitleTranslationsUseCase } from "../application/subtitle/GetSubtitleTranslationsUseCase";
+import { TranslateSubtitleUseCase } from "../application/subtitle/TranslateSubtitleUseCase";
 import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
@@ -46,6 +48,7 @@ import type { Logger } from "../domain/logger/logger";
 import type { NotificationRepository } from "../domain/notification/NotificationRepository";
 import type { OpenerRepository } from "../domain/opener/OpenerRepository";
 import type { SettingsRepository } from "../domain/settings/SettingsRepository";
+import type { SubtitleTranslationRepository } from "../domain/subtitle/SubtitleTranslationRepository";
 import type { TorrentRepository } from "../domain/torrent/TorrentRepository";
 import type { UpdateRepository } from "../domain/update/UpdateRepository";
 import { FetchAiClient } from "../infrastructure/ai/FetchAiClient";
@@ -91,6 +94,9 @@ export interface CreateContainerParamsForTest {
   setThemeUseCase?: SetThemeUseCase;
   aiClient?: AiClient;
   clearCacheUseCase?: ClearCacheUseCase;
+  translateSubtitleUseCase?: TranslateSubtitleUseCase;
+  getSubtitleTranslationsUseCase?: GetSubtitleTranslationsUseCase;
+  subtitleTranslationRepository?: SubtitleTranslationRepository;
 
   getBangumiCalendarUseCase?: GetBangumiCalendarUseCase;
   getBangumiSubjectUseCase?: GetBangumiSubjectUseCase;
@@ -231,6 +237,17 @@ export function createDIContainerForTest(
     ...params.openerRepository,
   } as OpenerRepository;
 
+  const subtitleTranslationRepo =
+    params.subtitleTranslationRepository ??
+    ({
+      getById: async () => null,
+      listByTorrent: async () => [],
+      save: async () => {},
+      deleteById: async () => false,
+      deleteByTorrent: async () => 0,
+      deleteByInfoHash: async () => 0,
+    } as SubtitleTranslationRepository);
+
   const notifyUseCase =
     params.notifyDownloadCompletionUseCase ||
     new NotifyDownloadCompletionUseCase(notificationRepo);
@@ -256,7 +273,8 @@ export function createDIContainerForTest(
   const resumeTorrentUseCase =
     params.resumeTorrentUseCase || new ResumeTorrentUseCase(torrentRepo);
   const deleteTorrentUseCase =
-    params.deleteTorrentUseCase || new DeleteTorrentUseCase(torrentRepo);
+    params.deleteTorrentUseCase ||
+    new DeleteTorrentUseCase(torrentRepo, subtitleTranslationRepo);
   const setTorrentSubjectUseCase =
     params.setTorrentSubjectUseCase ||
     new SetTorrentSubjectUseCase(torrentRepo);
@@ -286,6 +304,16 @@ export function createDIContainerForTest(
     params.setThemeUseCase || new SetThemeUseCase(settingsRepo);
   const clearCacheUseCase =
     params.clearCacheUseCase || new ClearCacheUseCase(new InMemoryCacheStore());
+  const translateSubtitleUseCase =
+    params.translateSubtitleUseCase ||
+    new TranslateSubtitleUseCase(
+      aiClient,
+      subtitleTranslationRepo,
+      dummyLogger,
+    );
+  const getSubtitleTranslationsUseCase =
+    params.getSubtitleTranslationsUseCase ||
+    new GetSubtitleTranslationsUseCase(subtitleTranslationRepo);
 
   const getBangumiCalendarUseCase =
     params.getBangumiCalendarUseCase ||
@@ -340,6 +368,8 @@ export function createDIContainerForTest(
   return {
     logger: params.logger || dummyLogger,
 
+    getSubtitleTranslationsUseCase,
+
     getCollectionsUseCase,
     addFavoriteUseCase,
     removeFavoriteUseCase,
@@ -365,6 +395,7 @@ export function createDIContainerForTest(
     verifyAiConnectionUseCase,
     setThemeUseCase,
     clearCacheUseCase,
+    translateSubtitleUseCase,
 
     getBangumiCalendarUseCase,
     getBangumiSubjectUseCase,

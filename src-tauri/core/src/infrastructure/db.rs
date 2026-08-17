@@ -79,6 +79,29 @@ impl AppDatabase {
         .execute(&self.pool)
         .await?;
 
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS subtitle_translations (
+                id TEXT PRIMARY KEY,
+                info_hash TEXT NOT NULL,
+                file_id INTEGER NOT NULL,
+                original_track_id INTEGER NOT NULL,
+                source_lang TEXT NOT NULL,
+                target_lang TEXT NOT NULL,
+                vtt_content TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                last_accessed_at INTEGER NOT NULL
+            )",
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_subtitle_translations_torrent
+             ON subtitle_translations (info_hash, file_id)",
+        )
+        .execute(&self.pool)
+        .await?;
+
         Ok(())
     }
 }
@@ -101,7 +124,7 @@ mod tests {
         let path = temp_db_path("connect").await;
         let db = AppDatabase::connect(&path).await.expect("连接应成功");
         let tables: Vec<String> = sqlx::query_scalar(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('collections', 'torrent_subject_bindings', 'app_settings') ORDER BY name",
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('collections', 'torrent_subject_bindings', 'app_settings', 'subtitle_translations') ORDER BY name",
         )
         .fetch_all(db.pool())
         .await
@@ -111,6 +134,7 @@ mod tests {
             vec![
                 "app_settings".to_string(),
                 "collections".to_string(),
+                "subtitle_translations".to_string(),
                 "torrent_subject_bindings".to_string()
             ]
         );
