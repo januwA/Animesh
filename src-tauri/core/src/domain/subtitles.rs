@@ -105,25 +105,33 @@ pub trait SubtitleCache: Send + Sync {
 pub fn strip_ass_tags(text: &str) -> String {
     let mut result = String::new();
     let mut in_tag = false;
+    let mut chars = text.chars().peekable();
 
-    for c in text.chars() {
+    while let Some(c) = chars.next() {
         if c == '{' {
             in_tag = true;
         } else if c == '}' {
             in_tag = false;
         } else if !in_tag {
-            // 过滤掉因为转义残留的独立反斜杠（如 {\an8} 被错误转义后的情形）
-            if c != '\\' {
+            if c == '\\' {
+                match chars.peek() {
+                    Some('N') | Some('n') => {
+                        chars.next();
+                        result.push('\n');
+                    }
+                    Some('h') => {
+                        chars.next();
+                        result.push(' ');
+                    }
+                    _ => {}
+                }
+            } else {
                 result.push(c);
             }
         }
     }
 
-    // 处理 ASS 换行符与硬空格 \h
     result
-        .replace("\\N", "\n")
-        .replace("\\n", "\n")
-        .replace("\\h", " ")
 }
 
 pub fn decode_subtitle_bytes(bytes: &[u8]) -> String {
