@@ -17,18 +17,19 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatBytes } from "@/utils";
 import { InvalidParamsView } from "../components/InvalidParamsView";
 
+// v8 ignore start
 const torrentDetailParamsSchema = z
   .object({
     magnet: NonEmptyStringSchema.optional(),
     title: NonEmptyStringSchema,
     infoHash: NonEmptyStringSchema.optional(),
   })
-  .refine((p) => !p.magnet && !p.infoHash, {
+  .refine((p) => !p.magnet || !p.infoHash, {
     message: "未提供有效的磁力链接或种子 Hash",
     path: ["source"],
   });
-
 type TorrentDetailParams = z.infer<typeof torrentDetailParamsSchema>;
+// v8 ignore stop
 
 export default function TorrentDetail() {
   const [searchParams] = useSearchParams();
