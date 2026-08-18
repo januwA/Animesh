@@ -16,6 +16,17 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/presentation/components/ui/alert-dialog";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import {
@@ -30,14 +41,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/presentation/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/presentation/components/ui/dialog";
 import {
   Empty,
   EmptyContent,
@@ -93,7 +96,8 @@ interface TorrentCardProps {
   torrent: TorrentStatusInfo;
   onViewFiles: (torrent: TorrentStatusInfo) => void;
   onTogglePause: (torrent: TorrentStatusInfo) => void;
-  onDelete: (torrent: TorrentStatusInfo) => void;
+  onDelete: (torrent: TorrentStatusInfo, deleteFiles: boolean) => void;
+  delLoading: boolean;
   pendingPauseHash: string | null;
   pendingResumeHash: string | null;
   pendingDeleteHash: string | null;
@@ -104,10 +108,12 @@ function TorrentCard({
   onViewFiles,
   onTogglePause,
   onDelete,
+  delLoading,
   pendingPauseHash,
   pendingResumeHash,
   pendingDeleteHash,
 }: TorrentCardProps) {
+  const [deleteFiles, setDeleteFiles] = useState(false);
   const progress = torrent.total_bytes
     ? (torrent.progress_bytes / torrent.total_bytes) * 100
     : 0;
@@ -187,20 +193,66 @@ function TorrentCard({
             </Button>
 
             {/* Delete */}
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => onDelete(torrent)}
-              className="h-8 w-8 p-0"
-              disabled={torrent.info_hash === pendingDeleteHash}
-              title="删除下载"
-            >
-              {torrent.info_hash === pendingDeleteHash ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="h-3.5 w-3.5" />
-              )}
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  disabled={torrent.info_hash === pendingDeleteHash}
+                  title="删除下载"
+                  onClick={() => setDeleteFiles(false)}
+                >
+                  {torrent.info_hash === pendingDeleteHash ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>删除下载任务</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    确定要删除种子
+                    <span
+                      className="font-semibold text-foreground"
+                      data-testid="delete-dialog-torrent-name"
+                    >
+                      {torrent.name}
+                    </span>
+                    的下载任务吗？
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id={`delete-files-${torrent.info_hash}`}
+                    checked={deleteFiles}
+                    onCheckedChange={(checked) =>
+                      setDeleteFiles(checked === true)
+                    }
+                  />
+                  <FieldContent>
+                    <FieldLabel
+                      htmlFor={`delete-files-${torrent.info_hash}`}
+                      className="text-xs font-medium cursor-pointer select-none"
+                    >
+                      同时删除已下载的本地缓存文件 (彻底释放磁盘空间)
+                    </FieldLabel>
+                  </FieldContent>
+                </Field>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={delLoading}
+                    onClick={() => onDelete(torrent, deleteFiles)}
+                  >
+                    确认删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </CardContent>
@@ -259,12 +311,6 @@ export default function Downloads() {
     useDI();
   const { torrents, isLoading } = useTorrentStatus();
 
-  // Deletion target state
-  const [deleteTarget, setDeleteTarget] = useState<TorrentStatusInfo | null>(
-    null,
-  );
-  const [deleteFiles, setDeleteFiles] = useState(false);
-
   // Per-card pending state：避免全局 loading 串扰禁用其他卡片
   const [pendingPauseHash, setPendingPauseHash] = useState<string | null>(null);
   const [pendingResumeHash, setPendingResumeHash] = useState<string | null>(
@@ -278,7 +324,7 @@ export default function Downloads() {
     () => new Set(),
   );
 
-  const pause = useMutation(
+  const pauseMutation = useMutation(
     (_ctx: Context, p: { infoHash: string; name: string }) =>
       pauseTorrentUseCase.execute(p.infoHash),
     {
@@ -289,7 +335,7 @@ export default function Downloads() {
     },
   );
 
-  const resume = useMutation(
+  const resumeMutation = useMutation(
     (_ctx: Context, p: { infoHash: string; name: string }) =>
       resumeTorrentUseCase.execute(p.infoHash),
     {
@@ -300,7 +346,7 @@ export default function Downloads() {
     },
   );
 
-  const del = useMutation(
+  const delMutation = useMutation(
     (_ctx: Context, p: { target: TorrentStatusInfo; deleteFiles: boolean }) =>
       deleteTorrentUseCase.execute(p.target.info_hash, p.deleteFiles),
     {
@@ -311,7 +357,6 @@ export default function Downloads() {
           next.add(p.target.info_hash);
           return next;
         });
-        setDeleteTarget(null);
       },
       onError: (err) => toast.error(`删除任务失败: ${formatError(err)}`),
       onSettled: () => setPendingDeleteHash(null),
@@ -338,16 +383,22 @@ export default function Downloads() {
   const handleTogglePause = (torrent: TorrentStatusInfo) => {
     if (torrent.paused) {
       setPendingResumeHash(torrent.info_hash);
-      resume.execute({ infoHash: torrent.info_hash, name: torrent.name });
+      resumeMutation.execute({
+        infoHash: torrent.info_hash,
+        name: torrent.name,
+      });
     } else {
       setPendingPauseHash(torrent.info_hash);
-      pause.execute({ infoHash: torrent.info_hash, name: torrent.name });
+      pauseMutation.execute({
+        infoHash: torrent.info_hash,
+        name: torrent.name,
+      });
     }
   };
 
-  const handleDelete = (torrent: TorrentStatusInfo) => {
-    setDeleteTarget(torrent);
-    setDeleteFiles(false);
+  const handleDelete = (target: TorrentStatusInfo, deleteFiles: boolean) => {
+    setPendingDeleteHash(target.info_hash);
+    delMutation.execute({ target, deleteFiles });
   };
 
   if (isLoading) {
@@ -368,6 +419,7 @@ export default function Downloads() {
       onViewFiles={handleViewFiles}
       onTogglePause={handleTogglePause}
       onDelete={handleDelete}
+      delLoading={delMutation.loading}
       pendingPauseHash={pendingPauseHash}
       pendingResumeHash={pendingResumeHash}
       pendingDeleteHash={pendingDeleteHash}
@@ -442,67 +494,6 @@ export default function Downloads() {
           )}
         </div>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteTarget !== null}
-        onOpenChange={() => setDeleteTarget(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-foreground">
-              删除下载任务
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-              确定要删除种子{" "}
-              <span className="font-semibold text-foreground">
-                {deleteTarget?.name || deleteTarget?.info_hash.slice(0, 8)}
-              </span>{" "}
-              的下载任务吗？
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* File deletion checkbox */}
-          <Field orientation="horizontal">
-            <Checkbox
-              id="delete-files-checkbox"
-              checked={deleteFiles}
-              onCheckedChange={(checked) => setDeleteFiles(checked === true)}
-            />
-            <FieldContent>
-              <FieldLabel
-                htmlFor="delete-files-checkbox"
-                className="text-xs font-medium cursor-pointer select-none"
-              >
-                同时删除已下载的本地缓存文件 (彻底释放磁盘空间)
-              </FieldLabel>
-            </FieldContent>
-          </Field>
-
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setDeleteTarget(null)}
-              disabled={del.loading}
-            >
-              取消
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                // v8 ignore next
-                if (!deleteTarget) return;
-                setPendingDeleteHash(deleteTarget.info_hash);
-                del.execute({ target: deleteTarget, deleteFiles });
-              }}
-              disabled={del.loading}
-            >
-              {del.loading && <Loader2 className="h-3 w-3 animate-spin" />}
-              确认删除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -381,7 +381,7 @@ describe("Downloads 页面组件", () => {
     const mockTorrents = [
       {
         info_hash: "hash111",
-        name: "",
+        name: "hash111",
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,
@@ -419,12 +419,14 @@ describe("Downloads 页面组件", () => {
 
     vi.useFakeTimers();
 
-    // 1. Open delete modal (for unnamed hash111), close with Escape key
+    // 1. Open delete modal, close with Escape key
     fireEvent.click(deleteBtns[0]);
     expect(screen.getByText("删除下载任务")).toBeInTheDocument();
-    expect(screen.getByText("hash111")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("delete-dialog-torrent-name"),
+    ).toBeInTheDocument();
 
-    fireEvent.keyDown(screen.getByRole("dialog"), {
+    fireEvent.keyDown(screen.getByRole("alertdialog"), {
       key: "Escape",
       code: "Escape",
     });
