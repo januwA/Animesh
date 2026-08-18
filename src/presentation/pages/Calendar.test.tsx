@@ -6,7 +6,12 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 import { type Mock, vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
@@ -14,7 +19,6 @@ import type { BangumiRepository } from "@/domain/bangumi/BangumiRepository";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { NavBarLayout } from "../components/Layout";
 import CalendarPage from "./Calendar";
 
 const currentLocation = {
@@ -24,6 +28,12 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
 
 describe("Calendar 页面组件", () => {
   let mockContainer: DIContainer;
@@ -48,18 +58,24 @@ describe("Calendar 页面组件", () => {
 
     return render(
       <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/calendar"]}>
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="calendar" element={<CalendarPage />} />
-            </Route>
-            <Route
-              path="/subject/:subjectId"
-              element={<div>Subject Detail</div>}
-            />
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider
+          router={createMemoryRouter(
+            [
+              {
+                path: "/",
+                element: <TestLayout />,
+                children: [
+                  { path: "calendar", element: <CalendarPage /> },
+                  {
+                    path: "subject/:subjectId",
+                    element: <div>Subject Detail</div>,
+                  },
+                ],
+              },
+            ],
+            { initialEntries: ["/calendar"] },
+          )}
+        />
       </DIProvider>,
     );
   };

@@ -11,12 +11,9 @@ import {
 } from "@/presentation/components/ui/empty";
 import { Input } from "@/presentation/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/presentation/components/ui/select";
+  NativeSelect,
+  NativeSelectOption,
+} from "@/presentation/components/ui/native-select";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import {
   ToggleGroup,
@@ -34,22 +31,6 @@ const DEFAULT_COUNTRY_FALLBACK: IptvCountry = {
   flag: "🇨🇳",
 };
 const ALL_CATEGORY_LABEL = "全部";
-
-function CountryFlag({ country }: { country: IptvCountry }) {
-  const [failed, setFailed] = useState(false);
-
-  if (failed) {
-    return <span>{country.flag}</span>;
-  }
-  return (
-    <img
-      src={`https://flagcdn.com/w40/${country.code.toLowerCase()}.png`}
-      alt={country.name}
-      className="inline-block h-3.5 w-5 object-cover rounded-xs"
-      onError={() => setFailed(true)}
-    />
-  );
-}
 
 interface ChannelCardProps {
   channel: IptvChannel;
@@ -240,21 +221,17 @@ export default function Iptv() {
     <div className="w-full flex flex-col gap-4">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-          <Select
+          <NativeSelect
             value={iptvSelectedCountry}
-            onValueChange={handleCountryChange}
+            onChange={(e) => handleCountryChange(e.target.value)}
+            className="w-full sm:w-56"
           >
-            <SelectTrigger className="w-full sm:w-56 h-10">
-              <SelectValue placeholder="选择国家" />
-            </SelectTrigger>
-            <SelectContent>
-              {selectCountries.map((country) => (
-                <SelectItem key={country.code} value={country.code}>
-                  <CountryFlag country={country} /> {country.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {selectCountries.map((country) => (
+              <NativeSelectOption key={country.code} value={country.code}>
+                {country.name}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input

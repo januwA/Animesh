@@ -6,9 +6,9 @@ import {
   waitFor,
 } from "@testing-library/react";
 import {
-  MemoryRouter,
-  Route,
-  Routes,
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
   useLocation,
   useNavigate,
 } from "react-router-dom";
@@ -18,7 +18,6 @@ import { DIProvider } from "@/di/DIContext";
 import type { IptvRepository } from "@/domain/iptv/IptvRepository";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { NavBarLayout } from "../components/Layout";
 import IptvPage from "./Iptv";
 
 const currentLocation = {
@@ -28,6 +27,12 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
 
 const BackButton = () => {
   const navigate = useNavigate();
@@ -85,23 +90,29 @@ describe("Iptv 页面组件", () => {
 
     return render(
       <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/live"]}>
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="live" element={<IptvPage />} />
-              <Route
-                path="live/play"
-                element={
-                  <>
-                    <div>Live Play</div>
-                    <BackButton />
-                  </>
-                }
-              />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider
+          router={createMemoryRouter(
+            [
+              {
+                path: "/",
+                element: <TestLayout />,
+                children: [
+                  { path: "live", element: <IptvPage /> },
+                  {
+                    path: "live/play",
+                    element: (
+                      <>
+                        <div>Live Play</div>
+                        <BackButton />
+                      </>
+                    ),
+                  },
+                ],
+              },
+            ],
+            { initialEntries: ["/live"] },
+          )}
+        />
       </DIProvider>,
     );
   };
@@ -214,13 +225,8 @@ describe("Iptv 页面组件", () => {
       expect(screen.getByText("CCTV-1")).toBeInTheDocument();
     });
 
-    const selectTrigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(selectTrigger);
-    });
-    const jpOption = screen.getByRole("option", { name: /日本/ });
-    await act(async () => {
-      fireEvent.click(jpOption);
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "JP" },
     });
 
     await waitFor(() => {
@@ -250,26 +256,16 @@ describe("Iptv 页面组件", () => {
     });
 
     // 切换到加载失败的国家
-    let selectTrigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(selectTrigger);
-    });
-    const jpOption = screen.getByRole("option", { name: /日本/ });
-    await act(async () => {
-      fireEvent.click(jpOption);
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "JP" },
     });
     await waitFor(() => {
       expect(screen.getByText(/获取频道列表失败/)).toBeInTheDocument();
     });
 
     // 重新选择已加载的国家,此时 iptvChannelsCountry === value,不应重复请求
-    selectTrigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(selectTrigger);
-    });
-    const cnOption = screen.getByRole("option", { name: /中国/ });
-    await act(async () => {
-      fireEvent.click(cnOption);
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "CN" },
     });
 
     await waitFor(() => {
@@ -277,26 +273,17 @@ describe("Iptv 页面组件", () => {
     });
   });
 
-  it("应该根据 country.code 展示国旗图片，图片加载失败时回退到 emoji", async () => {
+  it("国家下拉应该渲染所有可选国家，并默认选中当前国家", async () => {
     renderIptv();
 
     await waitFor(() => {
       expect(screen.getByText("CCTV-1")).toBeInTheDocument();
     });
 
-    const selectTrigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(selectTrigger);
-    });
-
-    const flagImg = screen.getAllByAltText("中国")[0] as HTMLImageElement;
-    expect(flagImg.src).toBe("https://flagcdn.com/w40/cn.png");
-    expect(screen.queryByText("🇨🇳")).not.toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.error(flagImg);
-    });
-    expect(screen.getByText("🇨🇳")).toBeInTheDocument();
+    const select = screen.getByRole("combobox");
+    expect(select).toHaveValue("CN");
+    expect(screen.getByRole("option", { name: "中国" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "日本" })).toBeInTheDocument();
   });
 
   it("当国家列表为空或缺少当前选中国家时，应该展示默认中国选项", async () => {
@@ -304,11 +291,6 @@ describe("Iptv 页面组件", () => {
 
     await waitFor(() => {
       expect(screen.getByText("CCTV-1")).toBeInTheDocument();
-    });
-
-    const selectTrigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(selectTrigger);
     });
 
     expect(screen.getByRole("option", { name: /中国/ })).toBeInTheDocument();
@@ -370,13 +352,8 @@ describe("Iptv 页面组件", () => {
       expect(screen.getByText("CCTV-1")).toBeInTheDocument();
     });
 
-    const selectTrigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(selectTrigger);
-    });
-    const jpOption = screen.getByRole("option", { name: /日本/ });
-    await act(async () => {
-      fireEvent.click(jpOption);
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "JP" },
     });
 
     await waitFor(() => {

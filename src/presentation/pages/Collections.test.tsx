@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { GetCollectionsUseCase } from "@/application/collection/GetCollectionsUseCase";
 import type { DIContainer } from "@/di/DIContext";
@@ -16,11 +16,13 @@ function createContainer(
 }
 
 function renderWithProvider(container: DIContainer) {
+  const router = createMemoryRouter([
+    { path: "/", element: <Collections /> },
+    { path: "*", element: <div /> },
+  ]);
   return render(
     <DIProvider value={container}>
-      <MemoryRouter>
-        <Collections />
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </DIProvider>,
   );
 }
@@ -38,13 +40,7 @@ describe("Collections 收藏页面", () => {
   it("有收藏时应显示收藏条目", async () => {
     const repo = new InMemoryCollectionRepository();
     await repo.add({ subjectId: 101, name: "测试动画", imageUrl: null });
-    const { container: dom } = render(
-      <DIProvider value={createContainer(repo)}>
-        <MemoryRouter>
-          <Collections />
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    const { container: dom } = renderWithProvider(createContainer(repo));
     await waitFor(() => {
       expect(dom.textContent).toContain("测试动画");
     });
@@ -65,13 +61,7 @@ describe("Collections 收藏页面", () => {
       name: "带封面动画",
       imageUrl: "https://example.com/cover.jpg",
     });
-    const { container: dom } = render(
-      <DIProvider value={createContainer(repo)}>
-        <MemoryRouter>
-          <Collections />
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    const { container: dom } = renderWithProvider(createContainer(repo));
     await waitFor(() => {
       expect(dom.textContent).toContain("带封面动画");
     });
@@ -81,13 +71,7 @@ describe("Collections 收藏页面", () => {
   it("中文名为空时应回退显示英文名", async () => {
     const repo = new InMemoryCollectionRepository();
     await repo.add({ subjectId: 401, name: "EnglishName", imageUrl: null });
-    const { container: dom } = render(
-      <DIProvider value={createContainer(repo)}>
-        <MemoryRouter>
-          <Collections />
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    const { container: dom } = renderWithProvider(createContainer(repo));
     await waitFor(() => {
       expect(dom.textContent).toContain("EnglishName");
     });

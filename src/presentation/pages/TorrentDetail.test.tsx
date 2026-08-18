@@ -5,7 +5,12 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 import { vi } from "vitest";
 import type { ResolveTorrentUseCase } from "@/application/torrent/ResolveTorrentUseCase";
 import type { DIContainer } from "@/di/DIContext";
@@ -15,7 +20,6 @@ import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { NavBarLayout } from "../components/Layout";
 import TorrentDetail from "./TorrentDetail";
 
 const currentLocation = {
@@ -25,6 +29,12 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
 const getCurrentLocation = () => currentLocation.current;
 
 describe("TorrentDetail 页面组件", () => {
@@ -72,23 +82,29 @@ describe("TorrentDetail 页面组件", () => {
   ) => {
     return render(
       <DIProvider value={mockContainer}>
-        <MemoryRouter
-          initialEntries={initialEntries}
-          initialIndex={initialEntries.indexOf(initialEntry)}
-        >
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route index element={<div>Home Page</div>} />
-              <Route path="torrent" element={<TorrentDetail />} />
-              <Route path="downloads" element={<div>Downloads Page</div>} />
-              <Route
-                path="play/:infoHash/:fileId"
-                element={<div>Play Page</div>}
-              />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider
+          router={createMemoryRouter(
+            [
+              {
+                path: "/",
+                element: <TestLayout />,
+                children: [
+                  { index: true, element: <div>Home Page</div> },
+                  { path: "torrent", element: <TorrentDetail /> },
+                  { path: "downloads", element: <div>Downloads Page</div> },
+                  {
+                    path: "play/:infoHash/:fileId",
+                    element: <div>Play Page</div>,
+                  },
+                ],
+              },
+            ],
+            {
+              initialEntries,
+              initialIndex: initialEntries.indexOf(initialEntry),
+            },
+          )}
+        />
       </DIProvider>,
     );
   };

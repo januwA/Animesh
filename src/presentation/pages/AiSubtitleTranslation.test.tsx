@@ -1,5 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
@@ -24,6 +29,12 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
 const getCurrentLocation = () => currentLocation.current;
 
 if (typeof URL.createObjectURL === "undefined") {
@@ -147,22 +158,27 @@ describe("AiSubtitleTranslationPage 页面组件", () => {
   ) => {
     return render(
       <DIProvider value={mockContainer}>
-        <MemoryRouter
-          initialEntries={initialEntries}
-          initialIndex={initialEntries.length - 1}
-        >
-          <LocationTracker />
-          <Routes>
-            <Route
-              path="/play/:infoHash/:fileId"
-              element={<div>Player Page</div>}
-            />
-            <Route
-              path="/play/:infoHash/:fileId/ai-subtitle"
-              element={<AiSubtitleTranslationPage />}
-            />
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider
+          router={createMemoryRouter(
+            [
+              {
+                path: "/",
+                element: <TestLayout />,
+                children: [
+                  {
+                    path: "play/:infoHash/:fileId",
+                    element: <div>Player Page</div>,
+                  },
+                  {
+                    path: "play/:infoHash/:fileId/ai-subtitle",
+                    element: <AiSubtitleTranslationPage />,
+                  },
+                ],
+              },
+            ],
+            { initialEntries, initialIndex: initialEntries.length - 1 },
+          )}
+        />
       </DIProvider>,
     );
   };
@@ -193,12 +209,9 @@ describe("AiSubtitleTranslationPage 页面组件", () => {
     });
 
     // Select original subtitle track
-    const trackSelect = screen.getByLabelText("选择原始字幕轨道");
-    fireEvent.click(trackSelect);
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("选择原始字幕轨道"), {
+      target: { value: "1" },
     });
-    fireEvent.click(screen.getByText("English Subtitle (eng)"));
 
     // Enter source and target languages
     fireEvent.change(screen.getByLabelText("当前字幕语言"), {
@@ -240,11 +253,9 @@ describe("AiSubtitleTranslationPage 页面组件", () => {
       expect(screen.getByText("AI 字幕翻译")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByLabelText("选择原始字幕轨道"));
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("选择原始字幕轨道"), {
+      target: { value: "1" },
     });
-    fireEvent.click(screen.getByText("English Subtitle (eng)"));
 
     fireEvent.change(screen.getByLabelText("当前字幕语言"), {
       target: { value: "eng" },
@@ -313,12 +324,9 @@ describe("AiSubtitleTranslationPage 页面组件", () => {
       expect(screen.getByText("AI 字幕翻译")).toBeInTheDocument();
     });
 
-    const trackSelect = screen.getByLabelText("选择原始字幕轨道");
-    fireEvent.click(trackSelect);
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("选择原始字幕轨道"), {
+      target: { value: "1" },
     });
-    fireEvent.click(screen.getByText("English Subtitle (eng)"));
   });
 
   it("当下载记录时如果记录没有 vtt_content 且 getById 抛出错误，应该妥善处理", async () => {
@@ -545,20 +553,15 @@ describe("AiSubtitleTranslationPage 页面组件", () => {
       expect(screen.getByText("AI 字幕翻译")).toBeInTheDocument();
     });
 
-    // 切换 AI 配置
-    const aiConfigSelect = screen.getByLabelText("AI 配置");
-    fireEvent.click(aiConfigSelect);
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    // 切换 AI 配置 (index 1 = Claude 3.5 Sonnet)
+    fireEvent.change(screen.getByLabelText("AI 配置"), {
+      target: { value: "1" },
     });
-    fireEvent.click(screen.getByText("Claude 3.5 Sonnet · claude-3-5"));
 
     // 选择轨道
-    fireEvent.click(screen.getByLabelText("选择原始字幕轨道"));
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("选择原始字幕轨道"), {
+      target: { value: "1" },
     });
-    fireEvent.click(screen.getByText("English Subtitle (eng)"));
 
     fireEvent.change(screen.getByLabelText("当前字幕语言"), {
       target: { value: "eng" },
@@ -867,9 +870,8 @@ describe("AiSubtitleTranslationPage 页面组件", () => {
       expect(screen.getByText("AI 字幕翻译")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByLabelText("选择原始字幕轨道"));
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("选择原始字幕轨道"), {
+      target: { value: "1" },
     });
     expect(screen.getByText("轨道 1 (eng)")).toBeInTheDocument();
   });
@@ -900,11 +902,9 @@ describe("AiSubtitleTranslationPage 页面组件", () => {
       expect(screen.getByText("AI 字幕翻译")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByLabelText("选择原始字幕轨道"));
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("选择原始字幕轨道"), {
+      target: { value: "1" },
     });
-    fireEvent.click(screen.getByText("English Subtitle (eng)"));
 
     fireEvent.change(screen.getByLabelText("当前字幕语言"), {
       target: { value: "eng" },

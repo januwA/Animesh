@@ -48,12 +48,9 @@ import {
 } from "@/presentation/components/ui/empty";
 import { Input } from "@/presentation/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/presentation/components/ui/select";
+  NativeSelect,
+  NativeSelectOption,
+} from "@/presentation/components/ui/native-select";
 import { Separator } from "@/presentation/components/ui/separator";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -98,22 +95,20 @@ function SearchForm({
       >
         <div className="flex items-center pl-1.5 md:pl-3 gap-0.5 md:gap-1">
           <Search className="h-5 w-5 text-muted-foreground shrink-0 hidden md:block" />
-          <Select
+          <NativeSelect
             value={searchEngine}
-            onValueChange={setSearchEngine}
+            onChange={(e) =>
+              setSearchEngine(e.target.value as TorrentSearchEngine)
+            }
             disabled={loading}
+            className="max-w-17.5 sm:max-w-21.25 md:max-w-none [&_select]:border-0 [&_select]:bg-transparent [&_select]:py-0 [&_select]:pl-1.5 md:[&_select]:pl-2 [&_select]:shadow-none [&_select]:text-xs md:[&_select]:text-sm [&_select]:font-medium [&_select]:text-muted-foreground [&_select]:cursor-pointer [&_select]:hover:text-foreground"
           >
-            <SelectTrigger className="h-8 border-0 bg-transparent py-0 px-1.5 md:px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-xs md:text-sm font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-0.5 md:gap-1 max-w-17.5 sm:max-w-21.25 md:max-w-none">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TORRENT_SEARCH_ENGINES.map((engine) => (
-                <SelectItem key={engine} value={engine}>
-                  {ENGINE_LABELS[engine]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {TORRENT_SEARCH_ENGINES.map((engine) => (
+              <NativeSelectOption key={engine} value={engine}>
+                {ENGINE_LABELS[engine]}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
         </div>
         <Separator
           orientation="vertical"
@@ -594,26 +589,27 @@ export default function TorrentSearch() {
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               AI 智能过滤:
             </span>
-            <Select
+            <NativeSelect
               value={selectedAiAlias}
-              onValueChange={(val) => {
-                setSelectedAiAlias(val);
-                localStorage.setItem("animesh_selected_ai_alias", val);
+              onChange={(e) => {
+                setSelectedAiAlias(e.target.value);
+                localStorage.setItem(
+                  "animesh_selected_ai_alias",
+                  e.target.value,
+                );
               }}
               disabled={searchMutation.loading}
+              className="[&_select]:h-7 [&_select]:border-0 [&_select]:bg-transparent [&_select]:py-0 [&_select]:pl-2 [&_select]:shadow-none [&_select]:text-[11px] [&_select]:font-medium [&_select]:text-muted-foreground [&_select]:cursor-pointer [&_select]:hover:text-foreground"
             >
-              <SelectTrigger className="h-7 border-0 bg-transparent py-0 px-2 shadow-none focus:ring-0 focus-visible:ring-0 text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer gap-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">不使用 AI (传统搜索)</SelectItem>
-                {aiConfigs.map((config) => (
-                  <SelectItem key={config.alias} value={config.alias}>
-                    {config.alias}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <NativeSelectOption value="none">
+                不使用 AI (传统搜索)
+              </NativeSelectOption>
+              {aiConfigs.map((config) => (
+                <NativeSelectOption key={config.alias} value={config.alias}>
+                  {config.alias}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
           </div>
         </div>
       )}

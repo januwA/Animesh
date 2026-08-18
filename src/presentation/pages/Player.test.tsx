@@ -5,7 +5,12 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -14,7 +19,6 @@ import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { NavBarLayout } from "../components/Layout";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import Player from "./Player";
 
@@ -33,6 +37,8 @@ if (typeof URL.revokeObjectURL === "undefined") {
   URL.revokeObjectURL = vi.fn();
 }
 
+type InitialEntry = string | { pathname: string; state?: unknown };
+
 const currentLocation = {
   current: null as { pathname: string; search: string } | null,
 };
@@ -40,6 +46,12 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
 const getCurrentLocation = () => currentLocation.current;
 
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
@@ -67,10 +79,14 @@ describe("Player 页面组件", () => {
   let mockContainer: DIContainer;
   let currentStatus: TorrentStatusInfo | null;
   let nextStatusError: unknown | null;
+  let triggerUpdate: ((torrents: TorrentStatusInfo[]) => void) | null;
+  let pollTorrentStatus: (() => Promise<void>) | null;
 
   beforeEach(() => {
     currentStatus = null;
     nextStatusError = null;
+    triggerUpdate = null;
+    pollTorrentStatus = null;
     mockTorrentRepository = {
       search: vi.fn(),
       addTorrentMagnet: vi.fn(),
@@ -82,6 +98,7 @@ describe("Player 页面组件", () => {
       getSubtitleVtt: vi.fn(),
       getVideoMetadata: vi.fn().mockResolvedValue(emptyMetadata),
       subscribeTorrents: vi.fn().mockImplementation(async (onUpdate) => {
+        triggerUpdate = onUpdate;
         const runUpdate = async () => {
           await Promise.resolve();
           if (nextStatusError !== null) {
@@ -91,14 +108,12 @@ describe("Player 页面组件", () => {
           }
           if (currentStatus) onUpdate([currentStatus]);
         };
-
+        pollTorrentStatus = runUpdate;
         runUpdate().catch(() => {});
-
-        const interval = setInterval(() => {
-          runUpdate().catch(() => {});
-        }, 1500);
-
-        return () => clearInterval(interval);
+        return () => {
+          triggerUpdate = null;
+          pollTorrentStatus = null;
+        };
       }),
       setTorrentSubject: vi.fn().mockResolvedValue(undefined),
       clearTorrentSubject: vi.fn().mockResolvedValue(undefined),
@@ -118,34 +133,45 @@ describe("Player 页面组件", () => {
     vi.useRealTimers();
   });
 
-  const renderPlayer = (
-    initialEntry: string,
-    initialEntries = [initialEntry],
+  const renderPlayerWith = (
+    container: DIContainer,
+    initialEntries: InitialEntry[],
+    opts?: { initialIndex?: number },
   ) => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: "/",
+          element: <TestLayout />,
+          children: [
+            { path: "play/:infoHash", element: <Player /> },
+            { path: "play/:infoHash/:fileId", element: <Player /> },
+            {
+              path: "play/:infoHash/:fileId/ai-subtitle",
+              element: <div>AI Subtitle Page</div>,
+            },
+            { path: "torrent", element: <div>Torrent Page</div> },
+          ],
+        },
+      ],
+      { initialEntries, initialIndex: opts?.initialIndex },
+    );
     return render(
-      <DIProvider value={mockContainer}>
+      <DIProvider value={container}>
         <TorrentStatusProvider>
-          <MemoryRouter
-            initialEntries={initialEntries}
-            initialIndex={initialEntries.indexOf(initialEntry)}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="play/:infoHash" element={<Player />} />
-                <Route path="play/:infoHash/:fileId" element={<Player />} />
-                <Route
-                  path="play/:infoHash/:fileId/ai-subtitle"
-                  element={<div>AI Subtitle Page</div>}
-                />
-                <Route path="torrent" element={<div>Torrent Page</div>} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
+          <RouterProvider router={router} />
         </TorrentStatusProvider>
       </DIProvider>,
     );
   };
+
+  const renderPlayer = (
+    initialEntry: string,
+    initialEntries: InitialEntry[] = [initialEntry],
+  ) =>
+    renderPlayerWith(mockContainer, initialEntries, {
+      initialIndex: initialEntries.indexOf(initialEntry),
+    });
 
   // 折叠区块默认收起，断言内部内容前先点击标题展开
   const expandSection = (title: string) => {
@@ -220,7 +246,7 @@ describe("Player 页面组件", () => {
     currentStatus = finishedStatus;
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500);
+      triggerUpdate!([finishedStatus]);
     });
 
     expect(screen.getByText("下载进度: 100.00%")).toBeInTheDocument();
@@ -232,7 +258,7 @@ describe("Player 页面组件", () => {
     nextStatusError = "Fetch status error";
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500);
+      await pollTorrentStatus!().catch(() => {});
     });
 
     expect(screen.getByText("下载进度: 100.00%")).toBeInTheDocument();
@@ -314,24 +340,9 @@ describe("Player 页面组件", () => {
       getSubtitleTranslationsUseCase: mockGetSubtitleTranslationsUseCase,
     });
 
-    render(
-      <DIProvider value={testContainer}>
-        <TorrentStatusProvider>
-          <MemoryRouter
-            initialEntries={[
-              "/play/hash123/0?title=test_title&fileName=video_name.mp4",
-            ]}
-          >
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="play/:infoHash/:fileId" element={<Player />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </TorrentStatusProvider>
-      </DIProvider>,
-    );
+    renderPlayerWith(testContainer, [
+      "/play/hash123/0?title=test_title&fileName=video_name.mp4",
+    ]);
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -342,20 +353,13 @@ describe("Player 页面组件", () => {
       0,
     );
 
-    const trigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(trigger);
-    });
-
-    const aiOptions = screen.getAllByRole("option");
-    const aiOption1 = aiOptions.find((opt) =>
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    const aiOption = Array.from(select.options).find((opt) =>
       opt.textContent?.includes("AI · English"),
     );
-    expect(aiOption1).toBeDefined();
+    expect(aiOption).toBeDefined();
 
-    await act(async () => {
-      fireEvent.click(aiOption1!);
-    });
+    fireEvent.change(select, { target: { value: aiOption!.value } });
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -966,28 +970,15 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
 
-    const { unmount } = render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter
-          initialEntries={[
-            {
-              pathname: "/play/hash123/0",
-              state: {
-                name: "State Title",
-                imageUrl: "http://example.com/cover.jpg",
-              },
-            },
-          ]}
-        >
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="play/:infoHash/:fileId" element={<Player />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    const { unmount } = renderPlayerWith(mockContainer, [
+      {
+        pathname: "/play/hash123/0",
+        state: {
+          name: "State Title",
+          imageUrl: "http://example.com/cover.jpg",
+        },
+      },
+    ]);
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1064,25 +1055,12 @@ describe("Player 页面组件", () => {
       trackers: [],
     };
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter
-          initialEntries={[
-            {
-              pathname: "/play/hash123/0",
-              state: {}, // Empty state to cover state?.name and state?.imageUrl fallback
-            },
-          ]}
-        >
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="play/:infoHash/:fileId" element={<Player />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderPlayerWith(mockContainer, [
+      {
+        pathname: "/play/hash123/0",
+        state: {}, // Empty state to cover state?.name and state?.imageUrl fallback
+      },
+    ]);
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1273,14 +1251,7 @@ describe("Player 页面组件", () => {
     );
 
     const trigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(trigger);
-    });
-
-    const option = screen.getByRole("option", { name: /Chinese/i });
-    await act(async () => {
-      fireEvent.click(option);
-    });
+    fireEvent.change(trigger, { target: { value: "2" } });
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1444,14 +1415,7 @@ describe("Player 页面组件", () => {
     expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
 
     const trigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(trigger);
-    });
-
-    const option = screen.getByRole("option", { name: "关闭" });
-    await act(async () => {
-      fireEvent.click(option);
-    });
+    fireEvent.change(trigger, { target: { value: "" } });
 
     expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(1);
 
@@ -1505,32 +1469,15 @@ describe("Player 页面组件", () => {
 
     // 切换到轨道 2
     const trigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(trigger);
-    });
-    const option2 = screen.getByRole("option", { name: /Chinese/i });
-    await act(async () => {
-      fireEvent.click(option2);
-    });
+    fireEvent.change(trigger, { target: { value: "2" } });
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
     expect(mockTorrentRepository.getSubtitleVtt).toHaveBeenCalledTimes(2);
 
-    // 等待下拉菜单关闭动画完成后再重新打开
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(200);
-    });
-
     // 切回轨道 1 应强制重新提取（绕过缓存）
-    await act(async () => {
-      fireEvent.click(trigger);
-    });
-    const option1 = screen.getByRole("option", { name: /English/i });
-    await act(async () => {
-      fireEvent.click(option1);
-    });
+    fireEvent.change(trigger, { target: { value: "1" } });
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
@@ -1763,28 +1710,13 @@ describe("Player 页面组件", () => {
 
     // 切到轨道 2（创建 blob:mock-url-2），再切回轨道 1 → 撤销 blob:mock-url-1
     const trigger = screen.getByRole("combobox");
-    await act(async () => {
-      fireEvent.click(trigger);
-    });
-    const option2 = screen.getByRole("option", { name: /Chinese/i });
-    await act(async () => {
-      fireEvent.click(option2);
-    });
+    fireEvent.change(trigger, { target: { value: "2" } });
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });
 
-    // 等待关闭动画完成，重新打开并切回轨道 1 → 撤销 blob:mock-url-1
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(200);
-    });
-    await act(async () => {
-      fireEvent.click(trigger);
-    });
-    const option1 = screen.getByRole("option", { name: /English/i });
-    await act(async () => {
-      fireEvent.click(option1);
-    });
+    // 切回轨道 1 → 撤销 blob:mock-url-1
+    fireEvent.change(trigger, { target: { value: "1" } });
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
     });

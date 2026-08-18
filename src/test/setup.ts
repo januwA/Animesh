@@ -159,7 +159,10 @@ const originalConsoleError = console.error;
 const originalConsoleWarn = console.warn;
 
 // 不需要引发测试失败的模式（可忽略的第三方库警告）
-const IGNORED_PATTERNS: (RegExp | string)[] = [];
+const IGNORED_PATTERNS: (RegExp | string)[] = [
+  // react-router 在测试环境（无 document.startViewTransition）下对 viewTransition 导航的提示，导航本身正常进行
+  "You provided the `viewTransition` option to a router update",
+];
 
 function shouldIgnore(message: string): boolean {
   return IGNORED_PATTERNS.some((pattern) => {

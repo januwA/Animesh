@@ -42,14 +42,11 @@ import {
   ItemGroup,
   ItemTitle,
 } from "@/presentation/components/ui/item";
-import { Progress } from "@/presentation/components/ui/progress";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/presentation/components/ui/select";
+  NativeSelect,
+  NativeSelectOption,
+} from "@/presentation/components/ui/native-select";
+import { Progress } from "@/presentation/components/ui/progress";
 import { formatBytes, formatError, formatPlaybackTime } from "@/utils";
 import "@videojs/react/video/skin.css";
 import {
@@ -456,22 +453,21 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
                 <span className="text-xs text-muted-foreground shrink-0">
                   字幕:
                 </span>
-                <Select
+                <NativeSelect
                   value={selectedTrackId?.toString() ?? ""}
-                  onValueChange={handleSubtitleChange}
+                  onChange={(e) => handleSubtitleChange(e.target.value)}
+                  className="text-xs"
                 >
-                  <SelectTrigger className="text-xs">
-                    <SelectValue placeholder="选择字幕" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">关闭</SelectItem>
-                    {subtitleTracks.map((track) => (
-                      <SelectItem key={track.id} value={track.id.toString()}>
-                        {track.title || `轨道 ${track.id}`} ({track.language})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <NativeSelectOption value="">关闭字幕</NativeSelectOption>
+                  {subtitleTracks.map((track) => (
+                    <NativeSelectOption
+                      key={track.id}
+                      value={track.id.toString()}
+                    >
+                      {track.title || `轨道 ${track.id}`} ({track.language})
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
                 {subtitleMutation.loading && (
                   <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
                 )}

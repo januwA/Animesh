@@ -6,7 +6,12 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -20,7 +25,6 @@ import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { NavBarLayout } from "../components/Layout";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import SubjectDetail from "./SubjectDetail";
 
@@ -31,12 +35,48 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
+
+type InitialEntry = string | { pathname: string; state?: unknown };
+
+const renderSubjectRouter = (
+  container: DIContainer,
+  initialEntries: InitialEntry[],
+  opts: { index?: number } = {},
+) => {
+  const router = createMemoryRouter(
+    [
+      {
+        path: "/",
+        element: <TestLayout />,
+        children: [
+          { path: "calendar", element: <div>日历页面</div> },
+          { path: "subject", element: <SubjectDetail /> },
+          { path: "subject/:subjectId", element: <SubjectDetail /> },
+        ],
+      },
+    ],
+    { initialEntries, initialIndex: opts.index },
+  );
+  return render(
+    <DIProvider value={container}>
+      <RouterProvider router={router} />
+    </DIProvider>,
+  );
+};
 
 describe("SubjectDetail 页面组件", () => {
   let mockContainer: DIContainer;
 
+  let user: ReturnType<typeof userEvent.setup>;
   beforeEach(() => {
     currentLocation.current = null;
+    user = userEvent.setup();
     resetAppStores();
     vi.clearAllMocks();
     vi.spyOn(window, "open").mockImplementation(() => null);
@@ -61,18 +101,7 @@ describe("SubjectDetail 页面组件", () => {
       openerRepository,
     });
 
-    return render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    return renderSubjectRouter(mockContainer, ["/subject/123"]);
   };
 
   it("当 API 正确返回数据时，应该展示动漫标题、信息、评分和剧集列表", async () => {
@@ -405,22 +434,9 @@ describe("SubjectDetail 页面组件", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter
-          initialEntries={["/calendar", "/subject/123"]}
-          initialIndex={1}
-        >
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="calendar" element={<div>日历页面</div>} />
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/calendar", "/subject/123"], {
+      index: 1,
+    });
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
@@ -515,22 +531,9 @@ describe("SubjectDetail 页面组件", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter
-          initialEntries={["/calendar", "/subject/123"]}
-          initialIndex={1}
-        >
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="calendar" element={<div>日历页面</div>} />
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/calendar", "/subject/123"], {
+      index: 1,
+    });
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
@@ -563,28 +566,15 @@ describe("SubjectDetail 页面组件", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter
-          initialEntries={[
-            {
-              pathname: "/subject/123",
-              state: {
-                name: "传递的动画名称",
-                imageUrl: "http://example.com/passed-cover.jpg",
-              },
-            },
-          ]}
-        >
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="subject/:subjectId" element={<SubjectDetail />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, [
+      {
+        pathname: "/subject/123",
+        state: {
+          name: "传递的动画名称",
+          imageUrl: "http://example.com/passed-cover.jpg",
+        },
+      },
+    ]);
 
     // 应该立即展示 state 中的名称和图片
     expect(screen.getByText("传递的动画名称")).toBeInTheDocument();
@@ -640,15 +630,7 @@ describe("SubjectDetail 页面组件", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     // Wait for rendering
     await waitFor(() => {
@@ -726,15 +708,7 @@ describe("SubjectDetail 页面组件", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
@@ -756,15 +730,7 @@ describe("SubjectDetail 页面组件", () => {
   it("当路由中没有 subjectId 时，应该渲染参数错误提示", async () => {
     mockContainer = createDIContainerForTest({});
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject"]}>
-          <Routes>
-            <Route path="subject" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject"]);
 
     expect(screen.getByText("无效的条目详情参数")).toBeInTheDocument();
     expect(screen.getByText("缺少条目 ID 参数")).toBeInTheDocument();
@@ -773,15 +739,7 @@ describe("SubjectDetail 页面组件", () => {
   it("当 subjectId 不是数字时，应该渲染参数错误提示", async () => {
     mockContainer = createDIContainerForTest({});
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/abc"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/abc"]);
 
     expect(screen.getByText("无效的条目详情参数")).toBeInTheDocument();
     expect(screen.getByText("条目 ID 必须是数字")).toBeInTheDocument();
@@ -909,15 +867,7 @@ describe("SubjectDetail 页面组件", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("获取剧集列表失败")).toBeInTheDocument();
@@ -968,15 +918,7 @@ describe("SubjectDetail 页面组件", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(
@@ -1027,17 +969,9 @@ describe("SubjectDetail 页面组件", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
+    await user.click(screen.getByRole("tab", { name: /角色/ }));
 
     await waitFor(() => {
       expect(screen.getByText("获取角色数据失败")).toBeInTheDocument();
@@ -1050,8 +984,10 @@ describe("SubjectDetail 页面组件", () => {
 describe("SubjectDetail 页面 - 角色和制作人员", () => {
   let mockContainer: DIContainer;
 
+  let user: ReturnType<typeof userEvent.setup>;
   beforeEach(() => {
     resetAppStores();
+    user = userEvent.setup();
     vi.clearAllMocks();
     vi.spyOn(window, "open").mockImplementation(() => null);
   });
@@ -1122,22 +1058,14 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
     // Characters section should be rendered
-    await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
+    await user.click(screen.getByRole("tab", { name: /角色/ }));
     expect(screen.getByText("ヤニねこ")).toBeInTheDocument();
     expect(screen.getByText("CV: 夏吉ゆうこ")).toBeInTheDocument();
   });
@@ -1207,24 +1135,14 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
     // Switch to staff tab
-    await userEvent
-      .setup()
-      .click(screen.getByRole("tab", { name: /制作人员/ }));
+    await user.click(screen.getByRole("tab", { name: /制作人员/ }));
 
     // Staff section should be rendered
     expect(screen.getByText("木村拓")).toBeInTheDocument();
@@ -1266,27 +1184,17 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
+    await user.click(screen.getByRole("tab", { name: /角色/ }));
     expect(screen.getByText("暂无角色数据")).toBeInTheDocument();
 
     // Switch to staff tab to check staff empty state
-    await userEvent
-      .setup()
-      .click(screen.getByRole("tab", { name: /制作人员/ }));
+    await user.click(screen.getByRole("tab", { name: /制作人员/ }));
     expect(screen.getByText("暂无制作人员数据")).toBeInTheDocument();
   });
 
@@ -1306,29 +1214,19 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     // The sections should exist with skeleton loading indicators
     expect(screen.getByText("角色")).toBeInTheDocument();
     expect(screen.getByText("制作人员")).toBeInTheDocument();
 
     // Switch to characters tab to verify characters skeleton exists
-    await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
+    await user.click(screen.getByRole("tab", { name: /角色/ }));
     expect(screen.getByTestId("characters-skeleton")).toBeInTheDocument();
     expect(screen.queryByTestId("staff-skeleton")).not.toBeInTheDocument();
 
     // Switch to staff tab to verify staff skeleton exists
-    await userEvent
-      .setup()
-      .click(screen.getByRole("tab", { name: /制作人员/ }));
+    await user.click(screen.getByRole("tab", { name: /制作人员/ }));
     expect(screen.getByTestId("staff-skeleton")).toBeInTheDocument();
 
     // Resolve to clean up
@@ -1412,24 +1310,14 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
     // Switch to staff tab
-    await userEvent
-      .setup()
-      .click(screen.getByRole("tab", { name: /制作人员/ }));
+    await user.click(screen.getByRole("tab", { name: /制作人员/ }));
 
     expect(screen.getByText("导演")).toBeInTheDocument();
     expect(screen.getByText("脚本")).toBeInTheDocument();
@@ -1505,21 +1393,13 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
+    await user.click(screen.getByRole("tab", { name: /角色/ }));
     expect(screen.getByText("+1 位声优")).toBeInTheDocument();
     expect(screen.getByText("CV: 声優A")).toBeInTheDocument();
   });
@@ -1570,21 +1450,13 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /角色/ }));
+    await user.click(screen.getByRole("tab", { name: /角色/ }));
     expect(screen.getByText("ノーイメージ")).toBeInTheDocument();
   });
 
@@ -1620,23 +1492,13 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
       },
     });
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123"]);
 
     await waitFor(() => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole("tab", { name: /制作人员/ }));
+    await user.click(screen.getByRole("tab", { name: /制作人员/ }));
 
     await waitFor(() => {
       expect(screen.getByText("获取制作人员数据失败")).toBeInTheDocument();
@@ -1648,6 +1510,7 @@ describe("SubjectDetail 页面 - 角色和制作人员", () => {
 
 describe("SubjectDetail 页面 - 剧集分页", () => {
   let mockContainer: DIContainer;
+  let user: ReturnType<typeof userEvent.setup>;
 
   const makeSubject = (): BangumiSubject => ({
     id: 123,
@@ -1696,20 +1559,12 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
       },
     });
 
-    return render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={initialEntries}>
-          <LocationTracker />
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    return renderSubjectRouter(mockContainer, initialEntries);
   };
 
   beforeEach(() => {
     currentLocation.current = null;
+    user = userEvent.setup();
     resetAppStores();
     vi.clearAllMocks();
     vi.spyOn(window, "open").mockImplementation(() => null);
@@ -1765,7 +1620,7 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
       expect(screen.getByText("第 1 集")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "2" }));
+    await user.click(screen.getByRole("button", { name: "2" }));
 
     await waitFor(() => {
       expect(getEpisodes).toHaveBeenCalledWith(
@@ -1803,7 +1658,7 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
       expect(screen.getByText("第 1 集")).toBeInTheDocument();
     });
 
-    await userEvent.setup().type(screen.getByLabelText("跳转页码"), "3{enter}");
+    await user.type(screen.getByLabelText("跳转页码"), "3{enter}");
 
     await waitFor(() => {
       expect(getEpisodes).toHaveBeenCalledWith(
@@ -1841,9 +1696,7 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
       expect(screen.getByText("第 1 集")).toBeInTheDocument();
     });
 
-    await userEvent
-      .setup()
-      .type(screen.getByLabelText("跳转集数"), "123{enter}");
+    await user.type(screen.getByLabelText("跳转集数"), "123{enter}");
 
     await waitFor(() => {
       expect(getEpisodes).toHaveBeenCalledWith(
@@ -1902,15 +1755,7 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
   it("当 page 查询参数非法时，应该渲染参数错误提示", async () => {
     mockContainer = createDIContainerForTest({});
 
-    render(
-      <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={["/subject/123?page=abc"]}>
-          <Routes>
-            <Route path="subject/:subjectId" element={<SubjectDetail />} />
-          </Routes>
-        </MemoryRouter>
-      </DIProvider>,
-    );
+    renderSubjectRouter(mockContainer, ["/subject/123?page=abc"]);
 
     expect(screen.getByText("无效的条目详情参数")).toBeInTheDocument();
     expect(screen.getByText("页码必须是数字")).toBeInTheDocument();
@@ -1919,6 +1764,7 @@ describe("SubjectDetail 页面 - 剧集分页", () => {
 
 describe("SubjectDetail 页面 - 资源绑定", () => {
   let mockContainer: DIContainer;
+  let user: ReturnType<typeof userEvent.setup>;
 
   const makeSubject = (): BangumiSubject => ({
     id: 123,
@@ -1986,15 +1832,21 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
     return render(
       <DIProvider value={mockContainer}>
         <TorrentStatusProvider>
-          <MemoryRouter initialEntries={["/subject/123"]}>
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="subject/:subjectId" element={<SubjectDetail />} />
-                <Route path="torrent" element={<div>种子详情页</div>} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
+          <RouterProvider
+            router={createMemoryRouter(
+              [
+                {
+                  path: "/",
+                  element: <TestLayout />,
+                  children: [
+                    { path: "subject/:subjectId", element: <SubjectDetail /> },
+                    { path: "torrent", element: <div>种子详情页</div> },
+                  ],
+                },
+              ],
+              { initialEntries: ["/subject/123"] },
+            )}
+          />
         </TorrentStatusProvider>
       </DIProvider>,
     );
@@ -2002,6 +1854,7 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
 
   beforeEach(() => {
     currentLocation.current = null;
+    user = userEvent.setup();
     resetAppStores();
     vi.clearAllMocks();
     vi.spyOn(window, "open").mockImplementation(() => null);
@@ -2014,7 +1867,7 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+    await user.click(screen.getByRole("tab", { name: /资源/ }));
 
     expect(screen.getByText("暂未绑定下载资源")).toBeInTheDocument();
     expect(
@@ -2041,7 +1894,7 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
     const resourceTab = screen.getByRole("tab", { name: /资源/ });
     expect(resourceTab).toHaveTextContent("1");
 
-    await userEvent.setup().click(resourceTab);
+    await user.click(resourceTab);
 
     expect(screen.getByText("测试种子")).toBeInTheDocument();
     expect(screen.queryByText("未绑定种子")).not.toBeInTheDocument();
@@ -2061,10 +1914,10 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+    await user.click(screen.getByRole("tab", { name: /资源/ }));
 
     const row = screen.getByTestId("bound-torrent-row");
-    await userEvent.setup().click(row);
+    await user.click(row);
 
     expect(currentLocation.current?.pathname).toBe("/torrent");
     expect(currentLocation.current?.search).toContain("infoHash=hash-1");
@@ -2091,9 +1944,9 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+    await user.click(screen.getByRole("tab", { name: /资源/ }));
 
-    await userEvent.setup().click(screen.getByRole("button", { name: /解绑/ }));
+    await user.click(screen.getByRole("button", { name: /解绑/ }));
 
     await waitFor(() => {
       expect(clearTorrentSubject).toHaveBeenCalledWith("hash-1");
@@ -2122,11 +1975,9 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
+    await user.click(screen.getByRole("tab", { name: /资源/ }));
 
-    await userEvent
-      .setup()
-      .click(screen.getByRole("button", { name: /绑定下载/ }));
+    await user.click(screen.getByRole("button", { name: /绑定下载/ }));
 
     // 对话框中应该列出所有下载，且已绑定到其它条目的显示为"改绑"
     expect(screen.getByText("绑定下载资源")).toBeInTheDocument();
@@ -2134,7 +1985,7 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
     expect(screen.queryByText("另一个种子")).not.toBeInTheDocument();
     expect(screen.queryByText("已属于《其他动漫》")).not.toBeInTheDocument();
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "绑定" }));
+    await user.click(screen.getByRole("button", { name: "绑定" }));
 
     await waitFor(() => {
       expect(setTorrentSubject).toHaveBeenCalledWith("hash-1", 123, "测试动漫");
@@ -2159,11 +2010,9 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
-    await userEvent
-      .setup()
-      .click(screen.getByRole("button", { name: /绑定下载/ }));
-    await userEvent.setup().click(screen.getByRole("button", { name: "绑定" }));
+    await user.click(screen.getByRole("tab", { name: /资源/ }));
+    await user.click(screen.getByRole("button", { name: /绑定下载/ }));
+    await user.click(screen.getByRole("button", { name: "绑定" }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
@@ -2192,8 +2041,8 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
       expect(screen.getByText("测试动漫")).toBeInTheDocument();
     });
 
-    await userEvent.setup().click(screen.getByRole("tab", { name: /资源/ }));
-    await userEvent.setup().click(screen.getByRole("button", { name: /解绑/ }));
+    await user.click(screen.getByRole("tab", { name: /资源/ }));
+    await user.click(screen.getByRole("button", { name: /解绑/ }));
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(

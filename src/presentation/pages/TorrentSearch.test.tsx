@@ -6,9 +6,9 @@ import {
   waitFor,
 } from "@testing-library/react";
 import {
-  MemoryRouter,
-  Route,
-  Routes,
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
   useLocation,
   useNavigate,
 } from "react-router-dom";
@@ -22,7 +22,6 @@ import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { NavBarLayout } from "../components/Layout";
 import TorrentSearch from "./TorrentSearch";
 
 // Mock clipboard API
@@ -35,42 +34,6 @@ Object.defineProperty(navigator, "clipboard", {
 
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
-vi.mock("@/presentation/components/ui/select", () => {
-  return {
-    Select: ({
-      children,
-      value,
-      onValueChange,
-      disabled,
-    }: {
-      children: React.ReactNode;
-      value?: string;
-      onValueChange: (v: string) => void;
-      disabled?: boolean;
-    }) => (
-      <select
-        value={value}
-        onChange={(e) => onValueChange(e.target.value)}
-        disabled={disabled}
-      >
-        {children}
-      </select>
-    ),
-    SelectTrigger: () => null,
-    SelectValue: () => null,
-    SelectContent: ({ children }: { children: React.ReactNode }) => (
-      <>{children}</>
-    ),
-    SelectItem: ({
-      children,
-      value,
-    }: {
-      children: React.ReactNode;
-      value: string;
-    }) => <option value={value}>{children}</option>,
-  };
-});
-
 const currentLocation = {
   current: null as { pathname: string; search: string } | null,
 };
@@ -78,6 +41,12 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
 
 const BackButton = () => {
   const navigate = useNavigate();
@@ -119,37 +88,41 @@ describe("TorrentSearch 页面组件", () => {
     vi.mocked(navigator.clipboard.writeText).mockResolvedValue(undefined);
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  const renderHome = (initialRoute = "/") => {
-    return render(
+  const renderHome = async (initialRoute = "/") => {
+    const result = render(
       <DIProvider value={mockContainer}>
-        <MemoryRouter initialEntries={[initialRoute]}>
-          {initialRoute === "/" && <LocationTracker />}
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route index element={<TorrentSearch />} />
-              <Route
-                path="torrent"
-                element={
-                  <>
-                    <div>TorrentDetail Page</div>
-                    <BackButton />
-                  </>
-                }
-              />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider
+          router={createMemoryRouter(
+            [
+              {
+                path: "/",
+                element: <TestLayout />,
+                children: [
+                  { index: true, element: <TorrentSearch /> },
+                  {
+                    path: "torrent",
+                    element: (
+                      <>
+                        <div>TorrentDetail Page</div>
+                        <BackButton />
+                      </>
+                    ),
+                  },
+                ],
+              },
+            ],
+            { initialEntries: [initialRoute] },
+          )}
+        />
       </DIProvider>,
     );
+    await act(async () => {});
+    return result;
   };
 
   it("应该正确渲染搜索表单和欢迎指南", async () => {
-    renderHome();
-    await act(async () => {});
+    await renderHome();
+
     expect(screen.getByTestId("search-input")).toBeInTheDocument();
     expect(screen.getByText("聚合搜索")).toBeInTheDocument();
   });
@@ -166,7 +139,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome("/?keyword=xxx");
+    await renderHome("/?keyword=xxx");
 
     await waitFor(() => {
       expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
@@ -191,7 +164,7 @@ describe("TorrentSearch 页面组件", () => {
 
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
 
@@ -217,7 +190,7 @@ describe("TorrentSearch 页面组件", () => {
   it("当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
     vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -230,7 +203,7 @@ describe("TorrentSearch 页面组件", () => {
   });
 
   it("当输入空白关键词并提交时，不应该触发搜索", async () => {
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称"),
       button = screen.getByRole("button", { name: "搜索" });
@@ -246,7 +219,7 @@ describe("TorrentSearch 页面组件", () => {
   it("当搜索失败时，应该显示错误提示", async () => {
     vi.mocked(mockTorrentRepository.search).mockRejectedValue("网络请求超时");
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -264,7 +237,7 @@ describe("TorrentSearch 页面组件", () => {
       new Error("Internal Server Error"),
     );
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -291,7 +264,7 @@ describe("TorrentSearch 页面组件", () => {
       .mockRejectedValueOnce("网络请求超时")
       .mockResolvedValueOnce(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -324,7 +297,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -333,20 +306,15 @@ describe("TorrentSearch 页面组件", () => {
     await waitFor(() => {
       expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
     });
-
-    vi.useFakeTimers();
-
     const copyBtn = screen.getByRole("button", { name: "复制磁力" });
     fireEvent.click(copyBtn);
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       "magnet:?xt=urn:btih:TEST1",
     );
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("磁力链接已复制到剪贴板");
     });
-    expect(toast.success).toHaveBeenCalledWith("磁力链接已复制到剪贴板");
   });
 
   it("当复制磁力链接失败时，应该显示失败的Toast提示", async () => {
@@ -364,7 +332,7 @@ describe("TorrentSearch 页面组件", () => {
       new Error("Permission denied"),
     );
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -373,16 +341,11 @@ describe("TorrentSearch 页面组件", () => {
     await waitFor(() => {
       expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
     });
-
-    vi.useFakeTimers();
-
     const copyBtn = screen.getByRole("button", { name: "复制磁力" });
     fireEvent.click(copyBtn);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("复制失败，请手动复制");
     });
-    expect(toast.error).toHaveBeenCalledWith("复制失败，请手动复制");
   });
 
   it("当点击边下边播时，应该跳转", async () => {
@@ -397,7 +360,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -406,19 +369,14 @@ describe("TorrentSearch 页面组件", () => {
     await waitFor(() => {
       expect(screen.getByText("xxx 第1集")).toBeInTheDocument();
     });
-
-    vi.useFakeTimers();
-
     const playBtn = screen.getByRole("button", { name: "边下边播" });
     fireEvent.click(playBtn);
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
+    await waitFor(() => {
+      expect(currentLocation.current?.pathname).toBe("/torrent");
+      expect(currentLocation.current?.search).toContain("magnet=");
+      expect(currentLocation.current?.search).toContain("title=");
     });
-
-    expect(currentLocation.current?.pathname).toBe("/torrent");
-    expect(currentLocation.current?.search).toContain("magnet=");
-    expect(currentLocation.current?.search).toContain("title=");
   });
 
   it("从 Torrent 详情页返回后，应该保留搜索关键词、搜索结果且不重复请求", async () => {
@@ -433,7 +391,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -464,7 +422,7 @@ describe("TorrentSearch 页面组件", () => {
   it("当挂载时从 URL 读取 keyword 触发的搜索失败（字符串错误）时，应该显示错误提示", async () => {
     vi.mocked(mockTorrentRepository.search).mockRejectedValue("网络请求超时");
 
-    renderHome("/?keyword=xxx");
+    await renderHome("/?keyword=xxx");
 
     await waitFor(() => {
       expect(
@@ -478,7 +436,7 @@ describe("TorrentSearch 页面组件", () => {
       new Error("error"),
     );
 
-    renderHome("/?keyword=xxx");
+    await renderHome("/?keyword=xxx");
 
     await waitFor(() => {
       expect(
@@ -499,7 +457,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -531,7 +489,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -563,7 +521,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -595,7 +553,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -627,7 +585,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -650,7 +608,7 @@ describe("TorrentSearch 页面组件", () => {
   it("应该在组件挂载时读取 URL 的 keyword 参数，当搜索返回空/undefined结果时，应该降级使用空数组并显示无资源提示", async () => {
     vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
-    renderHome("/?keyword=xxx");
+    await renderHome("/?keyword=xxx");
 
     await waitFor(() => {
       expect(screen.getByText("未找到相关资源")).toBeInTheDocument();
@@ -659,8 +617,8 @@ describe("TorrentSearch 页面组件", () => {
   });
 
   it("当 URL keyword 参数为纯空白时，不应该触发搜索", async () => {
-    renderHome("/?keyword=%20%20");
-    await act(async () => {});
+    await renderHome("/?keyword=%20%20");
+
     expect(mockTorrentRepository.search).not.toHaveBeenCalled();
   });
 
@@ -677,7 +635,7 @@ describe("TorrentSearch 页面组件", () => {
       return searchPromise;
     });
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -715,7 +673,7 @@ describe("TorrentSearch 页面组件", () => {
       return searchPromise;
     });
 
-    const { unmount } = renderHome();
+    const { unmount } = await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -735,8 +693,8 @@ describe("TorrentSearch 页面组件", () => {
       "animesh_search_history",
       JSON.stringify(["xxx", "柯南"]),
     );
-    renderHome();
-    await act(async () => {});
+    await renderHome();
+
     expect(screen.getByText("最近搜索:")).toBeInTheDocument();
     expect(screen.getByText("xxx")).toBeInTheDocument();
     expect(screen.getByText("柯南")).toBeInTheDocument();
@@ -745,7 +703,8 @@ describe("TorrentSearch 页面组件", () => {
   it("应该在执行搜索时将关键词加入历史记录（去重、置顶，不限数量）", async () => {
     vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
-    renderHome();
+    await renderHome();
+
     const input = screen.getByPlaceholderText("输入动漫名称");
 
     // 1. 搜索 "xxx"
@@ -801,7 +760,7 @@ describe("TorrentSearch 页面组件", () => {
     localStorage.setItem("animesh_search_history", JSON.stringify(["柯南"]));
     vi.mocked(mockTorrentRepository.search).mockResolvedValue([]);
 
-    renderHome();
+    await renderHome();
 
     const historyItem = screen.getByText("柯南");
     await act(async () => {
@@ -816,8 +775,7 @@ describe("TorrentSearch 页面组件", () => {
       "animesh_search_history",
       JSON.stringify(["xxx", "柯南"]),
     );
-    renderHome();
-    await act(async () => {});
+    await renderHome();
 
     expect(screen.getByText("xxx")).toBeInTheDocument();
     expect(screen.getByText("柯南")).toBeInTheDocument();
@@ -839,8 +797,7 @@ describe("TorrentSearch 页面组件", () => {
       "animesh_search_history",
       JSON.stringify(["xxx", "柯南"]),
     );
-    renderHome();
-    await act(async () => {});
+    await renderHome();
 
     expect(screen.getByText("最近搜索:")).toBeInTheDocument();
 
@@ -857,8 +814,7 @@ describe("TorrentSearch 页面组件", () => {
 
   it("点击删除最后一个历史记录项时，应该清空历史记录并从 localStorage 移除该键", async () => {
     localStorage.setItem("animesh_search_history", JSON.stringify(["xxx"]));
-    renderHome();
-    await act(async () => {});
+    await renderHome();
 
     expect(screen.getByText("xxx")).toBeInTheDocument();
 
@@ -873,8 +829,8 @@ describe("TorrentSearch 页面组件", () => {
 
   it("当 localStorage 中的历史记录数据格式不合法时，应该降级初始化为空数组", async () => {
     localStorage.setItem("animesh_search_history", "invalid-json{");
-    renderHome();
-    await act(async () => {});
+    await renderHome();
+
     expect(screen.queryByText("最近搜索:")).not.toBeInTheDocument();
   });
 
@@ -921,7 +877,7 @@ describe("TorrentSearch 页面组件", () => {
       "execute",
     ).mockResolvedValue(mockAiResults);
 
-    renderHome();
+    await renderHome();
 
     // 等待加载设置并渲染 AI 开关
     await waitFor(() => {
@@ -993,7 +949,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "某番" } });
@@ -1037,7 +993,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "某番" } });
@@ -1073,7 +1029,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "某番" } });
@@ -1108,7 +1064,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "某番" } });
@@ -1150,7 +1106,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "某番" } });
@@ -1185,7 +1141,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -1226,7 +1182,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -1257,7 +1213,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "xxx" } });
@@ -1291,7 +1247,7 @@ describe("TorrentSearch 页面组件", () => {
     ];
     vi.mocked(mockTorrentRepository.search).mockResolvedValue(mockResults);
 
-    renderHome();
+    await renderHome();
 
     const input = screen.getByPlaceholderText("输入动漫名称");
     fireEvent.change(input, { target: { value: "某番" } });

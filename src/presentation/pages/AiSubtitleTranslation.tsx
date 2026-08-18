@@ -32,12 +32,9 @@ import {
 import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/presentation/components/ui/select";
+  NativeSelect,
+  NativeSelectOption,
+} from "@/presentation/components/ui/native-select";
 import { Textarea } from "@/presentation/components/ui/textarea";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -330,42 +327,44 @@ function AiSubtitleTranslationContent({
             {/* 选择原始字幕轨道 */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="original-track">选择原始字幕轨道</Label>
-              <Select
+              <NativeSelect
+                id="original-track"
                 value={selectedTrackId !== null ? String(selectedTrackId) : ""}
                 // v8 ignore next
-                onValueChange={(v) => setSelectedTrackId(v ? Number(v) : null)}
+                onChange={(e) =>
+                  setSelectedTrackId(
+                    e.target.value ? Number(e.target.value) : null,
+                  )
+                }
               >
-                <SelectTrigger id="original-track">
-                  <SelectValue placeholder="请选择原始字幕" />
-                </SelectTrigger>
-                <SelectContent>
-                  {originalTracks.map((track) => (
-                    <SelectItem key={track.id} value={String(track.id)}>
-                      {track.title || `轨道 ${track.id}`} ({track.language})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <NativeSelectOption value="" disabled>
+                  请选择原始字幕
+                </NativeSelectOption>
+                {originalTracks.map((track) => (
+                  <NativeSelectOption key={track.id} value={String(track.id)}>
+                    {track.title || `轨道 ${track.id}`} ({track.language})
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
             </div>
 
             {/* 选择 AI 配置 */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="ai-config">AI 配置</Label>
-              <Select
+              <NativeSelect
+                id="ai-config"
                 value={String(selectedAiIndex)}
-                onValueChange={(v) => setSelectedAiIndex(Number(v))}
+                onChange={(e) => setSelectedAiIndex(Number(e.target.value))}
               >
-                <SelectTrigger id="ai-config">
-                  <SelectValue placeholder="选择 AI 配置" />
-                </SelectTrigger>
-                <SelectContent>
-                  {aiConfigs.map((cfg, idx) => (
-                    <SelectItem key={cfg.alias} value={String(idx)}>
-                      {cfg.alias} · {cfg.ai_model}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <NativeSelectOption value="" disabled>
+                  选择 AI 配置
+                </NativeSelectOption>
+                {aiConfigs.map((cfg, idx) => (
+                  <NativeSelectOption key={cfg.alias} value={String(idx)}>
+                    {cfg.alias} · {cfg.ai_model}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
             </div>
 
             {/* 源语言 */}

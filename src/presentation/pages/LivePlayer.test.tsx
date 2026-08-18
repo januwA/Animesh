@@ -5,7 +5,12 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -13,7 +18,6 @@ import { DIProvider } from "@/di/DIContext";
 import type { ResolvedStreamUrl } from "@/domain/iptv/IptvStreamUrlRepository";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { NavBarLayout } from "../components/Layout";
 import LivePlayer from "./LivePlayer";
 
 Object.defineProperty(navigator, "clipboard", {
@@ -30,6 +34,12 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
 
 const findVideo = async (): Promise<HTMLVideoElement> => {
   await waitFor(() => {
@@ -50,20 +60,24 @@ describe("LivePlayer 页面组件", () => {
   });
 
   const renderLivePlayer = (search = "", initialEntries?: string[]) => {
+    const entries = initialEntries ?? [`/live/play${search}`];
     return render(
       <DIProvider value={mockContainer}>
-        <MemoryRouter
-          initialEntries={initialEntries ?? [`/live/play${search}`]}
-          initialIndex={initialEntries ? initialEntries.length - 1 : 0}
-        >
-          <LocationTracker />
-          <Routes>
-            <Route path="/" element={<NavBarLayout />}>
-              <Route path="live" element={<div>Live List</div>} />
-              <Route path="live/play" element={<LivePlayer />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <RouterProvider
+          router={createMemoryRouter(
+            [
+              {
+                path: "/",
+                element: <TestLayout />,
+                children: [
+                  { path: "live", element: <div>Live List</div> },
+                  { path: "live/play", element: <LivePlayer /> },
+                ],
+              },
+            ],
+            { initialEntries: entries, initialIndex: entries.length - 1 },
+          )}
+        />
       </DIProvider>,
     );
   };

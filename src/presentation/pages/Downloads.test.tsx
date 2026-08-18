@@ -5,7 +5,12 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  createMemoryRouter,
+  Outlet,
+  RouterProvider,
+  useLocation,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
@@ -15,7 +20,6 @@ import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
-import { NavBarLayout } from "../components/Layout";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import Downloads from "./Downloads";
 
@@ -26,6 +30,12 @@ const LocationTracker = () => {
   currentLocation.current = useLocation();
   return null;
 };
+const TestLayout = () => (
+  <>
+    <LocationTracker />
+    <Outlet />
+  </>
+);
 
 describe("Downloads 页面组件", () => {
   let mockTorrentRepository: TorrentRepository;
@@ -94,20 +104,26 @@ describe("Downloads 页面组件", () => {
     return render(
       <DIProvider value={mockContainer}>
         <TorrentStatusProvider>
-          <MemoryRouter initialEntries={["/downloads"]}>
-            <LocationTracker />
-            <Routes>
-              <Route path="/" element={<NavBarLayout />}>
-                <Route path="downloads" element={<Downloads />} />
-              </Route>
-              <Route path="/" element={<div>Home Page</div>} />
-              <Route path="/torrent" element={<div>Torrent Page</div>} />
-              <Route
-                path="/subject/:subjectId"
-                element={<div>Subject Page</div>}
-              />
-            </Routes>
-          </MemoryRouter>
+          <RouterProvider
+            router={createMemoryRouter(
+              [
+                {
+                  path: "/",
+                  element: <TestLayout />,
+                  children: [
+                    { path: "downloads", element: <Downloads /> },
+                    { index: true, element: <div>Home Page</div> },
+                    { path: "torrent", element: <div>Torrent Page</div> },
+                    {
+                      path: "subject/:subjectId",
+                      element: <div>Subject Page</div>,
+                    },
+                  ],
+                },
+              ],
+              { initialEntries: ["/downloads"] },
+            )}
+          />
         </TorrentStatusProvider>
       </DIProvider>,
     );
