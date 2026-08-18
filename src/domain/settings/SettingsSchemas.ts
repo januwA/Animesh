@@ -1,17 +1,18 @@
 import { z } from "zod";
+import { NonEmptyStringSchema } from "../common/NonEmptyString";
 
 export const AiConfigSchema = z.object({
-  alias: z.string().trim().min(1, "别名不能为空"),
-  api_endpoint: z.string().trim().min(1, "接口地址不能为空"),
-  api_key: z.string().trim().min(1, "API 密钥不能为空"),
-  ai_model: z.string().trim().min(1, "AI 模型不能为空"),
+  alias: NonEmptyStringSchema.min(1, "别名不能为空"),
+  api_endpoint: NonEmptyStringSchema.min(1, "接口地址不能为空"),
+  api_key: NonEmptyStringSchema.min(1, "API 密钥不能为空"),
+  ai_model: NonEmptyStringSchema.min(1, "AI 模型不能为空"),
 });
 
 export type AiConfig = z.infer<typeof AiConfigSchema>;
 
 export const SettingsSchema = z.object({
-  download_dir: z.string(),
-  proxy: z.string().nullable().optional(),
+  download_dir: NonEmptyStringSchema,
+  proxy: NonEmptyStringSchema.nullable().optional(),
   ai_configs: z.array(AiConfigSchema).nullable().optional(),
   max_download_speed: z.number().nullable().optional(),
   max_upload_speed: z.number().nullable().optional(),

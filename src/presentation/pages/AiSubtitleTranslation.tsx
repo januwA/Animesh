@@ -13,6 +13,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type { SubtitleTranslationRecord } from "@/domain/subtitle/SubtitleTranslationSchemas";
 import type { SubtitleTrackInfo } from "@/domain/torrent/TorrentSchemas";
@@ -55,14 +56,16 @@ import {
 
 // v8 ignore start
 const paramsSchema = z.object({
-  infoHash: z.string().trim().min(1, "缺少种子哈希参数"),
+  infoHash: NonEmptyStringSchema.min(1, "缺少种子哈希参数"),
   fileId: z.preprocess(
     (value) =>
       typeof value === "string" && value !== "" ? Number(value) : value,
     z.number({ message: "文件 ID 必须是数字" }).int("文件 ID 必须是整数"),
   ),
-  title: z.string().default(""),
+  title: NonEmptyStringSchema,
 });
+
+export type ContentProps = z.infer<typeof paramsSchema>;
 // v8 ignore stop
 
 export default function AiSubtitleTranslationPage() {
@@ -85,12 +88,6 @@ export default function AiSubtitleTranslationPage() {
   }
 
   return <AiSubtitleTranslationContent {...parsed.data} />;
-}
-
-interface ContentProps {
-  infoHash: string;
-  fileId: number;
-  title: string;
 }
 
 function AiSubtitleTranslationContent({
@@ -163,7 +160,7 @@ function AiSubtitleTranslationContent({
 
       // 1. 获取原始字幕 VTT 内容
       const vttText = await getSubtitleVttUseCase.execute({
-        infoHash,
+        infoHash: NonEmptyStringSchema.parse(infoHash),
         fileId,
         trackId: selectedTrackId,
       });
@@ -219,7 +216,7 @@ function AiSubtitleTranslationContent({
       if (!editingRecord) return;
       await saveSubtitleTranslationUseCase.execute({
         ...editingRecord,
-        target_lang: editTargetLang.trim(),
+        target_lang: NonEmptyStringSchema.parse(editTargetLang.trim()),
         vtt_content: editVttContent,
         last_accessed_at: Date.now(),
       });

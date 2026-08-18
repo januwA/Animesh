@@ -1,3 +1,4 @@
+import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { SubtitleTranslationRepository } from "../../domain/subtitle/SubtitleTranslationRepository";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 
@@ -8,7 +9,7 @@ export class GetSubtitleVttUseCase {
   ) {}
 
   async execute(dto: {
-    infoHash: string;
+    infoHash: NonEmptyString;
     fileId: number;
     trackId: number | string;
   }): Promise<string> {

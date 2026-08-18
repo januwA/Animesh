@@ -1,9 +1,10 @@
+import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 
 export interface SetTorrentSubjectParams {
-  infoHash: string;
+  infoHash: NonEmptyString;
   subjectId: number;
-  subjectName: string;
+  subjectName: NonEmptyString;
 }
 
 /** 将下载资源绑定到 Bangumi 条目。 */

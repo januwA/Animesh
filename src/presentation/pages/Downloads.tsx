@@ -15,6 +15,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
+import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import {
   AlertDialog,
@@ -325,22 +326,20 @@ export default function Downloads() {
   );
 
   const pauseMutation = useMutation(
-    (_ctx: Context, p: { infoHash: string; name: string }) =>
+    (_ctx: Context, p: { infoHash: NonEmptyString; name: NonEmptyString }) =>
       pauseTorrentUseCase.execute(p.infoHash),
     {
-      onSuccess: (_data, p) =>
-        toast(`已暂停任务: ${p.name || p.infoHash.slice(0, 8)}`),
+      onSuccess: (_data, p) => toast(`已暂停任务: ${p.name}`),
       onError: (err) => toast.error(`暂停失败: ${formatError(err)}`),
       onSettled: () => setPendingPauseHash(null),
     },
   );
 
   const resumeMutation = useMutation(
-    (_ctx: Context, p: { infoHash: string; name: string }) =>
+    (_ctx: Context, p: { infoHash: NonEmptyString; name: NonEmptyString }) =>
       resumeTorrentUseCase.execute(p.infoHash),
     {
-      onSuccess: (_data, p) =>
-        toast.success(`已开始下载任务: ${p.name || p.infoHash.slice(0, 8)}`),
+      onSuccess: (_data, p) => toast.success(`已开始下载任务: ${p.name}`),
       onError: (err) => toast.error(`启动失败: ${formatError(err)}`),
       onSettled: () => setPendingResumeHash(null),
     },

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NonEmptyStringSchema } from "../common/NonEmptyString";
 
 /**
  * 完整的字幕翻译记录。
@@ -8,12 +9,12 @@ import { z } from "zod";
  * getById 返回时包含完整 vtt_content。
  */
 export const SubtitleTranslationRecordSchema = z.object({
-  id: z.string(),
-  info_hash: z.string(),
+  id: NonEmptyStringSchema,
+  info_hash: NonEmptyStringSchema,
   file_id: z.number(),
   original_track_id: z.number(),
-  source_lang: z.string(),
-  target_lang: z.string(),
+  source_lang: NonEmptyStringSchema,
+  target_lang: NonEmptyStringSchema,
   vtt_content: z.string(),
   created_at: z.number(),
   last_accessed_at: z.number(),

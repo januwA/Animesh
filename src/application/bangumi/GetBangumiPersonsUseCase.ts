@@ -1,6 +1,7 @@
 import type { Context } from "ajanuw-context";
 import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
 import type { BangumiPerson } from "@/domain/bangumi/BangumiSchemas";
+import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 
 export class GetBangumiPersonsUseCase {
@@ -9,7 +10,10 @@ export class GetBangumiPersonsUseCase {
     private readonly bangumiCache: BangumiCache,
   ) {}
 
-  async execute(ctx: Context, subjectId: string): Promise<BangumiPerson[]> {
+  async execute(
+    ctx: Context,
+    subjectId: NonEmptyString,
+  ): Promise<BangumiPerson[]> {
     const cached = await this.bangumiCache.getPersons(ctx, subjectId);
     if (cached) {
       return cached;

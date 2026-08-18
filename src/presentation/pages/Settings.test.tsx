@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import { ACCENT_STORAGE_KEY } from "@/presentation/hooks/useAccentTheme";
 import { resetAppStores } from "@/test/store-reset";
@@ -28,7 +29,7 @@ describe("Settings 页面组件", () => {
     mockSettingsRepository = {
       getSettings: vi.fn().mockResolvedValue({
         download_dir: "/default/download",
-        proxy: "",
+        proxy: "http://127.0.0.1:1080",
         max_download_speed: 0,
       }),
       setDownloadDir: vi.fn(),
@@ -128,8 +129,8 @@ describe("Settings 页面组件", () => {
     vi.mocked(mockSettingsRepository.getSettings).mockImplementation(
       async () => {
         return {
-          download_dir: currentDir,
-          proxy: currentProxy,
+          download_dir: NonEmptyStringSchema.parse(currentDir),
+          proxy: NonEmptyStringSchema.parse(currentProxy),
         };
       },
     );
@@ -191,7 +192,8 @@ describe("Settings 页面组件", () => {
 
   it("应该支持修改后台上传速度限制并在保存时调用 setMaxUploadSpeed", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
+      proxy: NonEmptyStringSchema.parse("http://127.0.0.1:1080"),
       max_upload_speed: 512,
     });
 
@@ -219,7 +221,7 @@ describe("Settings 页面组件", () => {
 
   it("当载入设置未含上传限制时，上传速度限制应该默认为 0", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
     });
 
     renderSettings();
@@ -231,7 +233,7 @@ describe("Settings 页面组件", () => {
 
   it("当保存下载目录为空时，应该拦截并提示不能为空", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
     });
 
     renderSettings();
@@ -254,7 +256,7 @@ describe("Settings 页面组件", () => {
 
   it("当保存路径失败时，应该提示相应的错误信息（包含字符串错误 and 非字符串错误）", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
     });
 
     renderSettings();
@@ -295,7 +297,7 @@ describe("Settings 页面组件", () => {
 
   it("应该支持通过选择目录按钮更新目录，并能妥善处理选择文件夹失败的分支", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
     });
 
     renderSettings();
@@ -306,7 +308,7 @@ describe("Settings 页面组件", () => {
 
     // 1. Directory selection succeeds with value
     vi.mocked(mockSettingsRepository.selectDirectory).mockResolvedValue(
-      "D:\\SelectedDir",
+      NonEmptyStringSchema.parse("D:\\SelectedDir"),
     );
 
     const selectBtn = screen.getByRole("button", { name: "选择目录" });
@@ -618,7 +620,8 @@ describe("Settings 页面组件", () => {
 
   it("应该支持加载和配置 AI Agent 相关的设置", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
+      proxy: NonEmptyStringSchema.parse("http://127.0.0.1:1080"),
       ai_configs: [],
     });
 
@@ -680,7 +683,7 @@ describe("Settings 页面组件", () => {
 
   it("当测试 AI 连接时，如果地址或密钥为空，应该提示警告", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
       ai_configs: [],
     });
 
@@ -714,13 +717,13 @@ describe("Settings 页面组件", () => {
 
   it("应该支持在 AI 设置面板中测试模型连接并展示成功提示", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
       ai_configs: [
         {
-          alias: "OpenAI",
-          api_endpoint: "https://api.openai.com/v1",
-          api_key: "my-secret-key",
-          ai_model: "gpt-4o",
+          alias: NonEmptyStringSchema.parse("OpenAI"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+          api_key: NonEmptyStringSchema.parse("my-secret-key"),
+          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
     });
@@ -753,13 +756,13 @@ describe("Settings 页面组件", () => {
 
   it("应该支持在 AI 设置面板中测试模型连接并展示失败提示", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
       ai_configs: [
         {
-          alias: "OpenAI",
-          api_endpoint: "https://api.openai.com/v1",
-          api_key: "my-secret-key",
-          ai_model: "gpt-4o",
+          alias: NonEmptyStringSchema.parse("OpenAI"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+          api_key: NonEmptyStringSchema.parse("my-secret-key"),
+          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
     });
@@ -785,7 +788,7 @@ describe("Settings 页面组件", () => {
 
   it("在 AI 设置面板中，应该支持测试当前正在编辑的配置连接", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
       ai_configs: [],
     });
     vi.mocked(mockAiClient.post).mockResolvedValueOnce({
@@ -836,13 +839,14 @@ describe("Settings 页面组件", () => {
 
   it("应该支持对已添加的 AI 配置进行编辑、取消编辑以及保存修改", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
+      proxy: NonEmptyStringSchema.parse("http://127.0.0.1:1080"),
       ai_configs: [
         {
-          alias: "OpenAI",
-          api_endpoint: "https://api.openai.com/v1",
-          api_key: "old-key",
-          ai_model: "gpt-4o",
+          alias: NonEmptyStringSchema.parse("OpenAI"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+          api_key: NonEmptyStringSchema.parse("old-key"),
+          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
     });
@@ -899,25 +903,26 @@ describe("Settings 页面组件", () => {
 
   it("应该支持删除已添加的 AI 配置，并正确重置或修正编辑索引", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
+      proxy: NonEmptyStringSchema.parse("http://127.0.0.1:1080"),
       ai_configs: [
         {
-          alias: "Config1",
-          api_endpoint: "https://api1.com",
-          api_key: "key1",
-          ai_model: "model1",
+          alias: NonEmptyStringSchema.parse("Config1"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api1.com"),
+          api_key: NonEmptyStringSchema.parse("key1"),
+          ai_model: NonEmptyStringSchema.parse("model1"),
         },
         {
-          alias: "Config2",
-          api_endpoint: "https://api2.com",
-          api_key: "key2",
-          ai_model: "model2",
+          alias: NonEmptyStringSchema.parse("Config2"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api2.com"),
+          api_key: NonEmptyStringSchema.parse("key2"),
+          ai_model: NonEmptyStringSchema.parse("model2"),
         },
         {
-          alias: "Config3",
-          api_endpoint: "https://api3.com",
-          api_key: "key3",
-          ai_model: "model3",
+          alias: NonEmptyStringSchema.parse("Config3"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api3.com"),
+          api_key: NonEmptyStringSchema.parse("key3"),
+          ai_model: NonEmptyStringSchema.parse("model3"),
         },
       ],
     });
@@ -1006,13 +1011,13 @@ describe("Settings 页面组件", () => {
 
   it("添加/保存配置时应该有相应的表单字段及重复校验警告", async () => {
     vi.mocked(mockSettingsRepository.getSettings).mockResolvedValue({
-      download_dir: "C:\\Downloads",
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
       ai_configs: [
         {
-          alias: "OpenAI",
-          api_endpoint: "https://api.openai.com/v1",
-          api_key: "my-key",
-          ai_model: "gpt-4o",
+          alias: NonEmptyStringSchema.parse("OpenAI"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+          api_key: NonEmptyStringSchema.parse("my-key"),
+          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
     });

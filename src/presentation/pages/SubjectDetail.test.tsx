@@ -16,6 +16,7 @@ import type {
   BangumiEpisodesPage,
   BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
@@ -1941,8 +1942,8 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
   const makeTorrent = (
     overrides: Partial<TorrentStatusInfo>,
   ): TorrentStatusInfo => ({
-    info_hash: "hash-1",
-    name: "测试种子",
+    info_hash: NonEmptyStringSchema.parse("hash-1"),
+    name: NonEmptyStringSchema.parse("测试种子"),
     progress_bytes: 100,
     total_bytes: 100,
     finished: false,
@@ -2023,10 +2024,13 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
 
   it("资源标签页应该展示已绑定任务，并在标签上显示数量徽章", async () => {
     renderResourceTab([
-      makeTorrent({ subject_id: 123, subject_name: "测试动漫" }),
       makeTorrent({
-        info_hash: "hash-2",
-        name: "未绑定种子",
+        subject_id: 123,
+        subject_name: NonEmptyStringSchema.parse("测试动漫"),
+      }),
+      makeTorrent({
+        info_hash: NonEmptyStringSchema.parse("hash-2"),
+        name: NonEmptyStringSchema.parse("未绑定种子"),
       }),
     ]);
 
@@ -2046,10 +2050,10 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
   it("点击已绑定任务行，应该跳转到种子详情页并携带 hash 与标题", async () => {
     renderResourceTab([
       makeTorrent({
-        info_hash: "hash-1",
-        name: "测试种子",
+        info_hash: NonEmptyStringSchema.parse("hash-1"),
+        name: NonEmptyStringSchema.parse("测试种子"),
         subject_id: 123,
-        subject_name: "测试动漫",
+        subject_name: NonEmptyStringSchema.parse("测试动漫"),
       }),
     ]);
 
@@ -2074,10 +2078,10 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
     renderResourceTab(
       [
         makeTorrent({
-          info_hash: "hash-1",
-          name: "测试种子",
+          info_hash: NonEmptyStringSchema.parse("hash-1"),
+          name: NonEmptyStringSchema.parse("测试种子"),
           subject_id: 123,
-          subject_name: "测试动漫",
+          subject_name: NonEmptyStringSchema.parse("测试动漫"),
         }),
       ],
       { clearTorrentSubject },
@@ -2101,14 +2105,14 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
     renderResourceTab(
       [
         makeTorrent({
-          info_hash: "hash-1",
-          name: "测试种子",
+          info_hash: NonEmptyStringSchema.parse("hash-1"),
+          name: NonEmptyStringSchema.parse("测试种子"),
         }),
         makeTorrent({
-          info_hash: "hash-2",
-          name: "另一个种子",
+          info_hash: NonEmptyStringSchema.parse("hash-2"),
+          name: NonEmptyStringSchema.parse("另一个种子"),
           subject_id: 456,
-          subject_name: "其他动漫",
+          subject_name: NonEmptyStringSchema.parse("其他动漫"),
         }),
       ],
       { setTorrentSubject },
@@ -2142,7 +2146,12 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
       .fn()
       .mockRejectedValue(new Error("Bind failed"));
     renderResourceTab(
-      [makeTorrent({ info_hash: "hash-1", name: "测试种子" })],
+      [
+        makeTorrent({
+          info_hash: NonEmptyStringSchema.parse("hash-1"),
+          name: NonEmptyStringSchema.parse("测试种子"),
+        }),
+      ],
       { setTorrentSubject },
     );
 
@@ -2170,10 +2179,10 @@ describe("SubjectDetail 页面 - 资源绑定", () => {
     renderResourceTab(
       [
         makeTorrent({
-          info_hash: "hash-1",
-          name: "测试种子",
+          info_hash: NonEmptyStringSchema.parse("hash-1"),
+          name: NonEmptyStringSchema.parse("测试种子"),
           subject_id: 123,
-          subject_name: "测试动漫",
+          subject_name: NonEmptyStringSchema.parse("测试动漫"),
         }),
       ],
       { clearTorrentSubject },

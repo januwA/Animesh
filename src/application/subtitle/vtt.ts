@@ -114,7 +114,12 @@ function makeTimingCue(
   pendingIdentifier: string | undefined,
   trimmed: string,
 ): VttCue {
-  const match = TIMING_REGEX.exec(trimmed)!;
+  const match = TIMING_REGEX.exec(trimmed);
+  // v8 ignore start
+  if (!match) {
+    throw new Error(`Invalid timing line: ${trimmed}`);
+  }
+  // v8 ignore stop
   return {
     identifier: pendingIdentifier,
     start: match[1],

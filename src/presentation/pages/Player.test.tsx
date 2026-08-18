@@ -42,6 +42,7 @@ const LocationTracker = () => {
 };
 const getCurrentLocation = () => currentLocation.current;
 
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { VideoMetadata } from "@/domain/torrent/TorrentSchemas";
 
 const emptyMetadata: VideoMetadata = {
@@ -166,8 +167,8 @@ describe("Player 页面组件", () => {
     vi.useFakeTimers();
 
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -204,8 +205,8 @@ describe("Player 页面组件", () => {
     expect(screen.getByText("1000 B")).toBeInTheDocument();
 
     const finishedStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 1000,
       total_bytes: 1000,
       finished: true,
@@ -266,8 +267,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -316,7 +317,11 @@ describe("Player 页面组件", () => {
     render(
       <DIProvider value={testContainer}>
         <TorrentStatusProvider>
-          <MemoryRouter initialEntries={["/play/hash123/0"]}>
+          <MemoryRouter
+            initialEntries={[
+              "/play/hash123/0?title=test_title&fileName=video_name.mp4",
+            ]}
+          >
             <LocationTracker />
             <Routes>
               <Route path="/" element={<NavBarLayout />}>
@@ -368,7 +373,7 @@ describe("Player 页面组件", () => {
       "Stream server port not initialized",
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(
@@ -397,8 +402,8 @@ describe("Player 页面组件", () => {
       "stream_url",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 0,
       total_bytes: 100,
       finished: false,
@@ -450,8 +455,8 @@ describe("Player 页面组件", () => {
       "stream_url",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 0,
       total_bytes: 100,
       finished: false,
@@ -520,8 +525,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1/stream",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -562,8 +567,8 @@ describe("Player 页面组件", () => {
     vi.useFakeTimers();
 
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -614,8 +619,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -647,8 +652,8 @@ describe("Player 页面组件", () => {
   it("当获取元数据失败时，应该优雅处理并打印错误", async () => {
     vi.useFakeTimers();
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -686,8 +691,8 @@ describe("Player 页面组件", () => {
 
   it("当获取字幕VTT失败时，应该显示错误Toast提示", async () => {
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -728,8 +733,8 @@ describe("Player 页面组件", () => {
   it("在初始加载失败后，应该在轮询中成功加载元数据与字幕", async () => {
     vi.useFakeTimers();
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -801,7 +806,7 @@ describe("Player 页面组件", () => {
       new Error("Failed to extract metadata"),
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     // Flush initialization microtasks
     await act(async () => {
@@ -831,8 +836,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -844,7 +849,7 @@ describe("Player 页面组件", () => {
       trackers: [],
     };
 
-    renderPlayer("/play/hash123/0?fileName=test.mp4");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=test.mp4");
 
     await waitFor(() => {
       expect(screen.getByText("下载进度: 40.00%")).toBeInTheDocument();
@@ -915,7 +920,7 @@ describe("Player 页面组件", () => {
       },
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -999,8 +1004,8 @@ describe("Player 页面组件", () => {
     vi.useFakeTimers();
 
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1046,8 +1051,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1093,8 +1098,8 @@ describe("Player 页面组件", () => {
     URL.createObjectURL = vi.fn().mockReturnValue("");
 
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1141,8 +1146,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1190,8 +1195,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1206,7 +1211,9 @@ describe("Player 页面组件", () => {
       metadataPromise,
     );
 
-    const { unmount } = renderPlayer("/play/hash123/0");
+    const { unmount } = renderPlayer(
+      "/play/hash123/0?title=test_title&fileName=video_name.mp4",
+    );
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1228,8 +1235,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1252,7 +1259,7 @@ describe("Player 页面组件", () => {
       "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1296,8 +1303,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     const status400 = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1336,7 +1343,7 @@ describe("Player 页面组件", () => {
       },
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1404,8 +1411,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1428,7 +1435,7 @@ describe("Player 页面组件", () => {
       "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1458,8 +1465,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1482,7 +1489,7 @@ describe("Player 页面组件", () => {
       "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1545,8 +1552,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     const status400 = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1580,7 +1587,7 @@ describe("Player 页面组件", () => {
       },
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1623,8 +1630,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     const status400 = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1660,7 +1667,7 @@ describe("Player 页面组件", () => {
       },
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1721,8 +1728,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1745,7 +1752,7 @@ describe("Player 页面组件", () => {
       "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -1792,8 +1799,8 @@ describe("Player 页面组件", () => {
   it("当获取到章节信息时，应该正确渲染章节列表并格式化时间", async () => {
     vi.useFakeTimers();
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1853,8 +1860,8 @@ describe("Player 页面组件", () => {
   it("点击章节项时应该调用播放器跳转到对应时间", async () => {
     vi.useFakeTimers();
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1906,8 +1913,8 @@ describe("Player 页面组件", () => {
   it("当章节跳转失败时，应该显示错误提示", async () => {
     vi.useFakeTimers();
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -1964,8 +1971,8 @@ describe("Player 页面组件", () => {
   it("获取到媒体信息时应该渲染媒体信息区块", async () => {
     vi.useFakeTimers();
     const mockStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -2036,8 +2043,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -2090,8 +2097,8 @@ describe("Player 页面组件", () => {
     );
 
     const makeStatus = (progress: number, finished = false) => ({
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: progress,
       total_bytes: 1000,
       finished,
@@ -2103,7 +2110,7 @@ describe("Player 页面组件", () => {
       trackers: [],
     });
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     // Flush initialization microtasks
     await act(async () => {
@@ -2140,8 +2147,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 1000,
       total_bytes: 1000,
       finished: true,
@@ -2157,7 +2164,7 @@ describe("Player 页面组件", () => {
       .mockResolvedValueOnce(null as unknown as VideoMetadata)
       .mockResolvedValue(emptyMetadata);
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -2177,8 +2184,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -2198,7 +2205,7 @@ describe("Player 页面组件", () => {
       "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello\n",
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -2222,8 +2229,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -2250,7 +2257,7 @@ describe("Player 页面组件", () => {
         }),
     );
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -2275,8 +2282,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -2291,7 +2298,7 @@ describe("Player 页面组件", () => {
       ],
     };
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -2315,8 +2322,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -2328,7 +2335,7 @@ describe("Player 页面组件", () => {
       trackers: [],
     };
 
-    renderPlayer("/play/hash123/0");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=video_name.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();
@@ -2347,8 +2354,8 @@ describe("Player 页面组件", () => {
       "http://127.0.0.1:12345/stream/hash123/0",
     );
     currentStatus = {
-      info_hash: "hash123",
-      name: "测试视频",
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试视频"),
       progress_bytes: 400,
       total_bytes: 1000,
       finished: false,
@@ -2390,7 +2397,7 @@ describe("Player 页面组件", () => {
       }),
     );
 
-    renderPlayer("/play/hash123/0?fileName=test.mp4");
+    renderPlayer("/play/hash123/0?title=test_title&fileName=test.mp4");
 
     await act(async () => {
       await vi.runOnlyPendingTimersAsync();

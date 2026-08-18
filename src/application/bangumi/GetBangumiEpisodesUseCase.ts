@@ -1,6 +1,7 @@
 import type { Context } from "ajanuw-context";
 import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
 import type { BangumiEpisodesPage } from "@/domain/bangumi/BangumiSchemas";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 
 export interface GetEpisodesPageCommand {
@@ -22,7 +23,7 @@ export class GetBangumiEpisodesUseCase {
     const { subjectId, offset, limit } = command;
     const cached = await this.bangumiCache.getEpisodes(
       ctx,
-      subjectId,
+      NonEmptyStringSchema.parse(subjectId),
       offset,
       limit,
     );
@@ -31,11 +32,17 @@ export class GetBangumiEpisodesUseCase {
     }
     const page = await this.bangumiRepository.getEpisodes(
       ctx,
-      subjectId,
+      NonEmptyStringSchema.parse(subjectId),
       offset,
       limit,
     );
-    await this.bangumiCache.setEpisodes(ctx, subjectId, offset, limit, page);
+    await this.bangumiCache.setEpisodes(
+      ctx,
+      NonEmptyStringSchema.parse(subjectId),
+      offset,
+      limit,
+      page,
+    );
     return page;
   }
 }

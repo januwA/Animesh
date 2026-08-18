@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import { GetSettingsUseCase } from "./GetSettingsUseCase";
 import { SaveSettingsUseCase } from "./SaveSettingsUseCase";
@@ -62,16 +63,10 @@ describe("Settings 相关的 UseCase 业务编排", () => {
       proxy: "http://127.0.0.1:1080",
       aiConfigs: [
         {
-          alias: "OpenAI",
-          api_endpoint: "https://api.openai.com/v1",
-          api_key: "test-key",
-          ai_model: "gpt-4o",
-        },
-        {
-          alias: "NoModel",
-          api_endpoint: "https://api.nomodel.com/v1",
-          api_key: "test-key-2",
-          ai_model: "",
+          alias: NonEmptyStringSchema.parse("OpenAI"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+          api_key: NonEmptyStringSchema.parse("test-key"),
+          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
     });
@@ -79,16 +74,10 @@ describe("Settings 相关的 UseCase 业务编排", () => {
     expect(rawMockRepo.setProxy).toHaveBeenCalledWith("http://127.0.0.1:1080");
     expect(rawMockRepo.setAiConfigs).toHaveBeenCalledWith([
       {
-        alias: "OpenAI",
-        api_endpoint: "https://api.openai.com/v1",
-        api_key: "test-key",
-        ai_model: "gpt-4o",
-      },
-      {
-        alias: "NoModel",
-        api_endpoint: "https://api.nomodel.com/v1",
-        api_key: "test-key-2",
-        ai_model: "",
+        alias: NonEmptyStringSchema.parse("OpenAI"),
+        api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
     ]);
   });
@@ -110,10 +99,10 @@ describe("Settings 相关的 UseCase 业务编排", () => {
     vi.mocked(rawMockRepo.setAiConfigs).mockResolvedValueOnce(undefined);
     await useCase.execute({
       downloadDir: "/mock/dir2",
-      proxy: null,
+      proxy: "http://127.0.0.1:1080",
     });
     expect(rawMockRepo.setDownloadDir).toHaveBeenCalledWith("/mock/dir2");
-    expect(rawMockRepo.setProxy).toHaveBeenCalledWith(null);
+    expect(rawMockRepo.setProxy).toHaveBeenCalledWith("http://127.0.0.1:1080");
     expect(rawMockRepo.setAiConfigs).not.toHaveBeenCalled();
   });
 
@@ -124,7 +113,7 @@ describe("Settings 相关的 UseCase 业务编排", () => {
     vi.mocked(rawMockRepo.setAiConfigs).mockResolvedValueOnce(undefined);
     await useCase.execute({
       downloadDir: "/mock/dir2",
-      proxy: null,
+      proxy: "http://127.0.0.1:1080",
       aiConfigs: null,
     });
     expect(rawMockRepo.setAiConfigs).toHaveBeenCalledWith(null);
@@ -136,7 +125,7 @@ describe("Settings 相关的 UseCase 业务编排", () => {
     vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
     await useCase.execute({
       downloadDir: "/mock/dir2",
-      proxy: null,
+      proxy: "http://127.0.0.1:1080",
       maxUploadSpeed: 256,
     });
     expect(rawMockRepo.setMaxUploadSpeed).toHaveBeenCalledWith(256);
@@ -148,7 +137,7 @@ describe("Settings 相关的 UseCase 业务编排", () => {
     vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
     await useCase.execute({
       downloadDir: "/mock/dir2",
-      proxy: null,
+      proxy: "http://127.0.0.1:1080",
     });
     expect(rawMockRepo.setMaxUploadSpeed).not.toHaveBeenCalled();
   });

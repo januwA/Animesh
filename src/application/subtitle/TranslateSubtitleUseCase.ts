@@ -1,5 +1,6 @@
 import type { Context } from "ajanuw-context";
 import { z } from "zod";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AiClient } from "../../domain/ai/AiClient";
 import type { Logger } from "../../domain/logger/logger";
 import {
@@ -153,12 +154,12 @@ export class TranslateSubtitleUseCase {
   ): SubtitleTranslationRecord {
     const now = Date.now();
     return {
-      id: crypto.randomUUID(),
-      info_hash: dto.infoHash,
+      id: NonEmptyStringSchema.parse(crypto.randomUUID()),
+      info_hash: NonEmptyStringSchema.parse(dto.infoHash),
       file_id: dto.fileId,
       original_track_id: dto.originalTrackId,
-      source_lang: dto.sourceLanguage,
-      target_lang: dto.targetLanguage,
+      source_lang: NonEmptyStringSchema.parse(dto.sourceLanguage),
+      target_lang: NonEmptyStringSchema.parse(dto.targetLanguage),
       vtt_content: translatedVtt,
       created_at: now,
       last_accessed_at: now,

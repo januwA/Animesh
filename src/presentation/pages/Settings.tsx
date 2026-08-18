@@ -20,6 +20,7 @@ import { useBlocker } from "react-router-dom";
 import { toast } from "sonner";
 import type { SaveSettingsDto } from "@/application/settings/SaveSettingsUseCase";
 import { useDI } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import {
   type AiConfig,
   SettingsFormSchema,
@@ -161,10 +162,10 @@ export default function Settings() {
       return;
     }
     verifyAiMutation.execute({
-      alias: aliasInput,
-      api_endpoint: apiEndpointInput,
-      api_key: apiKeyInput,
-      ai_model: modelInput,
+      alias: NonEmptyStringSchema.parse(aliasInput),
+      api_endpoint: NonEmptyStringSchema.parse(apiEndpointInput),
+      api_key: NonEmptyStringSchema.parse(apiKeyInput),
+      ai_model: NonEmptyStringSchema.parse(modelInput),
     });
   };
 
@@ -319,7 +320,12 @@ export default function Settings() {
       return;
     }
 
-    const newConfig: AiConfig = { alias, api_endpoint, api_key, ai_model };
+    const newConfig: AiConfig = {
+      alias: NonEmptyStringSchema.parse(alias),
+      api_endpoint: NonEmptyStringSchema.parse(api_endpoint),
+      api_key: NonEmptyStringSchema.parse(api_key),
+      ai_model: NonEmptyStringSchema.parse(ai_model),
+    };
 
     if (editingIndex === -1) {
       setAiConfigs((prev) => [...prev, newConfig]);
@@ -835,7 +841,9 @@ export default function Settings() {
                             if (updateResult.htmlUrl) {
                               try {
                                 await openUpdateUrlUseCase.execute(
-                                  updateResult.htmlUrl,
+                                  NonEmptyStringSchema.parse(
+                                    updateResult.htmlUrl,
+                                  ),
                                 );
                               } catch (err: unknown) {
                                 toast.error(

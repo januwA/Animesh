@@ -59,6 +59,10 @@ import {
   videoFeatures,
 } from "@videojs/react";
 import { Video, VideoSkin } from "@videojs/react/video";
+import {
+  type NonEmptyString,
+  NonEmptyStringSchema,
+} from "@/domain/common/NonEmptyString";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -66,26 +70,26 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 const JsPlayer = createPlayer({ features: videoFeatures });
 
 interface SubtitleVttDto {
-  infoHash: string;
+  infoHash: NonEmptyString;
   fileId: number;
   trackId: number | string;
 }
 
 interface SubtitleSource {
-  url: string;
+  url: NonEmptyString;
   loadedAtFraction: number | null;
   loadedWhenFinished: boolean;
 }
 
 const playerParamsSchema = z.object({
-  infoHash: z.string().trim().min(1, "缺少种子哈希参数"),
+  infoHash: NonEmptyStringSchema.min(1, "缺少种子哈希参数"),
   fileId: z.preprocess(
     (value) =>
       typeof value === "string" && value !== "" ? Number(value) : value,
     z.number({ message: "文件 ID 必须是数字" }).int("文件 ID 必须是整数"),
   ),
-  title: z.string().default(""),
-  fileName: z.string().default("正在播放"),
+  title: NonEmptyStringSchema,
+  fileName: NonEmptyStringSchema,
 });
 
 type PlayerParams = z.infer<typeof playerParamsSchema>;
@@ -241,7 +245,9 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
     {
       onSuccess: (vtt, dto) => {
         pendingSubtitleRef.current = null;
-        const url = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
+        const url = NonEmptyStringSchema.parse(
+          URL.createObjectURL(new Blob([vtt], { type: "text/vtt" })),
+        );
         const prev = subtitleSourcesRef.current[dto.trackId];
         const status = torrentStatusRef.current;
         const next = {
@@ -272,7 +278,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
       if (pendingSubtitleRef.current === trackId) return;
       pendingSubtitleRef.current = trackId;
       subtitleMutation.execute({
-        infoHash,
+        infoHash: NonEmptyStringSchema.parse(infoHash),
         fileId,
         trackId,
       });
@@ -302,7 +308,7 @@ function PlayerShell({ infoHash, fileId, title, fileName }: PlayerParams) {
   useEffect(() => {
     return () => {
       for (const source of Object.values(subtitleSourcesRef.current)) {
-        if (source.url) URL.revokeObjectURL(source.url);
+        URL.revokeObjectURL(source.url);
       }
       subtitleSourcesRef.current = {};
     };

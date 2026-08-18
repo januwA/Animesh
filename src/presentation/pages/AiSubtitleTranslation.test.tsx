@@ -9,6 +9,7 @@ import type { GetSubtitleVttUseCase } from "@/application/torrent/GetSubtitleVtt
 import type { GetVideoMetadataUseCase } from "@/application/torrent/GetVideoMetadataUseCase";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { SubtitleTranslationRepository } from "@/domain/subtitle/SubtitleTranslationRepository";
 import type { SubtitleTranslationRecord } from "@/domain/subtitle/SubtitleTranslationSchemas";
 import type { VideoMetadata } from "@/domain/torrent/TorrentSchemas";
@@ -76,12 +77,12 @@ describe("AiSubtitleTranslationPage 页面组件", () => {
   ];
 
   const mockRecord: SubtitleTranslationRecord = {
-    id: "rec-uuid-1234",
-    info_hash: "hash123",
+    id: NonEmptyStringSchema.parse("rec-uuid-1234"),
+    info_hash: NonEmptyStringSchema.parse("hash123"),
     file_id: 0,
     original_track_id: 1,
-    source_lang: "eng",
-    target_lang: "zh",
+    source_lang: NonEmptyStringSchema.parse("eng"),
+    target_lang: NonEmptyStringSchema.parse("zh"),
     vtt_content: "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\n你好，世界\n",
     created_at: 1000000,
     last_accessed_at: 1000000,

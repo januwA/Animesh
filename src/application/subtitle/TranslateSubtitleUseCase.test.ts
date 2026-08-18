@@ -1,6 +1,10 @@
 import type { Context } from "ajanuw-context";
 import { Background, WithCancel } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  type NonEmptyString,
+  NonEmptyStringSchema,
+} from "@/domain/common/NonEmptyString";
 import type { AiClient } from "../../domain/ai/AiClient";
 import type { Logger } from "../../domain/logger/logger";
 import type { AiConfig } from "../../domain/settings/SettingsSchemas";
@@ -26,10 +30,12 @@ describe("TranslateSubtitleUseCase 测试", () => {
 `;
 
   const defaultAiConfig: AiConfig = {
-    alias: "Default",
-    api_endpoint: "https://api.example.com/v1/chat/completions",
-    api_key: "test-key",
-    ai_model: "gpt-4o",
+    alias: NonEmptyStringSchema.parse("Default"),
+    api_endpoint: NonEmptyStringSchema.parse(
+      "https://api.example.com/v1/chat/completions",
+    ),
+    api_key: NonEmptyStringSchema.parse("test-key"),
+    ai_model: NonEmptyStringSchema.parse("gpt-4o"),
   };
 
   beforeEach(() => {
@@ -89,11 +95,14 @@ describe("TranslateSubtitleUseCase 测试", () => {
     await expect(
       useCase.execute(ctx, {
         vtt: sampleVtt,
-        sourceLanguage: "auto",
-        targetLanguage: "zh",
-        aiConfig: { ...defaultAiConfig, api_key: "" },
+        sourceLanguage: NonEmptyStringSchema.parse("auto"),
+        targetLanguage: NonEmptyStringSchema.parse("zh"),
+        aiConfig: {
+          ...defaultAiConfig,
+          api_key: "" as unknown as NonEmptyString,
+        },
         onProgress: () => {},
-        infoHash: "",
+        infoHash: "" as unknown as NonEmptyString,
         fileId: 0,
         originalTrackId: 0,
       }),
@@ -119,9 +128,12 @@ describe("TranslateSubtitleUseCase 测试", () => {
 `,
       sourceLanguage: "ja",
       targetLanguage: "zh",
-      aiConfig: { ...defaultAiConfig, ai_model: "gpt-3.5-turbo" },
+      aiConfig: {
+        ...defaultAiConfig,
+        ai_model: NonEmptyStringSchema.parse("gpt-3.5-turbo"),
+      },
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -152,11 +164,11 @@ describe("TranslateSubtitleUseCase 测试", () => {
 00:00:01.000 --> 00:00:02.000
 こんにちは
 `,
-      sourceLanguage: "ja",
-      targetLanguage: "zh",
+      sourceLanguage: NonEmptyStringSchema.parse("ja"),
+      targetLanguage: NonEmptyStringSchema.parse("zh"),
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -183,11 +195,11 @@ describe("TranslateSubtitleUseCase 测试", () => {
 00:00:01.000 --> 00:00:02.000
 こんにちは
 `,
-      sourceLanguage: "auto",
-      targetLanguage: "zh",
+      sourceLanguage: NonEmptyStringSchema.parse("auto"),
+      targetLanguage: NonEmptyStringSchema.parse("zh"),
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -213,11 +225,11 @@ describe("TranslateSubtitleUseCase 测试", () => {
 
     await useCase.execute(ctx, {
       vtt: sampleVtt,
-      sourceLanguage: "ja",
-      targetLanguage: "zh",
+      sourceLanguage: NonEmptyStringSchema.parse("ja"),
+      targetLanguage: NonEmptyStringSchema.parse("zh"),
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -274,7 +286,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       targetLanguage: "zh",
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -313,7 +325,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       aiConfig: defaultAiConfig,
       onProgress,
       batchSize: 1,
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -345,7 +357,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       targetLanguage: "en",
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -382,7 +394,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       targetLanguage: "en",
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -426,7 +438,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
         aiConfig: defaultAiConfig,
         onProgress,
         batchSize: 1,
-        infoHash: "",
+        infoHash: "abc",
         fileId: 0,
         originalTrackId: 0,
       }),
@@ -457,7 +469,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
         targetLanguage: "en",
         aiConfig: defaultAiConfig,
         onProgress: () => {},
-        infoHash: "",
+        infoHash: "abc",
         fileId: 0,
         originalTrackId: 0,
       }),
@@ -486,7 +498,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
         targetLanguage: "en",
         aiConfig: defaultAiConfig,
         onProgress: () => {},
-        infoHash: "",
+        infoHash: "abc",
         fileId: 0,
         originalTrackId: 0,
       }),
@@ -515,7 +527,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
         targetLanguage: "en",
         aiConfig: defaultAiConfig,
         onProgress: () => {},
-        infoHash: "",
+        infoHash: "abc",
         fileId: 0,
         originalTrackId: 0,
       }),
@@ -543,7 +555,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       targetLanguage: "en",
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -573,7 +585,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       targetLanguage: "en",
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -601,13 +613,15 @@ describe("TranslateSubtitleUseCase 测试", () => {
       sourceLanguage: "zh",
       targetLanguage: "en",
       aiConfig: {
-        alias: "Custom",
-        api_endpoint: "https://api.custom.com/v1/chat/completions",
-        api_key: "custom-key",
-        ai_model: "custom-model",
+        alias: NonEmptyStringSchema.parse("Custom"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.custom.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("custom-key"),
+        ai_model: NonEmptyStringSchema.parse("custom-model"),
       },
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -677,7 +691,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       targetLanguage: "zh",
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -781,7 +795,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       targetLanguage: "en",
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
@@ -812,40 +826,11 @@ describe("TranslateSubtitleUseCase 测试", () => {
       targetLanguage: "en",
       aiConfig: defaultAiConfig,
       onProgress: () => {},
-      infoHash: "",
+      infoHash: "abc",
       fileId: 0,
       originalTrackId: 0,
     });
 
     expect(getSavedVtt()).toContain("你好");
-  });
-
-  it("即使 infoHash 为空，翻译成功后也会无条件保存记录", async () => {
-    vi.mocked(mockAiClient.post).mockResolvedValueOnce(
-      aiResponse([{ index: 0, translation: "Hello" }]),
-    );
-
-    const useCase = new TranslateSubtitleUseCase(
-      mockAiClient,
-      mockTranslationRepo,
-      mockLogger,
-    );
-
-    await useCase.execute(ctx, {
-      vtt: `WEBVTT
-
-00:00:01.000 --> 00:00:02.000
-你好
-`,
-      sourceLanguage: "zh",
-      targetLanguage: "en",
-      aiConfig: defaultAiConfig,
-      infoHash: "",
-      onProgress: () => {},
-      fileId: 0,
-      originalTrackId: 0,
-    });
-
-    expect(mockTranslationRepo.save).toHaveBeenCalledTimes(1);
   });
 });

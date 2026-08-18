@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AiClient } from "../../domain/ai/AiClient";
 import { VerifyAiConnectionUseCase } from "./VerifyAiConnectionUseCase";
 
@@ -15,16 +16,16 @@ describe("VerifyAiConnectionUseCase AI 连接验证", () => {
 
     await expect(
       useCase.execute({
-        api_endpoint: "https://api.openai.com/v1",
-        api_key: "valid-key",
-        ai_model: "gpt-4o",
-        alias: "test",
+        api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+        api_key: NonEmptyStringSchema.parse("valid-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
+        alias: NonEmptyStringSchema.parse("test"),
       }),
     ).resolves.not.toThrow();
 
     expect(mockAiClient.post).toHaveBeenCalledWith(
-      "https://api.openai.com/v1",
-      "valid-key",
+      NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+      NonEmptyStringSchema.parse("valid-key"),
       {
         model: "gpt-4o",
         messages: [
@@ -45,10 +46,10 @@ describe("VerifyAiConnectionUseCase AI 连接验证", () => {
 
     await expect(
       useCase.execute({
-        api_endpoint: "https://api.openai.com/v1",
-        api_key: "valid-key",
-        alias: "test",
-        ai_model: "test_model",
+        api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+        api_key: NonEmptyStringSchema.parse("valid-key"),
+        alias: NonEmptyStringSchema.parse("test"),
+        ai_model: NonEmptyStringSchema.parse("test_model"),
       }),
     ).rejects.toThrow("模型服务未返回有效响应，请检查配置");
   });
@@ -61,10 +62,10 @@ describe("VerifyAiConnectionUseCase AI 连接验证", () => {
 
     await expect(
       useCase.execute({
-        api_endpoint: "https://api.openai.com/v1",
-        api_key: "valid-key",
-        alias: "test",
-        ai_model: "test_model",
+        api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+        api_key: NonEmptyStringSchema.parse("valid-key"),
+        alias: NonEmptyStringSchema.parse("test"),
+        ai_model: NonEmptyStringSchema.parse("test_model"),
       }),
     ).rejects.toThrow("Network Error");
   });

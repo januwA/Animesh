@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { createFakeHttpClient } from "../../test/FakeHttpClient";
 import { HttpSettingsRepository } from "./HttpSettingsRepository";
 
@@ -59,10 +60,10 @@ describe("基础设施层 HttpSettingsRepository", () => {
 
       await repository.setAiConfigs([
         {
-          alias: "OpenAI",
-          api_endpoint: "https://api.openai.com/v1",
-          api_key: "ai-api-key",
-          ai_model: "gpt-4o",
+          alias: NonEmptyStringSchema.parse("OpenAI"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+          api_key: NonEmptyStringSchema.parse("ai-api-key"),
+          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ]);
 

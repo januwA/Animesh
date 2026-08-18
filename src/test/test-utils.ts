@@ -1,3 +1,4 @@
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
 import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCharactersUseCase";
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
@@ -159,7 +160,9 @@ export function createDIContainerForTest(
   } as unknown as TorrentRepository;
 
   const settingsRepo = {
-    getSettings: async () => ({ download_dir: "" }),
+    getSettings: async () => ({
+      download_dir: NonEmptyStringSchema.parse("/data"),
+    }),
     setDownloadDir: async () => {},
     setProxy: async () => {},
     setAiOptions: async () => {},

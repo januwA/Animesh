@@ -117,7 +117,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 
     // 8. 跳转到种子详情 /torrent 并等待载入 (Lazy)
     await act(async () => {
-      router.navigate("/torrent?infoHash=123");
+      router.navigate("/torrent?title=Test");
     });
     await waitFor(() => {
       expect(screen.getByText(/种子解析失败|正在启动/)).toBeInTheDocument();
@@ -133,7 +133,7 @@ describe("routes 路由懒加载与 PageLoader 覆盖", () => {
 
     // 10. 跳转到播放页 /play/1/1 并等待载入 (Lazy)
     await act(async () => {
-      router.navigate("/play/1/1?title=Test");
+      router.navigate("/play/1/1?title=Test&fileName=TestFile");
     });
     await waitFor(() => {
       expect(screen.getByText(/下载进度:/)).toBeInTheDocument();

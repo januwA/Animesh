@@ -1,4 +1,5 @@
 import { getVersion } from "@tauri-apps/api/app";
+import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { OpenerRepository } from "../../domain/opener/OpenerRepository";
 import type { UpdateInfo } from "../../domain/update/UpdateInfo";
 import type { UpdateRepository } from "../../domain/update/UpdateRepository";
@@ -75,7 +76,7 @@ export class GithubUpdateRepository implements UpdateRepository {
     }
   }
 
-  async openUrl(url: string): Promise<void> {
+  async openUrl(url: NonEmptyString): Promise<void> {
     return this.openerRepository.openUrl(url);
   }
 }

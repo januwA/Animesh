@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import {
   type AiConfig,
@@ -42,8 +43,8 @@ export class TauriSettingsRepository implements SettingsRepository {
     });
   }
 
-  async selectDirectory(): Promise<string | null> {
-    return invoke<string | null>("select_directory");
+  async selectDirectory(): Promise<NonEmptyString | null> {
+    return invoke<NonEmptyString | null>("select_directory");
   }
 
   async setTheme(theme: "light" | "dark" | null): Promise<void> {

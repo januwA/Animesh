@@ -1,3 +1,4 @@
+import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import {
   type AiConfig,
@@ -80,7 +81,7 @@ export class HttpSettingsRepository implements SettingsRepository {
     });
   }
 
-  async selectDirectory(): Promise<string | null> {
+  async selectDirectory(): Promise<NonEmptyString | null> {
     // Web version doesn't support directory selection dialog
     return null;
   }

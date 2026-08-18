@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import {
   TORRENT_SEARCH_ENGINES,
   type TorrentSearchEngine,
@@ -445,11 +446,14 @@ export default function TorrentSearch() {
     { queryText: string; engine: TorrentSearchEngine; aiAlias: string }
   >(
     (ctx, params) => {
-      const dto = { keyword: params.queryText, engine: params.engine };
+      const dto = {
+        keyword: NonEmptyStringSchema.parse(params.queryText),
+        engine: params.engine,
+      };
       return params.aiAlias !== "none"
         ? searchTorrentsWithAiUseCase.execute(ctx, {
             ...dto,
-            aiAlias: params.aiAlias,
+            aiAlias: NonEmptyStringSchema.parse(params.aiAlias),
           })
         : searchTorrentsUseCase.execute(ctx, dto);
     },

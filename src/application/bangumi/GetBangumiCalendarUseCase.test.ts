@@ -1,5 +1,6 @@
 import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { BangumiCache } from "../../domain/bangumi/BangumiCache";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 import { GetBangumiCalendarUseCase } from "./GetBangumiCalendarUseCase";
@@ -75,9 +76,15 @@ describe("Bangumi 相关的 UseCase 业务编排", () => {
     vi.mocked(mockCache.getSubject).mockResolvedValueOnce(cachedData as any);
 
     const useCase = new GetBangumiSubjectUseCase(mockRepo, mockCache);
-    const result = await useCase.execute(Background, "1");
+    const result = await useCase.execute(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
 
-    expect(mockCache.getSubject).toHaveBeenCalledWith(Background, "1");
+    expect(mockCache.getSubject).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
     expect(mockRepo.getSubject).not.toHaveBeenCalled();
     expect(result).toEqual(cachedData);
   });
@@ -88,13 +95,22 @@ describe("Bangumi 相关的 UseCase 业务编排", () => {
     vi.mocked(mockRepo.getSubject).mockResolvedValueOnce(freshData as any);
 
     const useCase = new GetBangumiSubjectUseCase(mockRepo, mockCache);
-    const result = await useCase.execute(Background, "1");
+    const result = await useCase.execute(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
 
-    expect(mockCache.getSubject).toHaveBeenCalledWith(Background, "1");
-    expect(mockRepo.getSubject).toHaveBeenCalledWith(Background, "1");
+    expect(mockCache.getSubject).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
+    expect(mockRepo.getSubject).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
     expect(mockCache.setSubject).toHaveBeenCalledWith(
       Background,
-      "1",
+      NonEmptyStringSchema.parse("1"),
       freshData,
     );
     expect(result).toEqual(freshData);
@@ -161,9 +177,15 @@ describe("Bangumi 相关的 UseCase 业务编排", () => {
     vi.mocked(mockCache.getPersons).mockResolvedValueOnce(cachedData as any);
 
     const useCase = new GetBangumiPersonsUseCase(mockRepo, mockCache);
-    const result = await useCase.execute(Background, "1");
+    const result = await useCase.execute(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
 
-    expect(mockCache.getPersons).toHaveBeenCalledWith(Background, "1");
+    expect(mockCache.getPersons).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
     expect(mockRepo.getSubjectPersons).not.toHaveBeenCalled();
     expect(result).toEqual(cachedData);
   });
@@ -186,13 +208,22 @@ describe("Bangumi 相关的 UseCase 业务编排", () => {
     );
 
     const useCase = new GetBangumiPersonsUseCase(mockRepo, mockCache);
-    const result = await useCase.execute(Background, "1");
+    const result = await useCase.execute(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
 
-    expect(mockCache.getPersons).toHaveBeenCalledWith(Background, "1");
-    expect(mockRepo.getSubjectPersons).toHaveBeenCalledWith(Background, "1");
+    expect(mockCache.getPersons).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
+    expect(mockRepo.getSubjectPersons).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
     expect(mockCache.setPersons).toHaveBeenCalledWith(
       Background,
-      "1",
+      NonEmptyStringSchema.parse("1"),
       freshData,
     );
     expect(result).toEqual(freshData);
@@ -213,9 +244,15 @@ describe("Bangumi 相关的 UseCase 业务编排", () => {
     vi.mocked(mockCache.getCharacters).mockResolvedValueOnce(cachedData as any);
 
     const useCase = new GetBangumiCharactersUseCase(mockRepo, mockCache);
-    const result = await useCase.execute(Background, "1");
+    const result = await useCase.execute(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
 
-    expect(mockCache.getCharacters).toHaveBeenCalledWith(Background, "1");
+    expect(mockCache.getCharacters).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
     expect(mockRepo.getSubjectCharacters).not.toHaveBeenCalled();
     expect(result).toEqual(cachedData);
   });
@@ -238,13 +275,22 @@ describe("Bangumi 相关的 UseCase 业务编排", () => {
     );
 
     const useCase = new GetBangumiCharactersUseCase(mockRepo, mockCache);
-    const result = await useCase.execute(Background, "1");
+    const result = await useCase.execute(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
 
-    expect(mockCache.getCharacters).toHaveBeenCalledWith(Background, "1");
-    expect(mockRepo.getSubjectCharacters).toHaveBeenCalledWith(Background, "1");
+    expect(mockCache.getCharacters).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
+    expect(mockRepo.getSubjectCharacters).toHaveBeenCalledWith(
+      Background,
+      NonEmptyStringSchema.parse("1"),
+    );
     expect(mockCache.setCharacters).toHaveBeenCalledWith(
       Background,
-      "1",
+      NonEmptyStringSchema.parse("1"),
       freshData,
     );
     expect(result).toEqual(freshData);

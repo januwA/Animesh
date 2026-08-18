@@ -1,3 +1,4 @@
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 
@@ -13,8 +14,12 @@ export class SaveSettingsUseCase {
   constructor(private settingsRepository: SettingsRepository) {}
 
   async execute(dto: SaveSettingsDto): Promise<void> {
-    await this.settingsRepository.setDownloadDir(dto.downloadDir);
-    await this.settingsRepository.setProxy(dto.proxy);
+    await this.settingsRepository.setDownloadDir(
+      NonEmptyStringSchema.parse(dto.downloadDir),
+    );
+    await this.settingsRepository.setProxy(
+      NonEmptyStringSchema.parse(dto.proxy),
+    );
     if (dto.aiConfigs !== undefined) {
       await this.settingsRepository.setAiConfigs(dto.aiConfigs);
     }

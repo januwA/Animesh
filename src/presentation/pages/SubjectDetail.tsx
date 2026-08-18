@@ -26,6 +26,10 @@ import type {
   BangumiEpisode,
   BangumiPerson,
 } from "@/domain/bangumi/BangumiSchemas";
+import {
+  type NonEmptyString,
+  NonEmptyStringSchema,
+} from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { EpisodePaginationBar } from "@/presentation/components/EpisodePaginationBar";
 import { FavoriteButton } from "@/presentation/components/FavoriteButton";
@@ -231,9 +235,9 @@ function SubjectResourcesTab({
   const bind = useMutation(
     (_ctx, p: { infoHash: string }) =>
       setTorrentSubjectUseCase.execute({
-        infoHash: p.infoHash,
+        infoHash: NonEmptyStringSchema.parse(p.infoHash),
         subjectId,
-        subjectName,
+        subjectName: NonEmptyStringSchema.parse(subjectName),
       }),
     {
       onSuccess: () => toast.success("已绑定下载资源"),
@@ -242,7 +246,7 @@ function SubjectResourcesTab({
   );
 
   const unbind = useMutation(
-    (_ctx, p: { infoHash: string }) =>
+    (_ctx, p: { infoHash: NonEmptyString }) =>
       clearTorrentSubjectUseCase.execute(p.infoHash),
     {
       onSuccess: () => toast.success("已解除绑定"),
@@ -259,7 +263,7 @@ function SubjectResourcesTab({
     );
   };
 
-  const handleUnbind = (infoHash: string) => {
+  const handleUnbind = (infoHash: NonEmptyString) => {
     unbind.execute({ infoHash });
   };
 
@@ -453,7 +457,11 @@ function SubjectDetailView({
   const { torrents } = useTorrentStatus();
 
   const subjectQuery = useQuery(
-    (ctx) => getBangumiSubjectUseCase.execute(ctx, subjectId),
+    (ctx) =>
+      getBangumiSubjectUseCase.execute(
+        ctx,
+        NonEmptyStringSchema.parse(subjectId),
+      ),
     [subjectId, getBangumiSubjectUseCase],
   );
   const subject = subjectQuery.data;
@@ -461,7 +469,7 @@ function SubjectDetailView({
   const episodesQuery = useQuery(
     async (ctx) => {
       const data = await getBangumiEpisodesUseCase.execute(ctx, {
-        subjectId,
+        subjectId: NonEmptyStringSchema.parse(subjectId),
         offset: (page - 1) * EPISODES_PAGE_SIZE,
         limit: EPISODES_PAGE_SIZE,
       });
@@ -477,13 +485,21 @@ function SubjectDetailView({
   const totalPages = Math.max(1, Math.ceil(totalEpisodes / EPISODES_PAGE_SIZE));
 
   const charactersQuery = useQuery(
-    (ctx) => getBangumiCharactersUseCase.execute(ctx, subjectId),
+    (ctx) =>
+      getBangumiCharactersUseCase.execute(
+        ctx,
+        NonEmptyStringSchema.parse(subjectId),
+      ),
     [subjectId, getBangumiCharactersUseCase],
   );
   const characters = charactersQuery.data ?? [];
 
   const personsQuery = useQuery(
-    (ctx) => getBangumiPersonsUseCase.execute(ctx, subjectId),
+    (ctx) =>
+      getBangumiPersonsUseCase.execute(
+        ctx,
+        NonEmptyStringSchema.parse(subjectId),
+      ),
     [subjectId, getBangumiPersonsUseCase],
   );
   const persons = personsQuery.data ?? [];
@@ -668,7 +684,7 @@ function SubjectDetailView({
                 e.stopPropagation();
                 e.preventDefault();
                 const url = `https://bgm.tv/subject/${subject.id}`;
-                await openUrlUseCase.execute(url);
+                await openUrlUseCase.execute(NonEmptyStringSchema.parse(url));
               }}
               title={`在 Bangumi 打开: ${displayName}`}
             >

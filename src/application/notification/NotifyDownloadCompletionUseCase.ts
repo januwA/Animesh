@@ -1,3 +1,4 @@
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import type { NotificationRepository } from "../../domain/notification/NotificationRepository";
 
@@ -17,8 +18,10 @@ export class NotifyDownloadCompletionUseCase {
           this.notifiedHashes.add(torrent.info_hash);
           // 触发系统通知
           await this.notificationRepository.sendNotification(
-            "下载完成",
-            `动漫 《${torrent.name}》 已下载完成！`,
+            NonEmptyStringSchema.parse("下载完成"),
+            NonEmptyStringSchema.parse(
+              `《${NonEmptyStringSchema.parse(torrent.name)}》 已下载完成！`,
+            ),
           );
         }
       } else {

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
@@ -158,8 +159,8 @@ describe("Downloads 页面组件", () => {
 
     const mockTorrents = [
       {
-        info_hash: "hash111",
-        name: "动漫视频1",
+        info_hash: NonEmptyStringSchema.parse("hash111"),
+        name: NonEmptyStringSchema.parse("动漫视频1"),
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,
@@ -184,8 +185,8 @@ describe("Downloads 页面组件", () => {
 
     const updatedTorrents = [
       {
-        info_hash: "hash111",
-        name: "动漫视频1",
+        info_hash: NonEmptyStringSchema.parse("hash111"),
+        name: NonEmptyStringSchema.parse("动漫视频1"),
         progress_bytes: 800,
         total_bytes: 1000,
         finished: false,
@@ -219,8 +220,8 @@ describe("Downloads 页面组件", () => {
   it("应该支持暂停和恢复操作，包括成功和失败分支，并处理没有任务名的情况", async () => {
     const mockTorrents = [
       {
-        info_hash: "hash111",
-        name: "动漫视频1",
+        info_hash: NonEmptyStringSchema.parse("hash111"),
+        name: NonEmptyStringSchema.parse("动漫视频1"),
         progress_bytes: 100,
         total_bytes: 1000,
         finished: false,
@@ -232,8 +233,8 @@ describe("Downloads 页面组件", () => {
         trackers: [],
       },
       {
-        info_hash: "hash222",
-        name: "",
+        info_hash: NonEmptyStringSchema.parse("hash222"),
+        name: NonEmptyStringSchema.parse("保留任务"),
         progress_bytes: 200,
         total_bytes: 1000,
         finished: false,
@@ -245,8 +246,8 @@ describe("Downloads 页面组件", () => {
         trackers: [],
       },
       {
-        info_hash: "hash333",
-        name: "",
+        info_hash: NonEmptyStringSchema.parse("hash333"),
+        name: NonEmptyStringSchema.parse("保留任务B"),
         progress_bytes: 100,
         total_bytes: 1000,
         finished: false,
@@ -258,8 +259,8 @@ describe("Downloads 页面组件", () => {
         trackers: [],
       },
       {
-        info_hash: "hash444",
-        name: "动漫视频4",
+        info_hash: NonEmptyStringSchema.parse("hash444"),
+        name: NonEmptyStringSchema.parse("动漫视频4"),
         progress_bytes: 200,
         total_bytes: 1000,
         finished: false,
@@ -299,7 +300,7 @@ describe("Downloads 页面组件", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(mockTorrentRepository.pauseTorrent).toHaveBeenCalledWith("hash333");
-    expect(toast).toHaveBeenCalledWith("已暂停任务: hash333");
+    expect(toast).toHaveBeenCalledWith("已暂停任务: 保留任务B");
 
     // 3. Pause action (failure)
     vi.mocked(mockTorrentRepository.pauseTorrent).mockRejectedValueOnce(
@@ -319,7 +320,7 @@ describe("Downloads 页面组件", () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(mockTorrentRepository.resumeTorrent).toHaveBeenCalledWith("hash222");
-    expect(toast.success).toHaveBeenCalledWith("已开始下载任务: hash222");
+    expect(toast.success).toHaveBeenCalledWith("已开始下载任务: 保留任务");
 
     // 5. Resume action (success, named)
     fireEvent.click(resumeBtns[1]);
@@ -345,8 +346,8 @@ describe("Downloads 页面组件", () => {
   it("应该支持查看文件操作，正确进行路由跳转", async () => {
     const mockTorrents = [
       {
-        info_hash: "hash111",
-        name: "动漫视频1",
+        info_hash: NonEmptyStringSchema.parse("hash111"),
+        name: NonEmptyStringSchema.parse("动漫视频1"),
         progress_bytes: 100,
         total_bytes: 1000,
         finished: false,
@@ -380,8 +381,8 @@ describe("Downloads 页面组件", () => {
   it("应该支持删除操作，包含删除弹窗、文件删除勾选框、确定删除（成功/失败）及取消", async () => {
     const mockTorrents = [
       {
-        info_hash: "hash111",
-        name: "hash111",
+        info_hash: NonEmptyStringSchema.parse("hash111"),
+        name: NonEmptyStringSchema.parse("hash111"),
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,
@@ -393,8 +394,8 @@ describe("Downloads 页面组件", () => {
         trackers: [],
       },
       {
-        info_hash: "hash222",
-        name: "动漫视频2",
+        info_hash: NonEmptyStringSchema.parse("hash222"),
+        name: NonEmptyStringSchema.parse("动漫视频2"),
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,
@@ -489,8 +490,8 @@ describe("Downloads 页面组件", () => {
   it("应该能渲染已完成的下载任务", async () => {
     const mockTorrents = [
       {
-        info_hash: "hashFinished",
-        name: "已完成视频",
+        info_hash: NonEmptyStringSchema.parse("hashFinished"),
+        name: NonEmptyStringSchema.parse("已完成视频"),
         progress_bytes: 1000,
         total_bytes: 1000,
         finished: true,
@@ -502,8 +503,8 @@ describe("Downloads 页面组件", () => {
         trackers: [],
       },
       {
-        info_hash: "hashZeroTotal",
-        name: "零大小视频",
+        info_hash: NonEmptyStringSchema.parse("hashZeroTotal"),
+        name: NonEmptyStringSchema.parse("零大小视频"),
         progress_bytes: 0,
         total_bytes: 0,
         finished: true,
@@ -529,8 +530,8 @@ describe("Downloads 页面组件", () => {
   it("已完成的任务也应支持暂停(停止做种)", async () => {
     const mockTorrents = [
       {
-        info_hash: "hashSeeding",
-        name: "已完成做种视频",
+        info_hash: NonEmptyStringSchema.parse("hashSeeding"),
+        name: NonEmptyStringSchema.parse("已完成做种视频"),
         progress_bytes: 1000,
         total_bytes: 1000,
         finished: true,
@@ -569,8 +570,8 @@ describe("Downloads 页面组件", () => {
   it("应该在下载列表中展示创建时间，并按创建时间倒序排列(最新的在最前面)", async () => {
     const mockTorrents = [
       {
-        info_hash: "hashOld",
-        name: "较旧的任务",
+        info_hash: NonEmptyStringSchema.parse("hashOld"),
+        name: NonEmptyStringSchema.parse("较旧的任务"),
         progress_bytes: 100,
         total_bytes: 1000,
         finished: false,
@@ -583,8 +584,8 @@ describe("Downloads 页面组件", () => {
         created_at: 1719816000000, // 2026-07-01 12:00:00 UTC (roughly)
       },
       {
-        info_hash: "hashNew",
-        name: "较新的任务",
+        info_hash: NonEmptyStringSchema.parse("hashNew"),
+        name: NonEmptyStringSchema.parse("较新的任务"),
         progress_bytes: 200,
         total_bytes: 1000,
         finished: false,
@@ -620,8 +621,8 @@ describe("Downloads 页面组件", () => {
   it("存在已绑定条目的任务时，应该按条目分组渲染，并支持跳转到条目详情页", async () => {
     const mockTorrents = [
       {
-        info_hash: "hashU",
-        name: "未绑定种子",
+        info_hash: NonEmptyStringSchema.parse("hashU"),
+        name: NonEmptyStringSchema.parse("未绑定种子"),
         progress_bytes: 100,
         total_bytes: 1000,
         finished: false,
@@ -634,8 +635,8 @@ describe("Downloads 页面组件", () => {
         created_at: 3000,
       },
       {
-        info_hash: "hashA1",
-        name: "动漫A-第1话",
+        info_hash: NonEmptyStringSchema.parse("hashA1"),
+        name: NonEmptyStringSchema.parse("动漫A-第1话"),
         progress_bytes: 200,
         total_bytes: 1000,
         finished: false,
@@ -646,12 +647,12 @@ describe("Downloads 页面组件", () => {
         peers_total: 0,
         trackers: [],
         subject_id: 42,
-        subject_name: "动漫A",
+        subject_name: NonEmptyStringSchema.parse("动漫A"),
         created_at: 1000,
       },
       {
-        info_hash: "hashA2",
-        name: "动漫A-第2话",
+        info_hash: NonEmptyStringSchema.parse("hashA2"),
+        name: NonEmptyStringSchema.parse("动漫A-第2话"),
         progress_bytes: 300,
         total_bytes: 1000,
         finished: false,
@@ -662,7 +663,7 @@ describe("Downloads 页面组件", () => {
         peers_total: 0,
         trackers: [],
         subject_id: 42,
-        subject_name: "动漫A",
+        subject_name: NonEmptyStringSchema.parse("动漫A"),
         created_at: 2000,
       },
     ];
@@ -704,8 +705,8 @@ describe("Downloads 页面组件", () => {
   it("存储行应合并为单元素，避免窄屏断裂", async () => {
     const mockTorrents = [
       {
-        info_hash: "hashStorage",
-        name: "存储行测试",
+        info_hash: NonEmptyStringSchema.parse("hashStorage"),
+        name: NonEmptyStringSchema.parse("存储行测试"),
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,
@@ -735,8 +736,8 @@ describe("Downloads 页面组件", () => {
     const mockTorrents = [
       // 动漫A：含未完成任务 → 默认展开
       {
-        info_hash: "hashA1",
-        name: "动漫A-未完成",
+        info_hash: NonEmptyStringSchema.parse("hashA1"),
+        name: NonEmptyStringSchema.parse("动漫A-未完成"),
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,
@@ -747,13 +748,13 @@ describe("Downloads 页面组件", () => {
         peers_total: 0,
         trackers: [],
         subject_id: 42,
-        subject_name: "动漫A",
+        subject_name: NonEmptyStringSchema.parse("动漫A"),
         created_at: 1000,
       },
       // 动漫B：全部完成 → 默认折叠
       {
-        info_hash: "hashB1",
-        name: "动漫B-已完成",
+        info_hash: NonEmptyStringSchema.parse("hashB1"),
+        name: NonEmptyStringSchema.parse("动漫B-已完成"),
         progress_bytes: 1000,
         total_bytes: 1000,
         finished: true,
@@ -764,7 +765,7 @@ describe("Downloads 页面组件", () => {
         peers_total: 0,
         trackers: [],
         subject_id: 43,
-        subject_name: "动漫B",
+        subject_name: NonEmptyStringSchema.parse("动漫B"),
         created_at: 2000,
       },
     ];
@@ -793,8 +794,8 @@ describe("Downloads 页面组件", () => {
   it("暂停操作进行中时，仅禁用对应卡片的按钮，不影响其他卡片", async () => {
     const mockTorrents = [
       {
-        info_hash: "hashA",
-        name: "任务A",
+        info_hash: NonEmptyStringSchema.parse("hashA"),
+        name: NonEmptyStringSchema.parse("任务A"),
         progress_bytes: 100,
         total_bytes: 1000,
         finished: false,
@@ -806,8 +807,8 @@ describe("Downloads 页面组件", () => {
         trackers: [],
       },
       {
-        info_hash: "hashB",
-        name: "任务B",
+        info_hash: NonEmptyStringSchema.parse("hashB"),
+        name: NonEmptyStringSchema.parse("任务B"),
         progress_bytes: 200,
         total_bytes: 1000,
         finished: false,
@@ -851,8 +852,8 @@ describe("Downloads 页面组件", () => {
   it("删除成功后，被删卡片应立即从列表消失（乐观更新）", async () => {
     const mockTorrents = [
       {
-        info_hash: "hashDel",
-        name: "待删除任务",
+        info_hash: NonEmptyStringSchema.parse("hashDel"),
+        name: NonEmptyStringSchema.parse("待删除任务"),
         progress_bytes: 500,
         total_bytes: 1000,
         finished: false,
@@ -864,8 +865,8 @@ describe("Downloads 页面组件", () => {
         trackers: [],
       },
       {
-        info_hash: "hashKeep",
-        name: "保留任务",
+        info_hash: NonEmptyStringSchema.parse("hashKeep"),
+        name: NonEmptyStringSchema.parse("保留任务"),
         progress_bytes: 200,
         total_bytes: 1000,
         finished: false,

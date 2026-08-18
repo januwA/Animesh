@@ -7,8 +7,10 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
+import type { ResolveTorrentUseCase } from "@/application/torrent/ResolveTorrentUseCase";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
@@ -27,6 +29,7 @@ const getCurrentLocation = () => currentLocation.current;
 
 describe("TorrentDetail 页面组件", () => {
   let mockTorrentRepository: TorrentRepository;
+  let mockResolveTorrentUseCase: ResolveTorrentUseCase;
   let mockContainer: DIContainer;
 
   beforeEach(() => {
@@ -45,8 +48,13 @@ describe("TorrentDetail 页面组件", () => {
       clearTorrentSubject: vi.fn(),
     };
 
+    mockResolveTorrentUseCase = {
+      execute: vi.fn(),
+    } as unknown as ResolveTorrentUseCase;
+
     mockContainer = createDIContainerForTest({
       torrentRepository: mockTorrentRepository,
+      resolveTorrentUseCase: mockResolveTorrentUseCase,
     });
 
     currentLocation.current = null;
@@ -86,7 +94,11 @@ describe("TorrentDetail 页面组件", () => {
   };
 
   it("当没有提供有效的磁力链接或 Hash 时，应该显示错误提示", async () => {
-    renderTorrentDetail("/torrent");
+    vi.mocked(mockResolveTorrentUseCase.execute).mockRejectedValue(
+      new Error("未提供有效的磁力链接或种子 Hash"),
+    );
+
+    renderTorrentDetail("/torrent?title=mock_title");
 
     await waitFor(() => {
       expect(
@@ -96,24 +108,18 @@ describe("TorrentDetail 页面组件", () => {
   });
 
   it("应该成功通过磁力链接解析种子元数据并渲染文件列表，同时支持点击播放进行跳转", async () => {
-    const mockResult = {
-      info_hash: "hash123",
-      name: "测试种子",
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试种子"),
       files: [
-        { id: 0, name: "file1.mp4", len: 1000 },
-        { id: 1, name: "file2.mkv", len: 2000 },
+        { id: 0, name: NonEmptyStringSchema.parse("file1.mp4"), len: 1000 },
+        { id: 1, name: NonEmptyStringSchema.parse("file2.mkv"), len: 2000 },
       ],
     };
 
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue(
-      mockResult,
-    );
+    vi.mocked(mockResolveTorrentUseCase.execute).mockResolvedValue(mockResult);
 
-    renderTorrentDetail("/torrent?magnet=magnet_link&title=mock_title");
-
-    expect(
-      screen.getByText("正在启动下载引擎并解析种子..."),
-    ).toBeInTheDocument();
+    renderTorrentDetail("/torrent?title=mock_title");
 
     await waitFor(() => {
       expect(screen.getByText("测试种子")).toBeInTheDocument();
@@ -132,11 +138,11 @@ describe("TorrentDetail 页面组件", () => {
 
   it("当解析磁力链接失败时，应该显示相应的解析失败界面（支持 string 错误和非 string 错误）", async () => {
     // 1. String error
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValueOnce(
+    vi.mocked(mockResolveTorrentUseCase.execute).mockRejectedValueOnce(
       "Resolve timeout",
     );
 
-    const { unmount } = renderTorrentDetail("/torrent?magnet=maglink");
+    const { unmount } = renderTorrentDetail("/torrent?title=mock_title");
 
     await waitFor(() => {
       expect(
@@ -147,11 +153,11 @@ describe("TorrentDetail 页面组件", () => {
     unmount();
 
     // 2. Non-string error (Error object)
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValueOnce(
+    vi.mocked(mockResolveTorrentUseCase.execute).mockRejectedValueOnce(
       new Error("Fatal error"),
     );
 
-    renderTorrentDetail("/torrent?magnet=maglink");
+    renderTorrentDetail("/torrent?title=mock_title");
 
     await waitFor(() => {
       expect(
@@ -161,16 +167,18 @@ describe("TorrentDetail 页面组件", () => {
   });
 
   it("当解析磁力链接失败时点击重试按钮，应该重新发起解析并成功渲染文件列表", async () => {
-    const mockResult = {
-      info_hash: "hash123",
-      name: "测试种子",
-      files: [{ id: 0, name: "file1.mp4", len: 1000 }],
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试种子"),
+      files: [
+        { id: 0, name: NonEmptyStringSchema.parse("file1.mp4"), len: 1000 },
+      ],
     };
-    vi.mocked(mockTorrentRepository.addTorrentMagnet)
+    vi.mocked(mockResolveTorrentUseCase.execute)
       .mockRejectedValueOnce("Resolve timeout")
       .mockResolvedValueOnce(mockResult);
 
-    renderTorrentDetail("/torrent?magnet=maglink");
+    renderTorrentDetail("/torrent?title=mock_title");
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
@@ -185,17 +193,21 @@ describe("TorrentDetail 页面组件", () => {
       expect(screen.getByText("测试种子")).toBeInTheDocument();
       expect(screen.getByText("file1.mp4")).toBeInTheDocument();
     });
-    expect(mockTorrentRepository.addTorrentMagnet).toHaveBeenCalledTimes(2);
+    expect(mockResolveTorrentUseCase.execute).toHaveBeenCalledTimes(2);
   });
 
   it("应该支持使用 infoHash 获取现有种子的缓存文件列表并渲染", async () => {
-    const mockFiles = [{ id: 0, name: "video.mp4", len: 5000 }];
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hash789"),
+      name: NonEmptyStringSchema.parse("已缓存种子"),
+      files: [
+        { id: 0, name: NonEmptyStringSchema.parse("video.mp4"), len: 5000 },
+      ],
+    };
 
-    vi.mocked(mockTorrentRepository.getTorrentFiles).mockResolvedValue(
-      mockFiles,
-    );
+    vi.mocked(mockResolveTorrentUseCase.execute).mockResolvedValue(mockResult);
 
-    renderTorrentDetail("/torrent?infoHash=hash789");
+    renderTorrentDetail("/torrent?title=已缓存种子");
 
     await waitFor(() => {
       expect(screen.getByText("已缓存种子")).toBeInTheDocument();
@@ -204,11 +216,11 @@ describe("TorrentDetail 页面组件", () => {
   });
 
   it("当使用 infoHash 获取文件列表失败时，应该显示相应的失败错误提示", async () => {
-    vi.mocked(mockTorrentRepository.getTorrentFiles).mockRejectedValueOnce(
+    vi.mocked(mockResolveTorrentUseCase.execute).mockRejectedValueOnce(
       "Get files error",
     );
 
-    renderTorrentDetail("/torrent?infoHash=hash789");
+    renderTorrentDetail("/torrent?title=mock_title");
 
     await waitFor(() => {
       expect(
@@ -218,13 +230,13 @@ describe("TorrentDetail 页面组件", () => {
   });
 
   it("应该支持返回操作，并根据是否只有 infoHash 导航到相应的前序页面（包含 Loading、Error 和 Success 状态）", async () => {
-    // 1. Loading with infoHash only (should go to downloads)
-    vi.mocked(mockTorrentRepository.getTorrentFiles).mockImplementation(
+    // 1. Loading state (should go to downloads)
+    vi.mocked(mockResolveTorrentUseCase.execute).mockImplementation(
       () => new Promise(() => {}),
     );
-    const render1 = renderTorrentDetail("/torrent?infoHash=hash123", [
+    const render1 = renderTorrentDetail("/torrent?title=mock_title", [
       "/downloads",
-      "/torrent?infoHash=hash123",
+      "/torrent?title=mock_title",
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "返回" }));
@@ -233,13 +245,13 @@ describe("TorrentDetail 页面组件", () => {
     render1.unmount();
     currentLocation.current = null;
 
-    // 2. Loading with magnet present (should go to /)
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockImplementation(
+    // 2. Loading state (should go to /)
+    vi.mocked(mockResolveTorrentUseCase.execute).mockImplementation(
       () => new Promise(() => {}),
     );
-    const render2 = renderTorrentDetail("/torrent?magnet=maglink", [
+    const render2 = renderTorrentDetail("/torrent?title=mock_title", [
       "/",
-      "/torrent?magnet=maglink",
+      "/torrent?title=mock_title",
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "返回" }));
@@ -248,13 +260,13 @@ describe("TorrentDetail 页面组件", () => {
     render2.unmount();
     currentLocation.current = null;
 
-    // 3. Error state with infoHash (should go to downloads)
-    vi.mocked(mockTorrentRepository.getTorrentFiles).mockRejectedValueOnce(
+    // 3. Error state (should go to downloads)
+    vi.mocked(mockResolveTorrentUseCase.execute).mockRejectedValueOnce(
       "Fetch error",
     );
-    const render3 = renderTorrentDetail("/torrent?infoHash=hash123", [
+    const render3 = renderTorrentDetail("/torrent?title=mock_title", [
       "/downloads",
-      "/torrent?infoHash=hash123",
+      "/torrent?title=mock_title",
     ]);
 
     await waitFor(() => {
@@ -266,16 +278,19 @@ describe("TorrentDetail 页面组件", () => {
     render3.unmount();
     currentLocation.current = null;
 
-    // 4. Success state with magnet (should go to /)
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValue({
-      info_hash: "hash123",
-      name: "测试种子",
-      files: [{ id: 0, name: "file1.mp4", len: 1000 }],
-    });
+    // 4. Success state (should go to /)
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      name: NonEmptyStringSchema.parse("测试种子"),
+      files: [
+        { id: 0, name: NonEmptyStringSchema.parse("file1.mp4"), len: 1000 },
+      ],
+    };
+    vi.mocked(mockResolveTorrentUseCase.execute).mockResolvedValue(mockResult);
 
-    renderTorrentDetail("/torrent?magnet=maglink", [
+    renderTorrentDetail("/torrent?title=mock_title", [
       "/",
-      "/torrent?magnet=maglink",
+      "/torrent?title=mock_title",
     ]);
 
     await waitFor(() => {
@@ -291,31 +306,37 @@ describe("TorrentDetail 页面组件", () => {
       resolvePromise = resolve;
     });
 
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockReturnValue(
-      mockPromise,
-    );
+    vi.mocked(mockResolveTorrentUseCase.execute).mockReturnValue(mockPromise);
 
-    const { unmount } = renderTorrentDetail("/torrent?magnet=maglink");
+    const { unmount } = renderTorrentDetail("/torrent?title=mock_title");
 
     unmount();
 
     await act(async () => {
       resolvePromise({
-        info_hash: "hash123",
-        name: "测试",
+        info_hash: NonEmptyStringSchema.parse("hash123"),
+        name: NonEmptyStringSchema.parse("测试"),
         files: [],
       });
     });
   });
 
   it("应该能通过 infoHash（不带 magnet）加载已缓存的种子文件列表，并且可以点击播放", async () => {
-    const mockFiles = [{ id: 0, name: "cached_file.mp4", len: 1000 }];
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hashCached"),
+      name: NonEmptyStringSchema.parse("已缓存种子"),
+      files: [
+        {
+          id: 0,
+          name: NonEmptyStringSchema.parse("cached_file.mp4"),
+          len: 1000,
+        },
+      ],
+    };
 
-    vi.mocked(mockTorrentRepository.getTorrentFiles).mockResolvedValue(
-      mockFiles,
-    );
+    vi.mocked(mockResolveTorrentUseCase.execute).mockResolvedValue(mockResult);
 
-    renderTorrentDetail("/torrent?infoHash=hashCached");
+    renderTorrentDetail("/torrent?title=已缓存种子");
 
     await waitFor(() => {
       expect(screen.getByText("已缓存种子")).toBeInTheDocument();
@@ -330,11 +351,11 @@ describe("TorrentDetail 页面组件", () => {
   });
 
   it("应该对解析和加载种子的非字符串错误正确进行降级处理并显示提示", async () => {
-    // 1. addTorrentMagnet fails with non-string error
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockRejectedValueOnce(
+    // 1. execute fails with non-string error
+    vi.mocked(mockResolveTorrentUseCase.execute).mockRejectedValueOnce(
       new Error("Fatal error object"),
     );
-    const render1 = renderTorrentDetail("/torrent?magnet=maglink");
+    const render1 = renderTorrentDetail("/torrent?title=mock_title");
     await waitFor(() => {
       expect(
         screen.getByText("Fatal error object", { exact: false }),
@@ -342,11 +363,11 @@ describe("TorrentDetail 页面组件", () => {
     });
     render1.unmount();
 
-    // 2. getTorrentFiles fails with non-string error
-    vi.mocked(mockTorrentRepository.getTorrentFiles).mockRejectedValueOnce(
+    // 2. execute fails with non-string error
+    vi.mocked(mockResolveTorrentUseCase.execute).mockRejectedValueOnce(
       new Error("Cache missing object"),
     );
-    const render2 = renderTorrentDetail("/torrent?infoHash=hash123");
+    const render2 = renderTorrentDetail("/torrent?title=mock_title");
     await waitFor(() => {
       expect(
         screen.getByText("Cache missing object", { exact: false }),
@@ -355,32 +376,12 @@ describe("TorrentDetail 页面组件", () => {
     render2.unmount();
   });
 
-  it("当种子名称为 null 且 URL 无 title 时，应该成功点击播放并使用空字符作为 title 降级", async () => {
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValueOnce({
-      info_hash: "hash123",
-      name: "",
-      files: [{ id: 0, name: "file1.mp4", len: 1000 }],
-    });
-
-    renderTorrentDetail("/torrent?magnet=maglink");
-
-    await waitFor(() => {
-      expect(screen.getByText("file1.mp4")).toBeInTheDocument();
-    });
-
-    const playBtn = screen.getByRole("button", { name: "播放" });
-    fireEvent.click(playBtn);
-
-    expect(getCurrentLocation()?.pathname).toBe("/play/hash123/0");
-    expect(getCurrentLocation()?.search).toContain("title=");
-  });
-
   it("当解析任务不报错但返回空数据时，应该显示未找到种子数据的空状态", async () => {
-    vi.mocked(mockTorrentRepository.addTorrentMagnet).mockResolvedValueOnce(
+    vi.mocked(mockResolveTorrentUseCase.execute).mockResolvedValueOnce(
       null as any,
     );
 
-    renderTorrentDetail("/torrent?magnet=maglink");
+    renderTorrentDetail("/torrent?title=mock_title");
 
     await waitFor(() => {
       expect(

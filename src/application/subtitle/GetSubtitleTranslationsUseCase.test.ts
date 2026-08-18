@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { SubtitleTranslationRepository } from "../../domain/subtitle/SubtitleTranslationRepository";
 import type { SubtitleTranslationRecord } from "../../domain/subtitle/SubtitleTranslationSchemas";
 import { GetSubtitleTranslationsUseCase } from "./GetSubtitleTranslationsUseCase";
@@ -22,23 +23,23 @@ describe("GetSubtitleTranslationsUseCase", () => {
 
   it("当 listByTorrent 返回记录列表时应该获取完整内容并按创建时间升序排序", async () => {
     const rec1: SubtitleTranslationRecord = {
-      id: "id-1",
-      info_hash: "hash-123",
+      id: NonEmptyStringSchema.parse("id-1"),
+      info_hash: NonEmptyStringSchema.parse("hash-123"),
       file_id: 1,
       original_track_id: 0,
-      source_lang: "en",
-      target_lang: "zh",
+      source_lang: NonEmptyStringSchema.parse("en"),
+      target_lang: NonEmptyStringSchema.parse("zh"),
       vtt_content: "VTT 1",
       created_at: 2000,
       last_accessed_at: 2000,
     };
     const rec2: SubtitleTranslationRecord = {
-      id: "id-2",
-      info_hash: "hash-123",
+      id: NonEmptyStringSchema.parse("id-2"),
+      info_hash: NonEmptyStringSchema.parse("hash-123"),
       file_id: 1,
       original_track_id: 0,
-      source_lang: "en",
-      target_lang: "zh",
+      source_lang: NonEmptyStringSchema.parse("en"),
+      target_lang: NonEmptyStringSchema.parse("zh"),
       vtt_content: "VTT 2",
       created_at: 1000,
       last_accessed_at: 1000,

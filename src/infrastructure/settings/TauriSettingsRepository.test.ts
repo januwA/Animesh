@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { TauriSettingsRepository } from "./TauriSettingsRepository";
 
 const { mockInvoke, mockSetTheme } = vi.hoisted(() => ({
@@ -68,10 +69,10 @@ describe("基础设施层 TauriSettingsRepository", () => {
 
       const configs = [
         {
-          alias: "OpenAI",
-          api_endpoint: "https://api.openai.com/v1",
-          api_key: "test-api-key",
-          ai_model: "gpt-4o",
+          alias: NonEmptyStringSchema.parse("OpenAI"),
+          api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
+          api_key: NonEmptyStringSchema.parse("test-api-key"),
+          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ];
 

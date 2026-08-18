@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import type { NotificationRepository } from "../../domain/notification/NotificationRepository";
 import { NotifyDownloadCompletionUseCase } from "./NotifyDownloadCompletionUseCase";
@@ -21,8 +22,8 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
   it("首次加载时，不应对现有的已完成下载触发通知", async () => {
     const torrents: TorrentStatusInfo[] = [
       {
-        info_hash: "hash1",
-        name: "动漫1",
+        info_hash: NonEmptyStringSchema.parse("hash1"),
+        name: NonEmptyStringSchema.parse("动漫1"),
         progress_bytes: 100,
         total_bytes: 100,
         finished: true,
@@ -42,8 +43,8 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
 
   it("在后续运行中，有新的完成下载应该触发系统通知", async () => {
     const torrent1: TorrentStatusInfo = {
-      info_hash: "hash1",
-      name: "动漫1",
+      info_hash: NonEmptyStringSchema.parse("hash1"),
+      name: NonEmptyStringSchema.parse("动漫1"),
       progress_bytes: 50,
       total_bytes: 100,
       finished: false,
@@ -65,7 +66,7 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
     ]);
     expect(mockNotificationRepository.sendNotification).toHaveBeenCalledWith(
       "下载完成",
-      "动漫 《动漫1》 已下载完成！",
+      "《动漫1》 已下载完成！",
     );
 
     // 第三次加载：已完成（已通知过的不再通知）
@@ -78,8 +79,8 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
 
   it("如果种子从完成变回未完成(重启下载)，应该重置已通知记录", async () => {
     const torrent1: TorrentStatusInfo = {
-      info_hash: "hash1",
-      name: "动漫1",
+      info_hash: NonEmptyStringSchema.parse("hash1"),
+      name: NonEmptyStringSchema.parse("动漫1"),
       progress_bytes: 100,
       total_bytes: 100,
       finished: true,
@@ -107,7 +108,7 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
     ]);
     expect(mockNotificationRepository.sendNotification).toHaveBeenCalledWith(
       "下载完成",
-      "动漫 《动漫1》 已下载完成！",
+      "《动漫1》 已下载完成！",
     );
   });
 });

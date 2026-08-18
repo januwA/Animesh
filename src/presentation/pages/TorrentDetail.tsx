@@ -2,6 +2,7 @@ import { ArrowLeft, FileVideo, Film, Loader2, Play } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
@@ -18,20 +19,11 @@ import { InvalidParamsView } from "../components/InvalidParamsView";
 
 const torrentDetailParamsSchema = z
   .object({
-    magnet: z
-      .string()
-      .default("")
-      .transform((s) => s.trim()),
-    title: z
-      .string()
-      .default("")
-      .transform((s) => s.trim()),
-    infoHash: z
-      .string()
-      .default("")
-      .transform((s) => s.trim()),
+    magnet: NonEmptyStringSchema.optional(),
+    title: NonEmptyStringSchema,
+    infoHash: NonEmptyStringSchema.optional(),
   })
-  .refine((p) => p.magnet !== "" || p.infoHash !== "", {
+  .refine((p) => !p.magnet && !p.infoHash, {
     message: "未提供有效的磁力链接或种子 Hash",
     path: ["source"],
   });
@@ -42,15 +34,17 @@ export default function TorrentDetail() {
   const [searchParams] = useSearchParams();
 
   const parsed = torrentDetailParamsSchema.safeParse({
-    magnet: searchParams.get("magnet") ?? "",
-    title: searchParams.get("title") ?? "",
-    infoHash: searchParams.get("infoHash") ?? "",
+    magnet: searchParams.get("magnet") ?? undefined, // 从搜索页面进入这里只有 magnet力链接
+    title: searchParams.get("title"), // 通常是发布者给 torrent 设置的标题
+    infoHash: searchParams.get("infoHash") ?? undefined, // 本地下载种子后就可以直接用hash获取信息
   });
+  // v8 ignore start
   if (!parsed.success) {
     return (
       <InvalidParamsView title="无效的种子详情参数" error={parsed.error} />
     );
   }
+  // v8 ignore stop
 
   return <TorrentDetailView {...parsed.data} />;
 }

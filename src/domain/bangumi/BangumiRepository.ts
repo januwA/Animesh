@@ -1,4 +1,5 @@
 import type { Context } from "ajanuw-context";
+import type { NonEmptyString } from "../common/NonEmptyString";
 import type {
   BangumiCalendarDay,
   BangumiCharacter,
@@ -9,16 +10,19 @@ import type {
 
 export interface BangumiRepository {
   getCalendar(ctx: Context): Promise<BangumiCalendarDay[]>;
-  getSubject(ctx: Context, subjectId: string): Promise<BangumiSubject>;
+  getSubject(ctx: Context, subjectId: NonEmptyString): Promise<BangumiSubject>;
   getEpisodes(
     ctx: Context,
-    subjectId: string,
+    subjectId: NonEmptyString,
     offset: number,
     limit: number,
   ): Promise<BangumiEpisodesPage>;
-  getSubjectPersons(ctx: Context, subjectId: string): Promise<BangumiPerson[]>;
+  getSubjectPersons(
+    ctx: Context,
+    subjectId: NonEmptyString,
+  ): Promise<BangumiPerson[]>;
   getSubjectCharacters(
     ctx: Context,
-    subjectId: string,
+    subjectId: NonEmptyString,
   ): Promise<BangumiCharacter[]>;
 }
