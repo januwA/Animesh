@@ -1,4 +1,3 @@
-import type { RefObject } from "react";
 import type { BangumiEpisode } from "@/domain/bangumi/BangumiSchemas";
 import { EpisodePaginationBar } from "@/presentation/components/EpisodePaginationBar";
 import { ErrorState } from "@/presentation/components/ErrorState";
@@ -10,7 +9,6 @@ import {
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 
 export interface EpisodesSectionProps {
-  sectionRef: RefObject<HTMLDivElement | null>;
   episodes: BangumiEpisode[];
   totalEpisodes: number;
   totalPages: number;
@@ -25,7 +23,6 @@ export interface EpisodesSectionProps {
 }
 
 export function EpisodesSection({
-  sectionRef,
   episodes,
   totalEpisodes,
   totalPages,
@@ -39,7 +36,7 @@ export function EpisodesSection({
   onJumpToEpisode,
 }: EpisodesSectionProps) {
   return (
-    <div className="flex flex-col gap-4" ref={sectionRef}>
+    <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-foreground">剧集列表</h2>
         {totalEpisodes > 0 && (
@@ -71,7 +68,6 @@ export function EpisodesSection({
                 <button
                   key={ep.id}
                   type="button"
-                  data-episode-sort={ep.sort}
                   onClick={() => onEpisodeClick(ep)}
                   className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
                     isAired

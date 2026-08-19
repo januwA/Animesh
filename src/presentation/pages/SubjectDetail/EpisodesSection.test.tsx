@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { createRef } from "react";
 import { vi } from "vitest";
 import type { BangumiEpisode } from "@/domain/bangumi/BangumiSchemas";
 import { EpisodesSection } from "./EpisodesSection";
@@ -23,7 +22,6 @@ const formatDate = (d: Date) => {
 };
 
 const defaultProps = () => ({
-  sectionRef: createRef<HTMLDivElement>(),
   episodes: [] as BangumiEpisode[],
   totalEpisodes: 0,
   totalPages: 1,
@@ -160,19 +158,6 @@ describe("EpisodesSection 剧集列表组件", () => {
     );
 
     expect(screen.getByText("共 1 集")).toBeInTheDocument();
-  });
-
-  it("剧集卡片应该携带 data-episode-sort 属性", () => {
-    render(
-      <EpisodesSection
-        {...defaultProps()}
-        episodes={[makeEpisode(5)]}
-        totalEpisodes={1}
-      />,
-    );
-
-    const button = screen.getByText("第 5 集").closest("button");
-    expect(button?.getAttribute("data-episode-sort")).toBe("5");
   });
 
   it("当 name_cn 为空时，应该使用原名显示", () => {

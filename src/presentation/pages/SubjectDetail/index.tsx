@@ -136,7 +136,6 @@ function SubjectDetailView({
 
       {/* Episodes List */}
       <EpisodesSection
-        sectionRef={pageState.episodesSectionRef}
         episodes={pageState.episodes}
         totalEpisodes={pageState.totalEpisodes}
         totalPages={pageState.totalPages}

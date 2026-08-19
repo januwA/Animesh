@@ -150,7 +150,6 @@ describe("useSubjectDetail 条目详情 hook", () => {
     locationRef.current = null;
     resetAppStores();
     vi.clearAllMocks();
-    vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(() => {});
   });
 
   it("应该加载动漫详情、剧集、角色与制作人员数据", async () => {
@@ -320,7 +319,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     });
   });
 
-  it("jumpToEpisode 应该设置待定位集数并切换页面", async () => {
+  it("jumpToEpisode 应该切换到对应页码", async () => {
     const deps = makeDeps({
       getBangumiEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({

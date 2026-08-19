@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import type { GetBangumiCharactersUseCase } from "@/application/bangumi/GetBangumiCharactersUseCase";
@@ -107,8 +107,6 @@ export function useSubjectDetail(
   const location = useLocation();
   const state = location.state as { name?: string; imageUrl?: string } | null;
   const [, setSearchParams] = useSearchParams();
-  const episodesSectionRef = useRef<HTMLDivElement>(null);
-  const [pendingEpisode, setPendingEpisode] = useState<number | null>(null);
 
   const subjectQuery = useQuery(
     (ctx) =>
@@ -236,40 +234,8 @@ export function useSubjectDetail(
       Math.max(1, Math.ceil(episodeNumber / EPISODES_PAGE_SIZE)),
       totalPages,
     );
-    setPendingEpisode(episodeNumber);
     changePage(targetPage);
   };
-
-  const skipFirstScrollRef = useRef(true);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 依赖 page 以在翻页后滚动到列表顶部
-  useEffect(() => {
-    // v8 ignore start
-    if (skipFirstScrollRef.current) {
-      skipFirstScrollRef.current = false;
-      return;
-    }
-    episodesSectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-    // v8 ignore stop
-  }, [page]);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 依赖 episodes 以在目标集渲染后触发 DOM 定位
-  useEffect(() => {
-    if (pendingEpisode == null) return;
-    const target = episodesSectionRef.current?.querySelector(
-      `[data-episode-sort="${pendingEpisode}"]`,
-    );
-    if (!target) return;
-    // v8 ignore start
-    (target as HTMLElement).scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-    setPendingEpisode(null);
-    // v8 ignore stop
-  }, [pendingEpisode, episodes]);
 
   useEffect(() => {
     // v8 ignore start
@@ -354,7 +320,6 @@ export function useSubjectDetail(
     displayName,
     originalName,
     imageUrl,
-    episodesSectionRef,
     handleBack,
     handleEpisodeClick,
     changePage,
