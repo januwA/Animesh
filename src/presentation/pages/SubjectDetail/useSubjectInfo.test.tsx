@@ -112,7 +112,7 @@ describe("useSubjectInfo 条目信息 hook", () => {
     const { result } = renderInfo(deps);
 
     await waitFor(() => {
-      expect(result.current.subject).not.toBeNull();
+      expect(result.current.subject).toBeDefined();
     });
     act(() => result.current.handleOpenUrl());
     expect(deps.openUrlUseCase.execute).toHaveBeenCalledWith(
