@@ -1,14 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
-import { DIProvider } from "@/di/DIContext";
+import { type DIContainer, DIProvider } from "@/di/DIContext";
 import {
   type NonEmptyString,
   NonEmptyStringSchema,
 } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
-import { createDIContainerForTest } from "@/test/test-utils";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
 import { AppNavBar, PageLoader } from "./AppComponents";
 
@@ -42,14 +41,14 @@ describe("AppComponents 组件", () => {
       resolveUnsubscribe = () => resolve(unsubMock);
     });
 
-    const mockContainer = createDIContainerForTest({
+    const mockContainer = {
       subscribeTorrentsUseCase: {
         execute: vi.fn().mockReturnValue(promise),
       } as any,
-    });
+    };
 
     const { unmount } = render(
-      <DIProvider value={mockContainer}>
+      <DIProvider value={mockContainer as unknown as DIContainer}>
         <TorrentStatusProvider>
           <MemoryRouter>
             <AppNavBar />
@@ -66,7 +65,7 @@ describe("AppComponents 组件", () => {
   });
 
   it("AppNavBar 应该只统计未完成且未暂停的任务，并在下载导航项上显示数量角标", async () => {
-    const mockContainer = createDIContainerForTest({
+    const mockContainer = {
       subscribeTorrentsUseCase: {
         execute: vi
           .fn()
@@ -93,10 +92,10 @@ describe("AppComponents 组件", () => {
             },
           ),
       } as any,
-    });
+    };
 
     render(
-      <DIProvider value={mockContainer}>
+      <DIProvider value={mockContainer as unknown as DIContainer}>
         <TorrentStatusProvider>
           <MemoryRouter initialEntries={["/downloads"]}>
             <AppNavBar />
