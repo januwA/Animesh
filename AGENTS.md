@@ -10,9 +10,11 @@
   - 表现层 hooks（如 `usePlayerData`/`useSettingsPage`）禁止直接 `useDI()` 获取依赖，应通过参数注入（如 `usePlayerData(params, deps)`）；deps 类型导出为接口并用 `Pick<UseCase, "execute">` 声明（如 `UsePlayerDataDeps`），使测试可直接传 `{ execute: vi.fn() }` 而无需 cast。
   - 页面组件（`index.tsx`）作为组合根：调用 `useDI()` 并**显式解构**所需 key 后传给 hooks（显式解构是 `check:di` 脚本识别 key 是否被使用的前提，勿写成 `useSettingsPage(useDI())` 形式）。
   - 组件级依赖（如 `JsPlayerErrorMonitor` 的 `logger`）同样通过 props 注入。
+  - 以上规范由 `check:presentation-di`（useDI 仅限组合根且显式解构）与 `check:presentation-deps`（deps 接口属性必须 `Pick<UseCase, "execute">`）脚本强制执行。
 - 测试中的 DI 注入规范：
   - hook 级单测直接传 mock use case（`{ execute: vi.fn().mockResolvedValue(...) }`），不需要 `DIProvider`；断言上移到 use case 的 `execute` 层，而不是 repository 层。
   - 页面级集成测试必须渲染组合根（组合根仍调用 `useDI()`），使用 `DIProvider value={mock as unknown as DIContainer}` 注入最小 mock 容器，仅提供该页面子树实际消费的 key；mock 容器缺 key 会导致运行时报错，key 集合需覆盖组合根与所有子组件/Provider（如 `TorrentStatusProvider` 需要 `subscribeTorrentsUseCase`）。
+  - 以上规范由 `check:presentation-test-di` 脚本强制执行（hook 单测禁用 `createDIContainerForTest`；`index.test.tsx` 页面测试必须 `DIProvider` + `as unknown as DIContainer`）。
 - 界面主题与样式规范：
   - **使用语义化变量**：禁止在表现层组件中使用硬编码的不透明度/色值类（例如 `border-white/5`、`bg-black/10`），而应使用自适应的语义类（如 `border-border`、`bg-secondary`、`bg-muted`），以确保深浅色切换时的可用性。
   - **渐变背景自适应**：全局背景采用双色渐变适配，浅色底使用 `#f8fafc` 搭配微弱渐变，深色底（`.dark body`）使用 `#080a10` 搭配明亮渐变。

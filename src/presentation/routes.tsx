@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
+import { useDI } from "@/di/DIContext";
 import { MainLayout, NavBarLayout } from "./components/Layout";
 import TorrentSearch from "./pages/TorrentSearch";
 
@@ -16,9 +17,28 @@ const Settings = lazy(() => import("./pages/Settings"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
 const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
 
+/** 应用外壳组合根：从 DI 容器取全局依赖并注入布局 */
+function MainLayoutRoute() {
+  const {
+    requestNotificationPermissionUseCase,
+    notifyDownloadCompletionUseCase,
+    setThemeUseCase,
+  } = useDI();
+
+  return (
+    <MainLayout
+      globalEffectsDeps={{
+        requestNotificationPermissionUseCase,
+        notifyDownloadCompletionUseCase,
+        setThemeUseCase,
+      }}
+    />
+  );
+}
+
 export const routes: RouteObject[] = [
   {
-    element: <MainLayout />,
+    element: <MainLayoutRoute />,
     children: [
       {
         path: "torrent",

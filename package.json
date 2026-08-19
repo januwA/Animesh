@@ -29,6 +29,9 @@
     "check:interface-conformance": "tsx scripts/check-interface-conformance.ts",
     "check:infrastructure-dead-code": "tsx scripts/check-infrastructure-dead-code.ts",
     "check:dependency-injection": "tsx scripts/check-dependency-injection.ts",
+    "check:presentation-di": "tsx scripts/check-presentation-di.ts",
+    "check:presentation-deps": "tsx scripts/check-presentation-deps.ts",
+    "check:presentation-test-di": "tsx scripts/check-presentation-test-di.ts",
     "typecheck": "tsc --noEmit",
     "test:coverage": "vitest run --coverage",
     "bump-version": "tsx scripts/bump-version.ts"

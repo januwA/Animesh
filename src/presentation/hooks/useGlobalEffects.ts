@@ -1,14 +1,29 @@
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
-import { useDI } from "@/di/DIContext";
+import type { NotifyDownloadCompletionUseCase } from "@/application/notification/NotifyDownloadCompletionUseCase";
+import type { RequestNotificationPermissionUseCase } from "@/application/notification/RequestNotificationPermissionUseCase";
+import type { SetThemeUseCase } from "@/application/settings/SetThemeUseCase";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 
-export function useGlobalEffects() {
+/** useGlobalEffects 的依赖，由调用方（应用外壳组合根）注入 */
+export interface UseGlobalEffectsDeps {
+  requestNotificationPermissionUseCase: Pick<
+    RequestNotificationPermissionUseCase,
+    "execute"
+  >;
+  notifyDownloadCompletionUseCase: Pick<
+    NotifyDownloadCompletionUseCase,
+    "execute"
+  >;
+  setThemeUseCase: Pick<SetThemeUseCase, "execute">;
+}
+
+export function useGlobalEffects(deps: UseGlobalEffectsDeps) {
   const {
     requestNotificationPermissionUseCase,
     notifyDownloadCompletionUseCase,
     setThemeUseCase,
-  } = useDI();
+  } = deps;
   const { theme } = useTheme();
   const { torrents, isLoading } = useTorrentStatus();
 

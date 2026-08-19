@@ -452,6 +452,9 @@ function SubjectDetailView({
     getBangumiEpisodesUseCase,
     getBangumiPersonsUseCase,
     getBangumiCharactersUseCase,
+    getFavoriteStatusUseCase,
+    addFavoriteUseCase,
+    removeFavoriteUseCase,
     openUrlUseCase,
   } = useDI();
   const { torrents } = useTorrentStatus();
@@ -672,6 +675,9 @@ function SubjectDetailView({
                 imageUrl: subject.images?.large ?? null,
               }}
               showLabel={false}
+              getFavoriteStatusUseCase={getFavoriteStatusUseCase}
+              addFavoriteUseCase={addFavoriteUseCase}
+              removeFavoriteUseCase={removeFavoriteUseCase}
             />
           )}
           {subject && (

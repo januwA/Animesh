@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
+import type { UseGlobalEffectsDeps } from "../hooks/useGlobalEffects";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
 import { AppNavBar, PageLoader } from "./AppComponents";
 
@@ -12,8 +13,12 @@ export function NavBarLayout() {
   );
 }
 
-export function MainLayout() {
-  useGlobalEffects();
+interface MainLayoutProps {
+  globalEffectsDeps: UseGlobalEffectsDeps;
+}
+
+export function MainLayout({ globalEffectsDeps }: MainLayoutProps) {
+  useGlobalEffects(globalEffectsDeps);
 
   return (
     <main

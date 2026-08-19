@@ -1,6 +1,8 @@
 import { Heart } from "lucide-react";
 import { useState } from "react";
-import { useDI } from "@/di/DIContext";
+import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
+import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
+import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { Button } from "./ui/button";
 
@@ -13,18 +15,18 @@ export interface FavoriteButtonSubject {
 interface FavoriteButtonProps {
   subject: FavoriteButtonSubject;
   showLabel?: boolean;
+  getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;
+  addFavoriteUseCase: Pick<AddFavoriteUseCase, "execute">;
+  removeFavoriteUseCase: Pick<RemoveFavoriteUseCase, "execute">;
 }
 
 export function FavoriteButton({
   subject,
   showLabel = true,
+  getFavoriteStatusUseCase,
+  addFavoriteUseCase,
+  removeFavoriteUseCase,
 }: FavoriteButtonProps) {
-  const {
-    getFavoriteStatusUseCase,
-    addFavoriteUseCase,
-    removeFavoriteUseCase,
-  } = useDI();
-
   const { data, loading, refetch } = useQuery(
     () => getFavoriteStatusUseCase.execute(subject.subjectId),
     [getFavoriteStatusUseCase, subject.subjectId],

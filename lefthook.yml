@@ -51,6 +51,15 @@ pre-push:
     "前端_依赖注入规范检查":
       glob: "src/{application,infrastructure}/**/*.{ts,tsx}"
       run: pnpm check:dependency-injection {push_files}
+    "前端_表现层useDI使用检查":
+      glob: "src/presentation/**/*.{ts,tsx}"
+      run: pnpm check:presentation-di {push_files}
+    "前端_表现层deps接口检查":
+      glob: "src/presentation/**/*.{ts,tsx}"
+      run: pnpm check:presentation-deps {push_files}
+    "前端_表现层测试DI注入检查":
+      glob: "src/presentation/**/*.{ts,tsx}"
+      run: pnpm check:presentation-test-di {push_files}
     "后端_异步命令检查":
       run: pnpm check:tauri-commands
     "前端_单元测试与覆盖率":
