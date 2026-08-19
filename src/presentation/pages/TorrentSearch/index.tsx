@@ -54,72 +54,75 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
   return (
     <>
       <SearchForm
-        keyword={page.searchKeyword}
-        setKeyword={page.setSearchKeyword}
-        loading={page.loading}
-        onSubmit={page.handleSearch}
-        searchEngine={page.searchEngine}
-        setSearchEngine={page.setSearchEngine}
+        keyword={page.search.searchKeyword}
+        setKeyword={page.search.setSearchKeyword}
+        loading={page.status.loading}
+        onSubmit={page.search.handleSearch}
+        searchEngine={page.search.searchEngine}
+        setSearchEngine={page.search.setSearchEngine}
       />
 
-      {page.aiConfigs.length > 0 && (
+      {page.ai.aiConfigs.length > 0 && (
         <AiFilterBar
-          aiConfigs={page.aiConfigs}
-          selectedAiAlias={page.selectedAiAlias}
-          disabled={page.loading}
-          onSelect={page.handleSelectAiAlias}
+          aiConfigs={page.ai.aiConfigs}
+          selectedAiAlias={page.ai.selectedAiAlias}
+          disabled={page.status.loading}
+          onSelect={page.ai.handleSelectAiAlias}
         />
       )}
 
       <SearchHistory
-        history={page.history}
-        onSelectKeyword={page.setSearchKeyword}
-        onDelete={page.handleDeleteHistory}
-        onClear={page.handleClearHistory}
+        history={page.searchHistory.history}
+        onSelectKeyword={page.search.setSearchKeyword}
+        onDelete={page.searchHistory.handleDeleteHistory}
+        onClear={page.searchHistory.handleClearHistory}
       />
 
-      {page.loading &&
-        (page.selectedAiAlias !== "none" ? (
-          <AiSearchLoading onCancel={page.handleCancel} />
+      {page.status.loading &&
+        (page.ai.selectedAiAlias !== "none" ? (
+          <AiSearchLoading onCancel={page.status.handleCancel} />
         ) : (
-          <SearchLoading onCancel={page.handleCancel} />
+          <SearchLoading onCancel={page.status.handleCancel} />
         ))}
 
-      {page.error && (
+      {page.status.error && (
         <ErrorState
-          message={page.error}
+          message={page.status.error}
           title="搜索失败"
-          onRetry={() => page.performSearch(page.searchKeyword)}
+          onRetry={() => page.search.performSearch(page.search.searchKeyword)}
         />
       )}
 
-      {!page.loading &&
-        !page.error &&
-        (page.searchHasSearched && page.searchResults.length === 0 ? (
+      {!page.status.loading &&
+        !page.status.error &&
+        (page.status.searchHasSearched &&
+        page.results.searchResults.length === 0 ? (
           <Empty>
             <EmptyContent>
               <EmptyTitle>未找到相关资源</EmptyTitle>
               <EmptyDescription>请换个关键词试试</EmptyDescription>
             </EmptyContent>
           </Empty>
-        ) : !page.searchHasSearched ? (
+        ) : !page.status.searchHasSearched ? (
           <WelcomeGuide />
         ) : null)}
 
-      {!page.loading && !page.error && page.searchResults.length > 0 && (
-        <SearchResultsList
-          totalCount={page.searchResults.length}
-          groupCount={page.groups.length}
-          allGroupsCollapsed={page.allGroupsCollapsed}
-          onToggleAllGroups={page.handleToggleAllGroups}
-          groups={page.groups}
-          collapsedGroups={page.collapsedGroups}
-          onToggleGroup={page.toggleGroup}
-          onCopyMagnet={page.handleCopyMagnet}
-          onPlay={page.handlePlay}
-          showBestAi={page.selectedAiAlias !== "none"}
-        />
-      )}
+      {!page.status.loading &&
+        !page.status.error &&
+        page.results.searchResults.length > 0 && (
+          <SearchResultsList
+            totalCount={page.results.searchResults.length}
+            groupCount={page.results.groups.length}
+            allGroupsCollapsed={page.results.allGroupsCollapsed}
+            onToggleAllGroups={page.results.handleToggleAllGroups}
+            groups={page.results.groups}
+            collapsedGroups={page.results.collapsedGroups}
+            onToggleGroup={page.results.toggleGroup}
+            onCopyMagnet={page.results.handleCopyMagnet}
+            onPlay={page.results.handlePlay}
+            showBestAi={page.ai.selectedAiAlias !== "none"}
+          />
+        )}
     </>
   );
 }

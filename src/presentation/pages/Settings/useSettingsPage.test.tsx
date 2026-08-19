@@ -88,11 +88,11 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.downloadDir).toBe("/data");
-    expect(result.current.proxy).toBe("http://127.0.0.1:7890");
-    expect(result.current.maxDownloadSpeed).toBe(100);
-    expect(result.current.maxUploadSpeed).toBe(200);
-    expect(result.current.aiConfigs).toHaveLength(1);
+    expect(result.current.form.storage.downloadDir).toBe("/data");
+    expect(result.current.form.storage.proxy).toBe("http://127.0.0.1:7890");
+    expect(result.current.form.storage.maxDownloadSpeed).toBe(100);
+    expect(result.current.form.storage.maxUploadSpeed).toBe(200);
+    expect(result.current.form.ai.aiConfigs).toHaveLength(1);
     expect(result.current.isDirty).toBe(false);
   });
 
@@ -115,12 +115,12 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.setDownloadDir("D:\\New"));
+    act(() => result.current.form.storage.setDownloadDir("D:\\New"));
     expect(result.current.isDirty).toBe(true);
 
     act(() => submit(result.current.handleSave));
 
-    await waitFor(() => expect(result.current.saving).toBe(false));
+    await waitFor(() => expect(result.current.actions.saving).toBe(false));
 
     expect(deps.saveSettingsUseCase.execute).toHaveBeenCalledWith({
       downloadDir: "D:\\New",
@@ -140,11 +140,11 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.setMaxDownloadSpeed(0));
-    act(() => result.current.setMaxUploadSpeed(0));
+    act(() => result.current.form.storage.setMaxDownloadSpeed(0));
+    act(() => result.current.form.storage.setMaxUploadSpeed(0));
     act(() => submit(result.current.handleSave));
 
-    await waitFor(() => expect(result.current.saving).toBe(false));
+    await waitFor(() => expect(result.current.actions.saving).toBe(false));
 
     expect(deps.saveSettingsUseCase.execute).toHaveBeenCalledWith({
       downloadDir: "/data",
@@ -160,7 +160,7 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.setDownloadDir("  "));
+    act(() => result.current.form.storage.setDownloadDir("  "));
     act(() => submit(result.current.handleSave));
 
     expect(deps.saveSettingsUseCase.execute).not.toHaveBeenCalled();
@@ -172,7 +172,7 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.setProxy("不合法代理"));
+    act(() => result.current.form.storage.setProxy("不合法代理"));
     act(() => submit(result.current.handleSave));
 
     expect(deps.saveSettingsUseCase.execute).not.toHaveBeenCalled();
@@ -190,9 +190,11 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.handleSelectDir());
+    act(() => result.current.actions.handleSelectDir());
 
-    await waitFor(() => expect(result.current.downloadDir).toBe("/selected"));
+    await waitFor(() =>
+      expect(result.current.form.storage.downloadDir).toBe("/selected"),
+    );
 
     expect(toast.success).toHaveBeenCalledWith("已选择目录，点击保存以生效");
   });
@@ -212,9 +214,9 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.handleCheckUpdate());
+    act(() => result.current.actions.handleCheckUpdate());
     await waitFor(() =>
-      expect(result.current.updateResult?.hasUpdate).toBe(true),
+      expect(result.current.actions.updateResult?.hasUpdate).toBe(true),
     );
 
     act(() => {
@@ -246,9 +248,9 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.handleCheckUpdate());
+    act(() => result.current.actions.handleCheckUpdate());
     await waitFor(() =>
-      expect(result.current.updateResult?.hasUpdate).toBe(true),
+      expect(result.current.actions.updateResult?.hasUpdate).toBe(true),
     );
 
     act(() => {
@@ -275,9 +277,9 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.handleCheckUpdate());
+    act(() => result.current.actions.handleCheckUpdate());
     await waitFor(() =>
-      expect(result.current.updateResult?.hasUpdate).toBe(true),
+      expect(result.current.actions.updateResult?.hasUpdate).toBe(true),
     );
 
     act(() => {
@@ -292,7 +294,7 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.handleStartAdd());
+    act(() => result.current.form.ai.handleStartAdd());
     act(() => result.current.handleTestCurrentConnection());
 
     expect(toast.warning).toHaveBeenCalledWith("请输入 AI 接口地址");
@@ -303,8 +305,10 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.handleStartAdd());
-    act(() => result.current.setApiEndpointInput("http://localhost:11434"));
+    act(() => result.current.form.ai.handleStartAdd());
+    act(() =>
+      result.current.form.ai.setApiEndpointInput("http://localhost:11434"),
+    );
     act(() => result.current.handleTestCurrentConnection());
 
     expect(toast.warning).toHaveBeenCalledWith("请输入 API 密钥");
@@ -315,14 +319,16 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("Ollama"));
-    act(() => result.current.setApiEndpointInput("http://localhost:11434"));
-    act(() => result.current.setApiKeyInput("sk-123"));
-    act(() => result.current.setModelInput("llama3"));
+    act(() => result.current.form.ai.handleStartAdd());
+    act(() => result.current.form.ai.setAliasInput("Ollama"));
+    act(() =>
+      result.current.form.ai.setApiEndpointInput("http://localhost:11434"),
+    );
+    act(() => result.current.form.ai.setApiKeyInput("sk-123"));
+    act(() => result.current.form.ai.setModelInput("llama3"));
     act(() => result.current.handleTestCurrentConnection());
 
-    await waitFor(() => expect(result.current.testingAi).toBe(false));
+    await waitFor(() => expect(result.current.actions.testingAi).toBe(false));
 
     expect(toast.success).toHaveBeenCalledWith("AI 模型连接测试成功！");
   });
@@ -336,14 +342,16 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("Ollama"));
-    act(() => result.current.setApiEndpointInput("http://localhost:11434"));
-    act(() => result.current.setApiKeyInput("sk-123"));
-    act(() => result.current.setModelInput("llama3"));
+    act(() => result.current.form.ai.handleStartAdd());
+    act(() => result.current.form.ai.setAliasInput("Ollama"));
+    act(() =>
+      result.current.form.ai.setApiEndpointInput("http://localhost:11434"),
+    );
+    act(() => result.current.form.ai.setApiKeyInput("sk-123"));
+    act(() => result.current.form.ai.setModelInput("llama3"));
     act(() => result.current.handleTestCurrentConnection());
 
-    await waitFor(() => expect(result.current.testingAi).toBe(false));
+    await waitFor(() => expect(result.current.actions.testingAi).toBe(false));
 
     expect(toast.error).toHaveBeenCalledWith("AI 模型连接测试失败: AI failed", {
       duration: 5000,

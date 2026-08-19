@@ -38,11 +38,11 @@ describe("useSettingsForm 设置表单 hook", () => {
       ),
     );
 
-    expect(result.current.downloadDir).toBe("/data");
-    expect(result.current.proxy).toBe("http://127.0.0.1:7890");
-    expect(result.current.maxDownloadSpeed).toBe(100);
-    expect(result.current.maxUploadSpeed).toBe(200);
-    expect(result.current.aiConfigs).toHaveLength(1);
+    expect(result.current.storage.downloadDir).toBe("/data");
+    expect(result.current.storage.proxy).toBe("http://127.0.0.1:7890");
+    expect(result.current.storage.maxDownloadSpeed).toBe(100);
+    expect(result.current.storage.maxUploadSpeed).toBe(200);
+    expect(result.current.ai.aiConfigs).toHaveLength(1);
     expect(result.current.isDirty).toBe(false);
   });
 
@@ -60,10 +60,10 @@ describe("useSettingsForm 设置表单 hook", () => {
       ),
     );
 
-    expect(result.current.proxy).toBe("");
-    expect(result.current.maxDownloadSpeed).toBe(0);
-    expect(result.current.maxUploadSpeed).toBe(0);
-    expect(result.current.aiConfigs).toEqual([]);
+    expect(result.current.storage.proxy).toBe("");
+    expect(result.current.storage.maxDownloadSpeed).toBe(0);
+    expect(result.current.storage.maxUploadSpeed).toBe(0);
+    expect(result.current.ai.aiConfigs).toEqual([]);
   });
 
   it("修改字段后 isDirty 应该为 true，markSaved 后为 false", () => {
@@ -71,7 +71,7 @@ describe("useSettingsForm 设置表单 hook", () => {
 
     act(() => result.current.applySettings(makeSettings()));
 
-    act(() => result.current.setDownloadDir("D:\\New"));
+    act(() => result.current.storage.setDownloadDir("D:\\New"));
     expect(result.current.isDirty).toBe(true);
 
     act(() => result.current.markSaved());
@@ -81,16 +81,16 @@ describe("useSettingsForm 设置表单 hook", () => {
   it("AI 配置表单字段为空时保存配置应该提示警告", () => {
     const { result } = renderForm();
 
-    act(() => result.current.handleStartAdd());
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.ai.handleStartAdd());
+    act(() => result.current.ai.handleSaveConfig());
     expect(toast.warning).toHaveBeenCalledWith("请输入别名");
 
-    act(() => result.current.setAliasInput("Ollama"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.ai.setAliasInput("Ollama"));
+    act(() => result.current.ai.handleSaveConfig());
     expect(toast.warning).toHaveBeenCalledWith("请输入接口地址");
 
-    act(() => result.current.setApiEndpointInput("http://localhost:11434"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.ai.setApiEndpointInput("http://localhost:11434"));
+    act(() => result.current.ai.handleSaveConfig());
     expect(toast.warning).toHaveBeenCalledWith("请输入 API 密钥");
   });
 
@@ -103,29 +103,29 @@ describe("useSettingsForm 设置表单 hook", () => {
       ),
     );
 
-    act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("deepseek"));
-    act(() => result.current.setApiEndpointInput("http://localhost:11434"));
-    act(() => result.current.setApiKeyInput("sk-123"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.ai.handleStartAdd());
+    act(() => result.current.ai.setAliasInput("deepseek"));
+    act(() => result.current.ai.setApiEndpointInput("http://localhost:11434"));
+    act(() => result.current.ai.setApiKeyInput("sk-123"));
+    act(() => result.current.ai.handleSaveConfig());
 
     expect(toast.warning).toHaveBeenCalledWith("该别名已存在，请使用其他别名");
-    expect(result.current.aiConfigs).toHaveLength(1);
+    expect(result.current.ai.aiConfigs).toHaveLength(1);
   });
 
   it("添加新的 AI 配置成功后应该追加到列表", () => {
     const { result } = renderForm();
 
-    act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("Ollama"));
-    act(() => result.current.setApiEndpointInput("http://localhost:11434"));
-    act(() => result.current.setApiKeyInput("sk-123"));
-    act(() => result.current.setModelInput("llama3"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.ai.handleStartAdd());
+    act(() => result.current.ai.setAliasInput("Ollama"));
+    act(() => result.current.ai.setApiEndpointInput("http://localhost:11434"));
+    act(() => result.current.ai.setApiKeyInput("sk-123"));
+    act(() => result.current.ai.setModelInput("llama3"));
+    act(() => result.current.ai.handleSaveConfig());
 
-    expect(result.current.aiConfigs).toHaveLength(1);
-    expect(result.current.aiConfigs[0].alias).toBe("Ollama");
-    expect(result.current.editingIndex).toBe(null);
+    expect(result.current.ai.aiConfigs).toHaveLength(1);
+    expect(result.current.ai.aiConfigs[0].alias).toBe("Ollama");
+    expect(result.current.ai.editingIndex).toBe(null);
   });
 
   it("编辑 AI 配置时应该预填输入并保存修改", () => {
@@ -137,28 +137,30 @@ describe("useSettingsForm 设置表单 hook", () => {
       ),
     );
 
-    act(() => result.current.handleStartEdit(0));
+    act(() => result.current.ai.handleStartEdit(0));
 
-    expect(result.current.aliasInput).toBe("DeepSeek");
-    expect(result.current.apiEndpointInput).toBe("http://127.0.0.1:11434/v1");
-    expect(result.current.apiKeyInput).toBe("sk-test");
-    expect(result.current.modelInput).toBe("deepseek-chat");
+    expect(result.current.ai.aliasInput).toBe("DeepSeek");
+    expect(result.current.ai.apiEndpointInput).toBe(
+      "http://127.0.0.1:11434/v1",
+    );
+    expect(result.current.ai.apiKeyInput).toBe("sk-test");
+    expect(result.current.ai.modelInput).toBe("deepseek-chat");
 
-    act(() => result.current.setAliasInput("Ollama"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.ai.setAliasInput("Ollama"));
+    act(() => result.current.ai.handleSaveConfig());
 
-    expect(result.current.aiConfigs[0].alias).toBe("Ollama");
-    expect(result.current.editingIndex).toBe(null);
+    expect(result.current.ai.aiConfigs[0].alias).toBe("Ollama");
+    expect(result.current.ai.editingIndex).toBe(null);
   });
 
   it("取消编辑时应该重置编辑索引", () => {
     const { result } = renderForm();
 
-    act(() => result.current.handleStartAdd());
-    expect(result.current.editingIndex).toBe(-1);
+    act(() => result.current.ai.handleStartAdd());
+    expect(result.current.ai.editingIndex).toBe(-1);
 
-    act(() => result.current.handleCancelEdit());
-    expect(result.current.editingIndex).toBe(null);
+    act(() => result.current.ai.handleCancelEdit());
+    expect(result.current.ai.editingIndex).toBe(null);
   });
 
   it("删除配置时应该移除并修正编辑索引", () => {
@@ -176,14 +178,14 @@ describe("useSettingsForm 设置表单 hook", () => {
       ),
     );
 
-    act(() => result.current.handleStartEdit(2));
-    act(() => result.current.handleDeleteConfig(1));
+    act(() => result.current.ai.handleStartEdit(2));
+    act(() => result.current.ai.handleDeleteConfig(1));
 
-    expect(result.current.aiConfigs.map((c) => c.alias)).toEqual(["A", "C"]);
-    expect(result.current.editingIndex).toBe(1);
+    expect(result.current.ai.aiConfigs.map((c) => c.alias)).toEqual(["A", "C"]);
+    expect(result.current.ai.editingIndex).toBe(1);
 
-    act(() => result.current.handleDeleteConfig(0));
-    expect(result.current.aiConfigs.map((c) => c.alias)).toEqual(["C"]);
+    act(() => result.current.ai.handleDeleteConfig(0));
+    expect(result.current.ai.aiConfigs.map((c) => c.alias)).toEqual(["C"]);
   });
 
   it("删除编辑目标之后的配置时应该保留编辑索引", () => {
@@ -201,11 +203,11 @@ describe("useSettingsForm 设置表单 hook", () => {
       ),
     );
 
-    act(() => result.current.handleStartEdit(0));
-    act(() => result.current.handleDeleteConfig(2));
+    act(() => result.current.ai.handleStartEdit(0));
+    act(() => result.current.ai.handleDeleteConfig(2));
 
-    expect(result.current.aiConfigs.map((c) => c.alias)).toEqual(["A", "B"]);
-    expect(result.current.editingIndex).toBe(0);
+    expect(result.current.ai.aiConfigs.map((c) => c.alias)).toEqual(["A", "B"]);
+    expect(result.current.ai.editingIndex).toBe(0);
   });
 
   it("删除正在编辑的配置时应该重置编辑索引", () => {
@@ -222,17 +224,17 @@ describe("useSettingsForm 设置表单 hook", () => {
       ),
     );
 
-    act(() => result.current.handleStartEdit(1));
-    act(() => result.current.handleDeleteConfig(1));
+    act(() => result.current.ai.handleStartEdit(1));
+    act(() => result.current.ai.handleDeleteConfig(1));
 
-    expect(result.current.editingIndex).toBe(null);
+    expect(result.current.ai.editingIndex).toBe(null);
   });
 
   it("编辑目标不存在时不做处理", () => {
     const { result } = renderForm();
 
-    act(() => result.current.handleStartEdit(0));
+    act(() => result.current.ai.handleStartEdit(0));
 
-    expect(result.current.editingIndex).toBe(null);
+    expect(result.current.ai.editingIndex).toBe(null);
   });
 });

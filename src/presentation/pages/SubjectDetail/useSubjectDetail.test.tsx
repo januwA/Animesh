@@ -167,12 +167,12 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.subject?.name_cn).toBe("测试动漫");
+      expect(result.current.info.subject?.name_cn).toBe("测试动漫");
     });
-    expect(result.current.episodes).toHaveLength(2);
-    expect(result.current.episodes[0].sort).toBe(1);
-    expect(result.current.characters).toHaveLength(1);
-    expect(result.current.persons).toHaveLength(1);
+    expect(result.current.episodes.episodes).toHaveLength(2);
+    expect(result.current.episodes.episodes[0].sort).toBe(1);
+    expect(result.current.cast.characters).toHaveLength(1);
+    expect(result.current.cast.persons).toHaveLength(1);
     expect(deps.getBangumiSubjectUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       NonEmptyStringSchema.parse("123"),
@@ -194,10 +194,10 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.episodes).toHaveLength(103);
+      expect(result.current.episodes.episodes).toHaveLength(103);
     });
-    expect(result.current.totalEpisodes).toBe(103);
-    expect(result.current.totalPages).toBe(3);
+    expect(result.current.episodes.totalEpisodes).toBe(103);
+    expect(result.current.episodes.totalPages).toBe(3);
     expect(deps.getBangumiEpisodesUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       { subjectId: NonEmptyStringSchema.parse("123"), offset: 0, limit: 50 },
@@ -211,11 +211,11 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.subject).not.toBeNull();
+      expect(result.current.info.subject).not.toBeNull();
     });
-    expect(result.current.displayName).toBe("测试动漫");
-    expect(result.current.originalName).toBe("Test Anime");
-    expect(result.current.imageUrl).toBe("http://example.com/large.jpg");
+    expect(result.current.info.displayName).toBe("测试动漫");
+    expect(result.current.info.originalName).toBe("Test Anime");
+    expect(result.current.info.imageUrl).toBe("http://example.com/large.jpg");
   });
 
   it("无中文名时 displayName 回退到原名且不显示 originalName", async () => {
@@ -230,10 +230,10 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.subject).not.toBeNull();
+      expect(result.current.info.subject).not.toBeNull();
     });
-    expect(result.current.displayName).toBe("Test Anime");
-    expect(result.current.originalName).toBe("");
+    expect(result.current.info.displayName).toBe("Test Anime");
+    expect(result.current.info.originalName).toBe("");
   });
 
   it("应该按角色分组制作人员并正确去重", async () => {
@@ -254,15 +254,15 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.persons).toHaveLength(3);
+      expect(result.current.cast.persons).toHaveLength(3);
     });
-    expect(result.current.consolidatedStaff).toHaveLength(1);
-    expect(result.current.consolidatedStaff[0].relations).toEqual([
+    expect(result.current.cast.consolidatedStaff).toHaveLength(1);
+    expect(result.current.cast.consolidatedStaff[0].relations).toEqual([
       "导演",
       "脚本",
     ]);
-    expect(result.current.staffGroupedByRole.get("导演")).toHaveLength(1);
-    expect(result.current.staffGroupedByRole.get("脚本")).toHaveLength(1);
+    expect(result.current.cast.staffGroupedByRole.get("导演")).toHaveLength(1);
+    expect(result.current.cast.staffGroupedByRole.get("脚本")).toHaveLength(1);
   });
 
   it("应该统计绑定资源数量并拆分已绑定/未绑定资源", async () => {
@@ -275,9 +275,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
       makeDeps(),
     );
 
-    expect(result.current.boundResourcesCount).toBe(1);
-    expect(result.current.boundTorrents).toHaveLength(1);
-    expect(result.current.unboundTorrents).toHaveLength(1);
+    expect(result.current.resources.boundResourcesCount).toBe(1);
+    expect(result.current.resources.boundTorrents).toHaveLength(1);
+    expect(result.current.resources.unboundTorrents).toHaveLength(1);
   });
 
   it("点击剧集时应该跳转到主页搜索", async () => {
@@ -287,9 +287,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.subject).not.toBeNull();
+      expect(result.current.info.subject).not.toBeNull();
     });
-    act(() => result.current.handleEpisodeClick(makeEpisode(1)));
+    act(() => result.current.episodes.handleEpisodeClick(makeEpisode(1)));
     expect(locationRef.current?.pathname).toBe("/");
     expect(locationRef.current?.search).toBe(
       `?keyword=${encodeURIComponent("测试动漫 01")}`,
@@ -311,9 +311,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.totalPages).toBe(3);
+      expect(result.current.episodes.totalPages).toBe(3);
     });
-    act(() => result.current.changePage(99));
+    act(() => result.current.episodes.changePage(99));
     await waitFor(() => {
       expect(locationRef.current?.search).toContain("page=3");
     });
@@ -334,9 +334,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.totalPages).toBe(3);
+      expect(result.current.episodes.totalPages).toBe(3);
     });
-    act(() => result.current.jumpToEpisode(123));
+    act(() => result.current.episodes.jumpToEpisode(123));
     await waitFor(() => {
       expect(locationRef.current?.search).toContain("page=3");
     });
@@ -354,10 +354,10 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.subject).not.toBeNull();
+      expect(result.current.info.subject).not.toBeNull();
     });
     await act(async () => {
-      await result.current.handleBind("hash-1");
+      await result.current.resources.handleBind("hash-1");
     });
     expect(deps.setTorrentSubjectUseCase.execute).toHaveBeenCalledWith({
       infoHash: NonEmptyStringSchema.parse("hash-1"),
@@ -379,10 +379,10 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.subject).not.toBeNull();
+      expect(result.current.info.subject).not.toBeNull();
     });
     await act(async () => {
-      await result.current.handleBind("hash-1");
+      await result.current.resources.handleBind("hash-1");
     });
     expect(toast.error).toHaveBeenCalledWith(
       expect.stringContaining("绑定失败: Bind failed"),
@@ -401,7 +401,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await act(async () => {
-      await result.current.handleUnbind(NonEmptyStringSchema.parse("hash-1"));
+      await result.current.resources.handleUnbind(
+        NonEmptyStringSchema.parse("hash-1"),
+      );
     });
     expect(deps.clearTorrentSubjectUseCase.execute).toHaveBeenCalledWith(
       NonEmptyStringSchema.parse("hash-1"),
@@ -422,7 +424,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
     await act(async () => {
       try {
-        await result.current.handleUnbind(NonEmptyStringSchema.parse("hash-1"));
+        await result.current.resources.handleUnbind(
+          NonEmptyStringSchema.parse("hash-1"),
+        );
       } catch {
         // 忽略错误
       }
@@ -444,9 +448,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.subject).not.toBeNull();
+      expect(result.current.info.subject).not.toBeNull();
     });
-    act(() => result.current.handleOpenUrl());
+    act(() => result.current.info.handleOpenUrl());
     await waitFor(() => {
       expect(deps.openUrlUseCase.execute).toHaveBeenCalledWith(
         NonEmptyStringSchema.parse("https://bgm.tv/subject/123"),
@@ -466,9 +470,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.subjectQuery.error).not.toBeNull();
+      expect(result.current.info.subjectQuery.error).not.toBeNull();
     });
-    expect(result.current.subjectQuery.error?.message).toBe(
+    expect(result.current.info.subjectQuery.error?.message).toBe(
       "Subject API Error",
     );
   });

@@ -57,6 +57,9 @@ pre-push:
     "前端_表现层deps接口检查":
       glob: "src/presentation/**/*.{ts,tsx}"
       run: pnpm check:presentation-deps {push_files}
+    "前端_表现层hook大小与耦合检查":
+      glob: "src/presentation/**/*.{ts,tsx}"
+      run: pnpm check:presentation-hooks {push_files}
     "前端_表现层测试DI注入检查":
       glob: "src/presentation/**/*.{ts,tsx}"
       run: pnpm check:presentation-test-di {push_files}

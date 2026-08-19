@@ -48,60 +48,60 @@ export default function Settings() {
     <div className="flex flex-col gap-6">
       {/* Settings Form */}
       <form onSubmit={page.handleSave} className="flex flex-col gap-6">
-        <SettingsActionHeader saving={page.saving} />
+        <SettingsActionHeader saving={page.actions.saving} />
 
         {page.isTauri && (
           <StorageSettingsSection
-            downloadDir={page.downloadDir}
+            downloadDir={page.form.storage.downloadDir}
             isMobile={page.isMobile}
-            maxDownloadSpeed={page.maxDownloadSpeed}
-            maxUploadSpeed={page.maxUploadSpeed}
-            onDownloadDirChange={page.setDownloadDir}
-            onMaxDownloadSpeedChange={page.setMaxDownloadSpeed}
-            onMaxUploadSpeedChange={page.setMaxUploadSpeed}
-            onSelectDir={page.handleSelectDir}
+            maxDownloadSpeed={page.form.storage.maxDownloadSpeed}
+            maxUploadSpeed={page.form.storage.maxUploadSpeed}
+            onDownloadDirChange={page.form.storage.setDownloadDir}
+            onMaxDownloadSpeedChange={page.form.storage.setMaxDownloadSpeed}
+            onMaxUploadSpeedChange={page.form.storage.setMaxUploadSpeed}
+            onSelectDir={page.actions.handleSelectDir}
           />
         )}
 
         {page.isTauri && (
           <NetworkSettingsSection
-            proxy={page.proxy}
-            onProxyChange={page.setProxy}
+            proxy={page.form.storage.proxy}
+            onProxyChange={page.form.storage.setProxy}
           />
         )}
 
         <AiSettingsSection
-          aiConfigs={page.aiConfigs}
-          editingIndex={page.editingIndex}
-          aliasInput={page.aliasInput}
-          apiEndpointInput={page.apiEndpointInput}
-          apiKeyInput={page.apiKeyInput}
-          modelInput={page.modelInput}
-          testingAi={page.testingAi}
-          onAliasInputChange={page.setAliasInput}
-          onApiEndpointInputChange={page.setApiEndpointInput}
-          onApiKeyInputChange={page.setApiKeyInput}
-          onModelInputChange={page.setModelInput}
-          onTestConfig={page.handleTestConfig}
-          onStartAdd={page.handleStartAdd}
-          onStartEdit={page.handleStartEdit}
-          onCancelEdit={page.handleCancelEdit}
-          onDeleteConfig={page.handleDeleteConfig}
-          onSaveConfig={page.handleSaveConfig}
+          aiConfigs={page.form.ai.aiConfigs}
+          editingIndex={page.form.ai.editingIndex}
+          aliasInput={page.form.ai.aliasInput}
+          apiEndpointInput={page.form.ai.apiEndpointInput}
+          apiKeyInput={page.form.ai.apiKeyInput}
+          modelInput={page.form.ai.modelInput}
+          testingAi={page.actions.testingAi}
+          onAliasInputChange={page.form.ai.setAliasInput}
+          onApiEndpointInputChange={page.form.ai.setApiEndpointInput}
+          onApiKeyInputChange={page.form.ai.setApiKeyInput}
+          onModelInputChange={page.form.ai.setModelInput}
+          onTestConfig={page.actions.handleTestConfig}
+          onStartAdd={page.form.ai.handleStartAdd}
+          onStartEdit={page.form.ai.handleStartEdit}
+          onCancelEdit={page.form.ai.handleCancelEdit}
+          onDeleteConfig={page.form.ai.handleDeleteConfig}
+          onSaveConfig={page.form.ai.handleSaveConfig}
           onTestCurrentConnection={page.handleTestCurrentConnection}
         />
 
         <CacheSettingsSection
-          clearingCache={page.clearingCache}
-          onClearClick={() => page.setConfirmClearOpen(true)}
+          clearingCache={page.actions.clearingCache}
+          onClearClick={() => page.actions.setConfirmClearOpen(true)}
         />
 
         {page.isTauri && (
           <UpdateCheckSection
             currentVersion={page.currentVersion}
-            checkingUpdate={page.checkingUpdate}
-            updateResult={page.updateResult}
-            onCheckUpdate={page.handleCheckUpdate}
+            checkingUpdate={page.actions.checkingUpdate}
+            updateResult={page.actions.updateResult}
+            onCheckUpdate={page.actions.handleCheckUpdate}
             onOpenGithub={page.handleOpenGithub}
           />
         )}
@@ -122,10 +122,10 @@ export default function Settings() {
       />
 
       <ConfirmClearCacheDialog
-        open={page.confirmClearOpen}
-        clearingCache={page.clearingCache}
-        onOpenChange={page.setConfirmClearOpen}
-        onConfirm={page.handleConfirmClearCache}
+        open={page.actions.confirmClearOpen}
+        clearingCache={page.actions.clearingCache}
+        onOpenChange={page.actions.setConfirmClearOpen}
+        onConfirm={page.actions.handleConfirmClearCache}
       />
     </div>
   );

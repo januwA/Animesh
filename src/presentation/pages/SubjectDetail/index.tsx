@@ -86,7 +86,7 @@ function SubjectDetailView({
   } = useDI();
   const { torrents } = useTorrentStatus();
 
-  const pageState = useSubjectDetail(
+  const detail = useSubjectDetail(
     { subjectId, page, torrents },
     {
       getBangumiSubjectUseCase,
@@ -99,14 +99,14 @@ function SubjectDetailView({
     },
   );
 
-  if (pageState.subjectQuery.error) {
+  if (detail.info.subjectQuery.error) {
     return (
       <div className="space-y-4">
-        <SubjectBackButton onBack={pageState.handleBack} />
+        <SubjectBackButton onBack={detail.info.handleBack} />
         <ErrorState
           title="获取动漫详情失败"
-          message={pageState.subjectQuery.error}
-          onRetry={pageState.subjectQuery.refetch}
+          message={detail.info.subjectQuery.error}
+          onRetry={detail.info.subjectQuery.refetch}
         />
       </div>
     );
@@ -116,10 +116,10 @@ function SubjectDetailView({
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
       {/* Navigation Header */}
       <SubjectNavigationHeader
-        subject={pageState.subject}
-        displayName={pageState.displayName}
-        onBack={pageState.handleBack}
-        onOpenUrl={pageState.handleOpenUrl}
+        subject={detail.info.subject}
+        displayName={detail.info.displayName}
+        onBack={detail.info.handleBack}
+        onOpenUrl={detail.info.handleOpenUrl}
         getFavoriteStatusUseCase={getFavoriteStatusUseCase}
         addFavoriteUseCase={addFavoriteUseCase}
         removeFavoriteUseCase={removeFavoriteUseCase}
@@ -127,26 +127,26 @@ function SubjectDetailView({
 
       {/* Info Header Card */}
       <SubjectInfoCard
-        subject={pageState.subject}
+        subject={detail.info.subject}
         subjectId={subjectId}
-        displayName={pageState.displayName}
-        originalName={pageState.originalName}
-        imageUrl={pageState.imageUrl}
+        displayName={detail.info.displayName}
+        originalName={detail.info.originalName}
+        imageUrl={detail.info.imageUrl}
       />
 
       {/* Episodes List */}
       <EpisodesSection
-        episodes={pageState.episodes}
-        totalEpisodes={pageState.totalEpisodes}
-        totalPages={pageState.totalPages}
+        episodes={detail.episodes.episodes}
+        totalEpisodes={detail.episodes.totalEpisodes}
+        totalPages={detail.episodes.totalPages}
         page={page}
-        todayStr={pageState.todayStr}
-        loading={pageState.episodesQuery.loading}
-        error={pageState.episodesQuery.error}
-        onRetry={pageState.episodesQuery.refetch}
-        onEpisodeClick={pageState.handleEpisodeClick}
-        onPageChange={pageState.changePage}
-        onJumpToEpisode={pageState.jumpToEpisode}
+        todayStr={detail.episodes.todayStr}
+        loading={detail.episodes.episodesQuery.loading}
+        error={detail.episodes.episodesQuery.error}
+        onRetry={detail.episodes.episodesQuery.refetch}
+        onEpisodeClick={detail.episodes.handleEpisodeClick}
+        onPageChange={detail.episodes.changePage}
+        onJumpToEpisode={detail.episodes.jumpToEpisode}
       />
 
       {/* Content Tabs */}
@@ -155,57 +155,59 @@ function SubjectDetailView({
           <TabsTrigger value="summary">简介</TabsTrigger>
           <TabsTrigger value="characters">
             角色
-            {pageState.characters.length > 0 && (
-              <Badge variant="secondary">{pageState.characters.length}</Badge>
+            {detail.cast.characters.length > 0 && (
+              <Badge variant="secondary">{detail.cast.characters.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="staff">
             制作人员
-            {pageState.persons.length > 0 && (
+            {detail.cast.persons.length > 0 && (
               <Badge variant="secondary">
-                {pageState.consolidatedStaff.length}
+                {detail.cast.consolidatedStaff.length}
               </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="resources">
             资源
-            {pageState.boundResourcesCount > 0 && (
-              <Badge variant="secondary">{pageState.boundResourcesCount}</Badge>
+            {detail.resources.boundResourcesCount > 0 && (
+              <Badge variant="secondary">
+                {detail.resources.boundResourcesCount}
+              </Badge>
             )}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="pt-4">
-          <SummarySection subject={pageState.subject} />
+          <SummarySection subject={detail.info.subject} />
         </TabsContent>
 
         <TabsContent value="characters" className="pt-4">
           <CharactersSection
-            characters={pageState.characters}
-            loading={pageState.charactersQuery.loading}
-            error={pageState.charactersQuery.error}
-            onRetry={pageState.charactersQuery.refetch}
+            characters={detail.cast.characters}
+            loading={detail.cast.charactersQuery.loading}
+            error={detail.cast.charactersQuery.error}
+            onRetry={detail.cast.charactersQuery.refetch}
           />
         </TabsContent>
 
         <TabsContent value="staff" className="pt-4">
           <StaffSection
-            staffGroupedByRole={pageState.staffGroupedByRole}
-            loading={pageState.personsQuery.loading}
-            error={pageState.personsQuery.error}
-            onRetry={pageState.personsQuery.refetch}
+            staffGroupedByRole={detail.cast.staffGroupedByRole}
+            loading={detail.cast.personsQuery.loading}
+            error={detail.cast.personsQuery.error}
+            onRetry={detail.cast.personsQuery.refetch}
           />
         </TabsContent>
 
         <TabsContent value="resources" className="pt-0">
           <SubjectResourcesTab
-            subjectName={pageState.displayName}
-            boundTorrents={pageState.boundTorrents}
-            unboundTorrents={pageState.unboundTorrents}
-            bindLoading={pageState.bindLoading}
-            unbindLoading={pageState.unbindLoading}
-            onBind={pageState.handleBind}
-            onUnbind={pageState.handleUnbind}
+            subjectName={detail.info.displayName}
+            boundTorrents={detail.resources.boundTorrents}
+            unboundTorrents={detail.resources.unboundTorrents}
+            bindLoading={detail.resources.bindLoading}
+            unbindLoading={detail.resources.unbindLoading}
+            onBind={detail.resources.handleBind}
+            onUnbind={detail.resources.handleUnbind}
           />
         </TabsContent>
       </Tabs>

@@ -24,7 +24,7 @@ export function useSettingsPage(deps: UseSettingsPageDeps) {
   const actions = useSettingsActions(
     {
       onSaveSuccess: form.markSaved,
-      onDirectorySelected: form.setDownloadDir,
+      onDirectorySelected: form.storage.setDownloadDir,
     },
     deps,
   );
@@ -55,19 +55,19 @@ export function useSettingsPage(deps: UseSettingsPageDeps) {
   const currentVersion = versionQuery.data ?? "";
 
   const handleTestCurrentConnection = () => {
-    if (!form.apiEndpointInput.trim()) {
+    if (!form.ai.apiEndpointInput.trim()) {
       toast.warning("请输入 AI 接口地址");
       return;
     }
-    if (!form.apiKeyInput.trim()) {
+    if (!form.ai.apiKeyInput.trim()) {
       toast.warning("请输入 API 密钥");
       return;
     }
     actions.handleTestConfig({
-      alias: NonEmptyStringSchema.parse(form.aliasInput),
-      api_endpoint: NonEmptyStringSchema.parse(form.apiEndpointInput),
-      api_key: NonEmptyStringSchema.parse(form.apiKeyInput),
-      ai_model: NonEmptyStringSchema.parse(form.modelInput),
+      alias: NonEmptyStringSchema.parse(form.ai.aliasInput),
+      api_endpoint: NonEmptyStringSchema.parse(form.ai.apiEndpointInput),
+      api_key: NonEmptyStringSchema.parse(form.ai.apiKeyInput),
+      ai_model: NonEmptyStringSchema.parse(form.ai.modelInput),
     });
   };
 
@@ -86,11 +86,11 @@ export function useSettingsPage(deps: UseSettingsPageDeps) {
     e.preventDefault();
 
     const validation = SettingsFormSchema.safeParse({
-      downloadDir: form.downloadDir,
-      proxy: form.proxy,
-      aiConfigs: form.aiConfigs,
-      maxDownloadSpeed: form.maxDownloadSpeed || null,
-      maxUploadSpeed: form.maxUploadSpeed || null,
+      downloadDir: form.storage.downloadDir,
+      proxy: form.storage.proxy,
+      aiConfigs: form.ai.aiConfigs,
+      maxDownloadSpeed: form.storage.maxDownloadSpeed || null,
+      maxUploadSpeed: form.storage.maxUploadSpeed || null,
     });
 
     if (!validation.success) {
@@ -106,44 +106,12 @@ export function useSettingsPage(deps: UseSettingsPageDeps) {
     isTauri,
     isMobile,
     loading,
-    saving: actions.saving,
-    testingAi: actions.testingAi,
-    checkingUpdate: actions.checkingUpdate,
-    clearingCache: actions.clearingCache,
     currentVersion,
-    updateResult: actions.updateResult,
-    downloadDir: form.downloadDir,
-    setDownloadDir: form.setDownloadDir,
-    proxy: form.proxy,
-    setProxy: form.setProxy,
-    maxDownloadSpeed: form.maxDownloadSpeed,
-    setMaxDownloadSpeed: form.setMaxDownloadSpeed,
-    maxUploadSpeed: form.maxUploadSpeed,
-    setMaxUploadSpeed: form.setMaxUploadSpeed,
-    aiConfigs: form.aiConfigs,
-    editingIndex: form.editingIndex,
-    aliasInput: form.aliasInput,
-    setAliasInput: form.setAliasInput,
-    apiEndpointInput: form.apiEndpointInput,
-    setApiEndpointInput: form.setApiEndpointInput,
-    apiKeyInput: form.apiKeyInput,
-    setApiKeyInput: form.setApiKeyInput,
-    modelInput: form.modelInput,
-    setModelInput: form.setModelInput,
-    confirmClearOpen: actions.confirmClearOpen,
-    setConfirmClearOpen: actions.setConfirmClearOpen,
     isDirty: form.isDirty,
+    form,
+    actions,
     handleSave,
-    handleSelectDir: actions.handleSelectDir,
-    handleCheckUpdate: actions.handleCheckUpdate,
-    handleOpenGithub,
-    handleConfirmClearCache: actions.handleConfirmClearCache,
-    handleTestConfig: actions.handleTestConfig,
     handleTestCurrentConnection,
-    handleStartAdd: form.handleStartAdd,
-    handleStartEdit: form.handleStartEdit,
-    handleCancelEdit: form.handleCancelEdit,
-    handleDeleteConfig: form.handleDeleteConfig,
-    handleSaveConfig: form.handleSaveConfig,
+    handleOpenGithub,
   };
 }

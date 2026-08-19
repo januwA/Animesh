@@ -31,6 +31,7 @@
     "check:dependency-injection": "tsx scripts/check-dependency-injection.ts",
     "check:presentation-di": "tsx scripts/check-presentation-di.ts",
     "check:presentation-deps": "tsx scripts/check-presentation-deps.ts",
+    "check:presentation-hooks": "tsx scripts/check-presentation-hooks.ts",
     "check:presentation-test-di": "tsx scripts/check-presentation-test-di.ts",
     "check:test-files": "tsx scripts/check-test-files.ts",
     "typecheck": "tsc --noEmit",
