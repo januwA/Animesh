@@ -30,10 +30,9 @@ export function useSettingsPage(deps: UseSettingsPageDeps) {
   );
 
   const isTauri = import.meta.env.MODE !== "web";
-  const isMobile =
-    ["android", "ios"].includes(import.meta.env.TAURI_ENV_PLATFORM || "") ||
-    (typeof navigator !== "undefined" &&
-      /android|iphone|ipad|ipod/i.test(navigator.userAgent));
+  const isMobile = ["android", "ios"].includes(
+    import.meta.env.TAURI_ENV_PLATFORM,
+  );
 
   // Load settings
   const settingsQuery = useQuery(

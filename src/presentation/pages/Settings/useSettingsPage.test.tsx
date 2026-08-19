@@ -367,18 +367,4 @@ describe("useSettingsPage 设置页面 hook", () => {
     expect(result.current.isTauri).toBe(false);
     expect(result.current.currentVersion).toBe("");
   });
-
-  it("移动端环境时 isMobile 应该为 true", async () => {
-    const userAgentSpy = vi
-      .spyOn(navigator, "userAgent", "get")
-      .mockReturnValue("Mozilla Android 13");
-
-    const { result } = renderPage();
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    expect(result.current.isMobile).toBe(true);
-
-    userAgentSpy.mockRestore();
-  });
 });
