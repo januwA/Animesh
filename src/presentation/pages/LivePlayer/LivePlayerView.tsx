@@ -1,102 +1,54 @@
-import { ArrowLeft, Clipboard, Link2, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Clipboard, Link2, Loader2 } from "lucide-react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useDI } from "@/di/DIContext";
+import type { ResolvePlayableStreamUrlUseCase } from "@/application/iptv/ResolvePlayableStreamUrlUseCase";
 import type { ResolvedStreamUrl } from "@/domain/iptv/IptvStreamUrlRepository";
+import type { Logger } from "@/domain/logger/logger";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import "@videojs/react/video/skin.css";
-import { createPlayer, liveVideoFeatures, selectError } from "@videojs/react";
 import {
   HlsJsVideo,
   type HlsJsVideoProps,
 } from "@videojs/react/media/hlsjs-video";
 import { VideoSkin } from "@videojs/react/video";
-import { z } from "zod";
-import { InvalidParamsView } from "../components/InvalidParamsView";
-import { LazyImage } from "../components/LazyImage";
-import { MpegtsVideo } from "../components/MpegtsVideo";
-
-const JsLivePlayer = createPlayer({ features: liveVideoFeatures });
+import { LazyImage } from "@/presentation/components/LazyImage";
+import { MpegtsVideo } from "@/presentation/components/MpegtsVideo";
+import {
+  JsLivePlayer,
+  JsLivePlayerErrorMonitor,
+} from "./JsLivePlayerErrorMonitor";
+import { LivePlayerBackButton } from "./LivePlayerBackButton";
 
 type HlsMediaConfig = NonNullable<HlsJsVideoProps["config"]>;
 
 const MAX_RECOVERIES = 5;
 
-function JsLivePlayerErrorMonitor({ onRecover }: { onRecover: () => void }) {
-  const errorState = JsLivePlayer.usePlayer(selectError);
-  const { logger } = useDI();
-  const monitorLogger = useMemo(
-    () => logger.withCategory("LivePlayer"),
-    [logger],
-  );
-  const lastErrorRef = useRef<object | null>(null);
-
-  useEffect(() => {
-    const error = errorState?.error ?? null;
-    if (error) {
-      // v8 ignore next
-      if (lastErrorRef.current === error) return;
-      lastErrorRef.current = error;
-      monitorLogger.error("Live video element error:", error);
-
-      let errorMsg = "直播流加载失败";
-      if (error.code === 4) {
-        errorMsg = "当前浏览器不支持播放该直播源。";
-      } else if (error.code === 3) {
-        errorMsg = "直播流解码失败，可能源地址已失效或编码不支持。";
-      } else if (error.code === 2) {
-        errorMsg = "直播流加载超时或网络断开。";
-      }
-      toast.error(errorMsg, { duration: 8000 });
-
-      if (error.code === 2 || error.code === 3) {
-        onRecover();
-      }
-      errorState?.dismissError?.();
-    } else {
-      lastErrorRef.current = null;
-    }
-  }, [errorState?.error, monitorLogger, errorState?.dismissError, onRecover]);
-
-  return null;
+export interface UseLivePlayerViewParams {
+  resolvePlayableStreamUrlUseCase: Pick<
+    ResolvePlayableStreamUrlUseCase,
+    "execute"
+  >;
+  logger: Pick<Logger, "withCategory">;
 }
 
-const livePlayerParamsSchema = z.object({
-  url: z.string().trim().min(1, "缺少直播流地址参数"),
-  name: z.string().default(""),
-  logo: z.string().default(""),
-  category: z.string().default(""),
-});
-
-export default function LivePlayer() {
-  const [searchParams] = useSearchParams();
-
-  const parsed = livePlayerParamsSchema.safeParse({
-    url: searchParams.get("url") ?? "",
-    name: searchParams.get("name") ?? undefined,
-    logo: searchParams.get("logo") ?? undefined,
-    category: searchParams.get("category") ?? undefined,
-  });
-  if (!parsed.success) {
-    return (
-      <InvalidParamsView title="无效的直播播放参数" error={parsed.error} />
-    );
-  }
-
-  return <LivePlayerView {...parsed.data} />;
+interface LivePlayerViewProps {
+  url: string;
+  name: string;
+  logo: string;
+  category: string;
+  deps: UseLivePlayerViewParams;
 }
 
-function LivePlayerView({
+export function LivePlayerView({
   url,
   name,
   logo,
   category,
-}: z.infer<typeof livePlayerParamsSchema>) {
-  const navigate = useNavigate();
-  const { resolvePlayableStreamUrlUseCase } = useDI();
+  deps,
+}: LivePlayerViewProps) {
+  const { resolvePlayableStreamUrlUseCase, logger } = deps;
   const [reloadKey, setReloadKey] = useState(0);
   const recoveriesRef = useRef(0);
 
@@ -143,10 +95,6 @@ function LivePlayerView({
     setReloadKey((key) => key + 1);
   }, []);
 
-  const handleBack = () => {
-    navigate(-1);
-  };
-
   const handleCopyRawUrl = async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -158,17 +106,8 @@ function LivePlayerView({
 
   return (
     <div className="w-full flex flex-col gap-4 lg:gap-6 animate-in fade-in duration-300">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleBack}
-        className="gap-2 text-muted-foreground hover:text-foreground w-fit"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        返回
-      </Button>
+      <LivePlayerBackButton />
 
-      {/* Player Video */}
       <div className="relative w-full aspect-video max-h-dvh overflow-hidden rounded-xl">
         {resolvedStream ? (
           resolvedStream.kind === "flv" ? (
@@ -189,7 +128,10 @@ function LivePlayerView({
                   playsInline
                 />
               </VideoSkin>
-              <JsLivePlayerErrorMonitor onRecover={handleRecover} />
+              <JsLivePlayerErrorMonitor
+                logger={logger}
+                onRecover={handleRecover}
+              />
             </JsLivePlayer.Provider>
           )
         ) : (
@@ -200,7 +142,6 @@ function LivePlayerView({
         )}
       </div>
 
-      {/* Channel Info */}
       <div className="flex flex-col gap-4">
         <div className="flex items-start gap-3">
           {logo && (
@@ -222,7 +163,6 @@ function LivePlayerView({
           </div>
         </div>
 
-        {/* Raw URL */}
         <div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <Link2 className="h-4 w-4 text-muted-foreground" />
