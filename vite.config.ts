@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => {
           "src/presentation/components/ui/**",
           "src/presentation/App.tsx",
           "src/presentation/components/MpegtsVideo.tsx",
+          "src/presentation/pages/*/index.tsx",
           "src/di/**",
           "src/domain/**",
           "src/infrastructure/**",
@@ -77,11 +78,6 @@ export default defineConfig(({ mode }) => {
           functions: 100,
           branches: 100,
           statements: 100,
-
-          // 页面入口胶水文件只测试所有函数即可
-          "src/presentation/pages/*/index.tsx": {
-            functions: 100,
-          },
         },
       },
     },

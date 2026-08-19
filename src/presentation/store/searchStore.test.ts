@@ -67,6 +67,17 @@ describe("搜索全局状态 store", () => {
     });
   });
 
+  it("未标注组在输入靠前时仍应恒排最后", () => {
+    const state = useSearchStore.getState();
+    state.setSearchResults([
+      { ...mockResult, title: NonEmptyStringSchema.parse("无前缀 某番 01") },
+      { ...mockResult, title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
+    ]);
+
+    const { groups } = useSearchStore.getState();
+    expect(groups.map((g) => g.name)).toEqual(["GroupA", "未标注"]);
+  });
+
   it("应该能通过 toggleGroup 折叠或展开指定的组", () => {
     const state = useSearchStore.getState();
     state.toggleGroup("字幕组");

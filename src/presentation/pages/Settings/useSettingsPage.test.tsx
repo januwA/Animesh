@@ -135,6 +135,26 @@ describe("useSettingsPage 设置页面 hook", () => {
     expect(result.current.isDirty).toBe(false);
   });
 
+  it("保存时速度为 0 时应转换为 null 传递", async () => {
+    const { result, deps } = renderPage();
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => result.current.setMaxDownloadSpeed(0));
+    act(() => result.current.setMaxUploadSpeed(0));
+    act(() => submit(result.current.handleSave));
+
+    await waitFor(() => expect(result.current.saving).toBe(false));
+
+    expect(deps.saveSettingsUseCase.execute).toHaveBeenCalledWith({
+      downloadDir: "/data",
+      proxy: "http://127.0.0.1:7890",
+      aiConfigs: [],
+      maxDownloadSpeed: null,
+      maxUploadSpeed: null,
+    });
+  });
+
   it("保存时下载目录为空应该拦截并提示", async () => {
     const { result, deps } = renderPage();
 

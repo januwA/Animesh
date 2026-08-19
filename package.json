@@ -32,6 +32,7 @@
     "check:presentation-di": "tsx scripts/check-presentation-di.ts",
     "check:presentation-deps": "tsx scripts/check-presentation-deps.ts",
     "check:presentation-test-di": "tsx scripts/check-presentation-test-di.ts",
+    "check:test-files": "tsx scripts/check-test-files.ts",
     "typecheck": "tsc --noEmit",
     "test:coverage": "vitest run --coverage",
     "bump-version": "tsx scripts/bump-version.ts"

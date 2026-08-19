@@ -21,7 +21,7 @@ describe("isCompositionRoot 组合根判定", () => {
 	it("单文件页面 pages/*.tsx 属于组合根", () => {
 		expect(
 			isCompositionRoot(
-				`${process.cwd()}/src/presentation/pages/TorrentSearch.tsx`,
+				`${process.cwd()}/src/presentation/pages/Calendar.tsx`,
 			),
 		).toBe(true);
 	});

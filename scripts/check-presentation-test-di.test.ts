@@ -20,7 +20,7 @@ describe("isHookTestFile / isPageTestFile", () => {
 	});
 
 	it("单文件页面测试不属于页面级集成测试", () => {
-		expect(isPageTestFile(`${PAGE_DIR}/TorrentSearch.test.tsx`)).toBe(false);
+		expect(isPageTestFile(`${PAGE_DIR}/Calendar.test.tsx`)).toBe(false);
 	});
 
 	it("普通组件测试文件两种分类均不匹配", () => {
