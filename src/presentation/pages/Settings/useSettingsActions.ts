@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import type { SaveSettingsDto } from "@/application/settings/SaveSettingsUseCase";
-import { useDI } from "@/di/DIContext";
+import type { ClearCacheUseCase } from "@/application/cache/ClearCacheUseCase";
+import type {
+  SaveSettingsDto,
+  SaveSettingsUseCase,
+} from "@/application/settings/SaveSettingsUseCase";
+import type { SelectDirectoryUseCase } from "@/application/settings/SelectDirectoryUseCase";
+import type { VerifyAiConnectionUseCase } from "@/application/settings/VerifyAiConnectionUseCase";
+import type { CheckUpdateUseCase } from "@/application/update/CheckUpdateUseCase";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useCalendarStore } from "@/presentation/store/calendarStore";
@@ -13,17 +19,26 @@ export interface UseSettingsActionsOptions {
   onDirectorySelected: (dir: string) => void;
 }
 
-export function useSettingsActions({
-  onSaveSuccess,
-  onDirectorySelected,
-}: UseSettingsActionsOptions) {
+/** useSettingsActions 的依赖，由调用方（页面组合根）注入 */
+export interface UseSettingsActionsDeps {
+  saveSettingsUseCase: Pick<SaveSettingsUseCase, "execute">;
+  selectDirectoryUseCase: Pick<SelectDirectoryUseCase, "execute">;
+  checkUpdateUseCase: Pick<CheckUpdateUseCase, "execute">;
+  verifyAiConnectionUseCase: Pick<VerifyAiConnectionUseCase, "execute">;
+  clearCacheUseCase: Pick<ClearCacheUseCase, "execute">;
+}
+
+export function useSettingsActions(
+  { onSaveSuccess, onDirectorySelected }: UseSettingsActionsOptions,
+  deps: UseSettingsActionsDeps,
+) {
   const {
     saveSettingsUseCase,
     selectDirectoryUseCase,
     checkUpdateUseCase,
     verifyAiConnectionUseCase,
     clearCacheUseCase,
-  } = useDI();
+  } = deps;
   const setCalendar = useCalendarStore((s) => s.setCalendar);
   const setIptvCountries = useIptvStore((s) => s.setIptvCountries);
   const setIptvChannels = useIptvStore((s) => s.setIptvChannels);

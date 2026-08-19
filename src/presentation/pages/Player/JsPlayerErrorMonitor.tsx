@@ -1,12 +1,15 @@
 import { selectError } from "@videojs/react";
 import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { useDI } from "@/di/DIContext";
+import type { Logger } from "@/domain/logger/logger";
 import { JsPlayer } from "./player";
 
-export function JsPlayerErrorMonitor() {
+interface JsPlayerErrorMonitorProps {
+  logger: Logger;
+}
+
+export function JsPlayerErrorMonitor({ logger }: JsPlayerErrorMonitorProps) {
   const errorState = JsPlayer.usePlayer(selectError);
-  const { logger } = useDI();
   const monitorLogger = useMemo(() => logger.withCategory("Player"), [logger]);
   const lastErrorRef = useRef<object | null>(null);
 

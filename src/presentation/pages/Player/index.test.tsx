@@ -4,9 +4,12 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
+import type { Logger } from "@/domain/logger/logger";
+import type {
+  TorrentStatusInfo,
+  VideoMetadata,
+} from "@/domain/torrent/TorrentSchemas";
 import { TorrentStatusProvider } from "@/presentation/context/TorrentStatusContext";
-import { createDIContainerForTest } from "@/test/test-utils";
 import Player from "./index";
 
 Object.defineProperty(navigator, "clipboard", {
@@ -33,13 +36,33 @@ const makeStatus = (infoHash: string): TorrentStatusInfo => ({
   trackers: [],
 });
 
+const emptyMetadata: VideoMetadata = {
+  tracks: [],
+  chapters: [],
+  video_info: {
+    date_utc: null,
+    muxing_app: "",
+    writing_app: "",
+    video_tracks: [],
+    audio_tracks: [],
+  },
+};
+
+const makeLogger = (): Logger => {
+  const log: Logger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    withCategory: () => log,
+  };
+  return log;
+};
+
 const makeContainer = (statuses: TorrentStatusInfo[]): DIContainer =>
-  createDIContainerForTest({
-    torrentRepository: {
-      getTorrentStreamUrl: vi
-        .fn()
-        .mockResolvedValue("http://127.0.0.1/stream/0"),
-      subscribeTorrents: vi
+  ({
+    subscribeTorrentsUseCase: {
+      execute: vi
         .fn()
         .mockImplementation(
           async (onUpdate: (torrents: TorrentStatusInfo[]) => void) => {
@@ -48,7 +71,20 @@ const makeContainer = (statuses: TorrentStatusInfo[]): DIContainer =>
           },
         ),
     },
-  });
+    getTorrentStreamUrlUseCase: {
+      execute: vi.fn().mockResolvedValue("http://127.0.0.1/stream/0"),
+    },
+    getVideoMetadataUseCase: {
+      execute: vi.fn().mockResolvedValue(emptyMetadata),
+    },
+    getSubtitleTranslationsUseCase: {
+      execute: vi.fn().mockResolvedValue([]),
+    },
+    getSubtitleVttUseCase: {
+      execute: vi.fn().mockResolvedValue("WEBVTT\n\n"),
+    },
+    logger: makeLogger(),
+  }) as unknown as DIContainer;
 
 const renderPlayer = (container: DIContainer, initialEntry: string) =>
   render(

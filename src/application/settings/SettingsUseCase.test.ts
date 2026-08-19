@@ -131,6 +131,29 @@ describe("Settings 相关的 UseCase 业务编排", () => {
     expect(rawMockRepo.setMaxUploadSpeed).toHaveBeenCalledWith(256);
   });
 
+  it("SaveSettingsUseCase 应该调用 setMaxDownloadSpeed 方法", async () => {
+    const useCase = new SaveSettingsUseCase(mockRepo);
+    vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
+    vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
+    await useCase.execute({
+      downloadDir: "/mock/dir2",
+      proxy: "http://127.0.0.1:1080",
+      maxDownloadSpeed: 1024,
+    });
+    expect(rawMockRepo.setMaxDownloadSpeed).toHaveBeenCalledWith(1024);
+  });
+
+  it("SaveSettingsUseCase 未提供 maxDownloadSpeed 时不应该调用 setMaxDownloadSpeed", async () => {
+    const useCase = new SaveSettingsUseCase(mockRepo);
+    vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
+    vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
+    await useCase.execute({
+      downloadDir: "/mock/dir2",
+      proxy: "http://127.0.0.1:1080",
+    });
+    expect(rawMockRepo.setMaxDownloadSpeed).not.toHaveBeenCalled();
+  });
+
   it("SaveSettingsUseCase 未提供 maxUploadSpeed 时不应该调用 setMaxUploadSpeed", async () => {
     const useCase = new SaveSettingsUseCase(mockRepo);
     vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);

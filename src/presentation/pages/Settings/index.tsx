@@ -1,5 +1,6 @@
 import { useTheme } from "next-themes";
 import { useBlocker } from "react-router-dom";
+import { useDI } from "@/di/DIContext";
 import { useAccentTheme } from "@/presentation/hooks/useAccentTheme";
 import { AiSettingsSection } from "./AiSettingsSection";
 import { AppearanceSection } from "./AppearanceSection";
@@ -16,7 +17,26 @@ import { useSettingsPage } from "./useSettingsPage";
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccentTheme();
-  const page = useSettingsPage();
+  const {
+    getSettingsUseCase,
+    getCurrentVersionUseCase,
+    openUpdateUrlUseCase,
+    saveSettingsUseCase,
+    selectDirectoryUseCase,
+    checkUpdateUseCase,
+    verifyAiConnectionUseCase,
+    clearCacheUseCase,
+  } = useDI();
+  const page = useSettingsPage({
+    getSettingsUseCase,
+    getCurrentVersionUseCase,
+    openUpdateUrlUseCase,
+    saveSettingsUseCase,
+    selectDirectoryUseCase,
+    checkUpdateUseCase,
+    verifyAiConnectionUseCase,
+    clearCacheUseCase,
+  });
   const blocker = useBlocker(page.isDirty);
   const confirmLeaveOpen = blocker.state === "blocked";
 

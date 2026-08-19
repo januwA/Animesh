@@ -1,6 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { useDI } from "@/di/DIContext";
+import type { GetSubtitleTranslationsUseCase } from "@/application/subtitle/GetSubtitleTranslationsUseCase";
+import type { GetTorrentStreamUrlUseCase } from "@/application/torrent/GetTorrentStreamUrlUseCase";
+import type { GetVideoMetadataUseCase } from "@/application/torrent/GetVideoMetadataUseCase";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type {
   TorrentStatusInfo,
@@ -18,6 +20,16 @@ interface UsePlayerDataParams {
   downloadProgress: number;
 }
 
+/** usePlayerData 的依赖，由调用方（页面组合根）注入 */
+export interface UsePlayerDataDeps {
+  getTorrentStreamUrlUseCase: Pick<GetTorrentStreamUrlUseCase, "execute">;
+  getVideoMetadataUseCase: Pick<GetVideoMetadataUseCase, "execute">;
+  getSubtitleTranslationsUseCase: Pick<
+    GetSubtitleTranslationsUseCase,
+    "execute"
+  >;
+}
+
 export interface PlayerDataResult {
   streamUrl: string | null;
   metadata: VideoMetadata | null;
@@ -27,17 +39,16 @@ export interface PlayerDataResult {
   videoInfo: VideoInfo | null;
 }
 
-export function usePlayerData({
-  infoHash,
-  fileId,
-  torrentStatus,
-  downloadProgress,
-}: UsePlayerDataParams): PlayerDataResult {
+export function usePlayerData(
+  params: UsePlayerDataParams,
+  deps: UsePlayerDataDeps,
+): PlayerDataResult {
   const {
     getTorrentStreamUrlUseCase,
     getVideoMetadataUseCase,
     getSubtitleTranslationsUseCase,
-  } = useDI();
+  } = deps;
+  const { infoHash, fileId, torrentStatus, downloadProgress } = params;
 
   // Stream URL (one-shot query keyed by infoHash + fileId)
   const streamUrlQuery = useQuery<string>(

@@ -1,15 +1,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { vi } from "vitest";
-import { DIProvider } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
-import type { UpdateRepository } from "@/domain/update/UpdateRepository";
 import { useCalendarStore } from "@/presentation/store/calendarStore";
 import { useIptvStore } from "@/presentation/store/iptvStore";
 import { resetAppStores } from "@/test/store-reset";
-import { createDIContainerForTest } from "@/test/test-utils";
+import type { UseSettingsActionsDeps } from "./useSettingsActions";
 import { useSettingsActions } from "./useSettingsActions";
 
 const makeConfig = (overrides: Partial<AiConfig> = {}): AiConfig => ({
@@ -20,83 +17,41 @@ const makeConfig = (overrides: Partial<AiConfig> = {}): AiConfig => ({
   ...overrides,
 });
 
-const makeSettingsRepo = (overrides: Partial<SettingsRepository> = {}) => {
-  const repo = {
-    getSettings: vi.fn().mockResolvedValue({ download_dir: "/data" }),
-    setDownloadDir: vi.fn().mockResolvedValue(undefined),
-    setProxy: vi.fn().mockResolvedValue(undefined),
-    setAiConfigs: vi.fn().mockResolvedValue(undefined),
-    setMaxDownloadSpeed: vi.fn().mockResolvedValue(undefined),
-    setMaxUploadSpeed: vi.fn().mockResolvedValue(undefined),
-    selectDirectory: vi.fn().mockResolvedValue(null),
-    setTheme: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  } as SettingsRepository;
-  return {
-    repo,
-    spies: repo as unknown as Record<string, ReturnType<typeof vi.fn>>,
-  };
-};
-
-const makeUpdateRepo = (overrides: Partial<UpdateRepository> = {}) => {
-  const repo = {
-    getLatestRelease: vi.fn().mockResolvedValue({
-      version: "0.0.0",
+const makeDeps = (
+  overrides: Partial<UseSettingsActionsDeps> = {},
+): UseSettingsActionsDeps => ({
+  saveSettingsUseCase: {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
+  selectDirectoryUseCase: {
+    execute: vi.fn().mockResolvedValue(null),
+  },
+  checkUpdateUseCase: {
+    execute: vi.fn().mockResolvedValue({
+      hasUpdate: false,
+      latestVersion: "0.0.0",
+      currentVersion: "0.0.0",
       notes: "",
       htmlUrl: "",
     }),
-    getCurrentVersion: vi.fn().mockResolvedValue("0.0.0"),
-    openUrl: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  } as unknown as UpdateRepository;
-  return {
-    repo,
-    spies: repo as unknown as Record<string, ReturnType<typeof vi.fn>>,
-  };
-};
+  },
+  verifyAiConnectionUseCase: {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
+  clearCacheUseCase: {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
+  ...overrides,
+});
 
-const renderActions = (
-  overrides: {
-    settingsRepository?: Partial<SettingsRepository>;
-    updateRepository?: Partial<UpdateRepository>;
-    aiClientPost?: ReturnType<typeof vi.fn>;
-    clearCacheExecute?: ReturnType<typeof vi.fn>;
-  } = {},
-) => {
+const renderActions = (overrides: Partial<UseSettingsActionsDeps> = {}) => {
   const onSaveSuccess = vi.fn();
   const onDirectorySelected = vi.fn();
-  const settings = makeSettingsRepo(overrides.settingsRepository);
-  const update = makeUpdateRepo(overrides.updateRepository);
-  const container = createDIContainerForTest({
-    settingsRepository: settings.repo,
-    updateRepository: update.repo,
-    aiClient: {
-      post:
-        overrides.aiClientPost ?? vi.fn().mockResolvedValue({ choices: [{}] }),
-    } as never,
-    clearCacheUseCase: {
-      execute:
-        overrides.clearCacheExecute ?? vi.fn().mockResolvedValue(undefined),
-    } as never,
-  });
-  const hook = renderHook(
-    ({ onSaveSuccess, onDirectorySelected }) =>
-      useSettingsActions({ onSaveSuccess, onDirectorySelected }),
-    {
-      initialProps: { onSaveSuccess, onDirectorySelected },
-      wrapper: ({ children }) => (
-        <DIProvider value={container}>{children}</DIProvider>
-      ),
-    },
+  const deps = makeDeps(overrides);
+  const hook = renderHook(() =>
+    useSettingsActions({ onSaveSuccess, onDirectorySelected }, deps),
   );
-  return {
-    result: hook.result,
-    onSaveSuccess,
-    onDirectorySelected,
-    settings,
-    update,
-    container,
-  };
+  return { result: hook.result, onSaveSuccess, onDirectorySelected, deps };
 };
 
 describe("useSettingsActions 设置动作 hook", () => {
@@ -106,7 +61,7 @@ describe("useSettingsActions 设置动作 hook", () => {
   });
 
   it("保存设置成功时应该提示成功并触发 onSaveSuccess", async () => {
-    const { result, settings, onSaveSuccess } = renderActions();
+    const { result, deps, onSaveSuccess } = renderActions();
 
     act(() => {
       result.current.save({
@@ -120,8 +75,13 @@ describe("useSettingsActions 设置动作 hook", () => {
 
     await waitFor(() => expect(result.current.saving).toBe(false));
 
-    expect(settings.spies.setDownloadDir).toHaveBeenCalled();
-    expect(settings.spies.setProxy).toHaveBeenCalled();
+    expect(deps.saveSettingsUseCase.execute).toHaveBeenCalledWith({
+      downloadDir: "/data",
+      proxy: "http://127.0.0.1:7890",
+      aiConfigs: [],
+      maxDownloadSpeed: null,
+      maxUploadSpeed: null,
+    });
     expect(toast.success).toHaveBeenCalledWith(
       "设置已保存，后续下载任务将使用新路径",
     );
@@ -130,8 +90,8 @@ describe("useSettingsActions 设置动作 hook", () => {
 
   it("保存设置失败时应该提示错误", async () => {
     const { result, onSaveSuccess } = renderActions({
-      settingsRepository: {
-        setDownloadDir: vi.fn().mockRejectedValue(new Error("Save failed")),
+      saveSettingsUseCase: {
+        execute: vi.fn().mockRejectedValue(new Error("Save failed")),
       },
     });
 
@@ -155,8 +115,8 @@ describe("useSettingsActions 设置动作 hook", () => {
 
   it("选择目录成功时应该更新目录并提示", async () => {
     const { result, onDirectorySelected } = renderActions({
-      settingsRepository: {
-        selectDirectory: vi.fn().mockResolvedValue("/selected"),
+      selectDirectoryUseCase: {
+        execute: vi.fn().mockResolvedValue("/selected"),
       },
     });
 
@@ -183,8 +143,8 @@ describe("useSettingsActions 设置动作 hook", () => {
 
   it("选择目录失败时应该提示错误", async () => {
     const { result } = renderActions({
-      settingsRepository: {
-        selectDirectory: vi.fn().mockRejectedValue(new Error("Select failed")),
+      selectDirectoryUseCase: {
+        execute: vi.fn().mockRejectedValue(new Error("Select failed")),
       },
     });
 
@@ -197,9 +157,11 @@ describe("useSettingsActions 设置动作 hook", () => {
 
   it("检查更新发现新版本时应该提示新版本", async () => {
     const { result } = renderActions({
-      updateRepository: {
-        getLatestRelease: vi.fn().mockResolvedValue({
-          version: "1.0.0",
+      checkUpdateUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          hasUpdate: true,
+          latestVersion: "1.0.0",
+          currentVersion: "0.0.0",
           notes: "新功能",
           htmlUrl: "https://github.com/animesh/releases",
         }),
@@ -226,8 +188,12 @@ describe("useSettingsActions 设置动作 hook", () => {
 
   it("检查更新失败时应该提示错误", async () => {
     const { result } = renderActions({
-      updateRepository: {
-        getLatestRelease: vi.fn().mockRejectedValue(new Error("Check failed")),
+      checkUpdateUseCase: {
+        execute: vi
+          .fn()
+          .mockRejectedValue(
+            new Error("检查更新失败", { cause: new Error("Check failed") }),
+          ),
       },
     });
 
@@ -258,7 +224,9 @@ describe("useSettingsActions 设置动作 hook", () => {
 
   it("清理缓存失败时应该提示错误", async () => {
     const { result } = renderActions({
-      clearCacheExecute: vi.fn().mockRejectedValue(new Error("Clear failed")),
+      clearCacheUseCase: {
+        execute: vi.fn().mockRejectedValue(new Error("Clear failed")),
+      },
     });
 
     act(() => result.current.handleConfirmClearCache());
@@ -280,7 +248,9 @@ describe("useSettingsActions 设置动作 hook", () => {
 
   it("测试已有配置失败时应该提示错误", async () => {
     const { result } = renderActions({
-      aiClientPost: vi.fn().mockRejectedValue(new Error("AI failed")),
+      verifyAiConnectionUseCase: {
+        execute: vi.fn().mockRejectedValue(new Error("AI failed")),
+      },
     });
 
     act(() => result.current.handleTestConfig(makeConfig()));

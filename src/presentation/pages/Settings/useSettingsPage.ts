@@ -1,20 +1,33 @@
 import { toast } from "sonner";
-import { useDI } from "@/di/DIContext";
+import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
+import type { GetCurrentVersionUseCase } from "@/application/update/GetCurrentVersionUseCase";
+import type { OpenUpdateUrlUseCase } from "@/application/update/OpenUpdateUrlUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { SettingsFormSchema } from "@/domain/settings/SettingsSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
+import type { UseSettingsActionsDeps } from "./useSettingsActions";
 import { useSettingsActions } from "./useSettingsActions";
 import { useSettingsForm } from "./useSettingsForm";
 
-export function useSettingsPage() {
+/** useSettingsPage 的依赖，由调用方（页面组合根）注入 */
+export interface UseSettingsPageDeps extends UseSettingsActionsDeps {
+  getSettingsUseCase: Pick<GetSettingsUseCase, "execute">;
+  getCurrentVersionUseCase: Pick<GetCurrentVersionUseCase, "execute">;
+  openUpdateUrlUseCase: Pick<OpenUpdateUrlUseCase, "execute">;
+}
+
+export function useSettingsPage(deps: UseSettingsPageDeps) {
   const { getSettingsUseCase, getCurrentVersionUseCase, openUpdateUrlUseCase } =
-    useDI();
+    deps;
   const form = useSettingsForm();
-  const actions = useSettingsActions({
-    onSaveSuccess: form.markSaved,
-    onDirectorySelected: form.setDownloadDir,
-  });
+  const actions = useSettingsActions(
+    {
+      onSaveSuccess: form.markSaved,
+      onDirectorySelected: form.setDownloadDir,
+    },
+    deps,
+  );
 
   const isTauri = import.meta.env.MODE !== "web";
   const isMobile =

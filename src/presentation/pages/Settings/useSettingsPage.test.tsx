@@ -1,13 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { vi } from "vitest";
-import { DIProvider } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
-import type { UpdateRepository } from "@/domain/update/UpdateRepository";
 import { resetAppStores } from "@/test/store-reset";
-import { createDIContainerForTest } from "@/test/test-utils";
+import type { UseSettingsPageDeps } from "./useSettingsPage";
 import { useSettingsPage } from "./useSettingsPage";
 
 const makeConfig = (overrides: Partial<AiConfig> = {}): AiConfig => ({
@@ -18,70 +15,52 @@ const makeConfig = (overrides: Partial<AiConfig> = {}): AiConfig => ({
   ...overrides,
 });
 
-const makeSettingsRepo = (overrides: Partial<SettingsRepository> = {}) => {
-  const repo = {
-    getSettings: vi.fn().mockResolvedValue({
+const makeDeps = (
+  overrides: Partial<UseSettingsPageDeps> = {},
+): UseSettingsPageDeps => ({
+  getSettingsUseCase: {
+    execute: vi.fn().mockResolvedValue({
       download_dir: "/data",
       proxy: "http://127.0.0.1:7890",
       max_download_speed: 100,
       max_upload_speed: 200,
       ai_configs: [],
     }),
-    setDownloadDir: vi.fn().mockResolvedValue(undefined),
-    setProxy: vi.fn().mockResolvedValue(undefined),
-    setAiConfigs: vi.fn().mockResolvedValue(undefined),
-    setMaxDownloadSpeed: vi.fn().mockResolvedValue(undefined),
-    setMaxUploadSpeed: vi.fn().mockResolvedValue(undefined),
-    selectDirectory: vi.fn().mockResolvedValue(null),
-    setTheme: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  } as SettingsRepository;
-  return {
-    repo,
-    spies: repo as unknown as Record<string, ReturnType<typeof vi.fn>>,
-  };
-};
-
-const makeUpdateRepo = (overrides: Partial<UpdateRepository> = {}) => {
-  const repo = {
-    getLatestRelease: vi.fn().mockResolvedValue({
-      version: "0.0.0",
+  },
+  getCurrentVersionUseCase: {
+    execute: vi.fn().mockResolvedValue("0.0.0"),
+  },
+  openUpdateUrlUseCase: {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
+  saveSettingsUseCase: {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
+  selectDirectoryUseCase: {
+    execute: vi.fn().mockResolvedValue(null),
+  },
+  checkUpdateUseCase: {
+    execute: vi.fn().mockResolvedValue({
+      hasUpdate: false,
+      latestVersion: "0.0.0",
+      currentVersion: "0.0.0",
       notes: "",
       htmlUrl: "",
     }),
-    getCurrentVersion: vi.fn().mockResolvedValue("0.0.0"),
-    openUrl: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  } as unknown as UpdateRepository;
-  return {
-    repo,
-    spies: repo as unknown as Record<string, ReturnType<typeof vi.fn>>,
-  };
-};
+  },
+  verifyAiConnectionUseCase: {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
+  clearCacheUseCase: {
+    execute: vi.fn().mockResolvedValue(undefined),
+  },
+  ...overrides,
+});
 
-const renderPage = (
-  overrides: {
-    settingsRepository?: Partial<SettingsRepository>;
-    updateRepository?: Partial<UpdateRepository>;
-    aiClientPost?: ReturnType<typeof vi.fn>;
-  } = {},
-) => {
-  const settings = makeSettingsRepo(overrides.settingsRepository);
-  const update = makeUpdateRepo(overrides.updateRepository);
-  const container = createDIContainerForTest({
-    settingsRepository: settings.repo,
-    updateRepository: update.repo,
-    aiClient: {
-      post:
-        overrides.aiClientPost ?? vi.fn().mockResolvedValue({ choices: [{}] }),
-    } as never,
-  });
-  const hook = renderHook(() => useSettingsPage(), {
-    wrapper: ({ children }) => (
-      <DIProvider value={container}>{children}</DIProvider>
-    ),
-  });
-  return { result: hook.result, settings, update, container };
+const renderPage = (overrides: Partial<UseSettingsPageDeps> = {}) => {
+  const deps = makeDeps(overrides);
+  const hook = renderHook(() => useSettingsPage(deps));
+  return { result: hook.result, deps };
 };
 
 const submit = (handler: (e: React.SubmitEvent) => void) => {
@@ -96,8 +75,8 @@ describe("useSettingsPage 设置页面 hook", () => {
 
   it("加载设置成功后应该填充表单状态与快照", async () => {
     const { result } = renderPage({
-      settingsRepository: {
-        getSettings: vi.fn().mockResolvedValue({
+      getSettingsUseCase: {
+        execute: vi.fn().mockResolvedValue({
           download_dir: "/data",
           proxy: "http://127.0.0.1:7890",
           max_download_speed: 100,
@@ -119,10 +98,8 @@ describe("useSettingsPage 设置页面 hook", () => {
 
   it("加载设置失败时应该提示错误并关闭加载状态", async () => {
     const { result } = renderPage({
-      settingsRepository: {
-        getSettings: vi
-          .fn()
-          .mockRejectedValue(new Error("Get settings failed")),
+      getSettingsUseCase: {
+        execute: vi.fn().mockRejectedValue(new Error("Get settings failed")),
       },
     });
 
@@ -134,7 +111,7 @@ describe("useSettingsPage 设置页面 hook", () => {
   });
 
   it("保存设置成功时应该执行用例、更新快照并清空脏状态", async () => {
-    const { result, settings } = renderPage();
+    const { result, deps } = renderPage();
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -145,11 +122,13 @@ describe("useSettingsPage 设置页面 hook", () => {
 
     await waitFor(() => expect(result.current.saving).toBe(false));
 
-    expect(settings.spies.setDownloadDir).toHaveBeenCalledWith("D:\\New");
-    expect(settings.spies.setProxy).toHaveBeenCalledWith(
-      "http://127.0.0.1:7890",
-    );
-    expect(settings.spies.setAiConfigs).toHaveBeenCalledWith([]);
+    expect(deps.saveSettingsUseCase.execute).toHaveBeenCalledWith({
+      downloadDir: "D:\\New",
+      proxy: "http://127.0.0.1:7890",
+      aiConfigs: [],
+      maxDownloadSpeed: 100,
+      maxUploadSpeed: 200,
+    });
     expect(toast.success).toHaveBeenCalledWith(
       "设置已保存，后续下载任务将使用新路径",
     );
@@ -157,26 +136,26 @@ describe("useSettingsPage 设置页面 hook", () => {
   });
 
   it("保存时下载目录为空应该拦截并提示", async () => {
-    const { result, settings } = renderPage();
+    const { result, deps } = renderPage();
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     act(() => result.current.setDownloadDir("  "));
     act(() => submit(result.current.handleSave));
 
-    expect(settings.spies.setDownloadDir).not.toHaveBeenCalled();
+    expect(deps.saveSettingsUseCase.execute).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith("下载目录不能为空");
   });
 
   it("保存时代理格式不正确应该拦截并提示", async () => {
-    const { result, settings } = renderPage();
+    const { result, deps } = renderPage();
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     act(() => result.current.setProxy("不合法代理"));
     act(() => submit(result.current.handleSave));
 
-    expect(settings.spies.setProxy).not.toHaveBeenCalled();
+    expect(deps.saveSettingsUseCase.execute).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith(
       "代理格式不正确，支持 http/https/socks5 协议或 host:port 格式",
     );
@@ -184,8 +163,8 @@ describe("useSettingsPage 设置页面 hook", () => {
 
   it("选择目录成功时应该更新表单目录并提示", async () => {
     const { result } = renderPage({
-      settingsRepository: {
-        selectDirectory: vi.fn().mockResolvedValue("/selected"),
+      selectDirectoryUseCase: {
+        execute: vi.fn().mockResolvedValue("/selected"),
       },
     });
 
@@ -199,10 +178,12 @@ describe("useSettingsPage 设置页面 hook", () => {
   });
 
   it("打开 GitHub 链接成功时应该执行打开用例", async () => {
-    const { result, update } = renderPage({
-      updateRepository: {
-        getLatestRelease: vi.fn().mockResolvedValue({
-          version: "1.0.0",
+    const { result, deps } = renderPage({
+      checkUpdateUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          hasUpdate: true,
+          latestVersion: "1.0.0",
+          currentVersion: "0.0.0",
           notes: "新功能",
           htmlUrl: "https://github.com/animesh/releases/1.0.0",
         }),
@@ -221,7 +202,7 @@ describe("useSettingsPage 设置页面 hook", () => {
     });
 
     await waitFor(() =>
-      expect(update.spies.openUrl).toHaveBeenCalledWith(
+      expect(deps.openUpdateUrlUseCase.execute).toHaveBeenCalledWith(
         "https://github.com/animesh/releases/1.0.0",
       ),
     );
@@ -229,13 +210,17 @@ describe("useSettingsPage 设置页面 hook", () => {
 
   it("打开 GitHub 链接失败时应该提示错误", async () => {
     const { result } = renderPage({
-      updateRepository: {
-        getLatestRelease: vi.fn().mockResolvedValue({
-          version: "1.0.0",
+      checkUpdateUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          hasUpdate: true,
+          latestVersion: "1.0.0",
+          currentVersion: "0.0.0",
           notes: "新功能",
           htmlUrl: "https://github.com/animesh/releases/1.0.0",
         }),
-        openUrl: vi.fn().mockRejectedValue(new Error("Open failed")),
+      },
+      openUpdateUrlUseCase: {
+        execute: vi.fn().mockRejectedValue(new Error("Open failed")),
       },
     });
 
@@ -256,10 +241,12 @@ describe("useSettingsPage 设置页面 hook", () => {
   });
 
   it("没有 htmlUrl 时打开 GitHub 不应执行任何操作", async () => {
-    const { result, update } = renderPage({
-      updateRepository: {
-        getLatestRelease: vi.fn().mockResolvedValue({
-          version: "1.0.0",
+    const { result, deps } = renderPage({
+      checkUpdateUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          hasUpdate: true,
+          latestVersion: "1.0.0",
+          currentVersion: "0.0.0",
           notes: "新功能",
           htmlUrl: "",
         }),
@@ -277,7 +264,7 @@ describe("useSettingsPage 设置页面 hook", () => {
       void result.current.handleOpenGithub();
     });
 
-    expect(update.spies.openUrl).not.toHaveBeenCalled();
+    expect(deps.openUpdateUrlUseCase.execute).not.toHaveBeenCalled();
   });
 
   it("测试当前连接时地址为空应该提示警告", async () => {
@@ -322,7 +309,9 @@ describe("useSettingsPage 设置页面 hook", () => {
 
   it("测试当前连接失败时应该提示错误", async () => {
     const { result } = renderPage({
-      aiClientPost: vi.fn().mockRejectedValue(new Error("AI failed")),
+      verifyAiConnectionUseCase: {
+        execute: vi.fn().mockRejectedValue(new Error("AI failed")),
+      },
     });
 
     await waitFor(() => expect(result.current.loading).toBe(false));

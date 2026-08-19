@@ -1,32 +1,15 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { vi } from "vitest";
-import type { DIContainer } from "@/di/DIContext";
-import { DIProvider } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { SubtitleTranslationRepository } from "@/domain/subtitle/SubtitleTranslationRepository";
-import type { TorrentRepository } from "@/domain/torrent/TorrentRepository";
 import type {
   TorrentStatusInfo,
   VideoMetadata,
 } from "@/domain/torrent/TorrentSchemas";
-import { createDIContainerForTest } from "@/test/test-utils";
+import type { UsePlayerDataDeps } from "./usePlayerData";
 import { usePlayerData } from "./usePlayerData";
 
 const infoHash = NonEmptyStringSchema.parse("hash123");
-
-const makeSubtitleTranslationRepo = (
-  overrides: Partial<SubtitleTranslationRepository>,
-): SubtitleTranslationRepository => ({
-  getById: vi.fn().mockResolvedValue(null),
-  listByTorrent: vi.fn().mockResolvedValue([]),
-  save: vi.fn().mockResolvedValue(undefined),
-  deleteById: vi.fn().mockResolvedValue(true),
-  deleteByTorrent: vi.fn().mockResolvedValue(1),
-  deleteByInfoHash: vi.fn().mockResolvedValue(1),
-  ...overrides,
-});
 
 const emptyMetadata: VideoMetadata = {
   tracks: [],
@@ -66,29 +49,25 @@ const mockAiRecord = {
   last_accessed_at: 1000,
 };
 
+const makeDeps = (
+  overrides: Partial<UsePlayerDataDeps> = {},
+): UsePlayerDataDeps => ({
+  getTorrentStreamUrlUseCase: {
+    execute: vi.fn().mockResolvedValue("http://127.0.0.1/stream/0"),
+  },
+  getVideoMetadataUseCase: {
+    execute: vi.fn().mockResolvedValue(emptyMetadata),
+  },
+  getSubtitleTranslationsUseCase: {
+    execute: vi.fn().mockResolvedValue([]),
+  },
+  ...overrides,
+});
+
 describe("usePlayerData 播放器数据 hook", () => {
-  let mockTorrentRepository: TorrentRepository;
-  let container: DIContainer;
-
-  beforeEach(() => {
-    mockTorrentRepository = {
-      getTorrentStreamUrl: vi
-        .fn()
-        .mockResolvedValue("http://127.0.0.1/stream/0"),
-      getVideoMetadata: vi.fn().mockResolvedValue(emptyMetadata),
-    } as unknown as TorrentRepository;
-    container = createDIContainerForTest({
-      torrentRepository: mockTorrentRepository,
-    });
-  });
-
   afterEach(() => {
     vi.useRealTimers();
   });
-
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <DIProvider value={container}>{children}</DIProvider>
-  );
 
   const baseParams = {
     infoHash,
@@ -104,18 +83,16 @@ describe("usePlayerData 播放器数据 hook", () => {
         { id: 1, language: "eng", title: "English", codec: "S_TEXT/UTF8" },
       ],
     };
-    vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
-      metadata,
-    );
-    container = createDIContainerForTest({
-      torrentRepository: mockTorrentRepository,
-      subtitleTranslationRepository: makeSubtitleTranslationRepo({
-        listByTorrent: vi.fn().mockResolvedValue([mockAiRecord]),
-        getById: vi.fn().mockResolvedValue(mockAiRecord),
-      }),
+    const deps = makeDeps({
+      getVideoMetadataUseCase: {
+        execute: vi.fn().mockResolvedValue(metadata),
+      },
+      getSubtitleTranslationsUseCase: {
+        execute: vi.fn().mockResolvedValue([mockAiRecord]),
+      },
     });
 
-    const { result } = renderHook(() => usePlayerData(baseParams), { wrapper });
+    const { result } = renderHook(() => usePlayerData(baseParams, deps));
 
     await waitFor(() => {
       expect(result.current.streamUrl).toBe("http://127.0.0.1/stream/0");
@@ -139,15 +116,13 @@ describe("usePlayerData 播放器数据 hook", () => {
       original_track_id: 99,
       target_lang: "ja",
     };
-    container = createDIContainerForTest({
-      torrentRepository: mockTorrentRepository,
-      subtitleTranslationRepository: makeSubtitleTranslationRepo({
-        listByTorrent: vi.fn().mockResolvedValue([aiRecord]),
-        getById: vi.fn().mockResolvedValue(aiRecord),
-      }),
+    const deps = makeDeps({
+      getSubtitleTranslationsUseCase: {
+        execute: vi.fn().mockResolvedValue([aiRecord]),
+      },
     });
 
-    const { result } = renderHook(() => usePlayerData(baseParams), { wrapper });
+    const { result } = renderHook(() => usePlayerData(baseParams, deps));
 
     await waitFor(() => {
       expect(result.current.subtitleTracks[0]).toMatchObject({
@@ -158,30 +133,30 @@ describe("usePlayerData 播放器数据 hook", () => {
   });
 
   it("元数据就绪后才会查询 AI 字幕翻译记录", async () => {
-    vi.mocked(mockTorrentRepository.getVideoMetadata).mockResolvedValue(
-      emptyMetadata,
-    );
-    const listByTorrent = vi.fn().mockResolvedValue([]);
-    container = createDIContainerForTest({
-      torrentRepository: mockTorrentRepository,
-      subtitleTranslationRepository: makeSubtitleTranslationRepo({
-        listByTorrent,
-      }),
+    const getSubtitleTranslations = vi.fn().mockResolvedValue([]);
+    const deps = makeDeps({
+      getSubtitleTranslationsUseCase: {
+        execute: getSubtitleTranslations,
+      },
     });
 
-    renderHook(() => usePlayerData(baseParams), { wrapper });
+    renderHook(() => usePlayerData(baseParams, deps));
 
     await waitFor(() => {
-      expect(listByTorrent).toHaveBeenCalledWith("hash123", 0);
+      expect(getSubtitleTranslations).toHaveBeenCalledWith("hash123", 0);
     });
   });
 
   it("获取流地址失败时应该提示错误", async () => {
-    vi.mocked(mockTorrentRepository.getTorrentStreamUrl).mockRejectedValue(
-      "Stream server port not initialized",
-    );
+    const deps = makeDeps({
+      getTorrentStreamUrlUseCase: {
+        execute: vi
+          .fn()
+          .mockRejectedValue("Stream server port not initialized"),
+      },
+    });
 
-    renderHook(() => usePlayerData(baseParams), { wrapper });
+    renderHook(() => usePlayerData(baseParams, deps));
 
     await waitFor(() => {
       expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
@@ -193,48 +168,50 @@ describe("usePlayerData 播放器数据 hook", () => {
 
   it("元数据未就绪时应该每 10 秒轮询重试", async () => {
     vi.useFakeTimers();
-    vi.mocked(mockTorrentRepository.getVideoMetadata).mockRejectedValue(
-      new Error("Failed to extract metadata"),
-    );
+    const getVideoMetadata = vi
+      .fn()
+      .mockRejectedValue(new Error("Failed to extract metadata"));
+    const deps = makeDeps({
+      getVideoMetadataUseCase: { execute: getVideoMetadata },
+    });
 
-    renderHook(() => usePlayerData(baseParams), { wrapper });
+    renderHook(() => usePlayerData(baseParams, deps));
 
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(
-      vi.mocked(mockTorrentRepository.getVideoMetadata),
-    ).toHaveBeenCalledTimes(1);
+    expect(getVideoMetadata).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10000);
     });
-    expect(
-      vi.mocked(mockTorrentRepository.getVideoMetadata),
-    ).toHaveBeenCalledTimes(2);
+    expect(getVideoMetadata).toHaveBeenCalledTimes(2);
   });
 
   it("下载完成但元数据未解析时应该立即刷新一次", async () => {
-    vi.mocked(mockTorrentRepository.getVideoMetadata)
+    const getVideoMetadata = vi
+      .fn()
       .mockResolvedValueOnce(null as unknown as VideoMetadata)
       .mockResolvedValue(emptyMetadata);
+    const deps = makeDeps({
+      getVideoMetadataUseCase: { execute: getVideoMetadata },
+    });
 
-    const { result } = renderHook(
-      () =>
-        usePlayerData({
+    const { result } = renderHook(() =>
+      usePlayerData(
+        {
           ...baseParams,
           torrentStatus: makeStatus(1000, true),
           downloadProgress: 100,
-        }),
-      { wrapper },
+        },
+        deps,
+      ),
     );
 
     await waitFor(() => {
       expect(result.current.metadata).toEqual(emptyMetadata);
     });
-    expect(
-      vi.mocked(mockTorrentRepository.getVideoMetadata).mock.calls.length,
-    ).toBeGreaterThan(1);
+    expect(getVideoMetadata.mock.calls.length).toBeGreaterThan(1);
   });
 });

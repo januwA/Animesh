@@ -1,5 +1,6 @@
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
+import { useDI } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
@@ -58,6 +59,13 @@ function PlayerView({
   title,
   fileName,
 }: z.infer<typeof playerParamsSchema>) {
+  const {
+    getTorrentStreamUrlUseCase,
+    getVideoMetadataUseCase,
+    getSubtitleTranslationsUseCase,
+    getSubtitleVttUseCase,
+    logger,
+  } = useDI();
   const { torrents } = useTorrentStatus();
   const torrentStatus = torrents.find((t) => t?.info_hash === infoHash) ?? null;
   // 下载进度百分比
@@ -72,20 +80,30 @@ function PlayerView({
     subtitleTracks,
     chapters,
     videoInfo,
-  } = usePlayerData({ infoHash, fileId, torrentStatus, downloadProgress });
+  } = usePlayerData(
+    { infoHash, fileId, torrentStatus, downloadProgress },
+    {
+      getTorrentStreamUrlUseCase,
+      getVideoMetadataUseCase,
+      getSubtitleTranslationsUseCase,
+    },
+  );
 
   const {
     subtitleSources,
     selectedTrackId,
     subtitleMutation,
     handleSubtitleChange,
-  } = usePlayerSubtitle({
-    infoHash,
-    fileId,
-    originalSubtitleTracks,
-    torrentStatus,
-    downloadProgress,
-  });
+  } = usePlayerSubtitle(
+    {
+      infoHash,
+      fileId,
+      originalSubtitleTracks,
+      torrentStatus,
+      downloadProgress,
+    },
+    { getSubtitleVttUseCase },
+  );
 
   const canPlay = !!streamUrl && !!torrentStatus && downloadProgress >= 1;
 
@@ -143,7 +161,7 @@ function PlayerView({
         <MediaInfoPanel videoInfo={videoInfo} />
       </div>
 
-      {canPlay && <JsPlayerErrorMonitor />}
+      {canPlay && <JsPlayerErrorMonitor logger={logger} />}
     </JsPlayer.Provider>
   );
 }

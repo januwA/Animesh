@@ -2,37 +2,30 @@ import { act, render } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { vi } from "vitest";
-import type { DIContainer } from "@/di/DIContext";
-import { DIProvider } from "@/di/DIContext";
 import type { Logger } from "@/domain/logger/logger";
-import { createDIContainerForTest } from "@/test/test-utils";
 import { JsPlayerErrorMonitor } from "./JsPlayerErrorMonitor";
 import { JsPlayer } from "./player";
 
-const wrapWithProviders = (node: ReactNode, container: DIContainer) => (
-  <DIProvider value={container}>
-    <JsPlayer.Provider>{node}</JsPlayer.Provider>
-  </DIProvider>
+const wrapWithProviders = (node: ReactNode) => (
+  <JsPlayer.Provider>{node}</JsPlayer.Provider>
 );
 
-describe("JsPlayerErrorMonitor 播放器错误监控组件", () => {
-  let container: DIContainer;
-  let logger: Logger;
-
-  const createTestLogger = (): Logger => {
-    const log: Logger = {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      withCategory: () => log,
-    };
-    return log;
+const createTestLogger = (): Logger => {
+  const log: Logger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    withCategory: () => log,
   };
+  return log;
+};
+
+describe("JsPlayerErrorMonitor 播放器错误监控组件", () => {
+  let logger: Logger;
 
   beforeEach(() => {
     logger = createTestLogger();
-    container = createDIContainerForTest({ logger });
   });
 
   afterEach(() => {
@@ -50,14 +43,14 @@ describe("JsPlayerErrorMonitor 播放器错误监控组件", () => {
 
   it("没有错误时应该渲染为空且不提示", () => {
     const { container: host } = render(
-      wrapWithProviders(<JsPlayerErrorMonitor />, container),
+      wrapWithProviders(<JsPlayerErrorMonitor logger={logger} />),
     );
     expect(host.innerHTML).toBe("");
     expect(toast.error).not.toHaveBeenCalled();
   });
 
   it.each([4, 3, 2, 1, 0])("错误码 %i 时应该提示对应错误信息", (code) => {
-    render(wrapWithProviders(<JsPlayerErrorMonitor />, container));
+    render(wrapWithProviders(<JsPlayerErrorMonitor logger={logger} />));
     const vjsMock = (globalThis as any).__vjsMock;
     const setErrorSpy = vi.spyOn(vjsMock, "setError");
 

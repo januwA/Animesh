@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useDI } from "@/di/DIContext";
+import type { GetSubtitleVttUseCase } from "@/application/torrent/GetSubtitleVttUseCase";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
@@ -37,14 +37,23 @@ interface UsePlayerSubtitleParams {
   downloadProgress: number;
 }
 
-export function usePlayerSubtitle({
-  infoHash,
-  fileId,
-  originalSubtitleTracks,
-  torrentStatus,
-  downloadProgress,
-}: UsePlayerSubtitleParams) {
-  const { getSubtitleVttUseCase } = useDI();
+/** usePlayerSubtitle 的依赖，由调用方（页面组合根）注入 */
+export interface UsePlayerSubtitleDeps {
+  getSubtitleVttUseCase: Pick<GetSubtitleVttUseCase, "execute">;
+}
+
+export function usePlayerSubtitle(
+  params: UsePlayerSubtitleParams,
+  deps: UsePlayerSubtitleDeps,
+) {
+  const { getSubtitleVttUseCase } = deps;
+  const {
+    infoHash,
+    fileId,
+    originalSubtitleTracks,
+    torrentStatus,
+    downloadProgress,
+  } = params;
   const [subtitleSources, setSubtitleSources] = useState<
     Record<number | string, SubtitleSource>
   >({});

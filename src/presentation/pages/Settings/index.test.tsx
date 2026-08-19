@@ -12,46 +12,55 @@ import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { SettingsRepository } from "@/domain/settings/SettingsRepository";
 import { resetAppStores } from "@/test/store-reset";
-import { createDIContainerForTest } from "@/test/test-utils";
 import Settings from "./index";
 
 describe("Settings 页面组件", () => {
-  let mockSettingsRepository: SettingsRepository;
-  let mockAiClient: { post: ReturnType<typeof vi.fn> };
+  let mockGetSettingsUseCase: { execute: ReturnType<typeof vi.fn> };
+  let mockSaveSettingsUseCase: { execute: ReturnType<typeof vi.fn> };
   let mockClearCacheUseCase: { execute: ReturnType<typeof vi.fn> };
   let mockContainer: DIContainer;
 
   beforeEach(() => {
-    mockSettingsRepository = {
-      getSettings: vi.fn().mockResolvedValue({
+    mockGetSettingsUseCase = {
+      execute: vi.fn().mockResolvedValue({
         download_dir: "/default/download",
         proxy: "http://127.0.0.1:1080",
         max_download_speed: 0,
       }),
-      setDownloadDir: vi.fn(),
-      setProxy: vi.fn(),
-      setAiConfigs: vi.fn(),
-      setMaxDownloadSpeed: vi.fn(),
-      setMaxUploadSpeed: vi.fn(),
-      selectDirectory: vi.fn(),
-      setTheme: vi.fn(),
     };
-
-    mockAiClient = {
-      post: vi.fn().mockResolvedValue({ choices: [{}] }),
+    mockSaveSettingsUseCase = {
+      execute: vi.fn().mockResolvedValue(undefined),
     };
-
     mockClearCacheUseCase = {
       execute: vi.fn().mockResolvedValue(undefined),
     };
-
-    mockContainer = createDIContainerForTest({
-      settingsRepository: mockSettingsRepository,
-      aiClient: mockAiClient as never,
-      clearCacheUseCase: mockClearCacheUseCase as never,
-    });
+    mockContainer = {
+      getSettingsUseCase: mockGetSettingsUseCase,
+      getCurrentVersionUseCase: {
+        execute: vi.fn().mockResolvedValue("0.0.0"),
+      },
+      openUpdateUrlUseCase: {
+        execute: vi.fn().mockResolvedValue(undefined),
+      },
+      saveSettingsUseCase: mockSaveSettingsUseCase,
+      selectDirectoryUseCase: {
+        execute: vi.fn().mockResolvedValue(null),
+      },
+      checkUpdateUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          hasUpdate: false,
+          latestVersion: "0.0.0",
+          currentVersion: "0.0.0",
+          notes: "",
+          htmlUrl: "",
+        }),
+      },
+      verifyAiConnectionUseCase: {
+        execute: vi.fn().mockResolvedValue(undefined),
+      },
+      clearCacheUseCase: mockClearCacheUseCase,
+    } as unknown as DIContainer;
 
     resetAppStores();
     vi.clearAllMocks();
@@ -93,7 +102,7 @@ describe("Settings 页面组件", () => {
   };
 
   it("应该在加载时渲染加载指示器", async () => {
-    vi.mocked(mockSettingsRepository.getSettings).mockImplementation(
+    mockGetSettingsUseCase.execute.mockImplementation(
       () => new Promise(() => {}),
     );
 
@@ -105,18 +114,9 @@ describe("Settings 页面组件", () => {
   });
 
   it("加载成功后应该支持修改设置并保存", async () => {
-    let currentDir = "C:\\Downloads";
-
-    vi.mocked(mockSettingsRepository.getSettings).mockImplementation(
-      async () => ({
-        download_dir: NonEmptyStringSchema.parse(currentDir),
-      }),
-    );
-    vi.mocked(mockSettingsRepository.setDownloadDir).mockImplementation(
-      async (dir) => {
-        currentDir = dir;
-      },
-    );
+    mockGetSettingsUseCase.execute.mockImplementation(async () => ({
+      download_dir: NonEmptyStringSchema.parse("C:\\Downloads"),
+    }));
 
     renderSettings();
 
@@ -128,7 +128,9 @@ describe("Settings 页面组件", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存设置" }));
 
     await waitFor(() => {
-      expect(currentDir).toBe("D:\\New");
+      expect(mockSaveSettingsUseCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({ downloadDir: "D:\\New" }),
+      );
     });
   });
 
