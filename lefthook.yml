@@ -22,47 +22,22 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
-    "前端_错误处理规范检查":
+    "前端_表现层规范检查":
+      glob: "src/presentation/**/*.{ts,tsx}"
+      run: pnpm check:presentation {push_files}
+    "前端_应用层规范检查":
+      glob: "src/{application,infrastructure}/**/*.{ts,tsx}"
+      run: pnpm check:application {push_files}
+    "前端_接口契约检查":
       glob: "src/**/*.{ts,tsx}"
-      run: pnpm check:error-handling {push_files}
-    "前端_接口设计参数检查":
-      glob: "src/application/**/*.{ts,tsx}"
-      run: pnpm check:application-params {push_files}
-    "前端_接口可空设计检查":
-      glob: "src/**/*.{ts,tsx}"
-      run: pnpm check:interface-methods {push_files}
+      run: pnpm check:interface {push_files}
     "前端_函数方法长度检查":
       glob: "src/**/*.{ts,tsx}"
       run: pnpm check:function-length {push_files}
-    "前端_表现层Tauri导入检查":
-      glob: "src/presentation/**/*.{ts,tsx}"
-      run: pnpm check:presentation-tauri-imports {push_files}
-    "前端_表现层样式检查":
-      glob: "src/presentation/**/*.{ts,tsx}"
-      run: pnpm check:presentation-styles {push_files}
+    "前端_死代码检查":
+      run: pnpm check:dead-code
     "前端_DI容器架构检查":
       run: pnpm check:di
-    "前端_应用层死代码检查":
-      run: pnpm check:application-dead-code
-    "前端_接口实现契约检查":
-      run: pnpm check:interface-conformance {push_files}
-    "前端_基础设施死代码检查":
-      run: pnpm check:infrastructure-dead-code {push_files}
-    "前端_依赖注入规范检查":
-      glob: "src/{application,infrastructure}/**/*.{ts,tsx}"
-      run: pnpm check:dependency-injection {push_files}
-    "前端_表现层useDI使用检查":
-      glob: "src/presentation/**/*.{ts,tsx}"
-      run: pnpm check:presentation-di {push_files}
-    "前端_表现层deps接口检查":
-      glob: "src/presentation/**/*.{ts,tsx}"
-      run: pnpm check:presentation-deps {push_files}
-    "前端_表现层hook大小与耦合检查":
-      glob: "src/presentation/**/*.{ts,tsx}"
-      run: pnpm check:presentation-hooks {push_files}
-    "前端_表现层测试DI注入检查":
-      glob: "src/presentation/**/*.{ts,tsx}"
-      run: pnpm check:presentation-test-di {push_files}
     "前端_测试文件一一对应检查":
       glob: "src/**/*.{ts,tsx}"
       run: pnpm check:test-files {push_files}

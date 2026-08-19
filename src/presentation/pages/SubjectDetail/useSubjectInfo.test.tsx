@@ -115,10 +115,8 @@ describe("useSubjectInfo 条目信息 hook", () => {
       expect(result.current.subject).not.toBeNull();
     });
     act(() => result.current.handleOpenUrl());
-    await waitFor(() => {
-      expect(deps.openUrlUseCase.execute).toHaveBeenCalledWith(
-        NonEmptyStringSchema.parse("https://bgm.tv/subject/123"),
-      );
-    });
+    expect(deps.openUrlUseCase.execute).toHaveBeenCalledWith(
+      NonEmptyStringSchema.parse("https://bgm.tv/subject/123"),
+    );
   });
 });

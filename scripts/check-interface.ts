@@ -1,6 +1,90 @@
 import fs from "node:fs";
 import path from "node:path";
-import { parseSync } from "oxc-parser";
+import {
+	isSourceFile,
+	keyName,
+	offsetToLoc,
+	parseCliArgs,
+	parseTs,
+	traverse,
+	globFiles,
+	type Violation,
+} from "./check-utils";
+
+const DOMAIN_DIR = "src/domain";
+const APPLICATION_DIR = "src/application";
+const INFRASTRUCTURE_DIR = "src/infrastructure";
+
+/** ---------- 规则 1：接口/类不得包含可选方法 ---------- */
+
+export function checkInterfaceMethods(code: string, filepath: string): Violation[] {
+	const parseResult = parseTs(code, filepath);
+	const errors: Violation[] = [];
+
+	function isFunctionType(typeNode: any): boolean {
+		if (!typeNode) return false;
+		if (typeNode.type === "TSFunctionType") return true;
+		if (typeNode.type === "TSUnionType" && Array.isArray(typeNode.types)) {
+			return typeNode.types.some((t: any) => isFunctionType(t));
+		}
+		return false;
+	}
+
+	function report(node: any, methodName: string): void {
+		const loc = offsetToLoc(code, node.start);
+		errors.push({
+			...loc,
+			severity: "error",
+			message: `接口设计中不能出现可为空的方法 ${methodName}。`,
+		});
+	}
+
+	traverse(parseResult.program, (node) => {
+		if (node.type === "TSMethodSignature") {
+			if (node.optional) {
+				report(node, node.key?.name || "anonymous");
+			}
+		}
+
+		if (
+			node.type === "MethodDefinition" ||
+			node.type === "TSAbstractMethodDefinition"
+		) {
+			if (node.optional) {
+				report(node, node.key?.name || "anonymous");
+			}
+		}
+
+		if (node.type === "TSPropertySignature") {
+			if (node.optional) {
+				const innerType = node.typeAnnotation?.typeAnnotation;
+				if (isFunctionType(innerType)) {
+					report(node, node.key?.name || "anonymous");
+				}
+			}
+		}
+
+		if (
+			node.type === "PropertyDefinition" ||
+			node.type === "TSAbstractPropertyDefinition"
+		) {
+			if (node.optional) {
+				const innerType = node.typeAnnotation?.typeAnnotation;
+				const isFuncVal =
+					node.value &&
+					(node.value.type === "ArrowFunctionExpression" ||
+						node.value.type === "FunctionExpression");
+				if (isFunctionType(innerType) || isFuncVal) {
+					report(node, node.key?.name || "anonymous");
+				}
+			}
+		}
+	});
+
+	return errors;
+}
+
+/** ---------- 规则 2：基础设施实现类必须与接口契约一致 ---------- */
 
 export interface InterfaceMethodError {
 	className: string;
@@ -30,66 +114,7 @@ export interface FileSystem {
 	readFile(absolutePath: string): string | null;
 }
 
-const INFRASTRUCTURE_DIR = "src/infrastructure";
 const MAX_RESOLVE_DEPTH = 8;
-
-function offsetToLoc(
-	src: string,
-	offset: number,
-): { line: number; column: number } {
-	let line = 1;
-	let column = 1;
-	for (let i = 0; i < offset; i++) {
-		if (src[i] === "\n") {
-			line++;
-			column = 1;
-		} else {
-			column++;
-		}
-	}
-	return { line, column };
-}
-
-function parseTs(
-	code: string,
-	filepath: string,
-): ReturnType<typeof parseSync> {
-	const ext = path.extname(filepath).slice(1);
-	const lang = ["js", "jsx", "ts", "tsx"].includes(ext)
-		? (ext as "js" | "jsx" | "ts" | "tsx")
-		: "ts";
-
-	const parseResult = parseSync(filepath, code, { lang });
-
-	if (parseResult.errors && parseResult.errors.length > 0) {
-		const errorMsg = parseResult.errors.map((e) => e.message).join("\n");
-		throw new Error(`解析文件失败 ${filepath}:\n${errorMsg}`);
-	}
-	return parseResult;
-}
-
-function traverse(node: any, visit: (node: any) => void) {
-	if (!node || typeof node !== "object") return;
-	visit(node);
-	for (const key in node) {
-		if (Object.hasOwn(node, key)) {
-			const child = node[key];
-			if (Array.isArray(child)) {
-				for (const item of child) {
-					traverse(item, visit);
-				}
-			} else if (child && typeof child === "object") {
-				traverse(child, visit);
-			}
-		}
-	}
-}
-
-function keyName(key: any): string | null {
-	if (key?.type === "Identifier") return key.name;
-	if (key?.type === "Literal" && typeof key.value === "string") return key.value;
-	return null;
-}
 
 function isFunctionTypeAnnotation(ann: any): boolean {
 	if (!ann) return false;
@@ -338,30 +363,43 @@ export function checkInterfaceConformance(
 	return errors;
 }
 
-function globFiles(dir: string): string[] {
-	const results: string[] = [];
-	if (!fs.existsSync(dir)) return results;
-	const list = fs.readdirSync(dir);
-	for (const file of list) {
-		const filePath = path.join(dir, file);
-		const stat = fs.statSync(filePath);
-		if (stat && stat.isDirectory()) {
-			results.push(...globFiles(filePath));
-		} else if (/\.(js|jsx|ts|tsx)$/.test(file)) {
-			if (!/\.(test|spec)\.[jt]sx?$/.test(file)) {
-				results.push(filePath);
-			}
-		}
-	}
-	return results;
+/** ---------- 合并 CLI ---------- */
+
+interface MethodError extends Violation {
+	filepath: string;
 }
 
-function main() {
-	const args = process.argv
-		.slice(2)
-		.flatMap((f) => f.split(/\s+/))
-		.filter(Boolean);
+function runMethodsCheck(args: string[]): MethodError[] {
+	const targetDirs = [DOMAIN_DIR, INFRASTRUCTURE_DIR, APPLICATION_DIR].map((d) =>
+		path.resolve(process.cwd(), d),
+	);
 
+	let filesToCheck: string[] = [];
+	if (args.length > 0) {
+		filesToCheck = args
+			.map((f) => path.resolve(process.cwd(), f))
+			.filter(
+				(f) =>
+					targetDirs.some((dir) => f.startsWith(dir)) &&
+					isSourceFile(f) &&
+					fs.existsSync(f),
+			);
+	} else {
+		filesToCheck = targetDirs.flatMap((dir) => globFiles(dir));
+	}
+
+	const errors: MethodError[] = [];
+	for (const file of filesToCheck) {
+		const code = fs.readFileSync(file, "utf8");
+		const violations = checkInterfaceMethods(code, file);
+		for (const v of violations) {
+			errors.push({ ...v, filepath: file });
+		}
+	}
+	return errors;
+}
+
+function runConformanceCheck(args: string[]): InterfaceMethodError[] {
 	const targetDir = path.resolve(process.cwd(), INFRASTRUCTURE_DIR);
 	if (!fs.existsSync(targetDir)) {
 		console.error(`❌ 未找到基础设施目录 ${INFRASTRUCTURE_DIR}。`);
@@ -372,15 +410,9 @@ function main() {
 	if (args.length > 0) {
 		filesToCheck = args
 			.map((f) => path.resolve(process.cwd(), f))
-			.filter((f) => {
-				const isUnderTarget = f.startsWith(targetDir);
-				const isSourceFile = /\.(js|jsx|ts|tsx)$/.test(f);
-				const isTestFile = /\.(test|spec)\.[jt]sx?$/.test(f);
-				return isUnderTarget && isSourceFile && !isTestFile && fs.existsSync(f);
-			});
-		if (filesToCheck.length === 0) {
-			filesToCheck = globFiles(targetDir);
-		}
+			.filter(
+				(f) => f.startsWith(targetDir) && isSourceFile(f) && fs.existsSync(f),
+			);
 	} else {
 		filesToCheck = globFiles(targetDir);
 	}
@@ -395,35 +427,55 @@ function main() {
 		const code = fs.readFileSync(file, "utf8");
 		errors.push(...checkInterfaceConformance(code, file, realFs));
 	}
+	return errors;
+}
 
-	if (errors.length === 0) {
-		console.log(
-			`✨ 接口实现契约校验通过：${filesToCheck.length} 个文件的所有 public 方法均与接口声明匹配。`,
-		);
+function main() {
+	const args = parseCliArgs();
+	const methodErrors = runMethodsCheck(args);
+	const conformanceErrors = runConformanceCheck(args);
+
+	const totalErrors = methodErrors.length + conformanceErrors.length;
+	if (totalErrors === 0) {
+		console.log("✨ 接口契约校验通过：接口方法设计与实现契约均符合规范。");
 		process.exit(0);
 	}
 
-	console.error(`❌ 接口实现契约校验未通过：共 ${errors.length} 处违规。\n`);
-	console.error(`【接口契约违规（${errors.length} 处）】`);
-	console.error(
-		"  以下类的 public 方法未在对应的 implements 接口中声明，疑似接口方法删除后遗留的死代码。\n",
-	);
-	for (const err of errors) {
-		const relativePath = path.relative(process.cwd(), err.filepath);
+	if (methodErrors.length > 0) {
 		console.error(
-			`  - ${relativePath}:${err.line}:${err.column}  类 "${err.className}" 的 public 方法 "${err.methodName}" 未在接口 "${err.interfaceName}" 中声明`,
+			`❌ 接口方法设计校验未通过：发现 ${methodErrors.length} 处违规（包含可为空/可选的方法设计）。请重构为非可选的方法设计。\n`,
 		);
+		for (const err of methodErrors) {
+			const relativePath = path.relative(process.cwd(), err.filepath);
+			console.error(
+				`  - ${relativePath}:${err.line}:${err.column} - ${err.message}`,
+			);
+		}
+		console.error("");
 	}
-	console.error(
-		"\n🛑 请将这些方法纳入接口契约，或确认其已无使用后移除。",
-	);
+
+	if (conformanceErrors.length > 0) {
+		console.error(`❌ 接口实现契约校验未通过：共 ${conformanceErrors.length} 处违规。\n`);
+		console.error(`【接口契约违规（${conformanceErrors.length} 处）】`);
+		console.error(
+			"  以下类的 public 方法未在对应的 implements 接口中声明，疑似接口方法删除后遗留的死代码。\n",
+		);
+		for (const err of conformanceErrors) {
+			const relativePath = path.relative(process.cwd(), err.filepath);
+			console.error(
+				`  - ${relativePath}:${err.line}:${err.column}  类 "${err.className}" 的 public 方法 "${err.methodName}" 未在接口 "${err.interfaceName}" 中声明`,
+			);
+		}
+		console.error("\n🛑 请将这些方法纳入接口契约，或确认其已无使用后移除。");
+	}
+
 	process.exit(1);
 }
 
 if (
 	process.argv[1] &&
-	(process.argv[1].endsWith("check-interface-conformance.ts") ||
-		process.argv[1].endsWith("check-interface-conformance.js"))
+	(process.argv[1].endsWith("check-interface.ts") ||
+		process.argv[1].endsWith("check-interface.js"))
 ) {
 	main();
 }
