@@ -10,7 +10,7 @@ import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { createDIContainerForTest } from "@/test/test-utils";
 import { TorrentStatusProvider } from "../context/TorrentStatusContext";
-import { AppNavBar } from "./AppComponents";
+import { AppNavBar, PageLoader } from "./AppComponents";
 
 describe("AppComponents 组件", () => {
   beforeEach(() => {
@@ -106,5 +106,10 @@ describe("AppComponents 组件", () => {
     );
 
     expect(await screen.findByText("1")).toBeInTheDocument();
+  });
+
+  it("PageLoader 应该在加载时显示加载提示", async () => {
+    render(<PageLoader />);
+    expect(await screen.findByText("正在载入页面...")).toBeInTheDocument();
   });
 });

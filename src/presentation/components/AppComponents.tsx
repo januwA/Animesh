@@ -34,6 +34,7 @@ export function AppNavBar() {
   return (
     <header className="flex flex-col items-center">
       <nav
+        data-testid="app-navbar"
         className={cn(
           "flex justify-around p-2 rounded-2xl shadow-2xl backdrop-blur-xl fixed bottom-5 left-4 right-4 z-50",
           "bg-card/90 border border-border",
