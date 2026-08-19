@@ -12,6 +12,7 @@ const EXEMPT_PATTERNS = [
 	/^src\/presentation\/pages\/[^/]+\/index\.tsx$/,
 	/^src\/presentation\/components\/ui\//,
 	/^src\/presentation\/App\.tsx$/,
+	/^src\/presentation\/routes\.tsx$/,
 	/^src\/presentation\/components\/MpegtsVideo\.tsx$/,
 ];
 

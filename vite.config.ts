@@ -67,6 +67,7 @@ export default defineConfig(({ mode }) => {
           "**/*.d.ts",
           "src/presentation/components/ui/**",
           "src/presentation/App.tsx",
+          "src/presentation/routes.tsx",
           "src/presentation/components/MpegtsVideo.tsx",
           "src/presentation/pages/*/index.tsx",
           "src/di/**",

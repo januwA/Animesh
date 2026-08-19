@@ -12,10 +12,25 @@ describe("SetThemeUseCase 设置主题", () => {
     vi.clearAllMocks();
   });
 
-  it("应该调用 repository 里的 setTheme 方法", async () => {
+  it("应该将合法主题直接传给 repository", async () => {
     const useCase = new SetThemeUseCase(mockRepo);
     vi.mocked(rawMockRepo.setTheme).mockResolvedValueOnce(undefined);
     await useCase.execute("dark");
     expect(rawMockRepo.setTheme).toHaveBeenCalledWith("dark");
+
+    vi.mocked(rawMockRepo.setTheme).mockResolvedValueOnce(undefined);
+    await useCase.execute("light");
+    expect(rawMockRepo.setTheme).toHaveBeenCalledWith("light");
+  });
+
+  it("主题为空或非法时应该归一化为 null 再传给 repository", async () => {
+    const useCase = new SetThemeUseCase(mockRepo);
+    vi.mocked(rawMockRepo.setTheme).mockResolvedValueOnce(undefined);
+    await useCase.execute(undefined);
+    expect(rawMockRepo.setTheme).toHaveBeenCalledWith(null);
+
+    vi.mocked(rawMockRepo.setTheme).mockResolvedValueOnce(undefined);
+    await useCase.execute("blue");
+    expect(rawMockRepo.setTheme).toHaveBeenCalledWith(null);
   });
 });

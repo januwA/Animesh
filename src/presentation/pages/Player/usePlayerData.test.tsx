@@ -177,10 +177,6 @@ describe("usePlayerData 播放器数据 hook", () => {
 
     renderHook(() => usePlayerData(baseParams, deps));
 
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
     expect(getVideoMetadata).toHaveBeenCalledTimes(1);
 
     await act(async () => {

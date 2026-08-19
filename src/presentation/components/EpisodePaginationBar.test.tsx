@@ -138,4 +138,26 @@ describe("EpisodePaginationBar 剧集分页栏", () => {
     fireEvent.keyDown(episodeInput, { key: "Enter" });
     expect(onJumpToEpisode).not.toHaveBeenCalled();
   });
+
+  it("页码跳转输入按下非回车键时不应该触发跳转", () => {
+    const onPageChange = vi.fn();
+    renderBar({ page: 1, totalPages: 3, onPageChange });
+
+    const pageInput = screen.getByLabelText("跳转页码");
+    fireEvent.change(pageInput, { target: { value: "2" } });
+    fireEvent.keyDown(pageInput, { key: "ArrowDown" });
+
+    expect(onPageChange).not.toHaveBeenCalled();
+  });
+
+  it("集数跳转输入按下非回车键时不应该触发跳转", () => {
+    const onJumpToEpisode = vi.fn();
+    renderBar({ page: 1, totalPages: 3, onJumpToEpisode });
+
+    const episodeInput = screen.getByLabelText("跳转集数");
+    fireEvent.change(episodeInput, { target: { value: "5" } });
+    fireEvent.keyDown(episodeInput, { key: "ArrowDown" });
+
+    expect(onJumpToEpisode).not.toHaveBeenCalled();
+  });
 });
