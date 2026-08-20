@@ -26,4 +26,3 @@ export const GithubReleaseSchema = z.object({
 });
 
 export type GithubRelease = z.infer<typeof GithubReleaseSchema>;
-export type GithubAsset = z.infer<typeof GithubAssetSchema>;

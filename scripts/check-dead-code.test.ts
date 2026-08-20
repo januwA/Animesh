@@ -191,7 +191,7 @@ describe("基础设施死代码检查", () => {
 			"src/infrastructure/HttpRepo.ts",
 		);
 		const referencedByFile = new Map<string, Set<string>>([
-			["src/di/repositories.ts", new Set(["HttpRepo"])],
+			["src/di/DIContext.tsx", new Set(["HttpRepo"])],
 		]);
 		const errors = checkInfrastructureDeadCode(classes, referencedByFile);
 		expect(errors).toHaveLength(0);

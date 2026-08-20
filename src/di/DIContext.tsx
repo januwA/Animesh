@@ -1,11 +1,4 @@
 import { createContext, use } from "react";
-import {
-  IptvRepositoryImpl,
-  IptvStreamUrlRepositoryImpl,
-  NotificationRepositoryImpl,
-  OpenerRepositoryImpl,
-  UpdateRepositoryImpl,
-} from "@/di/repositories";
 import { FetchAiClient } from "@/infrastructure/ai/FetchAiClient";
 import { TauriAiClient } from "@/infrastructure/ai/TauriAiClient";
 import { TauriSubtitleTranslationRepository } from "@/infrastructure/subtitle/TauriSubtitleTranslationRepository";
@@ -58,12 +51,21 @@ import { HttpCollectionRepository } from "../infrastructure/collection/HttpColle
 import { TauriCollectionRepository } from "../infrastructure/collection/TauriCollectionRepository";
 import { FetchHttpClient } from "../infrastructure/http/HttpClient";
 import { BrowserIptvCache } from "../infrastructure/iptv/BrowserIptvCache";
+import { HttpIptvRepository } from "../infrastructure/iptv/HttpIptvRepository";
+import { TauriIptvStreamUrlRepository } from "../infrastructure/iptv/TauriIptvStreamUrlRepository";
+import { WebIptvStreamUrlRepository } from "../infrastructure/iptv/WebIptvStreamUrlRepository";
 import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
+import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
+import { WebNotificationRepository } from "../infrastructure/notification/WebNotificationRepository";
+import { TauriOpenerRepository } from "../infrastructure/opener/TauriOpenerRepository";
+import { WebOpenerRepository } from "../infrastructure/opener/WebOpenerRepository";
 import { HttpSettingsRepository } from "../infrastructure/settings/HttpSettingsRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
 import { IndexedDbCacheStore } from "../infrastructure/storage/IndexedDbCacheStore";
 import { HttpTorrentRepository } from "../infrastructure/torrent/HttpTorrentRepository";
 import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
+import { GithubUpdateRepository } from "../infrastructure/update/GithubUpdateRepository";
+import { WebUpdateRepository } from "../infrastructure/update/WebUpdateRepository";
 
 export interface DIContainer {
   logger: Logger;
@@ -129,9 +131,15 @@ export function createDefaultDIContainer(): DIContainer {
   const collectionRepository = isTauri
     ? new TauriCollectionRepository()
     : new HttpCollectionRepository(httpClient);
-  const notificationRepository = new NotificationRepositoryImpl();
-  const openerRepository = new OpenerRepositoryImpl();
-  const updateRepository = new UpdateRepositoryImpl(openerRepository);
+  const notificationRepository = isTauri
+    ? new TauriNotificationRepository()
+    : new WebNotificationRepository();
+  const openerRepository = isTauri
+    ? new TauriOpenerRepository()
+    : new WebOpenerRepository();
+  const updateRepository = isTauri
+    ? new GithubUpdateRepository(openerRepository)
+    : new WebUpdateRepository();
   // 字幕翻译缓存仓储：Tauri 桌面端走 IPC → SQLite；Web 端用 NoOp 空实现（不持久化，但不影响流程）
   const subtitleTranslationRepository =
     new TauriSubtitleTranslationRepository();
@@ -225,7 +233,7 @@ export function createDefaultDIContainer(): DIContainer {
     bangumiCache,
   );
   const iptvCache = new BrowserIptvCache(cacheStore);
-  const iptvRepository = new IptvRepositoryImpl(httpClient);
+  const iptvRepository = new HttpIptvRepository(httpClient);
   const getIptvCountriesUseCase = new GetIptvCountriesUseCase(
     iptvRepository,
     iptvCache,
@@ -234,7 +242,9 @@ export function createDefaultDIContainer(): DIContainer {
     iptvRepository,
     iptvCache,
   );
-  const iptvStreamUrlRepository = new IptvStreamUrlRepositoryImpl();
+  const iptvStreamUrlRepository = isTauri
+    ? new TauriIptvStreamUrlRepository()
+    : new WebIptvStreamUrlRepository();
   const resolvePlayableStreamUrlUseCase = new ResolvePlayableStreamUrlUseCase(
     iptvStreamUrlRepository,
   );

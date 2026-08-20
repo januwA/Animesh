@@ -91,8 +91,6 @@ export type AddTorrentResult = z.infer<typeof AddTorrentResultSchema>;
 export type TorrentStatusInfo = z.infer<typeof TorrentStatusInfoSchema>;
 export type SubtitleTrackInfo = z.infer<typeof SubtitleTrackInfoSchema>;
 export type ChapterInfo = z.infer<typeof ChapterInfoSchema>;
-export type VideoTrackInfo = z.infer<typeof VideoTrackInfoSchema>;
-export type AudioTrackInfo = z.infer<typeof AudioTrackInfoSchema>;
 export type VideoInfo = z.infer<typeof VideoInfoSchema>;
 export type VideoMetadata = z.infer<typeof VideoMetadataSchema>;
 

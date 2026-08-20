@@ -15,8 +15,6 @@ export default defineConfig(({ mode }) => {
     console.log(mode, process.env);
   }
 
-  const isWeb = mode === "web";
-
   return {
     plugins: [react(), process.env.VITEST !== "true" && tailwindcss()].filter(
       Boolean,
@@ -24,9 +22,6 @@ export default defineConfig(({ mode }) => {
     envPrefix: ["VITE_", "TAURI_ENV_*"],
     resolve: {
       alias: {
-        "@/di/repositories": isWeb
-          ? path.resolve(import.meta.dirname, "./src/di/repositories.web.ts")
-          : path.resolve(import.meta.dirname, "./src/di/repositories.ts"),
         "@": path.resolve(import.meta.dirname, "./src"),
       },
     },

@@ -87,9 +87,6 @@ export const BangumiEpisodesResponseSchema = z.object({
   offset: z.number(),
 });
 
-export type BangumiWeekday = z.infer<typeof BangumiWeekdaySchema>;
-export type BangumiSubjectRating = z.infer<typeof BangumiSubjectRatingSchema>;
-export type BangumiSubjectImages = z.infer<typeof BangumiSubjectImagesSchema>;
 export type BangumiCalendarItem = z.infer<typeof BangumiCalendarItemSchema>;
 export type BangumiCalendarDay = z.infer<typeof BangumiCalendarDaySchema>;
 export type BangumiSubject = z.infer<typeof BangumiSubjectSchema>;
@@ -158,10 +155,6 @@ export const BangumiEpisodesPageSchema = z.object({
 });
 
 export type BangumiPerson = z.infer<typeof BangumiPersonSchema>;
-export type BangumiActor = z.infer<typeof BangumiActorSchema>;
 export type BangumiCharacter = z.infer<typeof BangumiCharacterSchema>;
 export type BangumiEpisode = z.infer<typeof BangumiEpisodeSchema>;
-export type BangumiEpisodesResponse = z.infer<
-  typeof BangumiEpisodesResponseSchema
->;
 export type BangumiEpisodesPage = z.infer<typeof BangumiEpisodesPageSchema>;

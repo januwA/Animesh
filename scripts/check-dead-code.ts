@@ -195,7 +195,7 @@ export function checkInfrastructureDeadCode(
 		errors.push({
 			...cls,
 			severity: "error",
-			message: `基础设施类 "${cls.name}" 未在 src/infrastructure 之外被任何生产代码引用（未接入 DI 装配），属于死代码。请将其接入 DI（repositories.ts / repositories.web.ts / DIContext.tsx）或移除。`,
+			message: `基础设施类 "${cls.name}" 未在 src/infrastructure 之外被任何生产代码引用（未接入 DI 装配），属于死代码。请将其接入 DI（DIContext.tsx）或移除。`,
 		});
 	}
 	return errors;
@@ -305,7 +305,7 @@ function main() {
 			);
 		}
 		console.error(
-			"\n🛑 请将上述类接入 DI 装配（repositories.ts / repositories.web.ts / DIContext.tsx），或确认后移除。",
+			"\n🛑 请将上述类接入 DI 装配（DIContext.tsx），或确认后移除。",
 		);
 	}
 

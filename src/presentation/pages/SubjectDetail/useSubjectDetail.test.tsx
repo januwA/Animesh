@@ -12,8 +12,9 @@ import type {
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
+import { consolidateStaff } from "./useSubjectCast";
 import type { UseSubjectDetailDeps } from "./useSubjectDetail";
-import { consolidateStaff, useSubjectDetail } from "./useSubjectDetail";
+import { useSubjectDetail } from "./useSubjectDetail";
 
 const locationRef: { current: { pathname: string; search: string } | null } = {
   current: null,

@@ -15,11 +15,7 @@ import { useSubjectInfo } from "./useSubjectInfo";
 import type { SubjectResourcesResult } from "./useSubjectResources";
 import { useSubjectResources } from "./useSubjectResources";
 
-export {
-  type ConsolidatedStaffMember,
-  consolidateStaff,
-} from "./useSubjectCast";
-export { EPISODES_PAGE_SIZE } from "./useSubjectEpisodes";
+export type { ConsolidatedStaffMember } from "./useSubjectCast";
 
 export interface UseSubjectDetailParams {
   subjectId: number;

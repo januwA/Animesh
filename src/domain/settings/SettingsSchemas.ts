@@ -62,5 +62,3 @@ export const SettingsFormSchema = z.object({
     .nullable()
     .optional(),
 });
-
-export type SettingsFormInput = z.infer<typeof SettingsFormSchema>;

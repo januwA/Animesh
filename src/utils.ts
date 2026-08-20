@@ -1,37 +1,3 @@
-export interface ThrottleByChange<T> {
-  /** 尝试执行一次，仅当距上次执行超过 intervalMs 且 key 与上次不同（或首次）时返回 true */
-  run(key: T, now?: number): boolean;
-  reset(): void;
-}
-
-/**
- * 创建一个"变化节流器"：在 intervalMs 间隔内最多执行一次，且仅当传入的 key 发生变化时才放行。
- * 常用于轮询重试场景，避免在数据未变化时频繁触发请求。
- */
-export function createThrottleByChange<T>(
-  intervalMs: number,
-): ThrottleByChange<T> {
-  let lastRunAt = 0;
-  let lastKey: T | undefined;
-  let initialized = false;
-  return {
-    run(key: T, now = Date.now()) {
-      const keyChanged = !initialized || key !== lastKey;
-      const intervalElapsed = !initialized || now - lastRunAt >= intervalMs;
-      if (!keyChanged || !intervalElapsed) return false;
-      initialized = true;
-      lastKey = key;
-      lastRunAt = now;
-      return true;
-    },
-    reset() {
-      lastRunAt = 0;
-      lastKey = undefined;
-      initialized = false;
-    },
-  };
-}
-
 export function formatBytes(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined || bytes === 0) return "0 B";
   const k = 1024;
