@@ -1,30 +1,38 @@
-import { Tv } from "lucide-react";
-import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
+import { Star, Tv } from "lucide-react";
 import { LazyImage } from "@/presentation/components/LazyImage";
 import { Card } from "@/presentation/components/ui/card";
 
-interface CollectionCardProps {
-  item: FavoriteItem;
+interface MediaCardProps {
+  id: number;
+  imageSrc: string | null;
+  title: string;
+  rating?: number;
   onClick: () => void;
 }
 
-export function CollectionCard({ item, onClick }: CollectionCardProps) {
+export function MediaCard({
+  id,
+  imageSrc,
+  title,
+  rating,
+  onClick,
+}: MediaCardProps) {
   return (
-    <Card className="py-0 group overflow-hidden hover:border-primary/30 transition-all duration-200">
+    <Card className="py-0 group overflow-hidden hover:ring-primary/30 transition-all duration-200">
       <button
         type="button"
         onClick={onClick}
         className="flex flex-col flex-1 w-full text-left"
-        title={`详情: ${item.name}`}
+        title={`详情: ${title}`}
       >
-        {item.imageUrl ? (
+        {imageSrc ? (
           <div className="aspect-3/4 w-full overflow-hidden bg-muted">
             <LazyImage
-              src={item.imageUrl}
-              alt={item.name}
+              src={imageSrc}
+              alt={title}
               style={
                 {
-                  viewTransitionName: `anime-cover-${item.subjectId}`,
+                  viewTransitionName: `anime-cover-${id}`,
                 } as React.CSSProperties
               }
               className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -38,8 +46,17 @@ export function CollectionCard({ item, onClick }: CollectionCardProps) {
 
         <div className="p-2 flex flex-col gap-1 flex-1 w-full">
           <h3 className="text-xs font-medium leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-            {item.name}
+            {title}
           </h3>
+
+          {rating !== undefined && (
+            <div className="flex items-center gap-2 mt-auto pt-1">
+              <span className="flex items-center gap-0.5 text-[10px] text-amber-400">
+                <Star className="h-2.5 w-2.5 fill-current" />
+                {rating.toFixed(1)}
+              </span>
+            </div>
+          )}
         </div>
       </button>
     </Card>

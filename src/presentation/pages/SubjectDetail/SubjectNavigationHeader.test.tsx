@@ -5,7 +5,7 @@ import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import { SubjectNavigationHeader } from "./SubjectNavigationHeader";
 
 // FavoriteButton 使用 useFavorite hook 内部发起异步请求，这里 mock 掉避免副作用
-vi.mock("@/presentation/components/FavoriteButton", () => ({
+vi.mock("./FavoriteButton", () => ({
   FavoriteButton: () => <button type="button">收藏</button>,
 }));
 

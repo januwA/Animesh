@@ -219,7 +219,7 @@ describe("isCompositionRoot 组合根判定", () => {
 		).toBe(false);
 		expect(
 			isCompositionRoot(
-				`${process.cwd()}/src/presentation/components/FavoriteButton.tsx`,
+				`${process.cwd()}/src/presentation/components/LazyImage.tsx`,
 			),
 		).toBe(false);
 	});

@@ -1,6 +1,7 @@
 import { Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
+import { MediaCard } from "@/presentation/components/MediaCard";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import {
@@ -8,7 +9,6 @@ import {
   EmptyContent,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
-import { CollectionCard } from "./CollectionCard";
 import { useCollectionsPage } from "./useCollectionsPage";
 
 export default function Collections() {
@@ -35,9 +35,11 @@ export default function Collections() {
       {items.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {items.map((item) => (
-            <CollectionCard
+            <MediaCard
               key={item.subjectId}
-              item={item}
+              id={item.subjectId}
+              imageSrc={item.imageUrl}
+              title={item.name}
               onClick={() => handleItemClick(item)}
             />
           ))}

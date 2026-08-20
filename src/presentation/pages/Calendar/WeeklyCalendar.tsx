@@ -3,6 +3,7 @@ import type {
   BangumiCalendarDay,
   BangumiCalendarItem,
 } from "@/domain/bangumi/BangumiSchemas";
+import { MediaCard } from "@/presentation/components/MediaCard";
 import {
   Empty,
   EmptyContent,
@@ -10,7 +11,6 @@ import {
 } from "@/presentation/components/ui/empty";
 import { Tabs, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import { useCalendarStore } from "../../store/calendarStore";
-import { AnimeCard } from "./AnimeCard";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -75,9 +75,12 @@ export function WeeklyCalendar({
         style={{ transform: "translate3d(0, 0, 0)" }}
       >
         {currentItems.map((item) => (
-          <AnimeCard
+          <MediaCard
             key={item.id}
-            item={item}
+            id={item.id}
+            imageSrc={item.image}
+            title={item.name}
+            rating={item.rating}
             onClick={() => onAnimeClick(item)}
           />
         ))}

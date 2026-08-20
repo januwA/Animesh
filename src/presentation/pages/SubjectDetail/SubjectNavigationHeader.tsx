@@ -4,7 +4,7 @@ import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavor
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import { BackButton } from "@/presentation/components/BackButton";
-import { FavoriteButton } from "@/presentation/components/FavoriteButton";
+import { FavoriteButton } from "./FavoriteButton";
 
 export interface SubjectNavigationHeaderProps {
   subject: BangumiSubject | undefined;

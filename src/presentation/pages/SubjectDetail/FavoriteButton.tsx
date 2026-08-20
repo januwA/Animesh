@@ -4,8 +4,9 @@ import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUse
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import { Button } from "@/presentation/components/ui/button";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { Button } from "./ui/button";
+import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 
 interface FavoriteButtonProps {
   subject: BangumiSubject;
@@ -33,6 +34,9 @@ export function FavoriteButton({
   const favorited = optimistic ?? data ?? false;
   const ready = !loading;
 
+  const addItem = useCollectionsStore((s) => s.addItem);
+  const removeItem = useCollectionsStore((s) => s.removeItem);
+
   const handleClick = async () => {
     const next = !favorited;
     setOptimistic(next);
@@ -42,8 +46,14 @@ export function FavoriteButton({
         name: subject.name,
         imageUrl: subject.image,
       });
+      addItem({
+        subjectId: subject.id,
+        name: subject.name,
+        imageUrl: subject.image,
+      });
     } else {
       await removeFavoriteUseCase.execute(subject.id);
+      removeItem(subject.id);
     }
     refetch();
   };

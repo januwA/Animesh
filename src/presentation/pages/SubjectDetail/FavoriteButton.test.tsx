@@ -4,6 +4,8 @@ import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUse
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import { useCollectionsStore } from "@/presentation/store/collectionsStore";
+import { resetAppStores } from "@/test/store-reset";
 import { FavoriteButton } from "./FavoriteButton";
 
 type FavoriteDeps = {
@@ -45,6 +47,7 @@ const mockSubject: BangumiSubject = {
 describe("FavoriteButton 收藏按钮", () => {
   beforeEach(() => {
     localStorage.clear();
+    resetAppStores();
   });
 
   it("初始状态应该显示'收藏'文字", async () => {
@@ -71,6 +74,42 @@ describe("FavoriteButton 收藏按钮", () => {
     act(() => screen.getByRole("button").click());
     await waitFor(() => {
       expect(screen.getByText("收藏")).toBeInTheDocument();
+    });
+  });
+
+  it("收藏成功后应该前插到收藏列表 store", async () => {
+    renderButton();
+    await screen.findByText("收藏");
+    act(() => screen.getByRole("button").click());
+    await waitFor(() => {
+      expect(useCollectionsStore.getState().items).toHaveLength(1);
+    });
+
+    expect(useCollectionsStore.getState().items[0]).toMatchObject({
+      subjectId: mockSubject.id,
+      name: mockSubject.name,
+      imageUrl: mockSubject.image,
+    });
+  });
+
+  it("取消收藏成功后应该从收藏列表 store 移除", async () => {
+    useCollectionsStore.getState().setItems([
+      {
+        subjectId: mockSubject.id,
+        name: mockSubject.name,
+        imageUrl: mockSubject.image,
+        addedAt: 1,
+      },
+    ]);
+    renderButton(
+      createDeps({
+        getFavoriteStatusUseCase: { execute: vi.fn().mockResolvedValue(true) },
+      }),
+    );
+    await screen.findByText("已收藏");
+    act(() => screen.getByRole("button").click());
+    await waitFor(() => {
+      expect(useCollectionsStore.getState().items).toEqual([]);
     });
   });
 });
