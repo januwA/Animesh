@@ -20,7 +20,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
       {/* Character portrait */}
       <div className="relative aspect-3/4 bg-linear-to-b from-muted/50 to-muted overflow-hidden">
         <LazyImage
-          src={character.images.large}
+          src={character.image}
           alt={character.name}
           className="object-contain p-1 transition-transform duration-300 group-hover:scale-105"
           fallback={tvFallback}

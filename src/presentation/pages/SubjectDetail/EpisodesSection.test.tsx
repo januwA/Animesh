@@ -7,8 +7,7 @@ const makeEpisode = (sort: number): BangumiEpisode => ({
   id: 1000 + sort,
   type: 0,
   sort,
-  name: `Episode ${sort}`,
-  name_cn: `第 ${sort} 集`,
+  name: `第 ${sort} 集`,
   duration: "24:00",
   airdate: "2026-07-01",
   desc: "",
@@ -84,12 +83,12 @@ describe("EpisodesSection 剧集列表组件", () => {
         episodes={[
           {
             ...makeEpisode(1),
-            name_cn: "已播出剧集",
+            name: "已播出剧集",
             airdate: formatDate(yesterday),
           },
           {
             ...makeEpisode(2),
-            name_cn: "未播出剧集",
+            name: "未播出剧集",
             airdate: formatDate(future),
           },
         ]}
@@ -158,17 +157,5 @@ describe("EpisodesSection 剧集列表组件", () => {
     );
 
     expect(screen.getByText("共 1 集")).toBeInTheDocument();
-  });
-
-  it("当 name_cn 为空时，应该使用原名显示", () => {
-    render(
-      <EpisodesSection
-        {...defaultProps()}
-        episodes={[{ ...makeEpisode(1), name_cn: "" }]}
-        totalEpisodes={1}
-      />,
-    );
-
-    expect(screen.getByText("Episode 1")).toBeInTheDocument();
   });
 });

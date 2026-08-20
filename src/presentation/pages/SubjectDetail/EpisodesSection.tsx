@@ -96,7 +96,7 @@ export function EpisodesSection({
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <div className="flex items-center gap-1.5 justify-between">
                       <h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
-                        {ep.name_cn || ep.name}
+                        {ep.name}
                       </h3>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">

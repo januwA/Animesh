@@ -35,8 +35,8 @@ export function SubjectNavigationHeader({
             subject={{
               // v8 ignore start
               subjectId: subject.id,
-              name: subject.name_cn || subject.name,
-              imageUrl: subject.images?.large ?? null,
+              name: subject.name,
+              imageUrl: subject.image,
               // v8 ignore stop
             }}
             showLabel={false}

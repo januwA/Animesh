@@ -5,12 +5,7 @@ import { CharacterCard } from "./CharacterCard";
 const makeCharacter = (
   overrides: Partial<BangumiCharacter> = {},
 ): BangumiCharacter => ({
-  images: {
-    small: "",
-    grid: "",
-    large: "http://example.com/large.jpg",
-    medium: "",
-  },
+  image: "http://example.com/large.jpg",
   name: "ヤニねこ",
   summary: "主角猫",
   relation: "主角",
@@ -18,7 +13,7 @@ const makeCharacter = (
   id: 174916,
   actors: [
     {
-      images: { small: "", grid: "", large: "", medium: "" },
+      image: "",
       name: "夏吉ゆうこ",
       short_summary: "声优",
       career: ["seiyu"],
@@ -50,7 +45,7 @@ describe("CharacterCard 角色卡片组件", () => {
         character={makeCharacter({
           actors: [
             {
-              images: { small: "", grid: "", large: "", medium: "" },
+              image: "",
               name: "声優A",
               short_summary: "",
               career: ["seiyu"],
@@ -59,7 +54,7 @@ describe("CharacterCard 角色卡片组件", () => {
               locked: false,
             },
             {
-              images: { small: "", grid: "", large: "", medium: "" },
+              image: "",
               name: "声優B",
               short_summary: "",
               career: ["seiyu"],

@@ -34,18 +34,10 @@ function RouterWrapper({ children }: { children: ReactNode }) {
 
 const makeSubject = (): BangumiSubject => ({
   id: 123,
-  name: "Test Anime",
-  name_cn: "测试动漫",
+  name: "测试动漫",
   summary: "简介",
-  images: {
-    large: "http://example.com/large.jpg",
-    common: "",
-    medium: "",
-    small: "",
-    grid: "",
-  },
-  rating: { score: 8.5, rank: 42, total: 100 },
-  collection: { doing: 200 },
+  image: "http://example.com/large.jpg",
+  rating: 8.5,
   date: "2026-07-01",
   eps: 12,
   platform: "TV",
@@ -55,15 +47,14 @@ const makeEpisode = (sort: number): BangumiEpisode => ({
   id: 1000 + sort,
   type: 0,
   sort,
-  name: `Episode ${sort}`,
-  name_cn: `第 ${sort} 集`,
+  name: `第 ${sort} 集`,
   duration: "24:00",
   airdate: "2026-07-01",
   desc: "",
 });
 
 const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
-  images: { small: "", grid: "", large: "", medium: "" },
+  image: "",
   name: "木村拓",
   relation: "导演",
   career: ["producer"],
@@ -74,12 +65,7 @@ const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
 });
 
 const makeCharacter = (): BangumiCharacter => ({
-  images: {
-    small: "",
-    grid: "",
-    large: "http://example.com/large.jpg",
-    medium: "",
-  },
+  image: "",
   name: "ヤニねこ",
   summary: "主角猫",
   relation: "主角",
@@ -87,7 +73,7 @@ const makeCharacter = (): BangumiCharacter => ({
   id: 174916,
   actors: [
     {
-      images: { small: "", grid: "", large: "", medium: "" },
+      image: "",
       name: "夏吉ゆうこ",
       short_summary: "声优",
       career: ["seiyu"],
@@ -168,7 +154,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.info.subject?.name_cn).toBe("测试动漫");
+      expect(result.current.info.subject?.name).toBe("测试动漫");
     });
     expect(result.current.episodes.episodes).toHaveLength(2);
     expect(result.current.episodes.episodes[0].sort).toBe(1);
@@ -205,7 +191,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     );
   });
 
-  it("应该派生 displayName / originalName / imageUrl", async () => {
+  it("应该派生 displayName / imageUrl", async () => {
     const { result } = await renderPage(
       { subjectId: 123, page: 1, torrents: [] },
       makeDeps(),
@@ -215,26 +201,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       expect(result.current.info.subject).not.toBeNull();
     });
     expect(result.current.info.displayName).toBe("测试动漫");
-    expect(result.current.info.originalName).toBe("Test Anime");
     expect(result.current.info.imageUrl).toBe("http://example.com/large.jpg");
-  });
-
-  it("无中文名时 displayName 回退到原名且不显示 originalName", async () => {
-    const deps = makeDeps({
-      getBangumiSubjectUseCase: {
-        execute: vi.fn().mockResolvedValue({ ...makeSubject(), name_cn: "" }),
-      },
-    });
-    const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
-      deps,
-    );
-
-    await waitFor(() => {
-      expect(result.current.info.subject).not.toBeNull();
-    });
-    expect(result.current.info.displayName).toBe("Test Anime");
-    expect(result.current.info.originalName).toBe("");
   });
 
   it("应该按角色分组制作人员并正确去重", async () => {

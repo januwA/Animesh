@@ -20,7 +20,6 @@ export interface SubjectInfoResult {
   subjectQuery: UseQueryResult<BangumiSubject>;
   subject: BangumiSubject | undefined;
   displayName: string;
-  originalName: string;
   imageUrl: string | undefined;
   handleBack: () => void;
   handleOpenUrl: () => void;
@@ -59,14 +58,8 @@ export function useSubjectInfo(
   };
   // v8 ignore stop
 
-  const displayName =
-    subject?.name_cn || subject?.name || state?.name || "加载中...";
-  const originalName = subject
-    ? subject.name !== displayName
-      ? subject.name
-      : ""
-    : "";
-  const imageUrl = subject?.images?.large || state?.imageUrl;
+  const displayName = subject?.name || state?.name || "加载中...";
+  const imageUrl = subject?.image || state?.imageUrl;
 
   const handleOpenUrl = () => {
     // v8 ignore next
@@ -80,7 +73,6 @@ export function useSubjectInfo(
     subjectQuery,
     subject,
     displayName,
-    originalName,
     imageUrl,
     handleBack,
     handleOpenUrl,

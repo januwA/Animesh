@@ -1,5 +1,6 @@
 import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { BangumiCache } from "../../domain/bangumi/BangumiCache";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
@@ -20,7 +21,13 @@ describe("GetBangumiSubjectUseCase 获取条目信息", () => {
   });
 
   it("应该在缓存命中时直接返回缓存数据且不请求 Repository", async () => {
-    const cachedData = { id: 1, name: "cached", name_cn: "缓存" };
+    const cachedData: BangumiSubject = {
+      id: 1,
+      name: "cached",
+      summary: "缓存",
+      image: "",
+      rating: 0,
+    };
     vi.mocked(mockCache.getSubject).mockResolvedValueOnce(cachedData as any);
 
     const useCase = new GetBangumiSubjectUseCase(mockRepo, mockCache);
@@ -38,7 +45,13 @@ describe("GetBangumiSubjectUseCase 获取条目信息", () => {
   });
 
   it("应该在缓存未命中时请求 Repository 并写入缓存", async () => {
-    const freshData = { id: 1, name: "fresh", name_cn: "新鲜" };
+    const freshData: BangumiSubject = {
+      id: 1,
+      name: "fresh",
+      summary: "新鲜",
+      image: "",
+      rating: 0,
+    };
     vi.mocked(mockCache.getSubject).mockResolvedValueOnce(null);
     vi.mocked(mockRepo.getSubject).mockResolvedValueOnce(freshData as any);
 

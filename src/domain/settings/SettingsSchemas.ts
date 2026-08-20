@@ -46,7 +46,6 @@ export const SettingsFormSchema = z.object({
         message: "代理格式不正确，支持 http/https/socks5 协议或 host:port 格式",
       },
     )
-    .nullable()
     .or(z.literal("")),
   aiConfigs: z.array(AiConfigSchema).nullable().optional(),
   maxDownloadSpeed: z

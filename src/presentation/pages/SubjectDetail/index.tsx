@@ -130,7 +130,6 @@ function SubjectDetailView({
         subject={detail.info.subject}
         subjectId={subjectId}
         displayName={detail.info.displayName}
-        originalName={detail.info.originalName}
         imageUrl={detail.info.imageUrl}
       />
 

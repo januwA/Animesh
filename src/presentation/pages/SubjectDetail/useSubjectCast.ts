@@ -33,16 +33,10 @@ export function consolidateStaff(
     if (entry) {
       entry.relations.push(p.relation);
     } else {
-      const image =
-        p.images.large ||
-        p.images.medium ||
-        p.images.small ||
-        p.images.grid ||
-        "";
       personMap.set(p.id, {
         id: p.id,
         name: p.name,
-        image,
+        image: p.image,
         relations: [p.relation],
         eps: p.eps,
       });

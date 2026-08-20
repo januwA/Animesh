@@ -745,7 +745,7 @@ mod tests {
     }
 
     #[test]
-    fn 测试_读取合法MKV_应解析出字幕轨道_媒体信息_与空章节() {
+    fn 测试_读取合法_mkv_应解析出字幕轨道_媒体信息_与空章节() {
         let mkv = build_test_mkv(false);
         let result = extract_video_metadata_from_reader(std::io::Cursor::new(mkv), true);
         assert!(result.is_ok());
@@ -769,7 +769,7 @@ mod tests {
     }
 
     #[test]
-    fn 测试_读取含章节元素的合法MKV_应解析出章节时间与标题() {
+    fn 测试_读取含章节元素的合法_mkv_应解析出章节时间与标题() {
         let mkv = build_test_mkv(true);
         let result = extract_video_metadata_from_reader(std::io::Cursor::new(mkv), true);
         assert!(result.is_ok());
@@ -785,7 +785,7 @@ mod tests {
     }
 
     #[test]
-    fn 测试_UTF8轨道内嵌ASS定位标签_提取VTT时应被剥离() {
+    fn 测试_utf8轨道内嵌_ass定位标签_提取_vtt时应被剥离() {
         // 复现 bug：压制组把 SRT 轨道以 S_TEXT/UTF8 封装进 MKV，
         // 但字幕文本里仍然带有 ASS override 标签 `{\an8}`。
         // 之前的代码只在 codec 为 S_TEXT/ASS/SSA 时才调用 strip_ass_tags，
@@ -804,7 +804,7 @@ mod tests {
     }
 
     #[test]
-    fn 测试_读取含WebVTT字幕轨道的合法MKV_应列出轨道并提取字幕() {
+    fn 测试_读取含_web_vtt字幕轨道的合法_mkv_应列出轨道并提取字幕() {
         let mkv = build_test_mkv_webvtt();
         let metadata =
             extract_video_metadata_from_reader(std::io::Cursor::new(mkv.clone()), true).unwrap();
@@ -818,7 +818,7 @@ mod tests {
     }
 
     #[test]
-    fn 测试_date_utc纳秒转Unix秒() {
+    fn 测试_date_utc纳秒转_unix秒() {
         // 2001-01-01T00:00:00Z 本身
         assert_eq!(date_utc_ns_to_unix_secs(0), 978_307_200);
         // 2001-01-01T00:00:01Z

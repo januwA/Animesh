@@ -10,7 +10,7 @@ import type { UseSubjectCastDeps } from "./useSubjectCast";
 import { consolidateStaff, useSubjectCast } from "./useSubjectCast";
 
 const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
-  images: { small: "", grid: "", large: "", medium: "" },
+  image: "",
   name: "木村拓",
   relation: "导演",
   career: ["producer"],
@@ -21,12 +21,7 @@ const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
 });
 
 const makeCharacter = (): BangumiCharacter => ({
-  images: {
-    small: "",
-    grid: "",
-    large: "http://example.com/large.jpg",
-    medium: "",
-  },
+  image: "http://example.com/large.jpg",
   name: "ヤニねこ",
   summary: "主角猫",
   relation: "主角",
@@ -116,12 +111,7 @@ describe("consolidateStaff 制作人员去重", () => {
   it("优先选择 large 图片", () => {
     const staff = consolidateStaff([
       makePerson({
-        images: {
-          small: "small",
-          grid: "grid",
-          large: "large",
-          medium: "medium",
-        },
+        image: "large",
       }),
     ]);
     expect(staff[0].image).toBe("large");

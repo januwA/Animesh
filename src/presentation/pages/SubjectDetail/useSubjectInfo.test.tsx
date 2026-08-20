@@ -9,18 +9,10 @@ import { useSubjectInfo } from "./useSubjectInfo";
 
 const makeSubject = (): BangumiSubject => ({
   id: 123,
-  name: "Test Anime",
-  name_cn: "测试动漫",
+  name: "测试动漫",
   summary: "简介",
-  images: {
-    large: "http://example.com/large.jpg",
-    common: "",
-    medium: "",
-    small: "",
-    grid: "",
-  },
-  rating: { score: 8.5, rank: 42, total: 100 },
-  collection: { doing: 200 },
+  image: "http://example.com/large.jpg",
+  rating: 8.5,
   date: "2026-07-01",
   eps: 12,
   platform: "TV",
@@ -63,30 +55,14 @@ describe("useSubjectInfo 条目信息 hook", () => {
     const { result } = renderInfo(deps);
 
     await waitFor(() => {
-      expect(result.current.subject?.name_cn).toBe("测试动漫");
+      expect(result.current.subject?.name).toBe("测试动漫");
     });
     expect(result.current.displayName).toBe("测试动漫");
-    expect(result.current.originalName).toBe("Test Anime");
     expect(result.current.imageUrl).toBe("http://example.com/large.jpg");
     expect(deps.getBangumiSubjectUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       NonEmptyStringSchema.parse("123"),
     );
-  });
-
-  it("无中文名时 displayName 回退到原名且不显示 originalName", async () => {
-    const deps = makeDeps({
-      getBangumiSubjectUseCase: {
-        execute: vi.fn().mockResolvedValue({ ...makeSubject(), name_cn: "" }),
-      },
-    });
-    const { result } = renderInfo(deps);
-
-    await waitFor(() => {
-      expect(result.current.displayName).toBe("Test Anime");
-    });
-    expect(result.current.subject?.name_cn).toBe("");
-    expect(result.current.originalName).toBe("");
   });
 
   it("条目加载失败时暴露错误并使用 location.state 回退", async () => {

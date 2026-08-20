@@ -35,8 +35,8 @@ export function useCalendarPage(deps: UseCalendarPageDeps) {
       navigate(`/subject/${item.id}`, {
         viewTransition: true,
         state: {
-          name: item.name_cn || item.name,
-          imageUrl: item.images?.large,
+          name: item.name,
+          imageUrl: item.image,
         },
       });
     },

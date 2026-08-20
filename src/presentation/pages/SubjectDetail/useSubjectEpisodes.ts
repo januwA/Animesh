@@ -77,9 +77,8 @@ export function useSubjectEpisodes(
   const handleEpisodeClick = (episode: BangumiEpisode) => {
     /* v8 ignore start */
     if (!subject) return;
-    const name = subject.name_cn || subject.name;
     const epNum = String(episode.sort).padStart(2, "0");
-    navigate(`/?keyword=${encodeURIComponent(`${name} ${epNum}`)}`);
+    navigate(`/?keyword=${encodeURIComponent(`${subject.name} ${epNum}`)}`);
     /* v8 ignore stop */
   };
 

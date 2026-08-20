@@ -1,4 +1,4 @@
-import { Calendar, Clock, Loader2, Star, Tv, Users } from "lucide-react";
+import { Calendar, Clock, Loader2, Star, Tv } from "lucide-react";
 import type { CSSProperties } from "react";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import { Badge } from "@/presentation/components/ui/badge";
@@ -8,7 +8,6 @@ export interface SubjectInfoCardProps {
   subject: BangumiSubject | undefined;
   subjectId: number;
   displayName: string;
-  originalName: string;
   imageUrl: string | undefined;
 }
 
@@ -16,7 +15,6 @@ export function SubjectInfoCard({
   subject,
   subjectId,
   displayName,
-  originalName,
   imageUrl,
 }: SubjectInfoCardProps) {
   return (
@@ -82,11 +80,6 @@ export function SubjectInfoCard({
           <h1 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
             {displayName}
           </h1>
-          {originalName && (
-            <p className="text-sm md:text-base text-muted-foreground italic font-normal">
-              {originalName}
-            </p>
-          )}
         </div>
 
         {/* Ratings / Stats / Loading Status */}
@@ -103,60 +96,18 @@ export function SubjectInfoCard({
           </div>
         ) : (
           <div className="flex flex-wrap gap-6 items-center pt-2">
-            {subject.rating && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                  {" "}
-                  {/* style-ignore */}
-                  <Star className="h-6 w-6 fill-current" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-amber-500">
-                    {subject.rating.score.toFixed(1)}
-                  </div>
-                  {subject.rating.total ? (
-                    <div
-                      data-testid="rating-total"
-                      className="text-xs text-muted-foreground"
-                    >
-                      {subject.rating.total} 人评分
-                    </div>
-                  ) : null}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center h-12 w-12 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                {" "}
+                {/* style-ignore */}
+                <Star className="h-6 w-6 fill-current" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-amber-500">
+                  {subject.rating.toFixed(1)}
                 </div>
               </div>
-            )}
-
-            {subject.rating?.rank ? (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 text-primary border border-primary/20">
-                  <Tv className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-primary">
-                    Rank #{subject.rating.rank}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Bangumi 排名
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {subject.collection?.doing != null && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-green-500/10 text-green-500 border border-green-500/20">
-                  {" "}
-                  {/* style-ignore */}
-                  <Users className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-green-500">
-                    {subject.collection.doing.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-muted-foreground">人在看</div>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         )}
       </div>

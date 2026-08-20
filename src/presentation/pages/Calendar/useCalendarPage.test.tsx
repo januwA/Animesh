@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
+import type { BangumiCalendarItem } from "@/domain/bangumi/BangumiSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseCalendarPageDeps } from "./useCalendarPage";
 import { useCalendarPage } from "./useCalendarPage";
@@ -92,11 +93,10 @@ describe("useCalendarPage 日历页面 hook", () => {
     const mockItem = {
       id: 123,
       url: "http://example.com/123",
-      name: "Test Anime",
-      name_cn: "测试动漫",
+      name: "测试动漫",
       air_date: "2026-01-01",
       air_weekday: 1,
-      images: { large: "http://example.com/cover.jpg" },
+      image: "http://example.com/cover.jpg",
     };
 
     act(() => {
@@ -118,13 +118,13 @@ describe("useCalendarPage 日历页面 hook", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    const mockItem = {
+    const mockItem: BangumiCalendarItem = {
       id: 456,
       url: "http://example.com/456",
       name: "Raw Anime",
-      name_cn: "",
-      air_date: "2026-01-02",
       air_weekday: 2,
+      image: "",
+      rating: 0,
     };
 
     act(() => {
@@ -134,7 +134,7 @@ describe("useCalendarPage 日历页面 hook", () => {
     expect(lastNavigation.current?.pathname).toBe("/subject/456");
     expect(lastNavigation.current?.state).toEqual({
       name: "Raw Anime",
-      imageUrl: undefined,
+      imageUrl: "",
     });
   });
 

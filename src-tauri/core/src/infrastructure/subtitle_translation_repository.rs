@@ -179,12 +179,6 @@ mod tests {
         }
     }
 
-    fn sample_record_with_id(id: &str, vtt: &str) -> SubtitleTranslationRecord {
-        let mut record = sample_record(vtt);
-        record.id = id.to_string();
-        record
-    }
-
     #[tokio::test]
     #[allow(non_snake_case)]
     async fn 测试_空库getById返回None() {
@@ -261,7 +255,7 @@ mod tests {
     #[allow(non_snake_case)]
     async fn 测试_多条独立记录互不影响() {
         let repo = setup().await;
-        let mut rec1 = sample_record("用 Default 翻译");
+        let rec1 = sample_record("用 Default 翻译");
         let mut rec2 = sample_record("用 Custom 翻译");
         rec2.id = "00000000-0000-4000-8000-000000000003".to_string();
 
@@ -290,7 +284,7 @@ mod tests {
     #[allow(non_snake_case)]
     async fn 测试_list_by_torrent返回所有记录且不含vtt() {
         let repo = setup().await;
-        let mut rec1 = sample_record("译文1");
+        let rec1 = sample_record("译文1");
         let mut rec2 = sample_record("译文2");
         rec2.id = "00000000-0000-4000-8000-000000000004".to_string();
         rec2.target_lang = "en".to_string();
@@ -343,7 +337,7 @@ mod tests {
     #[allow(non_snake_case)]
     async fn 测试_delete_by_torrent批量删除() {
         let repo = setup().await;
-        let mut rec1 = sample_record("1");
+        let rec1 = sample_record("1");
         let mut rec2 = sample_record("2");
         rec2.id = "00000000-0000-4000-8000-000000000008".to_string();
         rec2.target_lang = "en".to_string();
@@ -369,7 +363,7 @@ mod tests {
     #[allow(non_snake_case)]
     async fn 测试_delete_by_info_hash清掉整颗种子所有记录() {
         let repo = setup().await;
-        let mut k1 = sample_record("file1-track2");
+        let k1 = sample_record("file1-track2");
         let mut k2 = sample_record("file2-track2");
         k2.id = "00000000-0000-4000-8000-00000000000a".to_string();
         k2.file_id = 2;

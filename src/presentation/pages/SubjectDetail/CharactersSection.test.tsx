@@ -6,12 +6,7 @@ import { CharactersSection } from "./CharactersSection";
 const makeCharacter = (
   overrides: Partial<BangumiCharacter> = {},
 ): BangumiCharacter => ({
-  images: {
-    small: "",
-    grid: "",
-    large: "http://example.com/large.jpg",
-    medium: "",
-  },
+  image: "http://example.com/large.jpg",
   name: "ヤニねこ",
   summary: "主角猫",
   relation: "主角",
@@ -19,7 +14,7 @@ const makeCharacter = (
   id: 174916,
   actors: [
     {
-      images: { small: "", grid: "", large: "", medium: "" },
+      image: "",
       name: "夏吉ゆうこ",
       short_summary: "声优",
       career: ["seiyu"],
