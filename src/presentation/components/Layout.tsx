@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import type { UseGlobalEffectsDeps } from "../hooks/useGlobalEffects";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
-import { AppNavBar, PageLoader } from "./AppComponents";
+import { PageLoader } from "./AppComponents";
+import { AppNavBar } from "./AppNavBar";
 
 export function NavBarLayout() {
   return (
