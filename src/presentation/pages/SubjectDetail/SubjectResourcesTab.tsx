@@ -1,6 +1,6 @@
 import { Download, FolderOpen, Unlink } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { Button } from "@/presentation/components/ui/button";
@@ -36,14 +36,7 @@ export function SubjectResourcesTab({
   onBind,
   onUnbind,
 }: SubjectResourcesTabProps) {
-  const navigate = useNavigate();
   const [bindOpen, setBindOpen] = useState(false);
-
-  const handleOpenTorrent = (torrent: TorrentStatusInfo) => {
-    navigate(
-      `/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name)}`,
-    );
-  };
 
   const handleUnbind = (infoHash: NonEmptyString) => {
     onUnbind(infoHash);
@@ -84,11 +77,10 @@ export function SubjectResourcesTab({
               key={torrent.info_hash}
               className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card transition-colors hover:bg-muted/30"
             >
-              <button
-                type="button"
+              <Link
                 data-testid="bound-torrent-row"
                 className="flex-1 min-w-0 text-left flex items-center gap-3"
-                onClick={() => handleOpenTorrent(torrent)}
+                to={`/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name)}`}
               >
                 <FolderOpen className="h-4 w-4 text-primary shrink-0" />
                 <span className="min-w-0 flex flex-col gap-0.5">
@@ -99,7 +91,7 @@ export function SubjectResourcesTab({
                     {torrent.info_hash}
                   </span>
                 </span>
-              </button>
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"

@@ -31,10 +31,6 @@ export function useTorrentDetailPage(
     [magnet, infoHash, title, resolveTorrentUseCase],
   );
 
-  const handleBack = () => {
-    navigate(-1);
-  };
-
   const handleStartPlayback = (
     info_hash: string,
     fileId: number,
@@ -55,7 +51,6 @@ export function useTorrentDetailPage(
     loading,
     error,
     refetch,
-    handleBack,
     handleStartPlayback,
   };
 }

@@ -1,11 +1,10 @@
-import { ArrowLeft } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import type { ResolveTorrentUseCase } from "@/application/torrent/ResolveTorrentUseCase";
 import { useDI } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
+import { BackButton } from "@/presentation/components/BackButton";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
-import { Button } from "@/presentation/components/ui/button";
 import { TorrentDetailContent } from "./TorrentDetailContent";
 import { useTorrentDetailPage } from "./useTorrentDetailPage";
 
@@ -54,28 +53,15 @@ function TorrentDetailView({
   infoHash,
   resolveTorrentUseCase,
 }: TorrentDetailParams & { resolveTorrentUseCase: ResolveTorrentUseCase }) {
-  const navigate = useNavigate();
   const { torrent, loading, error, refetch, handleStartPlayback } =
     useTorrentDetailPage(
       { magnet, infoHash, title },
       { resolveTorrentUseCase },
     );
 
-  const handleBack = () => {
-    navigate(-1);
-  };
-
   return (
     <div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleBack}
-        className="gap-2 text-muted-foreground hover:text-foreground w-fit"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        返回
-      </Button>
+      <BackButton />
 
       <TorrentDetailContent
         torrent={torrent}

@@ -1,5 +1,5 @@
 import { ExternalLink, Loader2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { Button } from "@/presentation/components/ui/button";
@@ -20,7 +20,6 @@ export default function Downloads() {
 }
 
 function DownloadsView() {
-  const navigate = useNavigate();
   const { pauseTorrentUseCase, resumeTorrentUseCase, deleteTorrentUseCase } =
     useDI();
   const { torrents, isLoading } = useTorrentStatus();
@@ -77,8 +76,8 @@ function DownloadsView() {
               您可以在首页搜索资源，点击"边下边播"或者"复制磁力"解析后开始下载。
             </EmptyDescription>
           </EmptyContent>
-          <Button onClick={() => navigate("/")} size="sm">
-            前往搜索视频
+          <Button asChild size="sm">
+            <Link to="/">前往搜索视频</Link>
           </Button>
         </Empty>
       ) : (
@@ -99,9 +98,11 @@ function DownloadsView() {
                     className="shrink-0"
                     aria-label="查看条目"
                     title="查看条目"
-                    onClick={() => navigate(`/subject/${group.subjectId}`)}
+                    asChild
                   >
-                    <ExternalLink className="h-3.5 w-3.5" />
+                    <Link to={`/subject/${group.subjectId}`}>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
                   </Button>
                 }
               >

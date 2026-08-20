@@ -66,21 +66,6 @@ describe("useCollectionsPage 收藏页面 hook", () => {
     });
   });
 
-  it("handleNavigateToCalendar 应该导航到 /calendar", async () => {
-    const deps = makeDeps();
-    const { result } = renderUseCollectionsPage(deps);
-
-    await waitFor(() => {
-      expect(result.current.items).toEqual([]);
-    });
-
-    act(() => {
-      result.current.handleNavigateToCalendar();
-    });
-
-    expect(lastNavigation.current?.pathname).toBe("/calendar");
-  });
-
   it("handleItemClick 应该导航到 subject 页面并传递名称与封面", async () => {
     const deps = makeDeps();
     const { result } = renderUseCollectionsPage(deps);

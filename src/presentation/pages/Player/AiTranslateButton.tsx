@@ -1,5 +1,5 @@
 import { Languages } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import { Button } from "@/presentation/components/ui/button";
 
@@ -16,23 +16,21 @@ export function AiTranslateButton({
   title,
   fileName,
 }: AiTranslateButtonProps) {
-  const navigate = useNavigate();
-
   return (
     <Button
       variant="ghost"
       size="sm"
-      onClick={() =>
-        navigate(
-          `/play/${infoHash}/${fileId}/ai-subtitle?title=${encodeURIComponent(
-            title,
-          )}&fileName=${encodeURIComponent(fileName)}`,
-        )
-      }
+      asChild
       className="h-8 gap-1 text-muted-foreground hover:text-foreground"
     >
-      <Languages className="h-3.5 w-3.5" />
-      AI 翻译
+      <Link
+        to={`/play/${infoHash}/${fileId}/ai-subtitle?title=${encodeURIComponent(
+          title,
+        )}&fileName=${encodeURIComponent(fileName)}`}
+      >
+        <Languages className="h-3.5 w-3.5" />
+        AI 翻译
+      </Link>
     </Button>
   );
 }

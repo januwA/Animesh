@@ -48,7 +48,7 @@ const defaultProps = () => ({
   onUnbind: vi.fn() as (infoHash: NonEmptyString) => void,
 });
 
-/** SubjectResourcesTab uses useNavigate, so we need a router wrapper */
+/** SubjectResourcesTab uses Link, so we need a router wrapper */
 const renderWithRouter = (props: ReturnType<typeof defaultProps>) => {
   const router = createMemoryRouter(
     [

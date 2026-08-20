@@ -1,4 +1,5 @@
 import { Heart } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
@@ -12,8 +13,9 @@ import { useCollectionsPage } from "./useCollectionsPage";
 
 export default function Collections() {
   const { getCollectionsUseCase } = useDI();
-  const { items, handleNavigateToCalendar, handleItemClick } =
-    useCollectionsPage({ getCollectionsUseCase });
+  const { items, handleItemClick } = useCollectionsPage({
+    getCollectionsUseCase,
+  });
 
   return (
     <div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">
@@ -45,12 +47,8 @@ export default function Collections() {
           <EmptyContent>
             <EmptyTitle>还没有收藏任何条目</EmptyTitle>
           </EmptyContent>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNavigateToCalendar}
-          >
-            去新番日历看看
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/calendar">去新番日历看看</Link>
           </Button>
         </Empty>
       )}

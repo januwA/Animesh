@@ -1,6 +1,7 @@
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
+import { BackButton } from "@/presentation/components/BackButton";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Badge } from "@/presentation/components/ui/badge";
@@ -14,7 +15,6 @@ import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { CharactersSection } from "./CharactersSection";
 import { EpisodesSection } from "./EpisodesSection";
 import { StaffSection } from "./StaffSection";
-import { SubjectBackButton } from "./SubjectBackButton";
 import { SubjectInfoCard } from "./SubjectInfoCard";
 import { SubjectNavigationHeader } from "./SubjectNavigationHeader";
 import { SubjectResourcesTab } from "./SubjectResourcesTab";
@@ -102,7 +102,7 @@ function SubjectDetailView({
   if (detail.info.subjectQuery.error) {
     return (
       <div className="space-y-4">
-        <SubjectBackButton onBack={detail.info.handleBack} />
+        <BackButton onBack={detail.info.handleBack} />
         <ErrorState
           title="获取动漫详情失败"
           message={detail.info.subjectQuery.error}

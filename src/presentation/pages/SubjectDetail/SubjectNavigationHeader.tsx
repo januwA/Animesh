@@ -3,8 +3,8 @@ import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUse
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import { BackButton } from "@/presentation/components/BackButton";
 import { FavoriteButton } from "@/presentation/components/FavoriteButton";
-import { SubjectBackButton } from "./SubjectBackButton";
 
 export interface SubjectNavigationHeaderProps {
   subject: BangumiSubject | undefined;
@@ -27,7 +27,7 @@ export function SubjectNavigationHeader({
 }: SubjectNavigationHeaderProps) {
   return (
     <div className="flex items-center justify-between">
-      <SubjectBackButton onBack={onBack} />
+      <BackButton onBack={onBack} />
 
       <div className="flex items-center gap-1">
         {subject && (

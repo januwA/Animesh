@@ -15,10 +15,6 @@ export function useCollectionsPage(deps: UseCollectionsPageDeps) {
   );
   const items = data ?? [];
 
-  const handleNavigateToCalendar = () => {
-    navigate("/calendar");
-  };
-
   const handleItemClick = (item: {
     subjectId: number;
     name: string;
@@ -35,7 +31,6 @@ export function useCollectionsPage(deps: UseCollectionsPageDeps) {
 
   return {
     items,
-    handleNavigateToCalendar,
     handleItemClick,
   };
 }

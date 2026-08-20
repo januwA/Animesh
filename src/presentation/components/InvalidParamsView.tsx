@@ -1,7 +1,5 @@
-import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import type { z } from "zod";
-import { Button } from "@/presentation/components/ui/button";
+import { BackButton } from "@/presentation/components/BackButton";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 
 interface InvalidParamsViewProps {
@@ -13,8 +11,6 @@ export function InvalidParamsView({
   error,
   title = "无效的路由参数",
 }: InvalidParamsViewProps) {
-  const navigate = useNavigate();
-
   return (
     <div className="w-full flex items-center justify-center py-16">
       <Card className="w-full max-w-md bg-muted/50 border-border">
@@ -27,15 +23,7 @@ export function InvalidParamsView({
               </li>
             ))}
           </ul>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-1 w-fit"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            返回
-          </Button>
+          <BackButton variant="outline" className="mt-1 w-fit" />
         </CardContent>
       </Card>
     </div>

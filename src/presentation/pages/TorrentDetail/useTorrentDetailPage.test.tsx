@@ -74,7 +74,7 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
     expect(result.current.loading).toBe(false);
   });
 
-  it("应该返回 handleStartPlayback 和 handleBack 函数", async () => {
+  it("应该返回 handleStartPlayback 函数", async () => {
     const deps = makeDeps();
 
     const { result } = renderUseTorrentDetailPage(
@@ -85,22 +85,8 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
-  });
 
-  it("handleBack 应该调用 navigate(-1)", async () => {
-    const deps = makeDeps();
-    const { result } = renderUseTorrentDetailPage(
-      { title: NonEmptyStringSchema.parse("测试种子") },
-      deps,
-    );
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-
-    act(() => {
-      result.current.handleBack();
-    });
+    expect(result.current.handleStartPlayback).toBeTypeOf("function");
   });
 
   it("handleStartPlayback 应该调用 navigate 并传递正确的 URL", async () => {

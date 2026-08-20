@@ -30,16 +30,16 @@ describe("AiTranslateButton AI 翻译按钮组件", () => {
     return render(<RouterProvider router={router} />);
   };
 
-  it("应该渲染 AI 翻译按钮", () => {
+  it("应该渲染 AI 翻译链接", () => {
     renderButton();
 
-    expect(screen.getByRole("button", { name: /AI 翻译/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /AI 翻译/ })).toBeInTheDocument();
   });
 
-  it("点击按钮时应该携带标题参数跳转到 AI 字幕翻译页面", () => {
+  it("点击链接时应该携带标题参数跳转到 AI 字幕翻译页面", () => {
     renderButton();
 
-    fireEvent.click(screen.getByRole("button", { name: /AI 翻译/ }));
+    fireEvent.click(screen.getByRole("link", { name: /AI 翻译/ }));
 
     expect(screen.getByText("AI 字幕翻译页")).toBeInTheDocument();
   });

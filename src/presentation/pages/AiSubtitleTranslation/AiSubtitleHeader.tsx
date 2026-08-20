@@ -1,5 +1,5 @@
-import { ArrowLeft, Sparkles } from "lucide-react";
-import { Button } from "@/presentation/components/ui/button";
+import { Sparkles } from "lucide-react";
+import { BackButton } from "@/presentation/components/BackButton";
 
 export interface AiSubtitleHeaderProps {
   title: string;
@@ -10,15 +10,7 @@ export function AiSubtitleHeader({ title, onBack }: AiSubtitleHeaderProps) {
   return (
     <>
       <div className="flex items-center justify-between">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="gap-2 text-muted-foreground hover:text-foreground w-fit"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          返回播放器
-        </Button>
+        <BackButton label="返回" onBack={onBack} />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{title}</span>
         </div>
