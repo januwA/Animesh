@@ -32,13 +32,7 @@ export function SubjectNavigationHeader({
       <div className="flex items-center gap-1">
         {subject && (
           <FavoriteButton
-            subject={{
-              // v8 ignore start
-              subjectId: subject.id,
-              name: subject.name,
-              imageUrl: subject.image,
-              // v8 ignore stop
-            }}
+            subject={subject}
             showLabel={false}
             getFavoriteStatusUseCase={getFavoriteStatusUseCase}
             addFavoriteUseCase={addFavoriteUseCase}

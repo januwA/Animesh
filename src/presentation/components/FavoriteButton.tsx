@@ -3,17 +3,12 @@ import { useState } from "react";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
+import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { Button } from "./ui/button";
 
-export interface FavoriteButtonSubject {
-  subjectId: number;
-  name: string;
-  imageUrl: string | null;
-}
-
 interface FavoriteButtonProps {
-  subject: FavoriteButtonSubject;
+  subject: BangumiSubject;
   showLabel?: boolean;
   getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;
   addFavoriteUseCase: Pick<AddFavoriteUseCase, "execute">;
@@ -28,8 +23,8 @@ export function FavoriteButton({
   removeFavoriteUseCase,
 }: FavoriteButtonProps) {
   const { data, loading, refetch } = useQuery(
-    () => getFavoriteStatusUseCase.execute(subject.subjectId),
-    [getFavoriteStatusUseCase, subject.subjectId],
+    () => getFavoriteStatusUseCase.execute(subject.id),
+    [getFavoriteStatusUseCase, subject.id],
     {
       onSuccess: () => setOptimistic(null),
     },
@@ -43,12 +38,12 @@ export function FavoriteButton({
     setOptimistic(next);
     if (next) {
       await addFavoriteUseCase.execute({
-        subjectId: subject.subjectId,
+        subjectId: subject.id,
         name: subject.name,
-        imageUrl: subject.imageUrl,
+        imageUrl: subject.image,
       });
     } else {
-      await removeFavoriteUseCase.execute(subject.subjectId);
+      await removeFavoriteUseCase.execute(subject.id);
     }
     refetch();
   };

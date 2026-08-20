@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
+import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import { FavoriteButton } from "./FavoriteButton";
 
 type FavoriteDeps = {
@@ -31,11 +32,10 @@ function renderButton(deps: FavoriteDeps = createDeps()) {
   );
 }
 
-const mockSubject = {
-  subjectId: 101,
-  name: "Original Name",
-  nameCn: "中文名称",
-  imageUrl: "https://example.com/image.jpg",
+const mockSubject: BangumiSubject = {
+  id: 101,
+  name: "中文名称",
+  image: "https://example.com/image.jpg",
   rating: 8.5,
   platform: "TV",
   date: "2026-07-01",
