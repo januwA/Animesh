@@ -11,6 +11,9 @@ import {
   BangumiPersonsResponseSchema,
   type BangumiSubject,
   BangumiSubjectSchema,
+  type BangumiSubjectSearchParams,
+  BangumiSubjectSearchResponseSchema,
+  type BangumiSubjectSearchResult,
 } from "../../domain/bangumi/BangumiSchemas";
 import type { HttpClient } from "../http/HttpClient";
 
@@ -136,6 +139,44 @@ export class HttpBangumiRepository implements BangumiRepository {
     const result = BangumiCharactersResponseSchema.safeParse(data);
     if (!result.success) {
       throw new Error("Characters API response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  async searchSubjects(
+    ctx: Context,
+    params: BangumiSubjectSearchParams,
+  ): Promise<BangumiSubjectSearchResult> {
+    let raw: unknown;
+    try {
+      const response = await this.client.request(
+        `https://api.bgm.tv/v0/search/subjects?limit=${params.limit}&offset=${params.offset}`,
+        {
+          ctx,
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            keyword: params.keyword,
+            filter: { type: [2], nsfw: false },
+          }),
+        },
+      );
+      raw = await response.json();
+    } catch (err: unknown) {
+      if (ctx.err() && err === ctx.err()) {
+        throw err;
+      }
+      throw new Error("Failed to search subjects", { cause: err });
+    }
+
+    const result = BangumiSubjectSearchResponseSchema.safeParse(raw);
+    if (!result.success) {
+      throw new Error("Subject search API response structure mismatch", {
         cause: result.error,
       });
     }

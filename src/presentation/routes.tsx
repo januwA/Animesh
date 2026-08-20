@@ -4,15 +4,16 @@ import { useDI } from "@/di/DIContext";
 import { MainLayout, NavBarLayout } from "./components/Layout";
 import TorrentSearch from "./pages/TorrentSearch";
 
+const AiSubtitleTranslation = lazy(
+  () => import("./pages/AiSubtitleTranslation"),
+);
+const BangumiSearch = lazy(() => import("./pages/BangumiSearch"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Collections = lazy(() => import("./pages/Collections"));
 const Downloads = lazy(() => import("./pages/Downloads"));
 const Iptv = lazy(() => import("./pages/Iptv"));
 const LivePlayer = lazy(() => import("./pages/LivePlayer"));
 const Player = lazy(() => import("./pages/Player"));
-const AiSubtitleTranslation = lazy(
-  () => import("./pages/AiSubtitleTranslation"),
-);
 const Settings = lazy(() => import("./pages/Settings"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
 const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
@@ -70,6 +71,10 @@ export const routes: RouteObject[] = [
           {
             path: "calendar",
             element: <Calendar />,
+          },
+          {
+            path: "search",
+            element: <BangumiSearch />,
           },
           {
             path: "collections",

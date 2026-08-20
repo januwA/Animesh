@@ -9,6 +9,7 @@ import {
   BangumiPersonsResponseSchema,
   BangumiPersonsStoredSchema,
   BangumiSubjectSchema,
+  BangumiSubjectSearchResponseSchema,
   BangumiSubjectStoredSchema,
 } from "./BangumiSchemas";
 
@@ -88,6 +89,55 @@ const rawCharacter = {
   type: 1,
   actors: [rawActor],
 };
+
+describe("Bangumi 条目搜索 Schema", () => {
+  it("搜索响应经 transform 后仅保留表现层所需字段", () => {
+    const rawPage = {
+      total: 1,
+      limit: 20,
+      offset: 0,
+      data: [rawSubject],
+    };
+
+    const result = BangumiSubjectSearchResponseSchema.parse(rawPage);
+
+    expect(result).toEqual({
+      items: [
+        {
+          id: 1,
+          name: "动画",
+          summary: "简介",
+          image: images.large,
+          rating: 8.5,
+          date: "2026-01-01",
+          eps: 12,
+          platform: "TV",
+        },
+      ],
+      total: 1,
+    });
+  });
+
+  it("搜索响应会过滤掉多余字段（tags / infobox / rating 原始对象等）", () => {
+    const rawItem = {
+      ...rawSubject,
+      tags: [{ name: "科幻", count: 1 }],
+      infobox: [],
+    };
+    const result = BangumiSubjectSearchResponseSchema.parse({
+      total: 1,
+      limit: 20,
+      offset: 0,
+      data: [rawItem],
+    });
+
+    expect(result.items[0]).not.toHaveProperty("tags");
+    expect(result.items[0]).not.toHaveProperty("infobox");
+    expect(result.items[0]).not.toHaveProperty("name_cn");
+    expect(result.items[0]).not.toHaveProperty("images");
+    expect(result.items[0]).not.toHaveProperty("collection");
+  });
+});
 
 describe("Bangumi 数据缓存 Schema 回读校验", () => {
   it("日历数据：响应 Schema 解析后再用存储 Schema 回读应成功", () => {

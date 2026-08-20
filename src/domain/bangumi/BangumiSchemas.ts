@@ -115,6 +115,34 @@ export const BangumiEpisodesResponseSchema = z.object({
   offset: z.number(),
 });
 
+/** 条目搜索请求参数（POST /v0/search/subjects） */
+export interface BangumiSubjectSearchParams {
+  keyword: string;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * 条目搜索响应 Schema。
+ * Paged_Subject 响应中 data 为完整 Subject，经 transform 后仅暴露表现层所需字段。
+ * API: https://api.bgm.tv/v0/search/subjects
+ */
+export const BangumiSubjectSearchResponseSchema = z
+  .object({
+    total: z.number(),
+    limit: z.number(),
+    offset: z.number(),
+    data: z.array(BangumiSubjectSchema),
+  })
+  .transform((dto) => ({
+    items: dto.data,
+    total: dto.total,
+  }));
+
+export type BangumiSubjectSearchResult = z.infer<
+  typeof BangumiSubjectSearchResponseSchema
+>;
+
 export type BangumiCalendarItem = z.infer<typeof BangumiCalendarItemSchema>;
 export type BangumiCalendarDay = z.infer<typeof BangumiCalendarDaySchema>;
 export type BangumiSubject = z.infer<typeof BangumiSubjectSchema>;

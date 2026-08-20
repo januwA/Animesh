@@ -7,6 +7,7 @@ import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCh
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
+import { SearchBangumiSubjectsUseCase } from "../application/bangumi/SearchBangumiSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
 import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
@@ -107,6 +108,7 @@ export interface DIContainer {
   getBangumiEpisodesUseCase: GetBangumiEpisodesUseCase;
   getBangumiPersonsUseCase: GetBangumiPersonsUseCase;
   getBangumiCharactersUseCase: GetBangumiCharactersUseCase;
+  searchBangumiSubjectsUseCase: SearchBangumiSubjectsUseCase;
   getIptvCountriesUseCase: GetIptvCountriesUseCase;
   getIptvChannelsUseCase: GetIptvChannelsUseCase;
   resolvePlayableStreamUrlUseCase: ResolvePlayableStreamUrlUseCase;
@@ -232,6 +234,9 @@ export function createDefaultDIContainer(): DIContainer {
     bangumiRepository,
     bangumiCache,
   );
+  const searchBangumiSubjectsUseCase = new SearchBangumiSubjectsUseCase(
+    bangumiRepository,
+  );
   const iptvCache = new BrowserIptvCache(cacheStore);
   const iptvRepository = new HttpIptvRepository(httpClient);
   const getIptvCountriesUseCase = new GetIptvCountriesUseCase(
@@ -297,6 +302,7 @@ export function createDefaultDIContainer(): DIContainer {
     getBangumiEpisodesUseCase,
     getBangumiPersonsUseCase,
     getBangumiCharactersUseCase,
+    searchBangumiSubjectsUseCase,
     getIptvCountriesUseCase,
     getIptvChannelsUseCase,
     resolvePlayableStreamUrlUseCase,

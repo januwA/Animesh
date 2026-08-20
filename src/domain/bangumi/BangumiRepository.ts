@@ -6,6 +6,8 @@ import type {
   BangumiEpisodesPage,
   BangumiPerson,
   BangumiSubject,
+  BangumiSubjectSearchParams,
+  BangumiSubjectSearchResult,
 } from "./BangumiSchemas";
 
 export interface BangumiRepository {
@@ -25,4 +27,8 @@ export interface BangumiRepository {
     ctx: Context,
     subjectId: NonEmptyString,
   ): Promise<BangumiCharacter[]>;
+  searchSubjects(
+    ctx: Context,
+    params: BangumiSubjectSearchParams,
+  ): Promise<BangumiSubjectSearchResult>;
 }

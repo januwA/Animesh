@@ -1,5 +1,6 @@
 import {
   Calendar,
+  Clapperboard,
   Download,
   Heart,
   Loader2,
@@ -19,6 +20,7 @@ const iconClass =
 const navItems = [
   { path: "/", label: "搜索", icon: Search },
   { path: "/calendar", label: "新番", icon: Calendar },
+  { path: "/search", label: "动漫", icon: Clapperboard },
   { path: "/collections", label: "收藏", icon: Heart },
   { path: "/downloads", label: "下载", icon: Download },
   { path: "/live", label: "直播", icon: Tv },
