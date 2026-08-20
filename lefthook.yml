@@ -34,8 +34,8 @@ pre-push:
     "前端_函数方法长度检查":
       glob: "src/**/*.{ts,tsx}"
       run: pnpm check:function-length {push_files}
-    "前端_死代码检查":
-      run: pnpm check:dead-code
+    "前端_应用层接入检查":
+      run: pnpm check:use-case-wiring
     "前端_Knip死代码检查":
       run: pnpm knip
     "前端_DI容器架构检查":

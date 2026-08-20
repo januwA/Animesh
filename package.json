@@ -20,7 +20,7 @@
     "check:presentation": "tsx scripts/check-presentation.ts",
     "check:application": "tsx scripts/check-application.ts",
     "check:interface": "tsx scripts/check-interface.ts",
-    "check:dead-code": "tsx scripts/check-dead-code.ts",
+    "check:use-case-wiring": "tsx scripts/check-use-case-wiring.ts",
     "check:tauri-commands": "tsx scripts/check-tauri-commands.ts",
     "check:function-length": "tsx scripts/check-function-length.ts",
     "check:di": "tsx scripts/check-di-container.ts",
