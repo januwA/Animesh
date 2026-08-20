@@ -9,6 +9,8 @@ import {
   BangumiEpisodesResponseSchema,
   type BangumiPerson,
   BangumiPersonsResponseSchema,
+  type BangumiRankedSubject,
+  BangumiRankedSubjectsResponseSchema,
   type BangumiSubject,
   BangumiSubjectSchema,
   type BangumiSubjectSearchParams,
@@ -40,6 +42,35 @@ export class HttpBangumiRepository implements BangumiRepository {
       });
     }
     return result.data;
+  }
+
+  async getRankedSubjects(
+    ctx: Context,
+    year: number,
+    month: number,
+    limit: number,
+  ): Promise<BangumiRankedSubject[]> {
+    let data: unknown;
+    try {
+      // 动画类型 0 为 其他, 1 为 TV, 2 为 OVA, 3 为 Movie, 5 为 WEB
+      data = await this.client.getJson<unknown>(
+        `https://api.bgm.tv/v0/subjects?type=2&cat=1&sort=rank&year=${year}&month=${month}&limit=${limit}`,
+        { ctx },
+      );
+    } catch (err: unknown) {
+      if (ctx.err() && err === ctx.err()) {
+        throw err;
+      }
+      throw new Error("Failed to fetch ranked subjects", { cause: err });
+    }
+
+    const result = BangumiRankedSubjectsResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Ranked subjects API response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data.items;
   }
 
   async getSubject(ctx: Context, subjectId: string): Promise<BangumiSubject> {

@@ -8,6 +8,8 @@ import {
   BangumiEpisodesResponseSchema,
   BangumiPersonsResponseSchema,
   BangumiPersonsStoredSchema,
+  BangumiRankedSubjectsResponseSchema,
+  BangumiRankedSubjectsStoredSchema,
   BangumiSubjectSchema,
   BangumiSubjectSearchResponseSchema,
   BangumiSubjectStoredSchema,
@@ -180,5 +182,49 @@ describe("Bangumi 数据缓存 Schema 回读校验", () => {
     const readBack = BangumiCharactersStoredSchema.safeParse(domain);
     expect(readBack.success).toBe(true);
     expect(readBack.data).toEqual(domain);
+  });
+
+  it("榜单条目：响应 Schema 解析后再用存储 Schema 回读应成功", () => {
+    const rawRanked = {
+      id: 326,
+      name: "Shin Seiki Evangelion",
+      name_cn: "新世纪福音战士",
+      images,
+      rating: { score: 9.1, rank: 1 },
+    };
+    const page = BangumiRankedSubjectsResponseSchema.parse({
+      total: 1,
+      limit: 10,
+      offset: 0,
+      data: [rawRanked],
+    });
+
+    expect(page).toEqual({
+      items: [
+        {
+          id: 326,
+          name: "新世纪福音战士",
+          image: images.large,
+          rating: 9.1,
+          rank: 1,
+        },
+      ],
+      total: 1,
+    });
+
+    const readBack = BangumiRankedSubjectsStoredSchema.safeParse(page.items);
+    expect(readBack.success).toBe(true);
+    expect(readBack.data).toEqual(page.items);
+  });
+
+  it("榜单条目：缺图或评分时回退为空图与 0 分", () => {
+    const page = BangumiRankedSubjectsResponseSchema.parse({
+      total: 1,
+      limit: 10,
+      offset: 0,
+      data: [{ id: 1, name: "Anime", name_cn: "" }],
+    });
+
+    expect(page.items[0]).toMatchObject({ image: "", rating: 0, rank: null });
   });
 });

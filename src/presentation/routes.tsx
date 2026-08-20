@@ -24,6 +24,7 @@ function MainLayoutRoute() {
     requestNotificationPermissionUseCase,
     notifyDownloadCompletionUseCase,
     setThemeUseCase,
+    getBangumiRankedSubjectsUseCase,
   } = useDI();
 
   return (
@@ -33,6 +34,7 @@ function MainLayoutRoute() {
         notifyDownloadCompletionUseCase,
         setThemeUseCase,
       }}
+      wallpaperDeps={{ getBangumiRankedSubjectsUseCase }}
     />
   );
 }

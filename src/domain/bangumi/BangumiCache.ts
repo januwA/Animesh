@@ -5,12 +5,19 @@ import type {
   BangumiCharacter,
   BangumiEpisodesPage,
   BangumiPerson,
+  BangumiRankedSubject,
   BangumiSubject,
 } from "./BangumiSchemas";
 
 export interface BangumiCache {
   getCalendar(ctx: Context): Promise<BangumiCalendarDay[] | null>;
   setCalendar(ctx: Context, calendar: BangumiCalendarDay[]): Promise<void>;
+
+  getRankedSubjects(ctx: Context): Promise<BangumiRankedSubject[] | null>;
+  setRankedSubjects(
+    ctx: Context,
+    subjects: BangumiRankedSubject[],
+  ): Promise<void>;
 
   getSubject(
     ctx: Context,

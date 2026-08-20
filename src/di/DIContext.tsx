@@ -6,6 +6,7 @@ import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCale
 import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCharactersUseCase";
 import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
 import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
+import { GetBangumiRankedSubjectsUseCase } from "../application/bangumi/GetBangumiRankedSubjectsUseCase";
 import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
 import { SearchBangumiSubjectsUseCase } from "../application/bangumi/SearchBangumiSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
@@ -108,6 +109,7 @@ export interface DIContainer {
   getBangumiEpisodesUseCase: GetBangumiEpisodesUseCase;
   getBangumiPersonsUseCase: GetBangumiPersonsUseCase;
   getBangumiCharactersUseCase: GetBangumiCharactersUseCase;
+  getBangumiRankedSubjectsUseCase: GetBangumiRankedSubjectsUseCase;
   searchBangumiSubjectsUseCase: SearchBangumiSubjectsUseCase;
   getIptvCountriesUseCase: GetIptvCountriesUseCase;
   getIptvChannelsUseCase: GetIptvChannelsUseCase;
@@ -234,6 +236,10 @@ export function createDefaultDIContainer(): DIContainer {
     bangumiRepository,
     bangumiCache,
   );
+  const getBangumiRankedSubjectsUseCase = new GetBangumiRankedSubjectsUseCase(
+    bangumiRepository,
+    bangumiCache,
+  );
   const searchBangumiSubjectsUseCase = new SearchBangumiSubjectsUseCase(
     bangumiRepository,
   );
@@ -302,6 +308,7 @@ export function createDefaultDIContainer(): DIContainer {
     getBangumiEpisodesUseCase,
     getBangumiPersonsUseCase,
     getBangumiCharactersUseCase,
+    getBangumiRankedSubjectsUseCase,
     searchBangumiSubjectsUseCase,
     getIptvCountriesUseCase,
     getIptvChannelsUseCase,

@@ -10,6 +10,8 @@ import {
   BangumiEpisodesPageStoredSchema,
   type BangumiPerson,
   BangumiPersonsStoredSchema,
+  type BangumiRankedSubject,
+  BangumiRankedSubjectsStoredSchema,
   type BangumiSubject,
   BangumiSubjectStoredSchema,
 } from "@/domain/bangumi/BangumiSchemas";
@@ -29,6 +31,24 @@ export class BrowserBangumiCache implements BangumiCache {
       "bangumi:calendar",
       calendar,
       new Duration({ days: 7 }).inMilliseconds,
+    );
+  }
+
+  getRankedSubjects(_ctx: Context): Promise<BangumiRankedSubject[] | null> {
+    return this.store.getItem(
+      "bangumi:ranked-subjects",
+      BangumiRankedSubjectsStoredSchema,
+    );
+  }
+
+  setRankedSubjects(
+    _ctx: Context,
+    subjects: BangumiRankedSubject[],
+  ): Promise<void> {
+    return this.store.setItem(
+      "bangumi:ranked-subjects",
+      subjects,
+      new Duration({ days: 1 }).inMilliseconds,
     );
   }
 

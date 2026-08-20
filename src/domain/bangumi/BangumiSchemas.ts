@@ -143,6 +143,51 @@ export type BangumiSubjectSearchResult = z.infer<
   typeof BangumiSubjectSearchResponseSchema
 >;
 
+/**
+ * 榜单条目 Schema — GET /v0/subjects 响应中 data 的条目形状。
+ * 仅保留背景壁纸所需字段，避免缓存存储冗余数据。
+ * API: https://api.bgm.tv/v0/subjects?type=2&sort=rank
+ */
+export const BangumiRankedSubjectSchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
+    name_cn: z.string(),
+    images: BangumiImagesSchema.nullable().optional(),
+    rating: z
+      .object({
+        score: z.number(),
+        rank: z.number().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+  })
+  .transform((dto) => {
+    const { images, name_cn, ...other } = dto;
+    return {
+      ...other,
+      name: dto.name_cn || dto.name,
+      image: dto.images ? dto.images.large || dto.images.medium : "",
+      rating: dto.rating?.score || 0,
+      rank: dto.rating?.rank ?? null,
+    };
+  });
+
+/** GET /v0/subjects 响应 Schema（Paged_Subject 形状），transform 后仅暴露 items。 */
+export const BangumiRankedSubjectsResponseSchema = z
+  .object({
+    total: z.number(),
+    limit: z.number(),
+    offset: z.number(),
+    data: z.array(BangumiRankedSubjectSchema),
+  })
+  .transform((dto) => ({
+    items: dto.data,
+    total: dto.total,
+  }));
+
+export type BangumiRankedSubject = z.infer<typeof BangumiRankedSubjectSchema>;
+
 export type BangumiCalendarItem = z.infer<typeof BangumiCalendarItemSchema>;
 export type BangumiCalendarDay = z.infer<typeof BangumiCalendarDaySchema>;
 export type BangumiSubject = z.infer<typeof BangumiSubjectSchema>;
@@ -307,4 +352,16 @@ export const BangumiCharacterStoredSchema = z.object({
 export const BangumiPersonsStoredSchema = z.array(BangumiPersonStoredSchema);
 export const BangumiCharactersStoredSchema = z.array(
   BangumiCharacterStoredSchema,
+);
+
+export const BangumiRankedSubjectStoredSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  image: z.string(),
+  rating: z.number(),
+  rank: z.number().nullable(),
+});
+
+export const BangumiRankedSubjectsStoredSchema = z.array(
+  BangumiRankedSubjectStoredSchema,
 );

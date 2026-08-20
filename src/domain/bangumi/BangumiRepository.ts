@@ -5,6 +5,7 @@ import type {
   BangumiCharacter,
   BangumiEpisodesPage,
   BangumiPerson,
+  BangumiRankedSubject,
   BangumiSubject,
   BangumiSubjectSearchParams,
   BangumiSubjectSearchResult,
@@ -12,6 +13,13 @@ import type {
 
 export interface BangumiRepository {
   getCalendar(ctx: Context): Promise<BangumiCalendarDay[]>;
+  /** 获取指定类型指定年月的按 rank 排序榜单条目（GET /v0/subjects）。 */
+  getRankedSubjects(
+    ctx: Context,
+    year: number,
+    month: number,
+    limit: number,
+  ): Promise<BangumiRankedSubject[]>;
   getSubject(ctx: Context, subjectId: NonEmptyString): Promise<BangumiSubject>;
   getEpisodes(
     ctx: Context,

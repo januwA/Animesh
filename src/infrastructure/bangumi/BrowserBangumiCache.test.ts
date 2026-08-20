@@ -6,6 +6,8 @@ import {
   BangumiCharactersStoredSchema,
   BangumiEpisodesPageStoredSchema,
   BangumiPersonsStoredSchema,
+  BangumiRankedSubjectSchema,
+  BangumiRankedSubjectsStoredSchema,
   BangumiSubjectSchema,
   BangumiSubjectStoredSchema,
 } from "@/domain/bangumi/BangumiSchemas";
@@ -137,6 +139,34 @@ describe("BrowserBangumiCache 缓存读取", () => {
       `bangumi:characters:${id}`,
       BangumiCharactersStoredSchema,
     );
+  });
+
+  it("getRankedSubjects 应使用存储形状 Schema 校验", () => {
+    vi.mocked(store.getItem).mockResolvedValueOnce(null);
+    const cache = new BrowserBangumiCache(store);
+
+    void cache.getRankedSubjects(Background);
+
+    expect(store.getItem).toHaveBeenCalledWith(
+      "bangumi:ranked-subjects",
+      BangumiRankedSubjectsStoredSchema,
+    );
+  });
+
+  it("setRankedSubjects 应写入榜单缓存", async () => {
+    const cache = new BrowserBangumiCache(createMemoryCacheStore());
+    const ranked = BangumiRankedSubjectSchema.parse({
+      id: 326,
+      name: "Shin Seiki Evangelion",
+      name_cn: "新世纪福音战士",
+      images,
+      rating: { score: 9.1, rank: 1 },
+    });
+
+    await cache.setRankedSubjects(Background, [ranked]);
+    const read = await cache.getRankedSubjects(Background);
+
+    expect(read).toEqual([ranked]);
   });
 
   it("条目写入后再次读取应命中缓存而非返回 null", async () => {
