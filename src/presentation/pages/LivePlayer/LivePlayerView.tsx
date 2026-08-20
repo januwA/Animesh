@@ -88,7 +88,6 @@ export function LivePlayerView({
   );
 
   const handleRecover = useCallback(() => {
-    // v8 ignore next
     if (recoveriesRef.current >= MAX_RECOVERIES) return;
     recoveriesRef.current += 1;
     toast("直播流中断，正在自动重连...");

@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { IptvChannel } from "@/domain/iptv/IptvSchemas";
 import { resetAppStores } from "@/test/store-reset";
@@ -49,9 +49,21 @@ const makeDeps = (
   ...overrides,
 });
 
+const lastNavigation: {
+  current: { pathname: string; search: string; state: unknown } | null;
+} = { current: null };
+const LocationTracker = () => {
+  lastNavigation.current = useLocation();
+  return null;
+};
+
 const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
-  const router = createMemoryRouter([{ path: "/", element: children }]);
-  return <RouterProvider router={router} />;
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <LocationTracker />
+      {children}
+    </MemoryRouter>
+  );
 };
 
 const renderUseIptvPage = (deps: UseIptvPageParams) => {
@@ -124,5 +136,282 @@ describe("useIptvPage IPTV 页面 hook", () => {
     });
 
     expect(result.current.selectCountries[0].code).toBe("CN");
+  });
+
+  it("handleCountryChange 切换到不同国家时应该清空频道和重置分类", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleCountryChange("JP");
+    });
+
+    await waitFor(() => {
+      expect(result.current.iptvSelectedCountry).toBe("JP");
+    });
+  });
+
+  it("handleCountryChange 切换到相同国家时不应该清空频道", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleCountryChange("CN");
+    });
+
+    await waitFor(() => {
+      expect(result.current.iptvSelectedCountry).toBe("CN");
+    });
+  });
+
+  it("handleCategoryChange 应该更新选中的分类", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleCategoryChange("新闻");
+    });
+
+    await waitFor(() => {
+      expect(result.current.iptvSelectedCategory).toBe("新闻");
+    });
+  });
+
+  it("handleCategoryChange 传入空字符串时应该重置为默认分类", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleCategoryChange("");
+    });
+
+    await waitFor(() => {
+      expect(result.current.iptvSelectedCategory).toBe("all");
+    });
+  });
+
+  it("handleChannelClick 应该导航到直播播放页并携带频道参数", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleChannelClick(mockChannels[0]);
+    });
+
+    expect(lastNavigation.current?.pathname).toBe("/live/play");
+    const params = new URLSearchParams(lastNavigation.current?.search ?? "");
+    expect(params.get("url")).toBe("http://example.com/cctv1.m3u8");
+    expect(params.get("name")).toBe("CCTV-1");
+    expect(params.get("logo")).toBe("http://example.com/cctv1.png");
+    expect(params.get("category")).toBe("新闻");
+  });
+
+  it("handleChannelClick 频道缺少 logo 和分类时应该使用空字符串", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleChannelClick({
+        ...mockChannels[1],
+        category: null,
+      } as IptvChannel);
+    });
+
+    expect(lastNavigation.current?.pathname).toBe("/live/play");
+    const params = new URLSearchParams(lastNavigation.current?.search ?? "");
+    expect(params.get("logo")).toBe("");
+    expect(params.get("category")).toBe("");
+  });
+
+  it("filteredChannels 应该按分类过滤频道", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleCategoryChange("新闻");
+    });
+
+    await waitFor(() => {
+      expect(result.current.filteredChannels).toHaveLength(1);
+      expect(result.current.filteredChannels[0].category).toBe("新闻");
+    });
+  });
+
+  it("filteredChannels 应该根据关键词匹配 tvgId", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.setIptvKeyword("cctv1");
+    });
+
+    await waitFor(() => {
+      expect(result.current.filteredChannels).toHaveLength(1);
+      expect(result.current.filteredChannels[0].tvgId).toBe("cctv1");
+    });
+  });
+
+  it("filteredChannels 应该根据关键词匹配 category", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.setIptvKeyword("电影");
+    });
+
+    await waitFor(() => {
+      expect(result.current.filteredChannels).toHaveLength(1);
+      expect(result.current.filteredChannels[0].category).toBe("电影");
+    });
+  });
+
+  it("filteredChannels 频道缺少 tvgId 时应该仍能按分类关键词匹配", async () => {
+    const channelsWithNullTvgId = [
+      {
+        ...mockChannels[0],
+        tvgId: null,
+        name: "Movie Channel",
+        category: "电影",
+      },
+    ] as unknown as IptvChannel[];
+    const deps = makeDeps({
+      getIptvChannelsUseCase: {
+        execute: vi.fn().mockResolvedValue(channelsWithNullTvgId),
+      },
+    });
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.setIptvKeyword("电影");
+    });
+
+    await waitFor(() => {
+      expect(result.current.filteredChannels).toHaveLength(1);
+      expect(result.current.filteredChannels[0].category).toBe("电影");
+    });
+  });
+
+  it("filteredChannels 频道缺少分类时关键词匹配会排除该频道", async () => {
+    const channelsWithNullCategory = [
+      { ...mockChannels[0], category: null, name: "Movie Channel" },
+    ] as unknown as IptvChannel[];
+    const deps = makeDeps({
+      getIptvChannelsUseCase: {
+        execute: vi.fn().mockResolvedValue(channelsWithNullCategory),
+      },
+    });
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.setIptvKeyword("电影");
+    });
+
+    await waitFor(() => {
+      expect(result.current.filteredChannels).toHaveLength(0);
+    });
+  });
+
+  it("获取国家列表失败时应该记录警告日志", async () => {
+    const warnMock = vi.fn();
+    const deps = makeDeps({
+      getIptvCountriesUseCase: {
+        execute: vi.fn().mockRejectedValue(new Error("Network error")),
+      },
+      logger: {
+        withCategory: () => ({
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn: warnMock,
+          error: vi.fn(),
+          withCategory: vi.fn(),
+        }),
+      },
+    });
+
+    renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(warnMock).toHaveBeenCalled();
+    });
+  });
+
+  it("categories 应该返回所有唯一的分类并排序", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await waitFor(() => {
+      expect(result.current.categories).toEqual(["新闻", "电影"]);
+    });
+  });
+
+  it("categories 应该忽略没有分类的频道", async () => {
+    const channelsWithNullCategory = [
+      { ...mockChannels[0], category: "新闻" },
+      { ...mockChannels[1], category: null },
+    ] as unknown as IptvChannel[];
+
+    const deps = makeDeps({
+      getIptvChannelsUseCase: {
+        execute: vi.fn().mockResolvedValue(channelsWithNullCategory),
+      },
+    });
+
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await waitFor(() => {
+      expect(result.current.categories).toEqual(["新闻"]);
+    });
   });
 });

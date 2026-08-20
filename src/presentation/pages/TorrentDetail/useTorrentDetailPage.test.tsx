@@ -1,5 +1,5 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { ResolveTorrentUseCase } from "@/application/torrent/ResolveTorrentUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
@@ -17,8 +17,7 @@ const makeDeps = (
 });
 
 const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
-  const router = createMemoryRouter([{ path: "/", element: children }]);
-  return <RouterProvider router={router} />;
+  return <MemoryRouter initialEntries={["/"]}>{children}</MemoryRouter>;
 };
 
 const renderUseTorrentDetailPage = (
@@ -86,8 +85,40 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
+  });
 
-    expect(typeof result.current.handleStartPlayback).toBe("function");
-    expect(typeof result.current.handleBack).toBe("function");
+  it("handleBack 应该调用 navigate(-1)", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseTorrentDetailPage(
+      { title: NonEmptyStringSchema.parse("测试种子") },
+      deps,
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleBack();
+    });
+  });
+
+  it("handleStartPlayback 应该调用 navigate 并传递正确的 URL", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseTorrentDetailPage(
+      {
+        title: NonEmptyStringSchema.parse("测试种子"),
+        magnet: NonEmptyStringSchema.parse("magnet:?xt=urn:test"),
+      },
+      deps,
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleStartPlayback("abc123", 0, "video.mp4");
+    });
   });
 });

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { WeeklyCalendar } from "./WeeklyCalendar";
@@ -54,6 +54,10 @@ const makeCalendar = (todayId: number): BangumiCalendarDay[] => [
 describe("WeeklyCalendar 周历组件", () => {
   beforeEach(() => {
     resetAppStores();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("应该渲染星期标签和当天的动漫列表", async () => {
@@ -158,5 +162,98 @@ describe("WeeklyCalendar 周历组件", () => {
 
     fireEvent.click(screen.getByTitle("详情: 今天动漫"));
     expect(onAnimeClick).toHaveBeenCalledOnce();
+  });
+
+  it("今天不是当前活跃 tab 时应该显示今天标记圆点", async () => {
+    const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
+    const calendar = makeCalendar(todayId);
+    const labels = ["一", "二", "三", "四", "五", "六", "日"];
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: <WeeklyCalendar calendar={calendar} onAnimeClick={vi.fn()} />,
+      },
+    ]);
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("今天动漫")).toBeInTheDocument();
+    });
+
+    const todayTab = screen.getByRole("tab", { name: labels[todayId - 1] });
+    expect(todayTab).toBeInTheDocument();
+
+    const todayTabButton = todayTab.querySelector('[role="tab"]') || todayTab;
+    expect(todayTabButton.classList.contains("bg-primary")).toBe(false);
+  });
+
+  it("今天是周日时应该激活星期日并展示当日动漫", async () => {
+    vi.spyOn(Date.prototype, "getDay").mockReturnValue(0);
+    const calendar: BangumiCalendarDay[] = [
+      {
+        weekday: { id: 7, en: "Sunday", cn: "星期日", ja: "日曜日" },
+        items: [
+          {
+            id: 3,
+            url: "http://example.com/3",
+            name: "Sunday Anime",
+            name_cn: "周日动漫",
+            air_date: "2026-01-04",
+            air_weekday: 7,
+            rank: 3,
+          },
+        ],
+      },
+    ];
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: <WeeklyCalendar calendar={calendar} onAnimeClick={vi.fn()} />,
+      },
+    ]);
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("周日动漫")).toBeInTheDocument();
+    });
+
+    const sundayTab = screen.getByRole("tab", { name: "日" });
+    const sundayTabButton =
+      sundayTab.querySelector('[role="tab"]') || sundayTab;
+    expect(sundayTabButton.getAttribute("data-state")).toBe("active");
+  });
+
+  it("周历数据中不存在活跃天时应该显示暂无更新", async () => {
+    vi.spyOn(Date.prototype, "getDay").mockReturnValue(3);
+    const calendar: BangumiCalendarDay[] = [
+      {
+        weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
+        items: [
+          {
+            id: 9,
+            url: "http://example.com/9",
+            name: "Monday Anime",
+            name_cn: "周一动漫",
+            air_date: "2026-01-05",
+            air_weekday: 1,
+            rank: 9,
+          },
+        ],
+      },
+    ];
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: <WeeklyCalendar calendar={calendar} onAnimeClick={vi.fn()} />,
+      },
+    ]);
+
+    render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("暂无更新")).toBeInTheDocument();
+    });
   });
 });

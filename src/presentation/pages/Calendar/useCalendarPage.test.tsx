@@ -1,5 +1,5 @@
-import { renderHook, waitFor } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseCalendarPageDeps } from "./useCalendarPage";
@@ -14,9 +14,21 @@ const makeDeps = (
   ...overrides,
 });
 
+const lastNavigation: {
+  current: { pathname: string; state: unknown } | null;
+} = { current: null };
+const LocationTracker = () => {
+  lastNavigation.current = useLocation();
+  return null;
+};
+
 const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
-  const router = createMemoryRouter([{ path: "/", element: children }]);
-  return <RouterProvider router={router} />;
+  return (
+    <MemoryRouter initialEntries={["/"]}>
+      <LocationTracker />
+      {children}
+    </MemoryRouter>
+  );
 };
 
 const renderUseCalendarPage = (deps: UseCalendarPageDeps) => {
@@ -67,5 +79,89 @@ describe("useCalendarPage 日历页面 hook", () => {
     });
 
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it("handleAnimeClick 应该导航到 subject 页面并传递名称与封面", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseCalendarPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const mockItem = {
+      id: 123,
+      url: "http://example.com/123",
+      name: "Test Anime",
+      name_cn: "测试动漫",
+      air_date: "2026-01-01",
+      air_weekday: 1,
+      images: { large: "http://example.com/cover.jpg" },
+    };
+
+    act(() => {
+      result.current.handleAnimeClick(mockItem as any);
+    });
+
+    expect(lastNavigation.current?.pathname).toBe("/subject/123");
+    expect(lastNavigation.current?.state).toEqual({
+      name: "测试动漫",
+      imageUrl: "http://example.com/cover.jpg",
+    });
+  });
+
+  it("handleAnimeClick 无中文名时应该使用原始名称导航", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseCalendarPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const mockItem = {
+      id: 456,
+      url: "http://example.com/456",
+      name: "Raw Anime",
+      name_cn: "",
+      air_date: "2026-01-02",
+      air_weekday: 2,
+    };
+
+    act(() => {
+      result.current.handleAnimeClick(mockItem as any);
+    });
+
+    expect(lastNavigation.current?.pathname).toBe("/subject/456");
+    expect(lastNavigation.current?.state).toEqual({
+      name: "Raw Anime",
+      imageUrl: undefined,
+    });
+  });
+
+  it("日历数据已缓存时应该不重复请求", async () => {
+    const mockCalendar = [
+      {
+        weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
+        items: [],
+      },
+    ];
+    const executeMock = vi.fn().mockResolvedValue(mockCalendar);
+    const deps = makeDeps({
+      getBangumiCalendarUseCase: { execute: executeMock },
+    });
+
+    const { result, rerender } = renderUseCalendarPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.calendar).toEqual(mockCalendar);
+    });
+
+    expect(executeMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rerender();
+    });
+
+    expect(executeMock).toHaveBeenCalledTimes(1);
   });
 });

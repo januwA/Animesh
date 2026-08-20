@@ -58,7 +58,8 @@ export default defineConfig(({ mode }) => {
       setupFiles: "./src/test/setup.ts",
       coverage: {
         provider: "v8",
-        reporter: ["text"],
+        reporter: ["text", "json"],
+        skipFull: true, // 输出的text只显示覆盖未达标的输出
         include: ["src/**/*.{ts,tsx}"],
         exclude: [
           "src/main.tsx",

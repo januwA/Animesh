@@ -84,10 +84,7 @@ export function AppNavBar() {
 export function ErrorBanner({ message }: { message: string }) {
   return (
     <div className="max-w-2xl mx-auto w-full py-4">
-      <Alert
-        variant="destructive"
-        className="bg-destructive/10 border-destructive/20 text-destructive-foreground"
-      >
+      <Alert variant="destructive">
         <AlertTitle className="font-semibold">搜索失败</AlertTitle>
         <AlertDescription className="text-sm">{message}</AlertDescription>
       </Alert>

@@ -166,6 +166,17 @@ describe("useQuery 数据查询 hook", () => {
     unmount();
   });
 
+  it("组件卸载后请求失败时应该忽略错误不更新状态", async () => {
+    const { promise, reject } = deferred<string>();
+    const { unmount } = renderHook(() => useQuery(() => promise, []));
+
+    unmount();
+
+    await act(async () => {
+      reject(new Error("晚到的错误"));
+    });
+  });
+
   it("请求成功后应该触发 onSuccess 回调", async () => {
     const onSuccess = vi.fn();
 
@@ -191,5 +202,42 @@ describe("useQuery 数据查询 hook", () => {
     });
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
     expect(onError.mock.calls[0][0].message).toBe("网络错误");
+  });
+
+  it("非 Error 类型的异常应该被包装为 Error 对象", async () => {
+    const onError = vi.fn();
+
+    const { result } = renderHook(() =>
+      useQuery(() => Promise.reject("字符串错误"), [], { onError }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.error?.message).toBe("字符串错误");
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it("非 Error 类型的数字异常应该被包装为 Error 对象", async () => {
+    const { result } = renderHook(() => useQuery(() => Promise.reject(42), []));
+
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.error?.message).toBe("42");
+  });
+
+  it("非 Error 类型的 undefined 异常应该被包装为 Error 对象", async () => {
+    const { result } = renderHook(() =>
+      useQuery(() => Promise.reject(undefined), []),
+    );
+
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.error?.message).toBe("undefined");
   });
 });
