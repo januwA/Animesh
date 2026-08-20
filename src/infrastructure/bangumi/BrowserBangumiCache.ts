@@ -3,15 +3,15 @@ import { Duration } from "ajanuw-duration";
 import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
 import {
   type BangumiCalendarDay,
-  BangumiCalendarResponseSchema,
+  BangumiCalendarStoredSchema,
   type BangumiCharacter,
-  BangumiCharactersResponseSchema,
+  BangumiCharactersStoredSchema,
   type BangumiEpisodesPage,
-  BangumiEpisodesPageSchema,
+  BangumiEpisodesPageStoredSchema,
   type BangumiPerson,
-  BangumiPersonsResponseSchema,
+  BangumiPersonsStoredSchema,
   type BangumiSubject,
-  BangumiSubjectSchema,
+  BangumiSubjectStoredSchema,
 } from "@/domain/bangumi/BangumiSchemas";
 import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 
@@ -21,10 +21,7 @@ export class BrowserBangumiCache implements BangumiCache {
   constructor(private readonly store: CacheStore) {}
 
   getCalendar(_ctx: Context): Promise<BangumiCalendarDay[] | null> {
-    return this.store.getItem(
-      "bangumi:calendar",
-      BangumiCalendarResponseSchema,
-    );
+    return this.store.getItem("bangumi:calendar", BangumiCalendarStoredSchema);
   }
 
   setCalendar(_ctx: Context, calendar: BangumiCalendarDay[]): Promise<void> {
@@ -38,7 +35,7 @@ export class BrowserBangumiCache implements BangumiCache {
   getSubject(_ctx: Context, subjectId: string): Promise<BangumiSubject | null> {
     return this.store.getItem(
       `bangumi:subject:${subjectId}`,
-      BangumiSubjectSchema,
+      BangumiSubjectStoredSchema,
     );
   }
 
@@ -62,7 +59,7 @@ export class BrowserBangumiCache implements BangumiCache {
   ): Promise<BangumiEpisodesPage | null> {
     return this.store.getItem(
       `bangumi:episodes:${subjectId}:${offset}:${limit}`,
-      BangumiEpisodesPageSchema,
+      BangumiEpisodesPageStoredSchema,
     );
   }
 
@@ -86,7 +83,7 @@ export class BrowserBangumiCache implements BangumiCache {
   ): Promise<BangumiPerson[] | null> {
     return this.store.getItem(
       `bangumi:persons:${subjectId}`,
-      BangumiPersonsResponseSchema,
+      BangumiPersonsStoredSchema,
     );
   }
 
@@ -108,7 +105,7 @@ export class BrowserBangumiCache implements BangumiCache {
   ): Promise<BangumiCharacter[] | null> {
     return this.store.getItem(
       `bangumi:characters:${subjectId}`,
-      BangumiCharactersResponseSchema,
+      BangumiCharactersStoredSchema,
     );
   }
 

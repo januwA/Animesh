@@ -197,3 +197,86 @@ export type BangumiPerson = z.infer<typeof BangumiPersonSchema>;
 export type BangumiCharacter = z.infer<typeof BangumiCharacterSchema>;
 export type BangumiEpisode = z.infer<typeof BangumiEpisodeSchema>;
 export type BangumiEpisodesPage = z.infer<typeof BangumiEpisodesPageSchema>;
+
+// ── 存储形状 Schema（用于缓存回读校验）────────────────────────────────────
+// 响应 Schema 经 transform 后得到领域形状，缓存中保存的正是该领域形状；
+// 因此缓存回读必须用「存储形状 Schema」校验，而不是再次套用带 transform 的响应 Schema，
+// 否则已 transform 的字段（如 name_cn/images/rating）必然校验失败并导致缓存失效。
+export const BangumiCalendarItemStoredSchema = z.object({
+  id: z.number(),
+  url: z.string(),
+  name: z.string(),
+  air_weekday: z.number(),
+  image: z.string(),
+  rating: z.number(),
+});
+
+export const BangumiCalendarDayStoredSchema = z.object({
+  weekday: BangumiWeekdaySchema,
+  items: z.array(BangumiCalendarItemStoredSchema),
+});
+
+export const BangumiCalendarStoredSchema = z.array(
+  BangumiCalendarDayStoredSchema,
+);
+
+export const BangumiSubjectStoredSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  summary: z.string(),
+  image: z.string(),
+  rating: z.number(),
+  date: z.string().nullable().optional(),
+  eps: z.number().nullable().optional(),
+  platform: z.string().nullable().optional(),
+});
+
+export const BangumiEpisodeStoredSchema = z.object({
+  id: z.number(),
+  type: z.number(),
+  sort: z.number(),
+  name: z.string(),
+  duration: z.string().optional().nullable(),
+  airdate: z.string().optional().nullable(),
+  desc: z.string().optional().nullable(),
+});
+
+export const BangumiEpisodesPageStoredSchema = z.object({
+  items: z.array(BangumiEpisodeStoredSchema),
+  total: z.number(),
+});
+
+export const BangumiPersonStoredSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  relation: z.string(),
+  career: z.array(z.string()),
+  type: z.number(),
+  eps: z.string(),
+  image: z.string(),
+});
+
+export const BangumiActorStoredSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  short_summary: z.string(),
+  career: z.array(z.string()),
+  type: z.number(),
+  locked: z.boolean(),
+  image: z.string(),
+});
+
+export const BangumiCharacterStoredSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  summary: z.string(),
+  relation: z.string(),
+  type: z.number(),
+  image: z.string(),
+  actors: z.array(BangumiActorStoredSchema),
+});
+
+export const BangumiPersonsStoredSchema = z.array(BangumiPersonStoredSchema);
+export const BangumiCharactersStoredSchema = z.array(
+  BangumiCharacterStoredSchema,
+);
