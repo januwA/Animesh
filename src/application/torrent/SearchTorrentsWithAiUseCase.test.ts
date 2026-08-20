@@ -73,6 +73,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
       download_dir: NonEmptyStringSchema.parse("/mock"),
       ai_configs: [],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -110,6 +113,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -188,6 +194,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -225,6 +234,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
 
     // 模拟 TorrentRepository 的多次调用：
@@ -369,6 +381,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -450,6 +465,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -500,6 +518,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -603,6 +624,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -703,6 +727,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -784,6 +811,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -879,6 +909,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -923,6 +956,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -971,6 +1007,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -1056,6 +1095,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("custom-model"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -1111,6 +1153,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      proxy: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiConfig } from "@/domain/settings/SettingsSchemas";
+import type { AiConfig, Settings } from "@/domain/settings/SettingsSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseSettingsPageDeps } from "./useSettingsPage";
 import { useSettingsPage } from "./useSettingsPage";
@@ -123,36 +123,16 @@ describe("useSettingsPage 设置页面 hook", () => {
     await waitFor(() => expect(result.current.actions.saving).toBe(false));
 
     expect(deps.saveSettingsUseCase.execute).toHaveBeenCalledWith({
-      downloadDir: "D:\\New",
+      download_dir: "D:\\New",
       proxy: "http://127.0.0.1:7890",
-      aiConfigs: [],
-      maxDownloadSpeed: 100,
-      maxUploadSpeed: 200,
-    });
+      ai_configs: [],
+      max_download_speed: 100,
+      max_upload_speed: 200,
+    } as Settings);
     expect(toast.success).toHaveBeenCalledWith(
       "设置已保存，后续下载任务将使用新路径",
     );
     expect(result.current.isDirty).toBe(false);
-  });
-
-  it("保存时速度为 0 时应转换为 null 传递", async () => {
-    const { result, deps } = renderPage();
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    act(() => result.current.form.storage.setMaxDownloadSpeed(0));
-    act(() => result.current.form.storage.setMaxUploadSpeed(0));
-    act(() => submit(result.current.handleSave));
-
-    await waitFor(() => expect(result.current.actions.saving).toBe(false));
-
-    expect(deps.saveSettingsUseCase.execute).toHaveBeenCalledWith({
-      downloadDir: "/data",
-      proxy: "http://127.0.0.1:7890",
-      aiConfigs: [],
-      maxDownloadSpeed: null,
-      maxUploadSpeed: null,
-    });
   });
 
   it("保存时下载目录为空应该拦截并提示", async () => {

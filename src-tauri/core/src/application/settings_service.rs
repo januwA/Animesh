@@ -175,7 +175,7 @@ mod tests {
                 alias: "gpt".to_string(),
                 api_endpoint: "https://example.com/v1".to_string(),
                 api_key: "key".to_string(),
-                ai_model: Some("gpt-4o".to_string()),
+                ai_model: "gpt-4o".to_string(),
             }]))
             .await
             .expect("设置 AI 配置应成功");

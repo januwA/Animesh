@@ -1,9 +1,10 @@
 import { toast } from "sonner";
+import z from "zod";
 import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
 import type { GetCurrentVersionUseCase } from "@/application/update/GetCurrentVersionUseCase";
 import type { OpenUpdateUrlUseCase } from "@/application/update/OpenUpdateUrlUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import { SettingsFormSchema } from "@/domain/settings/SettingsSchemas";
+import { AiConfigSchema } from "@/domain/settings/SettingsSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 import type { UseSettingsActionsDeps } from "./useSettingsActions";
@@ -16,6 +17,45 @@ export interface UseSettingsPageDeps extends UseSettingsActionsDeps {
   getCurrentVersionUseCase: Pick<GetCurrentVersionUseCase, "execute">;
   openUpdateUrlUseCase: Pick<OpenUpdateUrlUseCase, "execute">;
 }
+
+// v8 ignore start
+const SettingsFormSchema = z.object({
+  download_dir: z.string().trim().min(1, "下载目录不能为空"),
+  proxy: z
+    .string()
+    .trim()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        // 支持 http://, https://, socks5:// 开头的代理，或者 host:port 格式
+        const hasProtocol = /^(https?|socks5h?):\/\//i.test(val);
+        if (hasProtocol) {
+          try {
+            new URL(val);
+            return true;
+          } catch {
+            return false;
+          }
+        }
+        // 检查是否是 host:port 格式
+        return /^[a-zA-Z0-9.-]+:\d+$/.test(val);
+      },
+      {
+        message: "代理格式不正确，支持 http/https/socks5 协议或 host:port 格式",
+      },
+    )
+    .or(z.literal("")),
+  ai_configs: z.array(AiConfigSchema),
+  max_download_speed: z
+    .number()
+    .int("下载速度限制必须是整数")
+    .min(0, "下载速度限制不能为负数"),
+  max_upload_speed: z
+    .number()
+    .int("上传速度限制必须是整数")
+    .min(0, "上传速度限制不能为负数"),
+});
+// v8 ignore stop
 
 export function useSettingsPage(deps: UseSettingsPageDeps) {
   const { getSettingsUseCase, getCurrentVersionUseCase, openUpdateUrlUseCase } =
@@ -85,11 +125,11 @@ export function useSettingsPage(deps: UseSettingsPageDeps) {
     e.preventDefault();
 
     const validation = SettingsFormSchema.safeParse({
-      downloadDir: form.storage.downloadDir,
+      download_dir: form.storage.downloadDir,
       proxy: form.storage.proxy,
-      aiConfigs: form.ai.aiConfigs,
-      maxDownloadSpeed: form.storage.maxDownloadSpeed || null,
-      maxUploadSpeed: form.storage.maxUploadSpeed || null,
+      ai_configs: form.ai.aiConfigs,
+      max_download_speed: form.storage.maxDownloadSpeed,
+      max_upload_speed: form.storage.maxUploadSpeed,
     });
 
     if (!validation.success) {

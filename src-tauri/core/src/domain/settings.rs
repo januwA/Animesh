@@ -21,7 +21,7 @@ pub struct AiConfig {
     pub alias: String,
     pub api_endpoint: String,
     pub api_key: String,
-    pub ai_model: Option<String>,
+    pub ai_model: String,
 }
 
 /// 设置仓储接口，由基础设施层（SQLite）实现。

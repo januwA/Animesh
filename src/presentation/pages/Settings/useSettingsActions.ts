@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import type { ClearCacheUseCase } from "@/application/cache/ClearCacheUseCase";
-import type {
-  SaveSettingsDto,
-  SaveSettingsUseCase,
-} from "@/application/settings/SaveSettingsUseCase";
+import type { SaveSettingsUseCase } from "@/application/settings/SaveSettingsUseCase";
 import type { SelectDirectoryUseCase } from "@/application/settings/SelectDirectoryUseCase";
 import type { VerifyAiConnectionUseCase } from "@/application/settings/VerifyAiConnectionUseCase";
 import type { CheckUpdateUseCase } from "@/application/update/CheckUpdateUseCase";
-import type { AiConfig } from "@/domain/settings/SettingsSchemas";
+import type { AiConfig, Settings } from "@/domain/settings/SettingsSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useCalendarStore } from "@/presentation/store/calendarStore";
 import { useIptvStore } from "@/presentation/store/iptvStore";
@@ -107,7 +104,7 @@ export function useSettingsActions(
   };
 
   const saveMutation = useMutation(
-    (_ctx, data: SaveSettingsDto) => saveSettingsUseCase.execute(data),
+    (_ctx, data: Settings) => saveSettingsUseCase.execute(data),
     {
       onSuccess: () => {
         toast.success("设置已保存，后续下载任务将使用新路径");
@@ -118,7 +115,7 @@ export function useSettingsActions(
     },
   );
   const saving = saveMutation.loading;
-  const save = (data: SaveSettingsDto) => {
+  const save = (data: Settings) => {
     saveMutation.execute(data);
   };
 

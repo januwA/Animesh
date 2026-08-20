@@ -23,9 +23,9 @@ describe("SaveSettingsUseCase 保存配置", () => {
     vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
     vi.mocked(rawMockRepo.setAiConfigs).mockResolvedValueOnce(undefined);
     await useCase.execute({
-      downloadDir: "/mock/dir2",
+      download_dir: "/mock/dir2",
       proxy: "http://127.0.0.1:1080",
-      aiConfigs: [
+      ai_configs: [
         {
           alias: NonEmptyStringSchema.parse("OpenAI"),
           api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
@@ -33,6 +33,8 @@ describe("SaveSettingsUseCase 保存配置", () => {
           ai_model: NonEmptyStringSchema.parse("gpt-4o"),
         },
       ],
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     expect(rawMockRepo.setDownloadDir).toHaveBeenCalledWith("/mock/dir2");
     expect(rawMockRepo.setProxy).toHaveBeenCalledWith("http://127.0.0.1:1080");
@@ -46,29 +48,17 @@ describe("SaveSettingsUseCase 保存配置", () => {
     ]);
   });
 
-  it("在可选参数为空时应该正确忽略未提供的可选字段", async () => {
-    const useCase = new SaveSettingsUseCase(mockRepo);
-    vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
-    vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
-    vi.mocked(rawMockRepo.setAiConfigs).mockResolvedValueOnce(undefined);
-    await useCase.execute({
-      downloadDir: "/mock/dir2",
-      proxy: "http://127.0.0.1:1080",
-    });
-    expect(rawMockRepo.setDownloadDir).toHaveBeenCalledWith("/mock/dir2");
-    expect(rawMockRepo.setProxy).toHaveBeenCalledWith("http://127.0.0.1:1080");
-    expect(rawMockRepo.setAiConfigs).not.toHaveBeenCalled();
-  });
-
   it("当 aiConfigs 为 null 时应该调用 setAiConfigs(null)", async () => {
     const useCase = new SaveSettingsUseCase(mockRepo);
     vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
     vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
     vi.mocked(rawMockRepo.setAiConfigs).mockResolvedValueOnce(undefined);
     await useCase.execute({
-      downloadDir: "/mock/dir2",
+      download_dir: "/mock/dir2",
       proxy: "http://127.0.0.1:1080",
-      aiConfigs: null,
+      ai_configs: null,
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     expect(rawMockRepo.setAiConfigs).toHaveBeenCalledWith(null);
   });
@@ -78,9 +68,11 @@ describe("SaveSettingsUseCase 保存配置", () => {
     vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
     vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
     await useCase.execute({
-      downloadDir: "/mock/dir2",
+      download_dir: "/mock/dir2",
       proxy: "http://127.0.0.1:1080",
-      maxUploadSpeed: 256,
+      max_upload_speed: 256,
+      ai_configs: null,
+      max_download_speed: null,
     });
     expect(rawMockRepo.setMaxUploadSpeed).toHaveBeenCalledWith(256);
   });
@@ -90,32 +82,12 @@ describe("SaveSettingsUseCase 保存配置", () => {
     vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
     vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
     await useCase.execute({
-      downloadDir: "/mock/dir2",
+      download_dir: "/mock/dir2",
       proxy: "http://127.0.0.1:1080",
-      maxDownloadSpeed: 1024,
+      max_download_speed: 1024,
+      ai_configs: null,
+      max_upload_speed: null,
     });
     expect(rawMockRepo.setMaxDownloadSpeed).toHaveBeenCalledWith(1024);
-  });
-
-  it("未提供 maxDownloadSpeed 时不应该调用 setMaxDownloadSpeed", async () => {
-    const useCase = new SaveSettingsUseCase(mockRepo);
-    vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
-    vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
-    await useCase.execute({
-      downloadDir: "/mock/dir2",
-      proxy: "http://127.0.0.1:1080",
-    });
-    expect(rawMockRepo.setMaxDownloadSpeed).not.toHaveBeenCalled();
-  });
-
-  it("未提供 maxUploadSpeed 时不应该调用 setMaxUploadSpeed", async () => {
-    const useCase = new SaveSettingsUseCase(mockRepo);
-    vi.mocked(rawMockRepo.setDownloadDir).mockResolvedValueOnce(undefined);
-    vi.mocked(rawMockRepo.setProxy).mockResolvedValueOnce(undefined);
-    await useCase.execute({
-      downloadDir: "/mock/dir2",
-      proxy: "http://127.0.0.1:1080",
-    });
-    expect(rawMockRepo.setMaxUploadSpeed).not.toHaveBeenCalled();
   });
 });

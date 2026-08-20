@@ -65,22 +65,22 @@ describe("useSettingsActions 设置动作 hook", () => {
 
     act(() => {
       result.current.save({
-        downloadDir: "/data",
+        download_dir: "/data",
         proxy: "http://127.0.0.1:7890",
-        aiConfigs: [],
-        maxDownloadSpeed: null,
-        maxUploadSpeed: null,
+        ai_configs: [],
+        max_download_speed: null,
+        max_upload_speed: null,
       });
     });
 
     await waitFor(() => expect(result.current.saving).toBe(false));
 
     expect(deps.saveSettingsUseCase.execute).toHaveBeenCalledWith({
-      downloadDir: "/data",
+      download_dir: "/data",
       proxy: "http://127.0.0.1:7890",
-      aiConfigs: [],
-      maxDownloadSpeed: null,
-      maxUploadSpeed: null,
+      ai_configs: [],
+      max_download_speed: null,
+      max_upload_speed: null,
     });
     expect(toast.success).toHaveBeenCalledWith(
       "设置已保存，后续下载任务将使用新路径",
@@ -97,11 +97,11 @@ describe("useSettingsActions 设置动作 hook", () => {
 
     act(() => {
       result.current.save({
-        downloadDir: "/data",
+        download_dir: "/data",
         proxy: "http://127.0.0.1:7890",
-        aiConfigs: [],
-        maxDownloadSpeed: null,
-        maxUploadSpeed: null,
+        ai_configs: [],
+        max_download_speed: null,
+        max_upload_speed: null,
       });
     });
 

@@ -24,7 +24,7 @@ export class TauriSettingsRepository implements SettingsRepository {
   }
 
   async setProxy(proxy: string | null): Promise<void> {
-    return invoke<void>("settings_set_proxy", { proxy: proxy || null });
+    return invoke<void>("settings_set_proxy", { proxy });
   }
 
   async setAiConfigs(configs: AiConfig[] | null): Promise<void> {
