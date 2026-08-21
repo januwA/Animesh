@@ -28,7 +28,7 @@ export function GroupPanel({
 
   return (
     <Collapsible defaultOpen={defaultOpen} className="flex flex-col gap-3">
-      <div className="overflow-hidden rounded-xl border border-border bg-card/60 transition-colors hover:bg-card">
+      <div className="overflow-hidden rounded-xl border border-border ani-card">
         <div className="flex items-center gap-2 px-4 py-3.5">
           <CollapsibleTrigger asChild>
             <button

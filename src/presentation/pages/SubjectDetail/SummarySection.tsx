@@ -9,7 +9,7 @@ export interface SummarySectionProps {
 export function SummarySection({ subject }: SummarySectionProps) {
   if (!subject) {
     return (
-      <Card className="bg-card border border-border rounded-xl">
+      <Card className="ani-card">
         <CardContent className="p-6 space-y-2">
           <Skeleton className="h-4 w-20" />
           <div className="space-y-2">
@@ -23,7 +23,7 @@ export function SummarySection({ subject }: SummarySectionProps) {
   }
 
   return (
-    <Card className="bg-card border border-border rounded-xl">
+    <Card className="ani-card">
       <CardContent className="p-6 flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-muted-foreground">
           剧情简介

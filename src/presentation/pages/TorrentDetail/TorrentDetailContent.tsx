@@ -3,7 +3,13 @@ import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
-import { Card, CardContent } from "@/presentation/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/presentation/components/ui/card";
 import {
   Empty,
   EmptyContent,
@@ -29,7 +35,7 @@ export function TorrentDetailContent({
 }: TorrentDetailContentProps) {
   if (loading) {
     return (
-      <Card className="py-20">
+      <Card className="ani-card">
         <CardContent
           className="flex flex-col items-center justify-center text-center gap-4"
           role="dialog"
@@ -65,19 +71,13 @@ export function TorrentDetailContent({
   }
 
   return (
-    <Card className="p-4 sm:p-6 flex flex-col gap-4 sm:gap-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
-        <div className="space-y-1 flex-1 min-w-0">
-          <h2 className="text-lg sm:text-xl font-bold break-all text-foreground">
-            {torrent.name}
-          </h2>
-          <p className="text-xs text-muted-foreground font-mono break-all">
-            Hash: {torrent.info_hash}
-          </p>
-        </div>
-      </div>
+    <Card className="ani-card">
+      <CardHeader>
+        <CardTitle>{torrent.name}</CardTitle>
+        <CardDescription>Hash: {torrent.info_hash}</CardDescription>
+      </CardHeader>
 
-      <div className="space-y-4">
+      <CardContent>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Film className="h-4 w-4 text-primary" />
@@ -97,7 +97,7 @@ export function TorrentDetailContent({
             />
           ))}
         </div>
-      </div>
+      </CardContent>
     </Card>
   );
 }

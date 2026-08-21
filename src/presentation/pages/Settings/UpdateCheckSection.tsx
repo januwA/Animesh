@@ -24,7 +24,7 @@ export function UpdateCheckSection({
   onOpenGithub,
 }: UpdateCheckSectionProps) {
   return (
-    <Card className="bg-card border-border shadow-sm">
+    <Card className="ani-card">
       <CardHeader className="p-5">
         <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
           <Info className="h-4 w-4 text-primary" />

@@ -64,7 +64,7 @@ export function TorrentCard({
     : 0;
 
   return (
-    <Card className="bg-card hover:bg-muted/30 border-border transition-all duration-300">
+    <Card className="ani-card">
       <CardHeader>
         <div className="flex flex-col gap-1.5 min-w-0 flex-1">
           <CardTitle>{torrent.name}</CardTitle>

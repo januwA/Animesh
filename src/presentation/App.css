@@ -248,3 +248,7 @@ body {
   position: sticky;
   bottom: env(safe-area-inset-bottom, 0px);
 }
+
+.ani-card {
+  @apply backdrop-blur-md bg-card/40 hover:bg-card/60 shadow-lg hover:shadow-xl transition-all duration-300 ease-out;
+}

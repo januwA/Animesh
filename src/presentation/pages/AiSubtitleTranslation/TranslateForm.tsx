@@ -49,7 +49,7 @@ export function TranslateForm({
     targetLang.trim() !== "";
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="ani-card">
       <CardContent className="p-6 flex flex-col gap-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Languages className="h-5 w-5 text-primary" />

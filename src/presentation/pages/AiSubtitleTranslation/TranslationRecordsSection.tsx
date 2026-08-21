@@ -59,7 +59,7 @@ export function TranslationRecordsSection({
           加载翻译记录中...
         </div>
       ) : records.length === 0 ? (
-        <Card className="border-border bg-muted/30">
+        <Card className="ani-card">
           <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <Languages className="h-8 w-8 text-muted-foreground/50" />
             <p>暂无 AI 翻译记录，请在上方发起翻译。</p>

@@ -43,15 +43,7 @@ export function SearchResultCard({
   isBestAi = false,
 }: SearchResultCardProps) {
   return (
-    <Card
-      id={`torrent-item-${index}`}
-      className={cn(
-        "group transition-all duration-300",
-        isBestAi
-          ? "border-primary/30 bg-linear-to-br from-primary/10 via-card to-accent/20 shadow-sm hover:border-primary/50"
-          : "border-border bg-card/60 hover:border-primary/25 hover:bg-accent/40",
-      )}
-    >
+    <Card id={`torrent-item-${index}`} className="ani-card">
       <CardHeader className="p-5 pb-3">
         {item.ai_score !== undefined && (
           <div className="flex flex-wrap items-center gap-2">

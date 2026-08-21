@@ -44,7 +44,7 @@ export function DownloadStatsPanel({
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <Card className="bg-muted/50 border-border">
+        <Card className="ani-card">
           <CardContent className="flex flex-col items-center justify-center p-3">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
               已下载
@@ -56,7 +56,7 @@ export function DownloadStatsPanel({
             </span>
           </CardContent>
         </Card>
-        <Card className="bg-muted/50 border-border">
+        <Card className="ani-card">
           <CardContent className="flex flex-col items-center justify-center p-3">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
               总大小
@@ -66,7 +66,7 @@ export function DownloadStatsPanel({
             </span>
           </CardContent>
         </Card>
-        <Card className="bg-muted/50 border-border">
+        <Card className="ani-card">
           <CardContent className="flex flex-col items-center justify-center p-3">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
               同伴 (连接/总数)
@@ -78,7 +78,7 @@ export function DownloadStatsPanel({
             </span>
           </CardContent>
         </Card>
-        <Card className="bg-muted/50 border-border">
+        <Card className="ani-card">
           <CardContent className="flex flex-col items-center justify-center p-3">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 text-center">
               状态

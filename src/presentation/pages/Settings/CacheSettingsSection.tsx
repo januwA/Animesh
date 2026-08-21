@@ -17,7 +17,7 @@ export function CacheSettingsSection({
   onClearClick,
 }: CacheSettingsSectionProps) {
   return (
-    <Card className="bg-card border-border shadow-sm">
+    <Card className="ani-card">
       <CardHeader className="p-5">
         <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
           <Trash2 className="h-4 w-4 text-primary" />

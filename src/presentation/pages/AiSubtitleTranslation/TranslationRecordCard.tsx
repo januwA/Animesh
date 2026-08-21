@@ -56,7 +56,7 @@ export function TranslationRecordCard({
   onDelete,
 }: TranslationRecordCardProps) {
   return (
-    <Card className="border-border bg-card">
+    <Card className="ani-card">
       <CardContent className="p-4 flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-2">

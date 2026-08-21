@@ -9,7 +9,7 @@ import {
 export function WelcomeGuide() {
   return (
     <div className="mx-auto w-full grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 text-muted-foreground/75">
-      <Card className="bg-card/25 border-border">
+      <Card className="ani-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Search className="h-4 w-4 text-primary" />
@@ -20,7 +20,7 @@ export function WelcomeGuide() {
           一键检索动漫花园资源列表，快速检索并汇总磁力资源。
         </CardContent>
       </Card>
-      <Card className="bg-card/25 border-border">
+      <Card className="ani-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <Play className="h-4 w-4 text-primary fill-current" />
@@ -31,7 +31,7 @@ export function WelcomeGuide() {
           内置高性能 BT 流媒体播放引擎，无须等待下载完毕，边下边放。
         </CardContent>
       </Card>
-      <Card className="bg-card/25 border-border">
+      <Card className="ani-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
             <ExternalLink className="h-4 w-4 text-primary" />

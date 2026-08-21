@@ -29,7 +29,7 @@ export function AppearanceSection({
   onAccentChange,
 }: AppearanceSectionProps) {
   return (
-    <Card className="bg-card border-border shadow-sm">
+    <Card className="ani-card">
       <CardHeader className="p-5">
         <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
           <Palette className="h-4 w-4 text-primary" />

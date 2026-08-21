@@ -12,13 +12,19 @@ import { DownloadStatsPanel } from "./DownloadStatsPanel";
 import { JsPlayerErrorMonitor } from "./JsPlayerErrorMonitor";
 import { MediaInfoPanel } from "./MediaInfoPanel";
 import { PlayerSubtitleSelector } from "./PlayerSubtitleSelector";
-import { PlayerTitle } from "./PlayerTitle";
 import { PlayerVideo } from "./PlayerVideo";
 import { JsPlayer } from "./player";
 import { TrackerSection } from "./TrackerSection";
 import { usePlayerData } from "./usePlayerData";
 import { usePlayerSubtitle } from "./usePlayerSubtitle";
 import "@videojs/react/video/skin.css";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/presentation/components/ui/card";
 
 const playerParamsSchema = z.object({
   infoHash: NonEmptyStringSchema.min(1, "缺少种子哈希参数"),
@@ -125,25 +131,29 @@ function PlayerView({
         </div>
 
         {/* Title & Actions */}
-        <div className="flex flex-col gap-3">
-          <PlayerTitle fileName={fileName} title={title} />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <PlayerSubtitleSelector
-              tracks={subtitleTracks}
-              selectedTrackId={selectedTrackId}
-              onChange={handleSubtitleChange}
-              loading={subtitleMutation.loading}
-            />
-            <AiTranslateButton
-              infoHash={infoHash}
-              fileId={fileId}
-              title={title}
-              fileName={fileName}
-            />
-            <CopyStreamUrlButton streamUrl={streamUrl} />
-          </div>
-        </div>
+        <Card className="ani-card flex flex-col gap-3">
+          <CardHeader>
+            <CardTitle>{fileName}</CardTitle>
+            <CardDescription>来自种子: {title}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-2">
+              <PlayerSubtitleSelector
+                tracks={subtitleTracks}
+                selectedTrackId={selectedTrackId}
+                onChange={handleSubtitleChange}
+                loading={subtitleMutation.loading}
+              />
+              <AiTranslateButton
+                infoHash={infoHash}
+                fileId={fileId}
+                title={title}
+                fileName={fileName}
+              />
+              <CopyStreamUrlButton streamUrl={streamUrl} />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Progress & Stats */}
         <DownloadStatsPanel
