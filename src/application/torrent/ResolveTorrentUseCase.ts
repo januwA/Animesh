@@ -6,7 +6,6 @@ import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 export interface ResolveTorrentParams {
   magnet?: NonEmptyString;
   infoHash?: NonEmptyString;
-  title: NonEmptyString;
 }
 
 export class ResolveTorrentUseCase {
@@ -26,7 +25,6 @@ export class ResolveTorrentUseCase {
       );
       return {
         info_hash: params.infoHash,
-        name: params.title,
         files,
       };
     }

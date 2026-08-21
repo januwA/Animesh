@@ -12,7 +12,6 @@ import { useTorrentDetailPage } from "./useTorrentDetailPage";
 const torrentDetailParamsSchema = z
   .object({
     magnet: NonEmptyStringSchema.optional(),
-    title: NonEmptyStringSchema,
     infoHash: NonEmptyStringSchema.optional(),
   })
   .refine((p) => !p.magnet || !p.infoHash, {
@@ -28,7 +27,6 @@ export default function TorrentDetail() {
 
   const parsed = torrentDetailParamsSchema.safeParse({
     magnet: searchParams.get("magnet") ?? undefined,
-    title: searchParams.get("title"),
     infoHash: searchParams.get("infoHash") ?? undefined,
   });
   // v8 ignore start
@@ -49,15 +47,11 @@ export default function TorrentDetail() {
 
 function TorrentDetailView({
   magnet,
-  title,
   infoHash,
   resolveTorrentUseCase,
 }: TorrentDetailParams & { resolveTorrentUseCase: ResolveTorrentUseCase }) {
   const { torrent, loading, error, refetch, handleStartPlayback } =
-    useTorrentDetailPage(
-      { magnet, infoHash, title },
-      { resolveTorrentUseCase },
-    );
+    useTorrentDetailPage({ magnet, infoHash }, { resolveTorrentUseCase });
 
   return (
     <div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">

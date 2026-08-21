@@ -65,10 +65,7 @@ describe("SearchResultCard 搜索结果卡片组件", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "边下边播" }));
 
-    expect(onPlay).toHaveBeenCalledWith(
-      "magnet:?xt=urn:btih:TEST1",
-      "xxx 第1集",
-    );
+    expect(onPlay).toHaveBeenCalledWith("magnet:?xt=urn:btih:TEST1");
   });
 
   it("description 默认折叠展示，点击可展开查看净化后的 HTML", () => {

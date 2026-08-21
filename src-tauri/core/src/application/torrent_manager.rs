@@ -114,7 +114,6 @@ mod tests {
     async fn 测试_添加磁力链接_委托仓储并返回结果() {
         let repo = MockTorrentRepository::default().with_add_result(Ok(AddTorrentResult {
             info_hash: "abc123".to_string(),
-            name: "示例资源".to_string(),
             files: vec![FileDetails {
                 id: 0,
                 name: "a.mkv".to_string(),

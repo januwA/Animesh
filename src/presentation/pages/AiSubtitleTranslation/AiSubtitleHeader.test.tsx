@@ -11,7 +11,7 @@ const renderHeader = (props: Parameters<typeof AiSubtitleHeader>[0]) => {
 
 describe("AiSubtitleHeader 页头组件", () => {
   it("应该渲染标题、视频名与说明文字", () => {
-    renderHeader({ title: "Episode 1", onBack: vi.fn() });
+    renderHeader({ fileName: "Episode 1", onBack: vi.fn() });
 
     expect(screen.getByText("AI 字幕翻译")).toBeInTheDocument();
     expect(screen.getByText("Episode 1")).toBeInTheDocument();
@@ -23,7 +23,7 @@ describe("AiSubtitleHeader 页头组件", () => {
 
   it("点击返回按钮时应该调用 onBack", () => {
     const onBack = vi.fn();
-    renderHeader({ title: "Episode 1", onBack });
+    renderHeader({ fileName: "Episode 1", onBack });
 
     fireEvent.click(screen.getByRole("button", { name: "返回" }));
 

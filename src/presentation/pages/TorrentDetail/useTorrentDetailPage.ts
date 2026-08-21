@@ -10,7 +10,6 @@ export interface UseTorrentDetailPageDeps {
 interface UseTorrentDetailPageParams {
   magnet?: NonEmptyString;
   infoHash?: NonEmptyString;
-  title: NonEmptyString;
 }
 
 export function useTorrentDetailPage(
@@ -18,7 +17,7 @@ export function useTorrentDetailPage(
   deps: UseTorrentDetailPageDeps,
 ) {
   const { resolveTorrentUseCase } = deps;
-  const { magnet, infoHash, title } = params;
+  const { magnet, infoHash } = params;
   const navigate = useNavigate();
 
   const {
@@ -27,8 +26,8 @@ export function useTorrentDetailPage(
     error,
     refetch,
   } = useQuery(
-    (ctx) => resolveTorrentUseCase.execute(ctx, { magnet, infoHash, title }),
-    [magnet, infoHash, title, resolveTorrentUseCase],
+    (ctx) => resolveTorrentUseCase.execute(ctx, { magnet, infoHash }),
+    [magnet, infoHash, resolveTorrentUseCase],
   );
 
   const handleStartPlayback = (
@@ -37,9 +36,7 @@ export function useTorrentDetailPage(
     fileName: string,
   ) => {
     navigate(
-      `/play/${info_hash}/${fileId}?title=${encodeURIComponent(
-        title,
-      )}&fileName=${encodeURIComponent(fileName)}`,
+      `/play/${info_hash}/${fileId}?&fileName=${encodeURIComponent(fileName)}`,
       {
         replace: true,
       },

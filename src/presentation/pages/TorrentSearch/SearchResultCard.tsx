@@ -31,7 +31,7 @@ interface SearchResultCardProps {
   item: AiSearchResultItem;
   index: number;
   onCopyMagnet: (magnet: string) => void;
-  onPlay: (magnet: string, title: string) => void;
+  onPlay: (magnet: string) => void;
   isBestAi?: boolean;
 }
 
@@ -140,7 +140,7 @@ export function SearchResultCard({
           <Button
             variant="default"
             size="sm"
-            onClick={() => onPlay(item.magnet, item.title)}
+            onClick={() => onPlay(item.magnet)}
             className="h-8 text-xs font-medium bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
           >
             <Play className="h-3.5 w-3.5 fill-current" />

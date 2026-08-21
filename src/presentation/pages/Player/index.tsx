@@ -21,7 +21,6 @@ import "@videojs/react/video/skin.css";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
@@ -33,7 +32,6 @@ const playerParamsSchema = z.object({
       typeof value === "string" && value !== "" ? Number(value) : value,
     z.number({ message: "文件 ID 必须是数字" }).int("文件 ID 必须是整数"),
   ),
-  title: NonEmptyStringSchema,
   fileName: NonEmptyStringSchema,
 });
 
@@ -47,7 +45,6 @@ export default function Player() {
   const parsed = playerParamsSchema.safeParse({
     infoHash,
     fileId,
-    title: searchParams.get("title") ?? undefined,
     fileName: searchParams.get("fileName") ?? undefined,
   });
   if (!parsed.success) {
@@ -62,7 +59,6 @@ export default function Player() {
 function PlayerView({
   infoHash,
   fileId,
-  title,
   fileName,
 }: z.infer<typeof playerParamsSchema>) {
   const {
@@ -134,7 +130,6 @@ function PlayerView({
         <Card className="ani-card flex flex-col gap-3">
           <CardHeader>
             <CardTitle>{fileName}</CardTitle>
-            <CardDescription>来自种子: {title}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap items-center gap-2">
@@ -147,7 +142,6 @@ function PlayerView({
               <AiTranslateButton
                 infoHash={infoHash}
                 fileId={fileId}
-                title={title}
                 fileName={fileName}
               />
               <CopyStreamUrlButton streamUrl={streamUrl} />

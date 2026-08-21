@@ -144,9 +144,7 @@ export function useDownloadsData(
   );
 
   const handleViewFiles = (torrent: TorrentStatusInfo) => {
-    navigate(
-      `/torrent?infoHash=${torrent.info_hash}&title=${encodeURIComponent(torrent.name)}`,
-    );
+    navigate(`/torrent?infoHash=${torrent.info_hash}`);
   };
 
   const handleTogglePause = (torrent: TorrentStatusInfo) => {

@@ -369,16 +369,11 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
   it("点击边下边播时跳转到 torrent 详情页并携带参数", async () => {
     const { result } = await renderPage();
 
-    act(() =>
-      result.current.results.handlePlay(
-        "magnet:?xt=urn:btih:TEST1",
-        "xxx 第1集",
-      ),
-    );
+    act(() => result.current.results.handlePlay("magnet:?xt=urn:btih:TEST1"));
 
     expect(locationRef.current?.pathname).toBe("/torrent");
     expect(locationRef.current?.search).toContain("magnet=");
-    expect(locationRef.current?.search).toContain("title=");
+    expect(locationRef.current?.search).toBeTruthy();
   });
 
   it("取消搜索时发起取消请求并清空加载状态", async () => {

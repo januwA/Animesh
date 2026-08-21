@@ -17,7 +17,6 @@ export const FileDetailsSchema = z.object({
 
 export const AddTorrentResultSchema = z.object({
   info_hash: NonEmptyStringSchema,
-  name: NonEmptyStringSchema,
   files: z.array(FileDetailsSchema),
 });
 

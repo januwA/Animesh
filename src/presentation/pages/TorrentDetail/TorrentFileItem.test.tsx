@@ -6,7 +6,6 @@ import { TorrentFileItem } from "./TorrentFileItem";
 
 const makeTorrent = (): AddTorrentResult => ({
   info_hash: NonEmptyStringSchema.parse("hash123"),
-  name: NonEmptyStringSchema.parse("测试种子"),
   files: [
     { id: 0, name: NonEmptyStringSchema.parse("file1.mp4"), len: 1000 },
     { id: 1, name: NonEmptyStringSchema.parse("file2.mkv"), len: 2000 },

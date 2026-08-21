@@ -15,7 +15,7 @@ interface SearchResultGroupProps {
   open: boolean;
   onOpenChange: () => void;
   onCopyMagnet: (magnet: string) => void;
-  onPlay: (magnet: string, title: string) => void;
+  onPlay: (magnet: string) => void;
   showBestAi: boolean;
 }
 

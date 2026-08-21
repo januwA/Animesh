@@ -13,7 +13,6 @@ pub struct FileDetails {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AddTorrentResult {
     pub info_hash: String,
-    pub name: String,
     pub files: Vec<FileDetails>,
 }
 

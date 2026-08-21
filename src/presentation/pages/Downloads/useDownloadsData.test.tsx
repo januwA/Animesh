@@ -327,11 +327,7 @@ describe("useDownloadsData 查看文件导航", () => {
     fireEvent.click(screen.getByRole("button", { name: "查看文件" }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          "/torrent?infoHash=hash123&title=%E6%B5%8B%E8%AF%95%E4%BB%BB%E5%8A%A1",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText("/torrent?infoHash=hash123")).toBeInTheDocument();
     });
   });
 });

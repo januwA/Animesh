@@ -17,7 +17,7 @@ const paramsSchema = z.object({
       typeof value === "string" && value !== "" ? Number(value) : value,
     z.number({ message: "文件 ID 必须是数字" }).int("文件 ID 必须是整数"),
   ),
-  title: NonEmptyStringSchema,
+  fileName: NonEmptyStringSchema,
 });
 
 export type ContentProps = z.infer<typeof paramsSchema>;
@@ -33,7 +33,7 @@ export default function AiSubtitleTranslationPage() {
   const parsed = paramsSchema.safeParse({
     infoHash,
     fileId,
-    title: searchParams.get("title") ?? undefined,
+    fileName: searchParams.get("fileName") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -45,7 +45,11 @@ export default function AiSubtitleTranslationPage() {
   return <AiSubtitleTranslationView {...parsed.data} />;
 }
 
-function AiSubtitleTranslationView({ infoHash, fileId, title }: ContentProps) {
+function AiSubtitleTranslationView({
+  infoHash,
+  fileId,
+  fileName,
+}: ContentProps) {
   const navigate = useNavigate();
   const {
     getSubtitleTranslationsUseCase,
@@ -80,7 +84,7 @@ function AiSubtitleTranslationView({ infoHash, fileId, title }: ContentProps) {
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-      <AiSubtitleHeader title={title} onBack={() => navigate(-1)} />
+      <AiSubtitleHeader fileName={fileName} onBack={() => navigate(-1)} />
 
       <TranslateForm
         aiConfigs={form.aiConfigs}

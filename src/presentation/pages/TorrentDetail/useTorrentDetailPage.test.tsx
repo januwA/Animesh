@@ -33,7 +33,6 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
   it("应该调用 resolveTorrentUseCase.execute 并返回种子数据", async () => {
     const mockResult: AddTorrentResult = {
       info_hash: NonEmptyStringSchema.parse("hash123"),
-      name: NonEmptyStringSchema.parse("测试种子"),
       files: [],
     };
     const deps = makeDeps({
@@ -42,10 +41,7 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
       },
     });
 
-    const { result } = renderUseTorrentDetailPage(
-      { title: NonEmptyStringSchema.parse("测试种子") },
-      deps,
-    );
+    const { result } = renderUseTorrentDetailPage({}, deps);
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -62,10 +58,7 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
       },
     });
 
-    const { result } = renderUseTorrentDetailPage(
-      { title: NonEmptyStringSchema.parse("测试种子") },
-      deps,
-    );
+    const { result } = renderUseTorrentDetailPage({}, deps);
 
     await waitFor(() => {
       expect(result.current.error).toBeTruthy();
@@ -77,10 +70,7 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
   it("应该返回 handleStartPlayback 函数", async () => {
     const deps = makeDeps();
 
-    const { result } = renderUseTorrentDetailPage(
-      { title: NonEmptyStringSchema.parse("测试种子") },
-      deps,
-    );
+    const { result } = renderUseTorrentDetailPage({}, deps);
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
@@ -93,7 +83,6 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
     const deps = makeDeps();
     const { result } = renderUseTorrentDetailPage(
       {
-        title: NonEmptyStringSchema.parse("测试种子"),
         magnet: NonEmptyStringSchema.parse("magnet:?xt=urn:test"),
       },
       deps,

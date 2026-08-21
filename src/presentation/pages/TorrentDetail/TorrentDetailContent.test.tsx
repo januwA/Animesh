@@ -6,7 +6,6 @@ import { TorrentDetailContent } from "./TorrentDetailContent";
 
 const makeTorrent = (): AddTorrentResult => ({
   info_hash: NonEmptyStringSchema.parse("hash123"),
-  name: NonEmptyStringSchema.parse("测试种子"),
   files: [
     { id: 0, name: NonEmptyStringSchema.parse("file1.mp4"), len: 1000 },
     { id: 1, name: NonEmptyStringSchema.parse("file2.mkv"), len: 2000 },
@@ -71,7 +70,6 @@ describe("TorrentDetailContent 种子详情内容组件", () => {
       />,
     );
 
-    expect(screen.getByText("测试种子")).toBeInTheDocument();
     expect(screen.getByText("file1.mp4")).toBeInTheDocument();
     expect(screen.getByText("file2.mkv")).toBeInTheDocument();
     expect(screen.getByText("共 2 个文件")).toBeInTheDocument();

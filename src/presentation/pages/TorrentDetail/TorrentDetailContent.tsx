@@ -6,7 +6,6 @@ import { Button } from "@/presentation/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
@@ -73,8 +72,7 @@ export function TorrentDetailContent({
   return (
     <Card className="ani-card">
       <CardHeader>
-        <CardTitle>{torrent.name}</CardTitle>
-        <CardDescription>Hash: {torrent.info_hash}</CardDescription>
+        <CardTitle>Hash: {torrent.info_hash}</CardTitle>
       </CardHeader>
 
       <CardContent>

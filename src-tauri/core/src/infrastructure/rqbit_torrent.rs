@@ -147,7 +147,6 @@ impl TorrentRepository for RqbitTorrentRepository {
         .map_err(CoreError::from)?;
 
         let info_hash = format_hash(&handle.info_hash().0);
-        let name = handle.name().unwrap_or_default();
 
         let files = handle.with_metadata(|meta| {
             meta.file_infos
@@ -161,11 +160,7 @@ impl TorrentRepository for RqbitTorrentRepository {
                 .collect::<Vec<_>>()
         })?;
 
-        Ok(AddTorrentResult {
-            info_hash,
-            name,
-            files,
-        })
+        Ok(AddTorrentResult { info_hash, files })
     }
 
     async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {

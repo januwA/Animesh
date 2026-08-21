@@ -255,7 +255,10 @@ body {
 
 /* 解决 shadcn dialog 弹窗加滚动条导致屏幕抖动 */
 html body[data-scroll-locked] {
+  /* biome-ignore lint/complexity/noImportantStyles: 覆盖 shadcn 样式 */
   overflow: auto !important;
+  /* biome-ignore lint/complexity/noImportantStyles: 覆盖 shadcn 样式 */
   margin-right: 0px !important;
+  /* biome-ignore lint/complexity/noImportantStyles: 覆盖 shadcn 样式 */
   padding-right: 0px !important;
 }

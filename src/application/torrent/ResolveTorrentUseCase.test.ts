@@ -26,7 +26,6 @@ describe("ResolveTorrentUseCase 解析种子", () => {
 
     const result = await useCase.execute(ctx, {
       magnet: NonEmptyStringSchema.parse("magnet:?xt=urn:btih:123"),
-      title: NonEmptyStringSchema.parse("测试 magnet torrent"),
     });
     expect(mockRepo.addTorrentMagnet).toHaveBeenCalledWith(
       ctx,
@@ -45,12 +44,10 @@ describe("ResolveTorrentUseCase 解析种子", () => {
 
     const result = await useCase.execute(ctx, {
       infoHash: NonEmptyStringSchema.parse("123"),
-      title: NonEmptyStringSchema.parse("测试种子"),
     });
     expect(mockRepo.getTorrentFiles).toHaveBeenCalledWith("123");
     expect(result).toEqual({
       info_hash: NonEmptyStringSchema.parse("123"),
-      name: NonEmptyStringSchema.parse("测试种子"),
       files: mockFiles,
     });
   });
@@ -58,10 +55,8 @@ describe("ResolveTorrentUseCase 解析种子", () => {
   it("在没有提供 magnet 和 infoHash 时应该抛出错误", async () => {
     const useCase = new ResolveTorrentUseCase(mockRepo);
     const ctx = WithValue(Background, "traceId", "test-trace");
-    await expect(
-      useCase.execute(ctx, {
-        title: NonEmptyStringSchema.parse("测试种子"),
-      }),
-    ).rejects.toThrow("未提供有效的磁力链接或种子 Hash");
+    await expect(useCase.execute(ctx, {})).rejects.toThrow(
+      "未提供有效的磁力链接或种子 Hash",
+    );
   });
 });

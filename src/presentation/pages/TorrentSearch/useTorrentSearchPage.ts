@@ -167,10 +167,8 @@ export function useTorrentSearchPage(
     }
   };
 
-  const handlePlay = (magnet: string, title: string) => {
-    navigate(
-      `/torrent?magnet=${encodeURIComponent(magnet)}&title=${encodeURIComponent(title)}`,
-    );
+  const handlePlay = (magnet: string) => {
+    navigate(`/torrent?magnet=${encodeURIComponent(magnet)}`);
   };
 
   const handleSelectAiAlias = (alias: string) => {

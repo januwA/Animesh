@@ -12,7 +12,7 @@ interface SearchResultsListProps {
   collapsedGroups: Set<string>;
   onToggleGroup: (name: string) => void;
   onCopyMagnet: (magnet: string) => void;
-  onPlay: (magnet: string, title: string) => void;
+  onPlay: (magnet: string) => void;
   showBestAi: boolean;
 }
 
