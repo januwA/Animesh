@@ -5,9 +5,9 @@ use crate::error::CoreError;
 use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
 use std::num::NonZeroU32;
-use std::sync::{Arc, RwLock};
-
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
+use url::Url;
 
 pub struct RqbitTorrentRepository {
     session: Arc<Session>,
@@ -24,12 +24,27 @@ pub async fn create_torrent_repository(
 ) -> Result<Arc<dyn TorrentRepository>, CoreError> {
     tokio::fs::create_dir_all(&persistence_dir).await.ok();
 
+    let mut trackers = std::collections::HashSet::new();
+    for url in [
+        "udp://tracker.opentrackr.org:1337/announce",
+        "udp://open.stealth.si:80/announce",
+        "udp://tracker.openbittorrent.com:6969/announce",
+        "udp://exodus.desync.com:6969/announce",
+        "udp://tracker.moeking.me:6969/announce",
+        "http://tracker.opentrackr.org:1337/announce",
+    ] {
+        if let Ok(u) = Url::parse(url) {
+            trackers.insert(u);
+        }
+    }
+
     #[allow(unused_mut)]
     let mut opts = librqbit::SessionOptions {
         persistence: Some(librqbit::SessionPersistenceConfig::Json {
             folder: Some(persistence_dir.clone()),
         }),
         disable_dht_persistence: true,
+        trackers,
         ..Default::default()
     };
     #[cfg(test)]

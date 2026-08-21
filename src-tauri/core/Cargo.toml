@@ -13,6 +13,7 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 m3u8-rs = "6.0.1"
 quick-xml = { version = "0.37", features = ["serialize"] }
 urlencoding = "2"
+url = "2"
 tokio = { version = "1", features = ["full"] }
 librqbit = { version = "8.1.1", default-features = false, features = ["rust-tls", "http-api-client"] }
 axum = "0.7"

@@ -310,11 +310,15 @@ pub fn parse_nyaa_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
         .items
         .into_iter()
         .map(|item| {
-            let magnet = if item.info_hash.is_empty() {
+            let mut magnet = if item.info_hash.is_empty() {
                 String::new()
             } else {
                 format!("magnet:?xt=urn:btih:{}", item.info_hash.to_lowercase())
             };
+            if !magnet.is_empty() {
+                magnet.push_str("&tr=udp://tracker.opentrackr.org:1337/announce");
+                magnet.push_str("&tr=udp://tracker.openbittorrent.com:6969/announce");
+            }
             SearchResultItem {
                 title: item.title,
                 link: item.link,
@@ -514,7 +518,7 @@ mod tests {
         assert_eq!(item.pub_date, "Sat, 20 Jun 2026 14:23:11 -0000");
         assert_eq!(
             item.magnet,
-            "magnet:?xt=urn:btih:02884c75f52f499ba9eafb31004526bfd7ec8c1b"
+            "magnet:?xt=urn:btih:02884c75f52f499ba9eafb31004526bfd7ec8c1b&tr=udp://tracker.opentrackr.org:1337/announce&tr=udp://tracker.openbittorrent.com:6969/announce"
         );
         assert_eq!(
             item.description,
