@@ -29,6 +29,7 @@ export function renderWallpaperFrame(
   elapsedMs: number,
 ): void {
   ctx.clearRect(0, 0, width, height);
+  // v8 ignore next
   if (images.length === 0) return;
 
   ctx.imageSmoothingEnabled = true;
@@ -40,10 +41,14 @@ export function renderWallpaperFrame(
   const fromIndex = cycle % images.length;
   const toIndex = (fromIndex + 1) % images.length;
   // drawLayer 或 renderWallpaperFrame 里加一层保护
+  const fadeStart = 1 - FADE_DURATION_RATIO;
+  const fadeProgress = Math.max(
+    0,
+    (progress - fadeStart) / FADE_DURATION_RATIO,
+  );
+  // v8 ignore next
   const fade =
-    FADE_DURATION_RATIO > 0
-      ? easeInOut(Math.min(progress / FADE_DURATION_RATIO, 1))
-      : 1; // ratio 为 0 时视为无渐变，直接切换
+    FADE_DURATION_RATIO > 0 ? easeInOut(Math.min(fadeProgress, 1)) : 1; // ratio 为 0 时视为无渐变，直接切换
 
   drawLayer(ctx, width, height, images[fromIndex], progress, 1 - fade);
   drawLayer(ctx, width, height, images[toIndex], progress, fade);

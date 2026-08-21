@@ -38,7 +38,7 @@ describe("renderWallpaperFrame 背景帧渲染", () => {
     expect(calls).toEqual([{ op: "clearRect", args: [0, 0, 1920, 1080] }]);
   });
 
-  it("起始时刻仅绘制上一张（淡入透明度为 0 被跳过）", () => {
+  it("起始时刻仅绘制当前图（淡出透明度为 0 被跳过）", () => {
     const images = [createImage(300, 400), createImage(600, 400)];
     const { ctx, calls } = createRecordingCtx();
 
@@ -46,32 +46,34 @@ describe("renderWallpaperFrame 背景帧渲染", () => {
 
     const draws = calls.filter((c) => c.op === "drawImage");
     expect(draws).toHaveLength(1);
+    expect(draws[0].args[0]).toBe(images[0].canvas);
     expect(ctx.globalAlpha).toBe(1);
   });
 
-  it("淡入阶段中途两张图以 0.5 透明度交叉绘制", () => {
+  it("淡出阶段中途两张图以 0.5 透明度交叉绘制", () => {
     const images = [createImage(300, 400), createImage(600, 400)];
     const { ctx, calls } = createRecordingCtx();
 
-    // progress = FADE_DURATION_RATIO / 2 时 fade = easeInOut(0.5) = 0.5
+    // progress = 0.95（淡出窗口中点：fadeStart + FADE_DURATION_RATIO/2）
+    // fade = easeInOut(0.5) = 0.5
     renderWallpaperFrame(
       ctx,
       1920,
       1080,
       images,
-      WALLPAPER_DURATION_MS * (FADE_DURATION_RATIO / 2),
+      WALLPAPER_DURATION_MS * (1 - FADE_DURATION_RATIO / 2),
     );
 
     const draws = calls.filter((c) => c.op === "drawImage");
     expect(draws).toHaveLength(2);
   });
 
-  it("淡入结束后仅绘制下一张完整图片", () => {
+  it("淡出结束后进入下一周期，仅绘制下一张完整图片", () => {
     const images = [createImage(300, 400), createImage(600, 400)];
     const { ctx, calls } = createRecordingCtx();
 
-    // progress = 0.8 > FADE_DURATION_RATIO，fade 已收敛为 1
-    renderWallpaperFrame(ctx, 1920, 1080, images, WALLPAPER_DURATION_MS * 0.8);
+    // 恰好一个周期结束：cycle=1, progress=0, fade=0，fromIndex=1
+    renderWallpaperFrame(ctx, 1920, 1080, images, WALLPAPER_DURATION_MS);
 
     const draws = calls.filter((c) => c.op === "drawImage");
     expect(draws).toHaveLength(1);
@@ -106,10 +108,16 @@ describe("renderWallpaperFrame 背景帧渲染", () => {
     const renderAt = (elapsedMs: number) => {
       const { ctx, calls } = createRecordingCtx();
       renderWallpaperFrame(ctx, 1920, 1080, images, elapsedMs);
-      return calls.filter((c) => c.op === "drawImage")[0];
+      const draws = calls.filter((c) => c.op === "drawImage");
+      // 周期末尾 fade≈1 时会绘制两张：fromIndex (alpha≈0) 和 toIndex (alpha≈1)
+      // 我们需要取第二次 drawImage（toIndex，即即将展示的图片）
+      return draws[draws.length - 1];
     };
 
-    // 周期末尾（progress≈1）与下一周期开始（progress≈0）都绘制同一张 img[1]
+    // 新逻辑：淡出发生在周期末尾 10%（progress 0.9~1.0）
+    // 周期 0 末尾：cycle=0, progress≈1, fade≈1, fromIndex=0, toIndex=1 → toIndex 绘制 img[1]
+    // 周期 1 开头：cycle=1, progress≈0, fade=0, fromIndex=1, toIndex=0 → fromIndex 绘制 img[1]
+    // 两者都绘制 img[1]，缩放应连续
     const endOfCycle = renderAt(WALLPAPER_DURATION_MS - 1);
     const startOfNext = renderAt(WALLPAPER_DURATION_MS + 1);
 
