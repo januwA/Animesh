@@ -149,7 +149,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "characters" },
       deps,
     );
 
@@ -159,7 +159,6 @@ describe("useSubjectDetail 条目详情 hook", () => {
     expect(result.current.episodes.episodes).toHaveLength(2);
     expect(result.current.episodes.episodes[0].sort).toBe(1);
     expect(result.current.cast.characters).toHaveLength(1);
-    expect(result.current.cast.persons).toHaveLength(1);
     expect(deps.getBangumiSubjectUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       NonEmptyStringSchema.parse("123"),
@@ -176,7 +175,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
       deps,
     );
 
@@ -193,7 +192,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("应该派生 displayName / imageUrl", async () => {
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
       makeDeps(),
     );
 
@@ -217,7 +216,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "staff" },
       deps,
     );
 
@@ -239,7 +238,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       makeTorrent({ info_hash: NonEmptyStringSchema.parse("hash-2") }),
     ];
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents },
+      { subjectId: 123, page: 1, torrents, activeTab: "resources" },
       makeDeps(),
     );
 
@@ -250,7 +249,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("点击剧集时应该跳转到主页搜索", async () => {
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
       makeDeps(),
     );
 
@@ -274,7 +273,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
       deps,
     );
 
@@ -297,7 +296,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
       deps,
     );
 
@@ -317,7 +316,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
       deps,
     );
 
@@ -342,7 +341,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
       deps,
     );
 
@@ -364,7 +363,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
       deps,
     );
 
@@ -386,7 +385,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
       deps,
     );
 
@@ -411,7 +410,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       openUrlUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
       deps,
     );
 
@@ -433,7 +432,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [] },
+      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
       deps,
     );
 

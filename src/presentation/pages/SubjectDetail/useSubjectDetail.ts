@@ -21,6 +21,7 @@ export interface UseSubjectDetailParams {
   subjectId: number;
   page: number;
   torrents: TorrentStatusInfo[];
+  activeTab: string;
 }
 
 /** useSubjectDetail 的依赖，由调用方（页面组合根）注入 */
@@ -45,7 +46,7 @@ export function useSubjectDetail(
   params: UseSubjectDetailParams,
   deps: UseSubjectDetailDeps,
 ): SubjectDetailResult {
-  const { subjectId, page, torrents } = params;
+  const { subjectId, page, torrents, activeTab } = params;
   const {
     getBangumiSubjectUseCase,
     getBangumiEpisodesUseCase,
@@ -67,7 +68,11 @@ export function useSubjectDetail(
   );
 
   const cast = useSubjectCast(
-    { subjectId },
+    {
+      subjectId,
+      enabledCharacters: activeTab === "characters",
+      enabledPersons: activeTab === "staff",
+    },
     { getBangumiPersonsUseCase, getBangumiCharactersUseCase },
   );
 

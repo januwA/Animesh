@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
@@ -85,9 +86,10 @@ function SubjectDetailView({
     clearTorrentSubjectUseCase,
   } = useDI();
   const { torrents } = useTorrentStatus();
+  const [activeTab, setActiveTab] = useState("summary");
 
   const detail = useSubjectDetail(
-    { subjectId, page, torrents },
+    { subjectId, page, torrents, activeTab },
     {
       getBangumiSubjectUseCase,
       getBangumiEpisodesUseCase,
@@ -149,7 +151,7 @@ function SubjectDetailView({
       />
 
       {/* Content Tabs */}
-      <Tabs defaultValue="summary">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="summary">简介</TabsTrigger>
           <TabsTrigger value="characters">

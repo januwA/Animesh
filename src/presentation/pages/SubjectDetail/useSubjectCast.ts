@@ -47,6 +47,8 @@ export function consolidateStaff(
 
 export interface UseSubjectCastParams {
   subjectId: number;
+  enabledCharacters?: boolean;
+  enabledPersons?: boolean;
 }
 
 /** useSubjectCast 的依赖，由调用方（页面组合根）注入 */
@@ -68,7 +70,7 @@ export function useSubjectCast(
   params: UseSubjectCastParams,
   deps: UseSubjectCastDeps,
 ): SubjectCastResult {
-  const { subjectId } = params;
+  const { subjectId, enabledCharacters = true, enabledPersons = true } = params;
   const { getBangumiPersonsUseCase, getBangumiCharactersUseCase } = deps;
 
   const charactersQuery = useQuery<BangumiCharacter[]>(
@@ -78,6 +80,7 @@ export function useSubjectCast(
         NonEmptyStringSchema.parse(String(subjectId)),
       ),
     [subjectId, getBangumiCharactersUseCase],
+    { enabled: enabledCharacters },
   );
   const characters = charactersQuery.data ?? [];
 
@@ -88,6 +91,7 @@ export function useSubjectCast(
         NonEmptyStringSchema.parse(String(subjectId)),
       ),
     [subjectId, getBangumiPersonsUseCase],
+    { enabled: enabledPersons },
   );
   const persons = personsQuery.data ?? [];
 
