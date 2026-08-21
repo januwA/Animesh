@@ -40,7 +40,7 @@ describe("preloadBackgroundImages 图片预取", () => {
     vi.restoreAllMocks();
   });
 
-  it("应逐个加载并预模糊图片，失败图片静默跳过", async () => {
+  it("应并发加载并预模糊图片，失败图片静默跳过", async () => {
     const images = await preloadBackgroundImages([
       "https://img.example/1.jpg",
       "bad://img.example/2.jpg",
@@ -50,7 +50,6 @@ describe("preloadBackgroundImages 图片预取", () => {
     expect(images).toHaveLength(2);
     expect(images[0].canvas.width).toBeGreaterThan(0);
     expect(images[0].canvas.height).toBe(480);
-    expect(images[0].aspect).toBeCloseTo(400 / 600);
     expect(getContextSpy).toHaveBeenCalledTimes(2);
   });
 

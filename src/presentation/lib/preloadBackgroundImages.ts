@@ -7,13 +7,14 @@
  */
 export interface BackgroundImage {
   canvas: HTMLCanvasElement;
-  aspect: number;
 }
 
 /** 预模糊半径（相对预览高度，保证不同来源分辨率在屏幕上呈现一致的柔和度） */
 const BLUR_HEIGHT_RATIO = 0.001;
 /** 预模糊后小图的最大高度，兼顾清晰度与性能 */
 const MAX_PREVIEW_HEIGHT = 480;
+/** 最大并发加载数，避免打满浏览器同域连接池（通常限制 6） */
+const MAX_CONCURRENCY = 4;
 
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -37,18 +38,51 @@ function blurToCanvas(img: HTMLImageElement): BackgroundImage {
     ctx.filter = `blur(${Math.max(1, Math.round(height * BLUR_HEIGHT_RATIO))}px)`;
     ctx.drawImage(img, 0, 0, width, height);
   }
-  return { canvas, aspect: width / height };
+  return { canvas };
 }
 
-/** 逐个加载图片并预模糊，加载失败的图片静默跳过。 */
+/**
+ * 分组并发执行：对 items 逐个以 maxConcurrency 并发调用 fn，
+ * 保持结果顺序与输入一致，单个失败不影响其余。
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  maxConcurrency: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function runNext(): Promise<void> {
+    while (nextIndex < items.length) {
+      const i = nextIndex++;
+      try {
+        results[i] = await fn(items[i]);
+      } catch {
+        // 单个失败由调用方处理（loadImage 已内部兜底返回 null）
+      }
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(maxConcurrency, items.length) },
+    () => runNext(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
+/**
+ * 分组并发加载图片并预模糊，加载失败的图片静默跳过，保持原始顺序。
+ * 最多同时发起 MAX_CONCURRENCY 个请求，避免打满浏览器连接池。
+ */
 export async function preloadBackgroundImages(
   urls: string[],
 ): Promise<BackgroundImage[]> {
-  const images: BackgroundImage[] = [];
-  for (const url of urls) {
-    const img = await loadImage(url);
-    if (!img) continue;
-    images.push(blurToCanvas(img));
-  }
-  return images;
+  if (urls.length === 0) return [];
+
+  const loaded = await mapWithConcurrency(urls, MAX_CONCURRENCY, loadImage);
+  return loaded
+    .filter((img): img is HTMLImageElement => img !== null)
+    .map(blurToCanvas);
 }

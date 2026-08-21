@@ -72,7 +72,7 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
 
   return (
     <div aria-hidden="true" className="fixed inset-0 z-0 overflow-hidden">
-      <canvas ref={canvasRef} className="h-full w-full" />
+      <canvas ref={canvasRef} className="h-full w-full will-change-transform" />
       <div className={OVERLAY_CLASS} />
     </div>
   );

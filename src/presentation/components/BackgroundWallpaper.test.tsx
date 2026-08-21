@@ -100,8 +100,8 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     mockHook.mockReturnValue({
       status: "ready",
       images: [
-        { canvas: createImageCanvas(300, 400), aspect: 0.75 },
-        { canvas: createImageCanvas(600, 400), aspect: 1.5 },
+        { canvas: createImageCanvas(300, 400) },
+        { canvas: createImageCanvas(600, 400) },
       ],
     });
     renderCanvasCtx();
@@ -120,7 +120,7 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     const { ctx } = renderCanvasCtx();
     mockHook.mockReturnValue({
       status: "ready",
-      images: [{ canvas: createImageCanvas(300, 400), aspect: 0.75 }],
+      images: [{ canvas: createImageCanvas(300, 400) }],
     });
 
     const { unmount } = render(<BackgroundWallpaper deps={deps} />);
@@ -140,7 +140,7 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     vi.spyOn(performance, "now").mockReturnValue(1000);
     mockHook.mockReturnValue({
       status: "ready",
-      images: [{ canvas: createImageCanvas(300, 400), aspect: 0.75 }],
+      images: [{ canvas: createImageCanvas(300, 400) }],
     });
 
     const { container } = render(<BackgroundWallpaper deps={deps} />);
@@ -156,8 +156,8 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     mockHook.mockReturnValue({
       status: "ready",
       images: [
-        { canvas: createImageCanvas(300, 400), aspect: 0.75 },
-        { canvas: createImageCanvas(600, 400), aspect: 1.5 },
+        { canvas: createImageCanvas(300, 400) },
+        { canvas: createImageCanvas(600, 400) },
       ],
     });
 
@@ -177,7 +177,7 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     stubReducedMotion(true);
     mockHook.mockReturnValue({
       status: "ready",
-      images: [{ canvas: createImageCanvas(300, 400), aspect: 0.75 }],
+      images: [{ canvas: createImageCanvas(300, 400) }],
     });
 
     const { container } = render(<BackgroundWallpaper deps={deps} />);
@@ -197,7 +197,7 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     });
     mockHook.mockReturnValue({
       status: "ready",
-      images: [{ canvas: createImageCanvas(300, 400), aspect: 0.75 }],
+      images: [{ canvas: createImageCanvas(300, 400) }],
     });
 
     const { container } = render(<BackgroundWallpaper deps={deps} />);
@@ -216,7 +216,7 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     });
     mockHook.mockReturnValue({
       status: "ready",
-      images: [{ canvas: createImageCanvas(300, 400), aspect: 0.75 }],
+      images: [{ canvas: createImageCanvas(300, 400) }],
     });
 
     const { unmount } = render(<BackgroundWallpaper deps={deps} />);
@@ -233,7 +233,7 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     mockHook.mockReturnValue({
       status: "ready",
-      images: [{ canvas: createImageCanvas(300, 400), aspect: 0.75 }],
+      images: [{ canvas: createImageCanvas(300, 400) }],
     });
 
     const { container } = render(<BackgroundWallpaper deps={deps} />);
