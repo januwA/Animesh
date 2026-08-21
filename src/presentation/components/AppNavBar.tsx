@@ -3,7 +3,6 @@ import {
   Calendar,
   Clapperboard,
   Download,
-  Ellipsis,
   Heart,
   Search,
   Settings as SettingsIcon,
@@ -127,7 +126,6 @@ export function AppNavBar() {
               {isMoreActive && (
                 <span className="absolute inset-0 bg-primary/10 rounded-xl blur-xs -z-10 md:hidden animate-fade-in" />
               )}
-              <Ellipsis className={iconClass} />
               <span>更多</span>
             </button>
           </DropdownMenuTrigger>
