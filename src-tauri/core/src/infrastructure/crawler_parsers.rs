@@ -289,6 +289,14 @@ pub struct NyaaChannel {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NyaaGuid {
+    #[serde(rename = "@isPermaLink", default)]
+    pub is_permalink: String,
+    #[serde(rename = "$text", default)]
+    pub text: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct NyaaItem {
     pub title: String,
     pub link: String,
@@ -300,6 +308,8 @@ pub struct NyaaItem {
     pub info_hash: String,
     #[serde(rename = "size")]
     pub size: String,
+    #[serde(rename = "guid", default)]
+    pub guid: Option<NyaaGuid>,
 }
 
 pub fn parse_nyaa_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
@@ -321,7 +331,7 @@ pub fn parse_nyaa_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
             }
             SearchResultItem {
                 title: item.title,
-                link: item.link,
+                link: item.guid.map(|g| g.text).unwrap_or_default(),
                 pub_date: item.pub_date,
                 magnet,
                 description: item.description,
@@ -514,7 +524,7 @@ mod tests {
             item.title,
             "[FSP DN] A Record of a Mortal’s Journey to Immortality - 179 (1080p) | xxx"
         );
-        assert_eq!(item.link, "https://nyaa.si/download/2123662.torrent");
+        assert_eq!(item.link, "https://nyaa.si/view/2123662");
         assert_eq!(item.pub_date, "Sat, 20 Jun 2026 14:23:11 -0000");
         assert_eq!(
             item.magnet,
