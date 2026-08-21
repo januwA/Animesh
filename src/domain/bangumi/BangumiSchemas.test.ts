@@ -109,7 +109,8 @@ describe("Bangumi 条目搜索 Schema", () => {
           id: 1,
           name: "动画",
           summary: "简介",
-          image: images.large,
+          image:
+            "https://api.bgm.tv/v0/subjects/1/image?subject_id=1&type=common",
           rating: 8.5,
           date: "2026-01-01",
           eps: 12,
@@ -204,7 +205,8 @@ describe("Bangumi 数据缓存 Schema 回读校验", () => {
         {
           id: 326,
           name: "新世纪福音战士",
-          image: images.large,
+          image:
+            "https://api.bgm.tv/v0/subjects/326/image?subject_id=326&type=common",
           rating: 9.1,
           rank: 1,
         },
@@ -225,6 +227,10 @@ describe("Bangumi 数据缓存 Schema 回读校验", () => {
       data: [{ id: 1, name: "Anime", name_cn: "" }],
     });
 
-    expect(page.items[0]).toMatchObject({ image: "", rating: 0, rank: null });
+    expect(page.items[0]).toMatchObject({
+      image: "https://api.bgm.tv/v0/subjects/1/image?subject_id=1&type=common",
+      rating: 0,
+      rank: null,
+    });
   });
 });

@@ -37,7 +37,7 @@ const BangumiCalendarItemSchema = z
     return {
       ...other,
       name: dto.name_cn || dto.name,
-      image: dto.images ? dto.images.large || dto.images.medium : "",
+      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
       rating: dto.rating?.score || 0,
     };
   });
@@ -84,7 +84,7 @@ export const BangumiSubjectSchema = z
       ...other,
       name: dto.name_cn || dto.name,
       summary: dto.summary || "",
-      image: dto.images ? dto.images.large || dto.images.medium : "",
+      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
       rating: dto.rating?.score || 0,
     };
   });
@@ -167,7 +167,7 @@ export const BangumiRankedSubjectSchema = z
     return {
       ...other,
       name: dto.name_cn || dto.name,
-      image: dto.images ? dto.images.large || dto.images.medium : "",
+      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
       rating: dto.rating?.score || 0,
       rank: dto.rating?.rank ?? null,
     };
@@ -211,7 +211,7 @@ export const BangumiPersonSchema = z
     const { images, ...other } = dto;
     return {
       ...other,
-      image: dto.images ? dto.images.large || dto.images.medium : "",
+      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
     };
   });
 
@@ -232,7 +232,7 @@ export const BangumiActorSchema = z
     const { images, ...other } = dto;
     return {
       ...other,
-      image: dto.images ? dto.images.large || dto.images.medium : "",
+      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
     };
   });
 
@@ -254,7 +254,7 @@ export const BangumiCharacterSchema = z
     const { images, ...other } = dto;
     return {
       ...other,
-      image: dto.images ? dto.images.large || dto.images.medium : "",
+      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
     };
   });
 
