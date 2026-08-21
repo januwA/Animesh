@@ -11,7 +11,7 @@ export interface BackgroundImage {
 }
 
 /** 预模糊半径（相对预览高度，保证不同来源分辨率在屏幕上呈现一致的柔和度） */
-const BLUR_HEIGHT_RATIO = 0.003;
+const BLUR_HEIGHT_RATIO = 0.001;
 /** 预模糊后小图的最大高度，兼顾清晰度与性能 */
 const MAX_PREVIEW_HEIGHT = 480;
 
@@ -25,7 +25,8 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
 }
 
 function blurToCanvas(img: HTMLImageElement): BackgroundImage {
-  const scale = Math.min(1, MAX_PREVIEW_HEIGHT / img.naturalHeight);
+  const longSide = Math.max(img.naturalWidth, img.naturalHeight);
+  const scale = Math.min(1, MAX_PREVIEW_HEIGHT / longSide);
   const width = Math.max(1, Math.round(img.naturalWidth * scale));
   const height = Math.max(1, Math.round(img.naturalHeight * scale));
   const canvas = document.createElement("canvas");

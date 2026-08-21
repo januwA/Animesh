@@ -9,8 +9,6 @@ export interface BackgroundWallpaperProps {
 
 const OVERLAY_CLASS =
   "absolute inset-0 bg-background/70 transition-colors duration-300";
-const FADE_CLASS =
-  "absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background/80";
 
 /**
  * 全局背景壁纸：预取榜单封面并在 canvas 上做 Ken Burns 交叉淡入淡出。
@@ -76,7 +74,6 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
     <div aria-hidden="true" className="fixed inset-0 z-0 overflow-hidden">
       <canvas ref={canvasRef} className="h-full w-full" />
       <div className={OVERLAY_CLASS} />
-      <div className={FADE_CLASS} />
     </div>
   );
 }

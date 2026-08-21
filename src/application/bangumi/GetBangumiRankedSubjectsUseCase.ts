@@ -4,7 +4,7 @@ import type { BangumiRankedSubject } from "@/domain/bangumi/BangumiSchemas";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 
 /** 背景壁纸最多使用的榜单条目数 */
-export const RANKED_SUBJECT_LIMIT = 10;
+export const RANKED_SUBJECT_LIMIT = 20;
 /** 榜单按最近月数拉取（本月 + 上月） */
 export const RANKED_SUBJECT_MONTH_WINDOW = 2;
 

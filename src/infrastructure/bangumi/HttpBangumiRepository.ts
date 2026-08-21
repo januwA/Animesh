@@ -52,9 +52,16 @@ export class HttpBangumiRepository implements BangumiRepository {
   ): Promise<BangumiRankedSubject[]> {
     let data: unknown;
     try {
-      // 动画类型 0 为 其他, 1 为 TV, 2 为 OVA, 3 为 Movie, 5 为 WEB
+      const query = new URLSearchParams({
+        type: "2", // 动漫
+        cat: "1", // 动画类型 0 为 其他, 1 为 TV, 2 为 OVA, 3 为 Movie, 5 为 WEB
+        sort: "rank",
+        year: year.toString(),
+        month: month.toString(),
+        limit: limit.toString(),
+      });
       data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects?type=2&cat=1&sort=rank&year=${year}&month=${month}&limit=${limit}`,
+        `https://api.bgm.tv/v0/subjects?${query.toString()}`,
         { ctx },
       );
     } catch (err: unknown) {

@@ -7,10 +7,10 @@ export interface WallpaperImage {
 }
 
 /** 单张封面完整展示的时长（毫秒） */
-export const WALLPAPER_DURATION_MS = new Duration({ seconds: 15 })
+export const WALLPAPER_DURATION_MS = new Duration({ seconds: 60 })
   .inMilliseconds;
 /** 交叉淡入淡出占整个周期的比例，其余时间保持单张清晰展示 */
-export const FADE_DURATION_RATIO = 0.75;
+export const FADE_DURATION_RATIO = 0.1;
 
 export function easeInOut(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
@@ -39,7 +39,11 @@ export function renderWallpaperFrame(
     (elapsedMs - cycle * WALLPAPER_DURATION_MS) / WALLPAPER_DURATION_MS;
   const fromIndex = cycle % images.length;
   const toIndex = (fromIndex + 1) % images.length;
-  const fade = easeInOut(Math.min(progress / FADE_DURATION_RATIO, 1));
+  // drawLayer 或 renderWallpaperFrame 里加一层保护
+  const fade =
+    FADE_DURATION_RATIO > 0
+      ? easeInOut(Math.min(progress / FADE_DURATION_RATIO, 1))
+      : 1; // ratio 为 0 时视为无渐变，直接切换
 
   drawLayer(ctx, width, height, images[fromIndex], progress, 1 - fade);
   drawLayer(ctx, width, height, images[toIndex], progress, fade);
@@ -55,14 +59,20 @@ function drawLayer(
 ): void {
   if (alpha <= 0) return;
 
-  // 连续周期缩放：progress=0 与 progress=1 处取值相同，避免周期切换瞬间缩放跳变造成卡顿
-  const zoom = 1.08 + 0.08 * (0.5 - 0.5 * Math.cos(progress * Math.PI * 2));
+  const zoom = 1.05 + 0.1 * (0.5 - 0.5 * Math.cos(progress * Math.PI * 2));
   const scale =
     Math.max(width / image.canvas.width, height / image.canvas.height) * zoom;
   const drawWidth = image.canvas.width * scale;
   const drawHeight = image.canvas.height * scale;
-  const panX = Math.sin(progress * Math.PI * 2) * width * 0.04;
-  const panY = Math.cos(progress * Math.PI * 2) * height * 0.04;
+
+  // 安全平移范围(图片比画布多出的部分的一半)
+  const availX = Math.max(0, (drawWidth - width) / 2);
+  const availY = Math.max(0, (drawHeight - height) / 2);
+
+  const panRatio = 0.6; // 留出安全余量,建议 0.5~0.8
+  const angle = progress * Math.PI * 2;
+  const panX = Math.sin(angle) * availX * panRatio;
+  const panY = Math.cos(angle) * availY * panRatio;
 
   ctx.save();
   ctx.globalAlpha = alpha;
