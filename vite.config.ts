@@ -51,9 +51,12 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: "happy-dom",
       setupFiles: "./src/test/setup.ts",
+      reporters: ["minimal"], // minimal,dot
+      maxWorkers: '50%',
+      silent : 'passed-only',
       coverage: {
         provider: "v8",
-        reporter: ["text", "json"],
+        reporter: ["text"],
         skipFull: true, // 输出的text只显示覆盖未达标的输出
         include: ["src/**/*.{ts,tsx}"],
         exclude: [
