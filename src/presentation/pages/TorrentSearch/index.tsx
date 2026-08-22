@@ -3,6 +3,7 @@ import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
+import { Card, CardContent } from "@/presentation/components/ui/card";
 import {
   Empty,
   EmptyContent,
@@ -71,12 +72,16 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         />
       )}
 
-      <SearchHistory
-        history={page.searchHistory.history}
-        onSelectKeyword={page.search.setSearchKeyword}
-        onDelete={page.searchHistory.handleDeleteHistory}
-        onClear={page.searchHistory.handleClearHistory}
-      />
+      <Card className="ani-card">
+        <CardContent>
+          <SearchHistory
+            history={page.searchHistory.history}
+            onSelectKeyword={page.search.setSearchKeyword}
+            onDelete={page.searchHistory.handleDeleteHistory}
+            onClear={page.searchHistory.handleClearHistory}
+          />
+        </CardContent>
+      </Card>
 
       {page.status.loading &&
         (page.ai.selectedAiAlias !== "none" ? (
@@ -97,12 +102,16 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         !page.status.error &&
         (page.status.searchHasSearched &&
         page.results.searchResults.length === 0 ? (
-          <Empty>
-            <EmptyContent>
-              <EmptyTitle>未找到相关资源</EmptyTitle>
-              <EmptyDescription>请换个关键词试试</EmptyDescription>
-            </EmptyContent>
-          </Empty>
+          <Card className="ani-card">
+            <CardContent>
+              <Empty>
+                <EmptyContent>
+                  <EmptyTitle>未找到相关资源</EmptyTitle>
+                  <EmptyDescription>请换个关键词试试</EmptyDescription>
+                </EmptyContent>
+              </Empty>
+            </CardContent>
+          </Card>
         ) : !page.status.searchHasSearched ? (
           <WelcomeGuide />
         ) : null)}

@@ -6,6 +6,7 @@ import { BackButton } from "@/presentation/components/BackButton";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Badge } from "@/presentation/components/ui/badge";
+import { Card, CardContent } from "@/presentation/components/ui/card";
 import {
   Tabs,
   TabsContent,
@@ -117,15 +118,19 @@ function SubjectDetailView({
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
       {/* Navigation Header */}
-      <SubjectNavigationHeader
-        subject={detail.info.subject}
-        displayName={detail.info.displayName}
-        onBack={detail.info.handleBack}
-        onOpenUrl={detail.info.handleOpenUrl}
-        getFavoriteStatusUseCase={getFavoriteStatusUseCase}
-        addFavoriteUseCase={addFavoriteUseCase}
-        removeFavoriteUseCase={removeFavoriteUseCase}
-      />
+      <Card className="ani-card">
+        <CardContent>
+          <SubjectNavigationHeader
+            subject={detail.info.subject}
+            displayName={detail.info.displayName}
+            onBack={detail.info.handleBack}
+            onOpenUrl={detail.info.handleOpenUrl}
+            getFavoriteStatusUseCase={getFavoriteStatusUseCase}
+            addFavoriteUseCase={addFavoriteUseCase}
+            removeFavoriteUseCase={removeFavoriteUseCase}
+          />
+        </CardContent>
+      </Card>
 
       {/* Info Header Card */}
       <SubjectInfoCard
@@ -136,19 +141,23 @@ function SubjectDetailView({
       />
 
       {/* Episodes List */}
-      <EpisodesSection
-        episodes={detail.episodes.episodes}
-        totalEpisodes={detail.episodes.totalEpisodes}
-        totalPages={detail.episodes.totalPages}
-        page={page}
-        todayStr={detail.episodes.todayStr}
-        loading={detail.episodes.episodesQuery.loading}
-        error={detail.episodes.episodesQuery.error}
-        onRetry={detail.episodes.episodesQuery.refetch}
-        onEpisodeClick={detail.episodes.handleEpisodeClick}
-        onPageChange={detail.episodes.changePage}
-        onJumpToEpisode={detail.episodes.jumpToEpisode}
-      />
+      <Card>
+        <CardContent>
+          <EpisodesSection
+            episodes={detail.episodes.episodes}
+            totalEpisodes={detail.episodes.totalEpisodes}
+            totalPages={detail.episodes.totalPages}
+            page={page}
+            todayStr={detail.episodes.todayStr}
+            loading={detail.episodes.episodesQuery.loading}
+            error={detail.episodes.episodesQuery.error}
+            onRetry={detail.episodes.episodesQuery.refetch}
+            onEpisodeClick={detail.episodes.handleEpisodeClick}
+            onPageChange={detail.episodes.changePage}
+            onJumpToEpisode={detail.episodes.jumpToEpisode}
+          />
+        </CardContent>
+      </Card>
 
       {/* Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -183,33 +192,45 @@ function SubjectDetailView({
         </TabsContent>
 
         <TabsContent value="characters" className="pt-4">
-          <CharactersSection
-            characters={detail.cast.characters}
-            loading={detail.cast.charactersQuery.loading}
-            error={detail.cast.charactersQuery.error}
-            onRetry={detail.cast.charactersQuery.refetch}
-          />
+          <Card className="ani-card">
+            <CardContent>
+              <CharactersSection
+                characters={detail.cast.characters}
+                loading={detail.cast.charactersQuery.loading}
+                error={detail.cast.charactersQuery.error}
+                onRetry={detail.cast.charactersQuery.refetch}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="staff" className="pt-4">
-          <StaffSection
-            staffGroupedByRole={detail.cast.staffGroupedByRole}
-            loading={detail.cast.personsQuery.loading}
-            error={detail.cast.personsQuery.error}
-            onRetry={detail.cast.personsQuery.refetch}
-          />
+          <Card className="ani-card">
+            <CardContent>
+              <StaffSection
+                staffGroupedByRole={detail.cast.staffGroupedByRole}
+                loading={detail.cast.personsQuery.loading}
+                error={detail.cast.personsQuery.error}
+                onRetry={detail.cast.personsQuery.refetch}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="resources" className="pt-0">
-          <SubjectResourcesTab
-            subjectName={detail.info.displayName}
-            boundTorrents={detail.resources.boundTorrents}
-            unboundTorrents={detail.resources.unboundTorrents}
-            bindLoading={detail.resources.bindLoading}
-            unbindLoading={detail.resources.unbindLoading}
-            onBind={detail.resources.handleBind}
-            onUnbind={detail.resources.handleUnbind}
-          />
+          <Card className="ani-card">
+            <CardContent>
+              <SubjectResourcesTab
+                subjectName={detail.info.displayName}
+                boundTorrents={detail.resources.boundTorrents}
+                unboundTorrents={detail.resources.unboundTorrents}
+                bindLoading={detail.resources.bindLoading}
+                unbindLoading={detail.resources.unbindLoading}
+                onBind={detail.resources.handleBind}
+                onUnbind={detail.resources.handleUnbind}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

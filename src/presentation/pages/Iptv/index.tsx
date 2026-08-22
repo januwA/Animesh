@@ -1,5 +1,6 @@
 import { useDI } from "@/di/DIContext";
 import { ErrorBanner } from "@/presentation/components/AppComponents";
+import { Card, CardContent } from "@/presentation/components/ui/card";
 import {
   Empty,
   EmptyContent,
@@ -32,16 +33,20 @@ export default function Iptv() {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <IptvFilters
-        countries={selectCountries}
-        selectedCountry={iptvSelectedCountry}
-        categories={categories}
-        selectedCategory={iptvSelectedCategory}
-        keyword={iptvKeyword}
-        onCountryChange={handleCountryChange}
-        onCategoryChange={handleCategoryChange}
-        onKeywordChange={setIptvKeyword}
-      />
+      <Card className="ani-card">
+        <CardContent>
+          <IptvFilters
+            countries={selectCountries}
+            selectedCountry={iptvSelectedCountry}
+            categories={categories}
+            selectedCategory={iptvSelectedCategory}
+            keyword={iptvKeyword}
+            onCountryChange={handleCountryChange}
+            onCategoryChange={handleCategoryChange}
+            onKeywordChange={setIptvKeyword}
+          />
+        </CardContent>
+      </Card>
 
       {!isLoading && !error && (
         <p className="text-xs text-muted-foreground">

@@ -1,4 +1,4 @@
-import { Clipboard, Link2, Loader2 } from "lucide-react";
+import { Clipboard, Loader2 } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ResolvePlayableStreamUrlUseCase } from "@/application/iptv/ResolvePlayableStreamUrlUseCase";
@@ -16,6 +16,12 @@ import {
 import { VideoSkin } from "@videojs/react/video";
 import { LazyImage } from "@/presentation/components/LazyImage";
 import { MpegtsVideo } from "@/presentation/components/MpegtsVideo";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/presentation/components/ui/card";
 import {
   JsLivePlayer,
   JsLivePlayerErrorMonitor,
@@ -162,28 +168,27 @@ export function LivePlayerView({
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-muted/50 p-4 flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <Link2 className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">
-              原始直播源地址
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <p className="flex-1 min-w-0 font-mono text-xs text-muted-foreground break-all">
-              {url}
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopyRawUrl}
-              className="h-8 gap-1 shrink-0 text-muted-foreground hover:text-foreground"
-            >
-              <Clipboard className="h-4 w-4" />
-              复制
-            </Button>
-          </div>
-        </div>
+        <Card className="ani-card">
+          <CardHeader>
+            <CardTitle>原始直播源地址</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <p className="flex-1 min-w-0 font-mono text-xs text-muted-foreground break-all">
+                {url}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyRawUrl}
+                className="h-8 gap-1 shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                <Clipboard className="h-4 w-4" />
+                复制
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
