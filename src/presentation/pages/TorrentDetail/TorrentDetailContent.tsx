@@ -1,11 +1,11 @@
-import { Film, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
 import { ErrorState } from "@/presentation/components/ErrorState";
-import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
@@ -15,7 +15,14 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
-import { TorrentFileItem } from "./TorrentFileItem";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
+} from "@/presentation/components/ui/item";
+import { formatBytes } from "@/utils";
 
 interface TorrentDetailContentProps {
   torrent: AddTorrentResult | null;
@@ -73,26 +80,26 @@ export function TorrentDetailContent({
     <Card className="ani-card">
       <CardHeader>
         <CardTitle>Hash: {torrent.info_hash}</CardTitle>
+        <CardDescription>共 {torrent.files.length} 个文件</CardDescription>
       </CardHeader>
 
       <CardContent>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Film className="h-4 w-4 text-primary" />
-            选择要播放的文件：
-          </h3>
-          <Badge variant="secondary" className="text-xs">
-            共 {torrent.files.length} 个文件
-          </Badge>
-        </div>
-        <div className="border border-border rounded-lg bg-muted/30 p-3 flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           {torrent.files.map((file) => (
-            <TorrentFileItem
-              key={file.id}
-              torrent={torrent}
-              file={file}
-              onPlay={onPlay}
-            />
+            <Item variant="outline" key={file.id}>
+              <ItemContent>
+                <ItemTitle>{file.name}</ItemTitle>
+                <ItemDescription>{formatBytes(file.len)}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <Button
+                  size="sm"
+                  onClick={() => onPlay(torrent.info_hash, file.id, file.name)}
+                >
+                  播放
+                </Button>
+              </ItemActions>
+            </Item>
           ))}
         </div>
       </CardContent>
