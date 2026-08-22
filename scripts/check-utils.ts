@@ -176,7 +176,6 @@ export function runChecks(scriptLabel: string, rules: CheckRule[]): void {
 					unionTargetDirs.some((dir) => f.startsWith(dir)) && fs.existsSync(f),
 			);
 		if (candidates.length === 0) {
-			console.log(`未检测到需要检查的文件。`);
 			process.exit(0);
 		}
 	} else {
@@ -186,7 +185,6 @@ export function runChecks(scriptLabel: string, rules: CheckRule[]): void {
 	}
 
 	if (candidates.length === 0) {
-		console.log(`未检测到需要检查的文件。`);
 		process.exit(0);
 	}
 
@@ -255,6 +253,5 @@ export function runChecks(scriptLabel: string, rules: CheckRule[]): void {
 		);
 		process.exit(0);
 	}
-	console.log(`✨ ${scriptLabel}校验通过。`);
 	process.exit(0);
 }

@@ -437,7 +437,6 @@ function main() {
 
 	const totalErrors = methodErrors.length + conformanceErrors.length;
 	if (totalErrors === 0) {
-		console.log("✨ 接口契约校验通过：接口方法设计与实现契约均符合规范。");
 		process.exit(0);
 	}
 

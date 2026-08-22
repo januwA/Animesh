@@ -117,9 +117,6 @@ function main() {
 	const errors = runApplicationCheck(args);
 
 	if (errors.length === 0) {
-		console.log(
-			"✨ 应用层接入校验通过：所有 UseCase 均已实例化并接入 DI 容器（DIContext.tsx）。",
-		);
 		process.exit(0);
 	}
 

@@ -213,7 +213,6 @@ function main() {
 		);
 		process.exit(1);
 	} else {
-		console.log("✨ 测试文件组织规范校验通过：源码文件与同名测试文件一一对应。");
 		process.exit(0);
 	}
 }

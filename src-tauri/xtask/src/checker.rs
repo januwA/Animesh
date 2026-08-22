@@ -68,9 +68,5 @@ pub fn print_check_result(result: &CheckResult, base_path: &Path) -> bool {
         }
     }
 
-    if !has_errors {
-        println!("检查通过: 所有 Tauri Command 定义和注册一致。");
-    }
-
     has_errors
 }

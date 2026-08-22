@@ -49,7 +49,7 @@ pre-push:
     "后端_异步命令检查":
       run: pnpm check:tauri-commands
     "前端_单元测试与覆盖率":
-      run: pnpm test:coverage # 全量测试及覆盖率阈值检查
+      run: pnpm test:coverage -- --silent --reporter=dot
     "后端_Rust单元测试与覆盖率":
       glob: "src-tauri/**/*"
       run: pnpm test:rust:coverage

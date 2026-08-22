@@ -250,7 +250,6 @@ if (
 						)
 				: infraFiles;
 		if (targetFiles.length === 0) {
-			console.log("✨ 无需修复。");
 			process.exit(0);
 		}
 
@@ -268,8 +267,6 @@ if (
 		}
 		if (fixedCount > 0) {
 			console.log(`\n🔧 共修复 ${fixedCount} 处魔法字符串。`);
-		} else {
-			console.log("✨ 无需修复。");
 		}
 		process.exit(0);
 	}
@@ -320,5 +317,4 @@ if (
 		process.exit(1);
 	}
 
-	console.log("✨ Tauri Invoke 规范校验通过。");
 }

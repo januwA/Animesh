@@ -158,7 +158,6 @@ describe("runChecks 多规则 CLI runner", () => {
 				},
 			]),
 		).toThrow("exit 0");
-		expect(console.log).toHaveBeenCalledWith("未检测到需要检查的文件。");
 	});
 
 	it("存在 error 违规时输出规则名并退出 1", () => {

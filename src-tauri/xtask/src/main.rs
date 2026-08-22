@@ -34,19 +34,8 @@ fn get_workspace_root() -> PathBuf {
 fn check(workspace_root: &Path) -> Result<()> {
     let src_dir = workspace_root.join("src");
     let lib_rs = src_dir.join("lib.rs");
-
-    println!("扫描 Tauri Command 定义...");
-
     let defined = parser::scan_directory(&src_dir)?;
-    println!("  找到 {} 个 #[tauri::command]", defined.len());
-
-    println!("解析 generate_handler!...");
-
     let registered = parser::parse_generate_handler(&lib_rs)?;
-    println!("  找到 {} 个注册的 command", registered.len());
-
-    println!("检查一致性...");
-
     let result = checker::check_commands(&defined, &registered);
     let has_errors = checker::print_check_result(&result, workspace_root);
 
