@@ -26,7 +26,7 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
     if (!canvas || !ctx) return;
 
     const fitCanvas = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const dpr = Math.min(1, window.devicePixelRatio || 1);
       canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
       canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
     };
@@ -40,9 +40,12 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
 
     let frameId = 0;
     let startTime: number | null = null;
+    let lastDrawTime = 0;
+    const FRAME_INTERVAL = 1000 / 30;
     const render = (now: number) => {
       if (startTime === null) startTime = now;
-      if (!document.hidden) {
+      if (!document.hidden && now - lastDrawTime >= FRAME_INTERVAL) {
+        lastDrawTime = now;
         renderWallpaperFrame(
           ctx,
           canvas.width,

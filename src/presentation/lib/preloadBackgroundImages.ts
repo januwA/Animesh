@@ -1,5 +1,5 @@
 /**
- * 背景壁纸位图预取：把榜单封面一次性加载并预模糊到小尺寸离屏 canvas，
+ * 背景壁纸位图预取：把榜单封面一次性加载并缩放到小尺寸离屏 canvas，
  * 后续动画循环只做低成本 drawImage，避免页面出现加载/解码卡顿。
  *
  * 注意：bangumi 图床（lain.bgm.tv）不返回 CORS 头，不能用 fetch + createImageBitmap；
@@ -9,10 +9,8 @@ export interface BackgroundImage {
   canvas: HTMLCanvasElement;
 }
 
-/** 预模糊半径（相对预览高度，保证不同来源分辨率在屏幕上呈现一致的柔和度） */
-const BLUR_HEIGHT_RATIO = 0.001;
-/** 预模糊后小图的最大高度，兼顾清晰度与性能 */
-const MAX_PREVIEW_HEIGHT = 480;
+/** 预览小图的最大高度，兼顾清晰度与性能 */
+const MAX_PREVIEW_HEIGHT = 320;
 /** 最大并发加载数，避免打满浏览器同域连接池（通常限制 6） */
 const MAX_CONCURRENCY = 4;
 
@@ -25,7 +23,7 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
-function blurToCanvas(img: HTMLImageElement): BackgroundImage {
+function downscaleToCanvas(img: HTMLImageElement): BackgroundImage {
   const longSide = Math.max(img.naturalWidth, img.naturalHeight);
   const scale = Math.min(1, MAX_PREVIEW_HEIGHT / longSide);
   const width = Math.max(1, Math.round(img.naturalWidth * scale));
@@ -35,7 +33,6 @@ function blurToCanvas(img: HTMLImageElement): BackgroundImage {
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (ctx) {
-    ctx.filter = `blur(${Math.max(1, Math.round(height * BLUR_HEIGHT_RATIO))}px)`;
     ctx.drawImage(img, 0, 0, width, height);
   }
   return { canvas };
@@ -73,7 +70,7 @@ async function mapWithConcurrency<T, R>(
 }
 
 /**
- * 分组并发加载图片并预模糊，加载失败的图片静默跳过，保持原始顺序。
+ * 分组并发加载图片并缩放到小尺寸，加载失败的图片静默跳过，保持原始顺序。
  * 最多同时发起 MAX_CONCURRENCY 个请求，避免打满浏览器连接池。
  */
 export async function preloadBackgroundImages(
@@ -84,5 +81,5 @@ export async function preloadBackgroundImages(
   const loaded = await mapWithConcurrency(urls, MAX_CONCURRENCY, loadImage);
   return loaded
     .filter((img): img is HTMLImageElement => img !== null)
-    .map(blurToCanvas);
+    .map(downscaleToCanvas);
 }

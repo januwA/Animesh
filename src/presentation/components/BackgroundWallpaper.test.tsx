@@ -145,7 +145,7 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
 
     const { container } = render(<BackgroundWallpaper deps={deps} />);
 
-    expect(() => tick(0)).not.toThrow();
+    expect(() => tick(50)).not.toThrow();
     expect(container.querySelector("canvas")).not.toBeNull();
     expect(ctx.drawImage).toHaveBeenCalled();
   });

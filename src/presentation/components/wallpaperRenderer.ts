@@ -34,7 +34,7 @@ export function renderWallpaperFrame(
   if (images.length === 0) return;
 
   ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
+  ctx.imageSmoothingQuality = "low";
 
   const cycle = Math.floor(elapsedMs / WALLPAPER_DURATION_MS);
   const progress =
