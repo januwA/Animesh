@@ -1,6 +1,6 @@
 //! 局域网网卡选择工具:从系统网卡列表中挑选最适合对外暴露流媒体地址的 IPv4。
 
-/// 从一组 (网卡名, IP) 中挑选最佳 IPv4 字符串。
+/// 对一组 (网卡名, IP) 进行评分,返回按得分降序排列的候选列表。
 ///
 /// 评分规则:
 /// - 私网地址 +10
@@ -8,10 +8,10 @@
 /// - 虚拟网卡关键词(vpn/wsl/docker/xray 等)-100
 /// - 回环、未指定、链路本地地址直接跳过
 /// - 最终得分 < 0 视为无可用地址(避免误选虚拟网卡)
-fn select_best_local_ip(interfaces: Vec<(String, std::net::IpAddr)>) -> Option<String> {
+fn score_interfaces(interfaces: Vec<(String, std::net::IpAddr)>) -> Vec<(String, i32)> {
     use std::net::IpAddr;
 
-    let mut best_ip: Option<(String, i32)> = None;
+    let mut candidates: Vec<(String, i32)> = Vec::new();
 
     for (name, ip) in interfaces {
         let ipv4 = match ip {
@@ -75,35 +75,61 @@ fn select_best_local_ip(interfaces: Vec<(String, std::net::IpAddr)>) -> Option<S
             score += 30;
         }
 
-        let ip_str = ipv4.to_string();
-        match &best_ip {
-            Some((_, best_score)) => {
-                if score > *best_score {
-                    best_ip = Some((ip_str, score));
-                }
-            }
-            None => {
-                best_ip = Some((ip_str, score));
-            }
+        candidates.push((ipv4.to_string(), score));
+    }
+
+    // 按得分降序排列,优先尝试高分候选
+    candidates.sort_by_key(|b| std::cmp::Reverse(b.1));
+
+    candidates
+}
+
+/// 从评分后的候选列表中选择第一个可达的 IP。
+fn pick_reachable_ip(candidates: Vec<(String, i32)>) -> Option<String> {
+    use std::net::UdpSocket;
+
+    for (ip, score) in candidates {
+        if score < 0 {
+            break;
+        }
+        let addr = format!("{ip}:0");
+        if UdpSocket::bind(&addr).is_ok() {
+            return Some(ip);
         }
     }
 
-    // 只返回真实可达的物理网卡地址;虚拟网卡(xray/Tailscale/WSL 等)优先级过低,
-    // 若没有更好的候选则视为无可用地址,交由调用方回退到 127.0.0.1
-    match best_ip {
-        Some((ip, score)) if score >= 0 => Some(ip),
-        _ => None,
-    }
+    None
 }
 
 /// 获取本机最佳局域网 IPv4。无可用物理网卡时返回 None。
+#[cfg(target_os = "windows")]
+pub fn get_local_ip() -> Option<String> {
+    use ipconfig::OperStatus;
+
+    let Ok(adapters) = ipconfig::get_adapters() else {
+        return None;
+    };
+
+    // 收集已连接适配器的 (名称, IP) 列表
+    let interfaces: Vec<(String, std::net::IpAddr)> = adapters
+        .iter()
+        .filter(|a| a.oper_status() == OperStatus::IfOperStatusUp)
+        .flat_map(|a| {
+            let name = a.friendly_name().to_string();
+            a.ip_addresses().iter().map(move |ip| (name.clone(), *ip))
+        })
+        .collect();
+
+    pick_reachable_ip(score_interfaces(interfaces))
+}
+
+/// 获取本机最佳局域网 IPv4。无可用物理网卡时返回 None。
+#[cfg(not(target_os = "windows"))]
 pub fn get_local_ip() -> Option<String> {
     use local_ip_address::list_afinet_netifas;
 
     if let Ok(interfaces) = list_afinet_netifas() {
-        if let Some(ip) = select_best_local_ip(interfaces) {
-            return Some(ip);
-        }
+        return pick_reachable_ip(score_interfaces(interfaces));
     }
 
     None
@@ -127,33 +153,22 @@ mod tests {
 
     #[test]
     #[allow(non_snake_case)]
-    fn 测试_选择最佳局域网IP_优先级() {
-        let user_interfaces = vec![
+    fn 测试_评分_虚拟网卡被降权() {
+        let interfaces = vec![
             ("xray0".to_string(), "198.18.0.1".parse::<IpAddr>().unwrap()),
             (
                 "vEthernet (WSL (Hyper-V firewall))".to_string(),
                 "172.31.208.1".parse::<IpAddr>().unwrap(),
             ),
-            (
-                "WLAN".to_string(),
-                "192.168.0.106".parse::<IpAddr>().unwrap(),
-            ),
         ];
-        assert_eq!(
-            select_best_local_ip(user_interfaces),
-            Some("192.168.0.106".to_string())
-        );
+        let candidates = score_interfaces(interfaces);
+        assert!(candidates.iter().all(|(_, score)| *score < 0));
+    }
 
-        let loopback_only = vec![
-            ("lo".to_string(), "127.0.0.1".parse::<IpAddr>().unwrap()),
-            (
-                "unspecified".to_string(),
-                "0.0.0.0".parse::<IpAddr>().unwrap(),
-            ),
-        ];
-        assert_eq!(select_best_local_ip(loopback_only), None);
-
-        let multiple_physical = vec![
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_评分_WLAN优先于以太网() {
+        let interfaces = vec![
             (
                 "以太网".to_string(),
                 "192.168.1.100".parse::<IpAddr>().unwrap(),
@@ -163,48 +178,62 @@ mod tests {
                 "192.168.1.101".parse::<IpAddr>().unwrap(),
             ),
         ];
-        assert_eq!(
-            select_best_local_ip(multiple_physical),
-            Some("192.168.1.101".to_string())
-        );
+        let candidates = score_interfaces(interfaces);
+        assert_eq!(candidates.len(), 2);
+        // WLAN(+50+10=60) > 以太网(+30+10=40)
+        assert_eq!(candidates[0].0, "192.168.1.101");
+        assert_eq!(candidates[0].1, 60);
+        assert_eq!(candidates[1].0, "192.168.1.100");
+        assert_eq!(candidates[1].1, 40);
+    }
 
-        let simple_ip = vec![(
-            "my_nic".to_string(),
-            "192.168.1.50".parse::<IpAddr>().unwrap(),
-        )];
-        assert_eq!(
-            select_best_local_ip(simple_ip),
-            Some("192.168.1.50".to_string())
-        );
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_评分_回环和未指定地址被过滤() {
+        let interfaces = vec![
+            ("lo".to_string(), "127.0.0.1".parse::<IpAddr>().unwrap()),
+            (
+                "unspecified".to_string(),
+                "0.0.0.0".parse::<IpAddr>().unwrap(),
+            ),
+        ];
+        let candidates = score_interfaces(interfaces);
+        assert!(candidates.is_empty());
+    }
 
-        let link_local_only = vec![(
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_评分_链路本地地址被过滤() {
+        let interfaces = vec![(
             "以太网".to_string(),
             "169.254.112.178".parse::<IpAddr>().unwrap(),
         )];
-        assert_eq!(select_best_local_ip(link_local_only), None);
+        let candidates = score_interfaces(interfaces);
+        assert!(candidates.is_empty());
+    }
 
-        let apipa_with_vpn = vec![
-            ("xray0".to_string(), "198.18.0.1".parse::<IpAddr>().unwrap()),
-            (
-                "以太网".to_string(),
-                "169.254.112.178".parse::<IpAddr>().unwrap(),
-            ),
-        ];
-        assert_eq!(select_best_local_ip(apipa_with_vpn), None);
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_评分_简单网卡() {
+        let interfaces = vec![(
+            "my_nic".to_string(),
+            "192.168.1.50".parse::<IpAddr>().unwrap(),
+        )];
+        let candidates = score_interfaces(interfaces);
+        assert_eq!(candidates.len(), 1);
+        assert_eq!(candidates[0].0, "192.168.1.50");
+    }
 
-        let link_local_with_real = vec![
-            (
-                "以太网".to_string(),
-                "169.254.112.178".parse::<IpAddr>().unwrap(),
-            ),
-            (
-                "以太网".to_string(),
-                "192.168.0.108".parse::<IpAddr>().unwrap(),
-            ),
-        ];
-        assert_eq!(
-            select_best_local_ip(link_local_with_real),
-            Some("192.168.0.108".to_string())
-        );
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_可达性验证_选择本机真实IP() {
+        let result = get_local_ip();
+        if let Some(ip) = result {
+            let addr = format!("{ip}:0");
+            assert!(
+                std::net::UdpSocket::bind(&addr).is_ok(),
+                "选出的 IP {ip} 不可达"
+            );
+        }
     }
 }

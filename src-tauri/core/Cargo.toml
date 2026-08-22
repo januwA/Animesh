@@ -52,3 +52,6 @@ aws-lc-sys = { version = "0.42.0", features = ["prebuilt-nasm", "bindgen"] }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 aws-lc-sys = { version = "0.42.0", features = ["prebuilt-nasm"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+ipconfig = "0.3.2"
