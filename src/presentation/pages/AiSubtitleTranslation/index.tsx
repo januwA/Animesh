@@ -1,4 +1,4 @@
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
@@ -9,7 +9,6 @@ import { TranslationRecordsSection } from "./TranslationRecordsSection";
 import { useAiTranslationForm } from "./useAiTranslationForm";
 import { useTranslationRecords } from "./useTranslationRecords";
 
-// v8 ignore start
 const paramsSchema = z.object({
   infoHash: NonEmptyStringSchema.min(1, "缺少种子哈希参数"),
   fileId: z.preprocess(
@@ -21,7 +20,6 @@ const paramsSchema = z.object({
 });
 
 export type ContentProps = z.infer<typeof paramsSchema>;
-// v8 ignore stop
 
 export default function AiSubtitleTranslationPage() {
   const { infoHash, fileId } = useParams<{
@@ -50,7 +48,6 @@ function AiSubtitleTranslationView({
   fileId,
   fileName,
 }: ContentProps) {
-  const navigate = useNavigate();
   const {
     getSubtitleTranslationsUseCase,
     translateSubtitleUseCase,
@@ -84,7 +81,7 @@ function AiSubtitleTranslationView({
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-      <AiSubtitleHeader fileName={fileName} onBack={() => navigate(-1)} />
+      <AiSubtitleHeader fileName={fileName} />
 
       <TranslateForm
         aiConfigs={form.aiConfigs}

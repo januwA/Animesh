@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
-import { MainLayout, NavBarLayout } from "./components/Layout";
+import { DetailLayout, MainLayout, NavBarLayout } from "./components/Layout";
 import TorrentSearch from "./pages/TorrentSearch";
 
 const AiSubtitleTranslation = lazy(
@@ -44,24 +44,41 @@ export const routes: RouteObject[] = [
     element: <MainLayoutRoute />,
     children: [
       {
-        path: "torrent",
-        element: <TorrentDetail />,
-      },
-      {
-        path: "subject/:subjectId",
-        element: <SubjectDetail />,
-      },
-      {
-        path: "play/:infoHash/:fileId",
-        element: <Player />,
-      },
-      {
-        path: "play/:infoHash/:fileId/ai-subtitle",
-        element: <AiSubtitleTranslation />,
-      },
-      {
-        path: "live/play",
-        element: <LivePlayer />,
+        element: <DetailLayout />,
+        children: [
+          {
+            path: "torrent",
+            element: <TorrentDetail />,
+          },
+          {
+            path: "subject/:subjectId",
+            element: <SubjectDetail />,
+          },
+          {
+            path: "play/:infoHash/:fileId",
+            element: <Player />,
+          },
+          {
+            path: "play/:infoHash/:fileId/ai-subtitle",
+            element: <AiSubtitleTranslation />,
+          },
+          {
+            path: "live/play",
+            element: <LivePlayer />,
+          },
+          {
+            path: "search",
+            element: <BangumiSearch />,
+          },
+          {
+            path: "live",
+            element: <Iptv />,
+          },
+          {
+            path: "settings",
+            element: <Settings />,
+          },
+        ],
       },
       {
         element: <NavBarLayout />,
@@ -75,25 +92,12 @@ export const routes: RouteObject[] = [
             element: <Calendar />,
           },
           {
-            path: "search",
-            element: <BangumiSearch />,
-          },
-          {
             path: "collections",
             element: <Collections />,
           },
           {
             path: "downloads",
             element: <Downloads />,
-          },
-          {
-            path: "live",
-            element: <Iptv />,
-          },
-
-          {
-            path: "settings",
-            element: <Settings />,
           },
         ],
       },

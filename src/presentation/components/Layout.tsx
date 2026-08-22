@@ -4,8 +4,23 @@ import type { UseGlobalEffectsDeps } from "../hooks/useGlobalEffects";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
 import { PageLoader } from "./AppComponents";
 import { AppNavBar } from "./AppNavBar";
+import { BackButton } from "./BackButton";
 import type { BackgroundWallpaperDeps } from "./BackgroundWallpaper";
 import { BackgroundWallpaper } from "./BackgroundWallpaper";
+import { Card, CardContent } from "./ui/card";
+
+export function DetailLayout() {
+  return (
+    <>
+      <Card className="ani-card mb-4">
+        <CardContent>
+          <BackButton />
+        </CardContent>
+      </Card>
+      <Outlet />
+    </>
+  );
+}
 
 export function NavBarLayout() {
   return (

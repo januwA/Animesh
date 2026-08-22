@@ -48,7 +48,10 @@ export default function Settings() {
     <div className="flex flex-col gap-6">
       {/* Settings Form */}
       <form onSubmit={page.handleSave} className="flex flex-col gap-6">
-        <SettingsActionHeader saving={page.actions.saving} />
+        <SettingsActionHeader
+          saving={page.actions.saving}
+          isDirty={page.isDirty}
+        />
 
         {page.isTauri && (
           <StorageSettingsSection

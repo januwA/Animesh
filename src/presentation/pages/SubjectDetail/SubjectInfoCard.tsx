@@ -1,13 +1,21 @@
-import { Calendar, Clock, Loader2, Star, Tv } from "lucide-react";
+import { Calendar, Clock, Globe, Loader2, Star, Tv } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
+import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
+import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
+import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
+import { FavoriteButton } from "./FavoriteButton";
 
 export interface SubjectInfoCardProps {
   subject: BangumiSubject | undefined;
   subjectId: number;
   displayName: string;
   imageUrl: string | undefined;
+  onOpenUrl?: () => void;
+  getFavoriteStatusUseCase?: Pick<GetFavoriteStatusUseCase, "execute">;
+  addFavoriteUseCase?: Pick<AddFavoriteUseCase, "execute">;
+  removeFavoriteUseCase?: Pick<RemoveFavoriteUseCase, "execute">;
 }
 
 function StatItem({
@@ -37,6 +45,10 @@ export function SubjectInfoCard({
   subjectId,
   displayName,
   imageUrl,
+  onOpenUrl,
+  getFavoriteStatusUseCase,
+  addFavoriteUseCase,
+  removeFavoriteUseCase,
 }: SubjectInfoCardProps) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
@@ -91,9 +103,42 @@ export function SubjectInfoCard({
               </div>
             )}
 
-            <h1 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
-              {displayName}
-            </h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
+                {displayName}
+              </h1>
+
+              {subject && onOpenUrl && (
+                <div className="flex items-center gap-1 shrink-0">
+                  {getFavoriteStatusUseCase &&
+                    addFavoriteUseCase &&
+                    removeFavoriteUseCase && (
+                      <FavoriteButton
+                        subject={subject}
+                        showLabel={false}
+                        getFavoriteStatusUseCase={getFavoriteStatusUseCase}
+                        addFavoriteUseCase={addFavoriteUseCase}
+                        removeFavoriteUseCase={removeFavoriteUseCase}
+                      />
+                    )}
+                  <a
+                    href={`https://bgm.tv/subject/${subject.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2.5 py-1 rounded-md hover:bg-accent"
+                    title={`在 Bangumi 打开: ${displayName}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onOpenUrl();
+                    }}
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    <span>详情</span>
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Stats / Loading Status */}

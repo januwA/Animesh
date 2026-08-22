@@ -2,7 +2,6 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import { BackButton } from "@/presentation/components/BackButton";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { AiTranslateButton } from "./AiTranslateButton";
@@ -112,9 +111,6 @@ function PlayerView({
   return (
     <JsPlayer.Provider>
       <div className="w-full flex flex-col gap-4 lg:gap-6 animate-in fade-in duration-300">
-        {/* Navigation Header */}
-        <BackButton />
-
         {/* Player Video */}
         <div className="relative w-full aspect-video max-h-dvh overflow-hidden">
           <PlayerVideo

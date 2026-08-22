@@ -3,9 +3,7 @@ import { z } from "zod";
 import type { ResolveTorrentUseCase } from "@/application/torrent/ResolveTorrentUseCase";
 import { useDI } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import { BackButton } from "@/presentation/components/BackButton";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
-import { Card, CardContent } from "@/presentation/components/ui/card";
 import { TorrentDetailContent } from "./TorrentDetailContent";
 import { useTorrentDetailPage } from "./useTorrentDetailPage";
 
@@ -56,12 +54,6 @@ function TorrentDetailView({
 
   return (
     <div className="w-full flex flex-col gap-4 animate-in fade-in duration-300">
-      <Card className="ani-card">
-        <CardContent>
-          <BackButton />
-        </CardContent>
-      </Card>
-
       <TorrentDetailContent
         torrent={torrent}
         loading={loading}

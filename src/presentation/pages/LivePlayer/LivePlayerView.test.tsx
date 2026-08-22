@@ -76,14 +76,6 @@ describe("LivePlayerView 直播播放器视图组件", () => {
     });
   });
 
-  it("应该渲染返回按钮", async () => {
-    renderLivePlayerView();
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /返回/ })).toBeInTheDocument();
-    });
-  });
-
   it("解析直播源失败时应该回退到原始地址继续播放", async () => {
     const failingDeps = {
       ...mockDeps,

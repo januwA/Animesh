@@ -1,18 +1,15 @@
 import { Sparkles } from "lucide-react";
-import { BackButton } from "@/presentation/components/BackButton";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 
 export interface AiSubtitleHeaderProps {
   fileName: string;
-  onBack: () => void;
 }
 
-export function AiSubtitleHeader({ fileName, onBack }: AiSubtitleHeaderProps) {
+export function AiSubtitleHeader({ fileName }: AiSubtitleHeaderProps) {
   return (
     <Card className="ani-card">
       <CardContent>
-        <div className="flex items-center justify-between">
-          <BackButton label="返回" onBack={onBack} />
+        <div className="flex items-center justify-end">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{fileName}</span>
           </div>

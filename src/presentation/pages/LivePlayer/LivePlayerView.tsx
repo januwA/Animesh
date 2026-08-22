@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import type { ResolvePlayableStreamUrlUseCase } from "@/application/iptv/ResolvePlayableStreamUrlUseCase";
 import type { ResolvedStreamUrl } from "@/domain/iptv/IptvStreamUrlRepository";
 import type { Logger } from "@/domain/logger/logger";
-import { BackButton } from "@/presentation/components/BackButton";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -111,8 +110,6 @@ export function LivePlayerView({
 
   return (
     <div className="w-full flex flex-col gap-4 lg:gap-6 animate-in fade-in duration-300">
-      <BackButton />
-
       <div className="relative w-full aspect-video max-h-dvh overflow-hidden rounded-xl">
         {resolvedStream ? (
           resolvedStream.kind === "flv" ? (

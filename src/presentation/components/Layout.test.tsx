@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
-import { MainLayout, NavBarLayout } from "./Layout";
+import { DetailLayout, MainLayout, NavBarLayout } from "./Layout";
 
 const mockDeps = {
   requestNotificationPermissionUseCase: { execute: vi.fn() },
@@ -53,5 +53,20 @@ describe("Layout 布局组件", () => {
   it("MainLayout 应该渲染路由视图", async () => {
     renderMainLayout(<div>首页内容</div>);
     expect(await screen.findByText("首页内容")).toBeInTheDocument();
+  });
+
+  it("DetailLayout 应该渲染返回按钮与子路由内容", () => {
+    render(
+      <MemoryRouter initialEntries={["/detail"]}>
+        <Routes>
+          <Route element={<DetailLayout />}>
+            <Route path="detail" element={<div>详情内容</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("详情内容")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /返回/ })).toBeInTheDocument();
   });
 });

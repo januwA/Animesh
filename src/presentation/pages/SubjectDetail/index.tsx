@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
-import { BackButton } from "@/presentation/components/BackButton";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Badge } from "@/presentation/components/ui/badge";
@@ -18,7 +17,6 @@ import { CharactersSection } from "./CharactersSection";
 import { EpisodesSection } from "./EpisodesSection";
 import { StaffSection } from "./StaffSection";
 import { SubjectInfoCard } from "./SubjectInfoCard";
-import { SubjectNavigationHeader } from "./SubjectNavigationHeader";
 import { SubjectResourcesTab } from "./SubjectResourcesTab";
 import { SummarySection } from "./SummarySection";
 import { useSubjectDetail } from "./useSubjectDetail";
@@ -105,7 +103,6 @@ function SubjectDetailView({
   if (detail.info.subjectQuery.error) {
     return (
       <div className="space-y-4">
-        <BackButton onBack={detail.info.handleBack} />
         <ErrorState
           title="获取动漫详情失败"
           message={detail.info.subjectQuery.error}
@@ -117,31 +114,20 @@ function SubjectDetailView({
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
-      {/* Navigation Header */}
-      <Card className="ani-card">
-        <CardContent>
-          <SubjectNavigationHeader
-            subject={detail.info.subject}
-            displayName={detail.info.displayName}
-            onBack={detail.info.handleBack}
-            onOpenUrl={detail.info.handleOpenUrl}
-            getFavoriteStatusUseCase={getFavoriteStatusUseCase}
-            addFavoriteUseCase={addFavoriteUseCase}
-            removeFavoriteUseCase={removeFavoriteUseCase}
-          />
-        </CardContent>
-      </Card>
-
       {/* Info Header Card */}
       <SubjectInfoCard
         subject={detail.info.subject}
         subjectId={subjectId}
         displayName={detail.info.displayName}
         imageUrl={detail.info.imageUrl}
+        onOpenUrl={detail.info.handleOpenUrl}
+        getFavoriteStatusUseCase={getFavoriteStatusUseCase}
+        addFavoriteUseCase={addFavoriteUseCase}
+        removeFavoriteUseCase={removeFavoriteUseCase}
       />
 
       {/* Episodes List */}
-      <Card>
+      <Card className="ani-card">
         <CardContent>
           <EpisodesSection
             episodes={detail.episodes.episodes}
