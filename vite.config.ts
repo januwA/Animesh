@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => {
           "src/presentation/pages/*/index.tsx",
           "src/di/**",
           "src/domain/**",
+          "src/generated/**",
           "src/infrastructure/**",
         ],
         thresholds: {

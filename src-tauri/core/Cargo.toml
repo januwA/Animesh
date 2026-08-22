@@ -9,13 +9,23 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 bytes = "1"
 futures-util = "0.3"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "socks", "gzip", "brotli", "deflate", "cookies"] }
+reqwest = { version = "0.12", default-features = false, features = [
+  "rustls-tls",
+  "socks",
+  "gzip",
+  "brotli",
+  "deflate",
+  "cookies",
+] }
 m3u8-rs = "6.0.1"
 quick-xml = { version = "0.37", features = ["serialize"] }
 urlencoding = "2"
 url = "2"
 tokio = { version = "1", features = ["full"] }
-librqbit = { version = "8.1.1", default-features = false, features = ["rust-tls", "http-api-client"] }
+librqbit = { version = "8.1.1", default-features = false, features = [
+  "rust-tls",
+  "http-api-client",
+] }
 axum = "0.7"
 tokio-util = { version = "0.7", features = ["io"] }
 tower = { version = "0.5", features = ["util"] }
@@ -25,7 +35,7 @@ encoding_rs = "0.8"
 chardetng = "1"
 log = "0.4"
 async-trait = "0.1"
-  thiserror = "2"
+thiserror = "2"
 anyhow = "1"
 local-ip-address = "0.6.13"
 tower-http = { version = "0.7.0", features = ["cors"] }

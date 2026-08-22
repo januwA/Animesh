@@ -10,9 +10,12 @@ pre-commit:
       glob: "src/**/*.{ts,tsx,json,css}"
       run: pnpm check:apply {staged_files}
       stage_fixed: true
-    "后端_代码格式化":
+    "后端_Rust代码格式化":
       glob: "src-tauri/**/*.rs"
       run: cargo fmt --manifest-path src-tauri/Cargo.toml --all
+    "后端_TOML配置格式化":
+      glob: "src-tauri/**/*.toml"
+      run: pnpm fmt:toml
     "前端_TypeScript类型检查":
       run: pnpm typecheck # 全量检查，确保类型安全
     "后端_Rust静态代码检查(Clippy)":

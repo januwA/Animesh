@@ -1,9 +1,5 @@
 [workspace]
-members = [
-    ".",
-    "core",
-    "server"
-]
+members = [".", "core", "server", "xtask"]
 
 [workspace.package]
 version = "0.5.3"
@@ -37,9 +33,9 @@ tauri-plugin-notification = "2"
 tauri-plugin-window-state = "2"
 serde_json = "1"
 animesh_core = { path = "core" }
-  tokio = { version = "1", features = ["full"] }
-  log = "0.4"
-  anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+log = "0.4"
+anyhow = "1"
 
 [target.'cfg(all(target_os = "android", target_arch = "aarch64"))'.dependencies]
 aws-lc-sys = { version = "0.42.0", features = ["prebuilt-nasm"] }
