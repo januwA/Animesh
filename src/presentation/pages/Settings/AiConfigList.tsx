@@ -1,10 +1,19 @@
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
+import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import {
   Empty,
   EmptyContent,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from "@/presentation/components/ui/item";
 
 export interface AiConfigListProps {
   aiConfigs: AiConfig[];
@@ -26,56 +35,38 @@ export function AiConfigList({
   onAdd,
 }: AiConfigListProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <ItemGroup>
       {aiConfigs.map((config, index) => (
-        <div
-          key={index.toString()}
-          className="flex items-center justify-between border border-border bg-secondary/30 rounded-lg p-3"
-        >
-          <div className="flex flex-col gap-1 min-w-0 flex-1 mr-4">
-            <div className="font-semibold text-foreground flex items-center gap-2 flex-wrap">
-              <span>{config.alias}</span>
-              {config.ai_model && (
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-                  {config.ai_model}
-                </span>
-              )}
-            </div>
-            <div className="text-[10px] text-muted-foreground font-mono truncate max-w-50 sm:max-w-xs md:max-w-md">
-              {config.api_endpoint}
-            </div>
-          </div>
-          <div className="flex gap-1.5 shrink-0">
+        <Item key={config.alias} variant="outline">
+          <ItemContent>
+            <ItemTitle>
+              {config.alias}
+              <Badge>{config.ai_model}</Badge>
+            </ItemTitle>
+            <ItemDescription>{config.api_endpoint}</ItemDescription>
+          </ItemContent>
+          <ItemActions>
             <Button
               type="button"
-              variant="outline"
               size="sm"
               onClick={() => onTest(config)}
               disabled={testingAi}
-              className="h-7 px-2.5 text-[10px] font-medium border-border bg-secondary/50 text-foreground hover:bg-secondary"
             >
               测试
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => onEdit(index)}
-              className="h-7 px-2.5 text-[10px] font-medium"
-            >
+            <Button type="button" size="sm" onClick={() => onEdit(index)}>
               编辑
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="destructive"
               size="sm"
               onClick={() => onDelete(index)}
-              className="h-7 px-2.5 text-[10px] font-medium text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               删除
             </Button>
-          </div>
-        </div>
+          </ItemActions>
+        </Item>
       ))}
 
       {aiConfigs.length === 0 && (
@@ -97,6 +88,6 @@ export function AiConfigList({
           + 添加 AI 配置
         </Button>
       )}
-    </div>
+    </ItemGroup>
   );
 }

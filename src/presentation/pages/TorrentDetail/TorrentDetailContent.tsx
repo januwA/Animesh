@@ -20,6 +20,7 @@ import {
   ItemActions,
   ItemContent,
   ItemDescription,
+  ItemGroup,
   ItemTitle,
 } from "@/presentation/components/ui/item";
 import { formatBytes } from "@/utils";
@@ -84,7 +85,7 @@ export function TorrentDetailContent({
       </CardHeader>
 
       <CardContent>
-        <div className="flex flex-col gap-2">
+        <ItemGroup>
           {torrent.files.map((file) => (
             <Item variant="outline" key={file.id}>
               <ItemContent>
@@ -101,7 +102,7 @@ export function TorrentDetailContent({
               </ItemActions>
             </Item>
           ))}
-        </div>
+        </ItemGroup>
       </CardContent>
     </Card>
   );
