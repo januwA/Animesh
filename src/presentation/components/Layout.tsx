@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
-import type { UseBackgroundWallpaperDeps } from "../hooks/useBackgroundWallpaper";
 import type { UseGlobalEffectsDeps } from "../hooks/useGlobalEffects";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
 import { PageLoader } from "./AppComponents";
 import { AppNavBar } from "./AppNavBar";
+import type { BackgroundWallpaperDeps } from "./BackgroundWallpaper";
 import { BackgroundWallpaper } from "./BackgroundWallpaper";
 
 export function NavBarLayout() {
@@ -18,7 +18,7 @@ export function NavBarLayout() {
 
 interface MainLayoutProps {
   globalEffectsDeps: UseGlobalEffectsDeps;
-  wallpaperDeps: UseBackgroundWallpaperDeps;
+  wallpaperDeps: BackgroundWallpaperDeps;
 }
 
 export function MainLayout({

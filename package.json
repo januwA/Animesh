@@ -47,6 +47,7 @@
     "lucide-react": "^1.31.0",
     "mpegts.js": "^1.8.1",
     "next-themes": "^0.4.6",
+    "pixi.js": "^8.20.0",
     "radix-ui": "^1.6.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
