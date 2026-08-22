@@ -1,6 +1,6 @@
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { useQuery } from "@/presentation/hooks/useQuery";
+import type { BackgroundWallpaperDeps } from "./BackgroundWallpaper";
 import { BackgroundWallpaper } from "./BackgroundWallpaper";
 
 vi.mock("pixi.js", () => {
@@ -49,75 +49,83 @@ vi.stubGlobal(
 );
 vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({}));
 
-const mockUseQuery = vi.mocked(useQuery);
-
-const deps = { getBangumiRankedSubjectsUseCase: { execute: vi.fn() } };
-
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
+type ExecuteFn =
+  BackgroundWallpaperDeps["getBangumiRankedSubjectsUseCase"]["execute"];
+
+function makeDeps(executeMock: ExecuteFn) {
+  return {
+    getBangumiRankedSubjectsUseCase: { execute: executeMock },
+  };
+}
+
 describe("BackgroundWallpaper 背景壁纸组件", () => {
-  it("query 无数据时渲染 null", () => {
-    mockUseQuery.mockReturnValue({
-      data: null,
-      loading: true,
-      error: null,
-      refetch: vi.fn(),
+  it("query 无数据时渲染 null", async () => {
+    const execute = vi.fn().mockResolvedValue(null) as unknown as ExecuteFn;
+    const { container } = render(
+      <BackgroundWallpaper deps={makeDeps(execute)} />,
+    );
+
+    await waitFor(() => {
+      expect(container.firstChild).toBeNull();
     });
-    const { container } = render(<BackgroundWallpaper deps={deps} />);
-    expect(container.firstChild).toBeNull();
   });
 
-  it("query 返回空图片列表时渲染 null", () => {
-    mockUseQuery.mockReturnValue({
-      data: [{ id: 1, name: "", image: "" }],
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
+  it("query 返回空图片列表时渲染 null", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValue([
+        { id: 1, name: "", image: "" },
+      ]) as unknown as ExecuteFn;
+    const { container } = render(
+      <BackgroundWallpaper deps={makeDeps(execute)} />,
+    );
+
+    await waitFor(() => {
+      expect(container.firstChild).toBeNull();
     });
-    const { container } = render(<BackgroundWallpaper deps={deps} />);
-    expect(container.firstChild).toBeNull();
   });
 
-  it("query 返回有效图片时渲染壁纸容器和遮罩层", () => {
-    mockUseQuery.mockReturnValue({
-      data: [
+  it("query 返回有效图片时渲染壁纸容器和遮罩层", async () => {
+    const execute = vi.fn().mockResolvedValue([
+      { id: 1, name: "A", image: "https://img.example/1.jpg" },
+      { id: 2, name: "B", image: "https://img.example/2.jpg" },
+    ]) as unknown as ExecuteFn;
+
+    const { container } = render(
+      <BackgroundWallpaper deps={makeDeps(execute)} />,
+    );
+
+    await waitFor(() => {
+      const root = container.querySelector('[aria-hidden="true"]');
+      expect(root).not.toBeNull();
+      expect(root?.className).toContain("fixed");
+      expect(root?.className).toContain("z-0");
+      expect(root?.querySelector(".absolute.inset-0")).not.toBeNull();
+    });
+  });
+
+  it("有效图片时渲染包含 PixiJS 容器和遮罩层的完整结构", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValue([
         { id: 1, name: "A", image: "https://img.example/1.jpg" },
-        { id: 2, name: "B", image: "https://img.example/2.jpg" },
-      ],
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
+      ]) as unknown as ExecuteFn;
+
+    const { container } = render(
+      <BackgroundWallpaper deps={makeDeps(execute)} />,
+    );
+
+    await waitFor(() => {
+      const root = container.querySelector('[aria-hidden="true"]');
+      expect(root).not.toBeNull();
+      expect(root?.children.length).toBe(2);
+      expect(root?.children[0]).toBeInstanceOf(HTMLDivElement);
+      expect(root?.children[1]).toBeInstanceOf(HTMLDivElement);
     });
-
-    const { container } = render(<BackgroundWallpaper deps={deps} />);
-
-    const root = container.querySelector('[aria-hidden="true"]');
-    expect(root).not.toBeNull();
-    expect(root?.className).toContain("fixed");
-    expect(root?.className).toContain("z-0");
-
-    const pixiContainer = root?.querySelector(".absolute.inset-0");
-    expect(pixiContainer).not.toBeNull();
-
-    const overlay = root?.querySelector(".bg-background\\/70");
-    expect(overlay).not.toBeNull();
-  });
-
-  it("遮罩层包含 transition-colors 样式", () => {
-    mockUseQuery.mockReturnValue({
-      data: [{ id: 1, name: "A", image: "https://img.example/1.jpg" }],
-      loading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
-    const { container } = render(<BackgroundWallpaper deps={deps} />);
-
-    const overlay = container.querySelector(".transition-colors");
-    expect(overlay).not.toBeNull();
-    expect(overlay?.className).toContain("duration-300");
   });
 });

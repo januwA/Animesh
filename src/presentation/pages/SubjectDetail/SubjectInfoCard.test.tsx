@@ -1,5 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import { resetAppStores } from "@/test/store-reset";
 import { SubjectInfoCard } from "./SubjectInfoCard";
 
 const makeSubject = (
@@ -16,30 +18,45 @@ const makeSubject = (
   ...overrides,
 });
 
-const renderCard = (
+const renderCard = async (
   subject: BangumiSubject | undefined,
   options: { displayName?: string; imageUrl?: string } = {},
-) =>
-  render(
+) => {
+  const result = render(
     <SubjectInfoCard
       subject={subject}
       subjectId={123}
       displayName={options.displayName ?? "测试动漫标题"}
       imageUrl={options.imageUrl}
+      onOpenUrl={vi.fn()}
+      getFavoriteStatusUseCase={{ execute: vi.fn().mockResolvedValue(false) }}
+      addFavoriteUseCase={{ execute: vi.fn().mockResolvedValue(undefined) }}
+      removeFavoriteUseCase={{ execute: vi.fn().mockResolvedValue(undefined) }}
     />,
   );
+  if (subject) {
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /收藏/ })).toBeInTheDocument();
+    });
+  }
+  return result;
+};
 
 describe("SubjectInfoCard 信息卡片组件", () => {
-  it("当 subject 存在时，应该展示标题、评分和平台", () => {
-    renderCard(makeSubject());
+  beforeEach(() => {
+    resetAppStores();
+  });
+
+  it("当 subject 存在时，应该展示标题、评分和平台", async () => {
+    await renderCard(makeSubject());
 
     expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
     expect(screen.getByText("8.5")).toBeInTheDocument();
     expect(screen.getByText("TV")).toBeInTheDocument();
   });
 
-  it("当 subject 为 undefined 时，应该显示加载状态", () => {
-    renderCard(undefined, {
+  it("当 subject 为 undefined 时，应该显示加载状态", async () => {
+    await renderCard(undefined, {
       displayName: "传递的动画名称",
       imageUrl: "http://example.com/large.jpg",
     });
@@ -50,14 +67,14 @@ describe("SubjectInfoCard 信息卡片组件", () => {
     expect(img.getAttribute("src")).toBe("http://example.com/large.jpg");
   });
 
-  it("当 imageUrl 为 undefined 时，应该显示占位图标", () => {
-    renderCard(makeSubject(), { imageUrl: undefined });
+  it("当 imageUrl 为 undefined 时，应该显示占位图标", async () => {
+    await renderCard(makeSubject(), { imageUrl: undefined });
 
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
-  it("当 API 返回字段缺失时，应该正常渲染且不报错", () => {
-    renderCard(
+  it("当 API 返回字段缺失时，应该正常渲染且不报错", async () => {
+    await renderCard(
       makeSubject({
         platform: null as never,
         rating: 0,
@@ -71,8 +88,8 @@ describe("SubjectInfoCard 信息卡片组件", () => {
     expect(screen.queryByText("TV")).not.toBeInTheDocument();
   });
 
-  it("当在看人数为空时，不应该显示评分", () => {
-    renderCard(
+  it("当在看人数为空时，不应该显示评分", async () => {
+    await renderCard(
       makeSubject({
         rating: 8.5,
       }),
@@ -81,8 +98,8 @@ describe("SubjectInfoCard 信息卡片组件", () => {
     expect(screen.queryByTestId("rating-total")).not.toBeInTheDocument();
   });
 
-  it("当 subject 存在时，应该展示话数、首播日期与简介预览", () => {
-    renderCard(makeSubject());
+  it("当 subject 存在时，应该展示话数、首播日期与简介预览", async () => {
+    await renderCard(makeSubject());
 
     expect(screen.getByText("共 12 话")).toBeInTheDocument();
     expect(screen.getByText("2026-07-01")).toBeInTheDocument();
@@ -91,16 +108,16 @@ describe("SubjectInfoCard 信息卡片组件", () => {
     ).toBeInTheDocument();
   });
 
-  it("当简介为空时，应该隐藏简介预览", () => {
-    renderCard(makeSubject({ summary: "" }));
+  it("当简介为空时，应该隐藏简介预览", async () => {
+    await renderCard(makeSubject({ summary: "" }));
 
     expect(
       screen.queryByText("这是一个测试动漫的简介内容。"),
     ).not.toBeInTheDocument();
   });
 
-  it("统计区字段缺失时，应该隐藏对应的统计项", () => {
-    renderCard(
+  it("统计区字段缺失时，应该隐藏对应的统计项", async () => {
+    await renderCard(
       makeSubject({
         date: null as never,
         eps: null as never,

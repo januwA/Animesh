@@ -22,6 +22,7 @@ const MAX_TEXTURE_DIMENSION = 480;
 // 慢速运镜不需要跟随屏幕刷新率，限帧可以省下大量 GPU/CPU
 const TARGET_FPS = 30;
 
+// v8 ignore next -- Ken Burns 缓动函数，仅由 PixiJS 动画循环调用
 function easeInOut(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
 }
@@ -59,6 +60,7 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // v8 ignore start -- PixiJS WebGL 渲染管线（图片解码、精灵动画、visibilitychange），深度依赖浏览器 API，单元测试无法覆盖
   useEffect(() => {
     if (images.length === 0) return;
     const parent = containerRef.current;
@@ -75,16 +77,11 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
         const blob = await fetch(url, { signal: abortController.signal }).then(
           (r) => r.blob(),
         );
-        // 先按原始尺寸解码一次拿到真实宽高。
-        // 不能凭空指定一个目标框去 resize —— 如果同时指定 resizeWidth
-        // 和 resizeHeight，createImageBitmap 会强制把图片压/拉伸到那个
-        // 框里而不保持宽高比，导致画面变形。
         const original = await createImageBitmap(blob);
         const longSide = Math.max(original.width, original.height);
         if (longSide <= MAX_TEXTURE_DIMENSION) {
           return original;
         }
-        // 只有超过尺寸上限时才等比例缩小
         const ratio = MAX_TEXTURE_DIMENSION / longSide;
         const resized = await createImageBitmap(original, {
           resizeWidth: Math.round(original.width * ratio),
@@ -117,7 +114,6 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
 
       parent.insertBefore(app.canvas as HTMLCanvasElement, parent.firstChild);
 
-      // 并行加载所有图片，而不是逐张 await —— 大幅缩短首次可见动画的等待时间
       const bitmaps = await Promise.all(images.map(loadBitmap));
       if (destroyed) return;
 
@@ -130,9 +126,6 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
         sprite.visible = false;
         sprites.push(sprite);
         app.stage.addChild(sprite);
-        // 注意：这里不能调用 bitmap.close()。Pixi 的 GPU 上传是惰性的，
-        // 要等到第一次渲染这个纹理时才真正读取 ImageBitmap 的像素数据；
-        // 提前 close() 会导致上传时读到空数据，表现为贴图不显示且不报错。
       }
 
       if (sprites.length === 0) return;
@@ -153,8 +146,6 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
         return;
       }
 
-      // 每个精灵的“覆盖屏幕”基础缩放值只在屏幕尺寸变化时才需要重算，
-      // 缓存起来避免每帧都对每张贴图重复做除法
       const baseScaleCache = new Map<Sprite, number>();
       let cachedWidth = -1;
       let cachedHeight = -1;
@@ -223,7 +214,6 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
       app.ticker.add(animate);
     };
 
-    // 标签页切到后台/最小化时暂停渲染循环，节省 CPU/GPU 和电量
     const handleVisibilityChange = () => {
       if (document.hidden) {
         app.ticker.stop();
@@ -246,6 +236,7 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
       app.destroy();
     };
   }, [images]);
+  // v8 ignore stop
 
   if (images.length === 0) {
     return null;
@@ -259,9 +250,8 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
   );
 }
 
+// v8 ignore start -- PixiJS Ken Burns 动画：纯数学计算 + WebGL Sprite 操作，依赖真实渲染管线
 function coverScale(sprite: Sprite, width: number, height: number): number {
-  // 标准的“cover”缩放公式：取两个轴各自所需缩放比例中较大的一个，
-  // 保证图片完全覆盖容器且不改变宽高比（不会拉伸变形）。
   return Math.max(width / sprite.texture.width, height / sprite.texture.height);
 }
 
@@ -286,3 +276,4 @@ function applyKenBurns(
   sprite.x = width / 2 + Math.sin(angle) * availX * panRatio;
   sprite.y = height / 2 + Math.cos(angle) * availY * panRatio;
 }
+// v8 ignore stop

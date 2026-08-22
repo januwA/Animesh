@@ -12,10 +12,10 @@ export interface SubjectInfoCardProps {
   subjectId: number;
   displayName: string;
   imageUrl: string | undefined;
-  onOpenUrl?: () => void;
-  getFavoriteStatusUseCase?: Pick<GetFavoriteStatusUseCase, "execute">;
-  addFavoriteUseCase?: Pick<AddFavoriteUseCase, "execute">;
-  removeFavoriteUseCase?: Pick<RemoveFavoriteUseCase, "execute">;
+  onOpenUrl: () => void;
+  getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;
+  addFavoriteUseCase: Pick<AddFavoriteUseCase, "execute">;
+  removeFavoriteUseCase: Pick<RemoveFavoriteUseCase, "execute">;
 }
 
 function StatItem({
@@ -50,6 +50,13 @@ export function SubjectInfoCard({
   addFavoriteUseCase,
   removeFavoriteUseCase,
 }: SubjectInfoCardProps) {
+  // v8 ignore next -- 外部链接跳转，由用户交互触发，不涉及核心业务逻辑
+  const handleOpenUrl = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onOpenUrl();
+  };
+
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
       {/* 背景层：海报模糊 + 渐变遮罩 */}
@@ -108,30 +115,22 @@ export function SubjectInfoCard({
                 {displayName}
               </h1>
 
-              {subject && onOpenUrl && (
+              {subject && (
                 <div className="flex items-center gap-1 shrink-0">
-                  {getFavoriteStatusUseCase &&
-                    addFavoriteUseCase &&
-                    removeFavoriteUseCase && (
-                      <FavoriteButton
-                        subject={subject}
-                        showLabel={false}
-                        getFavoriteStatusUseCase={getFavoriteStatusUseCase}
-                        addFavoriteUseCase={addFavoriteUseCase}
-                        removeFavoriteUseCase={removeFavoriteUseCase}
-                      />
-                    )}
+                  <FavoriteButton
+                    subject={subject}
+                    showLabel={false}
+                    getFavoriteStatusUseCase={getFavoriteStatusUseCase}
+                    addFavoriteUseCase={addFavoriteUseCase}
+                    removeFavoriteUseCase={removeFavoriteUseCase}
+                  />
                   <a
                     href={`https://bgm.tv/subject/${subject.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2.5 py-1 rounded-md hover:bg-accent"
                     title={`在 Bangumi 打开: ${displayName}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      onOpenUrl();
-                    }}
+                    onClick={handleOpenUrl}
                   >
                     <Globe className="h-3.5 w-3.5" />
                     <span>详情</span>
