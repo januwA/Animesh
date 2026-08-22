@@ -22,6 +22,7 @@
     "check:interface": "tsx scripts/check-interface.ts",
     "check:use-case-wiring": "tsx scripts/check-use-case-wiring.ts",
     "check:tauri-commands": "cargo run -p xtask --manifest-path src-tauri/Cargo.toml -- check",
+    "check:tauri-invoke": "tsx scripts/check-tauri-invoke.ts",
     "generate:tauri-commands": "cargo run -p xtask --manifest-path src-tauri/Cargo.toml -- generate",
     "fmt:toml": "cargo run -p xtask --manifest-path src-tauri/Cargo.toml -- fmt",
     "check:function-length": "tsx scripts/check-function-length.ts",

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { commands } from "@/generated/tauri-commands";
 import type { SubtitleTranslationRepository } from "../../domain/subtitle/SubtitleTranslationRepository";
 import {
   type SubtitleTranslationRecord,
@@ -9,7 +10,9 @@ export class TauriSubtitleTranslationRepository
   implements SubtitleTranslationRepository
 {
   async getById(id: string): Promise<SubtitleTranslationRecord | null> {
-    const raw = await invoke<unknown>("subtitle_translation_get", { id });
+    const raw = await invoke<unknown>(commands.subtitle_translation_get, {
+      id,
+    });
     if (raw === null) return null;
     const result = SubtitleTranslationRecordSchema.safeParse(raw);
     if (!result.success) {
@@ -24,10 +27,13 @@ export class TauriSubtitleTranslationRepository
     infoHash: string,
     fileId: number,
   ): Promise<SubtitleTranslationRecord[]> {
-    const raw = await invoke<unknown>("subtitle_translation_list_by_torrent", {
-      infoHash,
-      fileId,
-    });
+    const raw = await invoke<unknown>(
+      commands.subtitle_translation_list_by_torrent,
+      {
+        infoHash,
+        fileId,
+      },
+    );
     if (!Array.isArray(raw)) {
       throw new Error("subtitle_translation_list_by_torrent 返回非数组");
     }
@@ -44,22 +50,22 @@ export class TauriSubtitleTranslationRepository
   }
 
   async save(record: SubtitleTranslationRecord): Promise<void> {
-    await invoke<void>("subtitle_translation_save", { record });
+    await invoke<void>(commands.subtitle_translation_save, { record });
   }
 
   async deleteById(id: string): Promise<boolean> {
-    return invoke<boolean>("subtitle_translation_delete", { id });
+    return invoke<boolean>(commands.subtitle_translation_delete, { id });
   }
 
   async deleteByTorrent(infoHash: string, fileId: number): Promise<number> {
-    return invoke<number>("subtitle_translation_delete_by_torrent", {
+    return invoke<number>(commands.subtitle_translation_delete_by_torrent, {
       infoHash,
       fileId,
     });
   }
 
   async deleteByInfoHash(infoHash: string): Promise<number> {
-    return invoke<number>("subtitle_translation_delete_by_info_hash", {
+    return invoke<number>(commands.subtitle_translation_delete_by_info_hash, {
       infoHash,
     });
   }

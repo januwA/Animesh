@@ -4,6 +4,7 @@ import type {
   IptvStreamUrlRepository,
   ResolvedStreamUrl,
 } from "@/domain/iptv/IptvStreamUrlRepository";
+import { commands } from "@/generated/tauri-commands";
 
 const StreamKindSchema = z.enum(["hls", "flv", "unknown"]);
 
@@ -18,7 +19,7 @@ export class TauriIptvStreamUrlRepository implements IptvStreamUrlRepository {
       return { url: rawUrl, kind: "unknown" };
     }
 
-    const raw = await invoke<unknown>("iptv_resolve_stream", { rawUrl });
+    const raw = await invoke<unknown>(commands.iptv_resolve_stream, { rawUrl });
     const result = ResolvedStreamSchema.safeParse(raw);
     if (!result.success) {
       throw new Error("iptv_resolve_stream API structure mismatch", {

@@ -237,13 +237,6 @@ async fn torrent_get_stream_url(
 }
 
 #[tauri::command]
-async fn iptv_proxy_base_url(
-    stream_service: tauri::State<'_, Arc<StreamService>>,
-) -> Result<String, CoreError> {
-    Ok(stream_service.proxy_base_url())
-}
-
-#[tauri::command]
 async fn iptv_resolve_stream(
     raw_url: String,
     stream_service: tauri::State<'_, Arc<StreamService>>,
@@ -728,7 +721,6 @@ pub fn run() {
             torrent_add_magnet,
             cancel_add_magnet,
             torrent_get_stream_url,
-            iptv_proxy_base_url,
             iptv_resolve_stream,
             torrent_get_files,
             torrent_pause,

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { commands } from "@/generated/tauri-commands";
 import type { AiClient } from "../../domain/ai/AiClient";
 
 /**
@@ -11,7 +12,7 @@ export class TauriAiClient implements AiClient {
     apiKey: string,
     payload: unknown,
   ): Promise<unknown> {
-    const responseText = await invoke<string>("ai_chat_request", {
+    const responseText = await invoke<string>(commands.ai_chat_request, {
       endpoint,
       apiKey,
       bodyJson: JSON.stringify(payload),

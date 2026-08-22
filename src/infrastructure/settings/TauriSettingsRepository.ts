@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
+import { commands } from "@/generated/tauri-commands";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import {
   type AiConfig,
@@ -9,7 +10,7 @@ import {
 
 export class TauriSettingsRepository implements SettingsRepository {
   async getSettings(): Promise<Settings> {
-    const rawSettings = await invoke<unknown>("settings_get");
+    const rawSettings = await invoke<unknown>(commands.settings_get);
     const result = SettingsSchema.safeParse(rawSettings);
     if (!result.success) {
       throw new Error("Settings backend structure mismatch", {
@@ -20,31 +21,31 @@ export class TauriSettingsRepository implements SettingsRepository {
   }
 
   async setDownloadDir(dir: string): Promise<void> {
-    return invoke<void>("settings_set_download_dir", { dir });
+    return invoke<void>(commands.settings_set_download_dir, { dir });
   }
 
   async setProxy(proxy: string | null): Promise<void> {
-    return invoke<void>("settings_set_proxy", { proxy });
+    return invoke<void>(commands.settings_set_proxy, { proxy });
   }
 
   async setAiConfigs(configs: AiConfig[] | null): Promise<void> {
-    return invoke<void>("settings_set_ai_configs", { configs });
+    return invoke<void>(commands.settings_set_ai_configs, { configs });
   }
 
   async setMaxDownloadSpeed(speed: number | null): Promise<void> {
-    return invoke<void>("settings_set_max_download_speed", {
+    return invoke<void>(commands.settings_set_max_download_speed, {
       maxSpeed: speed,
     });
   }
 
   async setMaxUploadSpeed(speed: number | null): Promise<void> {
-    return invoke<void>("settings_set_max_upload_speed", {
+    return invoke<void>(commands.settings_set_max_upload_speed, {
       maxSpeed: speed,
     });
   }
 
   async selectDirectory(): Promise<NonEmptyString | null> {
-    return invoke<NonEmptyString | null>("select_directory");
+    return invoke<NonEmptyString | null>(commands.select_directory);
   }
 
   async setTheme(theme: "light" | "dark" | null): Promise<void> {

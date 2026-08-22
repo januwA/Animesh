@@ -6,10 +6,11 @@ import {
   CollectionRecordSchema,
   toFavoriteItem,
 } from "@/domain/collection/CollectionSchemas";
+import { commands } from "@/generated/tauri-commands";
 
 export class TauriCollectionRepository implements CollectionRepository {
   async getAll(): Promise<FavoriteItem[]> {
-    const raw = await invoke<unknown>("collection_get_all");
+    const raw = await invoke<unknown>(commands.collection_get_all);
     const result = z.array(CollectionRecordSchema).safeParse(raw);
     if (!result.success) {
       throw new Error("collection_get_all API structure mismatch", {
@@ -20,12 +21,14 @@ export class TauriCollectionRepository implements CollectionRepository {
   }
 
   async isFavorited(subjectId: number): Promise<boolean> {
-    const raw = await invoke<unknown>("collection_is_favorited", { subjectId });
+    const raw = await invoke<unknown>(commands.collection_is_favorited, {
+      subjectId,
+    });
     return z.boolean().parse(raw);
   }
 
   async add(item: Omit<FavoriteItem, "addedAt">): Promise<void> {
-    return invoke<void>("collection_add", {
+    return invoke<void>(commands.collection_add, {
       subjectId: item.subjectId,
       name: item.name,
       imageUrl: item.imageUrl,
@@ -33,6 +36,6 @@ export class TauriCollectionRepository implements CollectionRepository {
   }
 
   async remove(subjectId: number): Promise<void> {
-    return invoke<void>("collection_remove", { subjectId });
+    return invoke<void>(commands.collection_remove, { subjectId });
   }
 }
