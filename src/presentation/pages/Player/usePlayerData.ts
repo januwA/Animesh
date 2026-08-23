@@ -1,7 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { toast } from "sonner";
 import type { GetSubtitleTranslationsUseCase } from "@/application/subtitle/GetSubtitleTranslationsUseCase";
-import type { GetTorrentStreamUrlUseCase } from "@/application/torrent/GetTorrentStreamUrlUseCase";
 import type { GetVideoMetadataUseCase } from "@/application/torrent/GetVideoMetadataUseCase";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type {
@@ -10,19 +8,18 @@ import type {
   VideoMetadata,
 } from "@/domain/torrent/TorrentSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { formatError } from "@/utils";
 import type { SubtitleTrackItem } from "./usePlayerSubtitle";
 
 interface UsePlayerDataParams {
   infoHash: NonEmptyString;
   fileId: number;
+  streamPort: number | null;
   torrentStatus: TorrentStatusInfo | null;
   downloadProgress: number;
 }
 
 /** usePlayerData 的依赖，由调用方（页面组合根）注入 */
 export interface UsePlayerDataDeps {
-  getTorrentStreamUrlUseCase: Pick<GetTorrentStreamUrlUseCase, "execute">;
   getVideoMetadataUseCase: Pick<GetVideoMetadataUseCase, "execute">;
   getSubtitleTranslationsUseCase: Pick<
     GetSubtitleTranslationsUseCase,
@@ -43,24 +40,15 @@ export function usePlayerData(
   params: UsePlayerDataParams,
   deps: UsePlayerDataDeps,
 ): PlayerDataResult {
-  const {
-    getTorrentStreamUrlUseCase,
-    getVideoMetadataUseCase,
-    getSubtitleTranslationsUseCase,
-  } = deps;
-  const { infoHash, fileId, torrentStatus, downloadProgress } = params;
+  const { getVideoMetadataUseCase, getSubtitleTranslationsUseCase } = deps;
+  const { infoHash, fileId, streamPort, torrentStatus, downloadProgress } =
+    params;
 
-  // Stream URL (one-shot query keyed by infoHash + fileId)
-  const streamUrlQuery = useQuery<string>(
-    (_ctx) => getTorrentStreamUrlUseCase.execute(infoHash, fileId),
-    [infoHash, fileId, getTorrentStreamUrlUseCase],
-    {
-      onError: (error) =>
-        toast.error(`无法获取视频流: ${formatError(error)}`, {
-          duration: 10000,
-        }),
-    },
-  );
+  const streamUrl = useMemo<string | null>(() => {
+    // v8 ignore next
+    if (streamPort === null) return null;
+    return `http://127.0.0.1:${streamPort}/stream/${infoHash}/${fileId}`;
+  }, [streamPort, infoHash, fileId]);
 
   // Video metadata (subtitle tracks + chapters + video info), single query.
   const metadataQuery = useQuery<VideoMetadata>(
@@ -130,7 +118,7 @@ export function usePlayerData(
   }, [originalSubtitleTracks, aiTracks]);
 
   return {
-    streamUrl: streamUrlQuery.data,
+    streamUrl,
     metadata,
     originalSubtitleTracks,
     subtitleTracks,

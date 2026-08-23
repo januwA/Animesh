@@ -23,10 +23,8 @@ export interface TorrentRepository {
     magnet: NonEmptyString,
   ): Promise<AddTorrentResult>;
   getTorrentFiles(infoHash: NonEmptyString): Promise<FileDetails[]>;
-  getTorrentStreamUrl(
-    infoHash: NonEmptyString,
-    fileId: number,
-  ): Promise<string>;
+  getStreamPort(): Promise<number>;
+  getLocalIp(): Promise<string>;
   getVideoMetadata(
     infoHash: NonEmptyString,
     fileId: number,

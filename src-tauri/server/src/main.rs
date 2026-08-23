@@ -170,10 +170,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/torrents", post(torrent_add_magnet_handler))
         .route("/torrents/subscribe", get(torrent_subscribe_handler))
         .route("/torrents/:hash/files", get(torrent_get_files_handler))
-        .route(
-            "/torrents/:hash/files/:id/stream-url",
-            get(torrent_get_stream_url_handler),
-        )
+        .route("/stream-port", get(stream_port_handler))
         .route("/torrents/:hash/pause", post(torrent_pause_handler))
         .route("/torrents/:hash/resume", post(torrent_resume_handler))
         .route("/torrents/:hash/subject", put(torrent_set_subject_handler))
@@ -318,13 +315,8 @@ async fn torrent_get_files_handler(
     Ok(axum::Json(files))
 }
 
-async fn torrent_get_stream_url_handler(
-    State(state): State<Arc<AppState>>,
-    Path((info_hash, file_id)): Path<(String, usize)>,
-) -> impl IntoResponse {
-    let external_url = std::env::var("ANIMESH_EXTERNAL_URL")
-        .unwrap_or_else(|_| format!("http://localhost:{}", state.stream_service.port()));
-    format!("{}/stream/{}/{}", external_url, info_hash, file_id)
+async fn stream_port_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    axum::Json(serde_json::json!({ "port": state.stream_service.port() }))
 }
 
 async fn torrent_pause_handler(

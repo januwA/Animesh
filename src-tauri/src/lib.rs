@@ -228,12 +228,16 @@ async fn cancel_add_magnet(
 }
 
 #[tauri::command]
-async fn torrent_get_stream_url(
-    info_hash: &str,
-    file_id: usize,
+async fn get_stream_port(
     stream_service: tauri::State<'_, Arc<StreamService>>,
-) -> Result<String, CoreError> {
-    Ok(stream_service.get_stream_url(info_hash, file_id))
+) -> Result<u16, CoreError> {
+    Ok(stream_service.port())
+}
+
+#[tauri::command]
+async fn get_local_ip() -> Result<String, CoreError> {
+    Ok(animesh_core::infrastructure::local_ip::get_local_ip()
+        .unwrap_or_else(|| "127.0.0.1".to_string()))
 }
 
 #[tauri::command]
@@ -720,7 +724,8 @@ pub fn run() {
             cancel_search,
             torrent_add_magnet,
             cancel_add_magnet,
-            torrent_get_stream_url,
+            get_stream_port,
+            get_local_ip,
             iptv_resolve_stream,
             torrent_get_files,
             torrent_pause,

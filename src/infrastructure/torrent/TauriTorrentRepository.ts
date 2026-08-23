@@ -94,11 +94,12 @@ export class TauriTorrentRepository implements TorrentRepository {
     return result.data;
   }
 
-  async getTorrentStreamUrl(infoHash: string, fileId: number): Promise<string> {
-    return invoke<string>(commands.torrent_get_stream_url, {
-      infoHash,
-      fileId,
-    });
+  async getStreamPort(): Promise<number> {
+    return invoke<number>(commands.get_stream_port);
+  }
+
+  async getLocalIp(): Promise<string> {
+    return invoke<string>(commands.get_local_ip);
   }
 
   async getVideoMetadata(

@@ -1,5 +1,4 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { toast } from "sonner";
 import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type {
@@ -52,9 +51,6 @@ const mockAiRecord = {
 const makeDeps = (
   overrides: Partial<UsePlayerDataDeps> = {},
 ): UsePlayerDataDeps => ({
-  getTorrentStreamUrlUseCase: {
-    execute: vi.fn().mockResolvedValue("http://127.0.0.1/stream/0"),
-  },
   getVideoMetadataUseCase: {
     execute: vi.fn().mockResolvedValue(emptyMetadata),
   },
@@ -72,6 +68,7 @@ describe("usePlayerData 播放器数据 hook", () => {
   const baseParams = {
     infoHash,
     fileId: 0,
+    streamPort: 45678,
     torrentStatus: makeStatus(400),
     downloadProgress: 40,
   };
@@ -95,7 +92,9 @@ describe("usePlayerData 播放器数据 hook", () => {
     const { result } = renderHook(() => usePlayerData(baseParams, deps));
 
     await waitFor(() => {
-      expect(result.current.streamUrl).toBe("http://127.0.0.1/stream/0");
+      expect(result.current.streamUrl).toBe(
+        "http://127.0.0.1:45678/stream/hash123/0",
+      );
       expect(result.current.metadata).toEqual(metadata);
       expect(result.current.originalSubtitleTracks).toHaveLength(1);
       expect(result.current.subtitleTracks).toHaveLength(2);
@@ -144,25 +143,6 @@ describe("usePlayerData 播放器数据 hook", () => {
 
     await waitFor(() => {
       expect(getSubtitleTranslations).toHaveBeenCalledWith("hash123", 0);
-    });
-  });
-
-  it("获取流地址失败时应该提示错误", async () => {
-    const deps = makeDeps({
-      getTorrentStreamUrlUseCase: {
-        execute: vi
-          .fn()
-          .mockRejectedValue("Stream server port not initialized"),
-      },
-    });
-
-    renderHook(() => usePlayerData(baseParams, deps));
-
-    await waitFor(() => {
-      expect(vi.mocked(toast.error)).toHaveBeenCalledWith(
-        expect.stringContaining("无法获取视频流"),
-        { duration: 10000 },
-      );
     });
   });
 

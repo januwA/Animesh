@@ -32,8 +32,9 @@ import { SaveSubtitleTranslationUseCase } from "../application/subtitle/SaveSubt
 import { TranslateSubtitleUseCase } from "../application/subtitle/TranslateSubtitleUseCase";
 import { ClearTorrentSubjectUseCase } from "../application/torrent/ClearTorrentSubjectUseCase";
 import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCase";
+import { GetLocalIpUseCase } from "../application/torrent/GetLocalIpUseCase";
+import { GetStreamPortUseCase } from "../application/torrent/GetStreamPortUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
-import { GetTorrentStreamUrlUseCase } from "../application/torrent/GetTorrentStreamUrlUseCase";
 import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
@@ -88,8 +89,9 @@ export interface DIContainer {
   setTorrentSubjectUseCase: SetTorrentSubjectUseCase;
   clearTorrentSubjectUseCase: ClearTorrentSubjectUseCase;
   resolveTorrentUseCase: ResolveTorrentUseCase;
-  getTorrentStreamUrlUseCase: GetTorrentStreamUrlUseCase;
   getSubtitleVttUseCase: GetSubtitleVttUseCase;
+  getStreamPortUseCase: GetStreamPortUseCase;
+  getLocalIpUseCase: GetLocalIpUseCase;
   getVideoMetadataUseCase: GetVideoMetadataUseCase;
 
   getSettingsUseCase: GetSettingsUseCase;
@@ -181,13 +183,12 @@ export function createDefaultDIContainer(): DIContainer {
     torrentRepository,
   );
   const resolveTorrentUseCase = new ResolveTorrentUseCase(torrentRepository);
-  const getTorrentStreamUrlUseCase = new GetTorrentStreamUrlUseCase(
-    torrentRepository,
-  );
   const getSubtitleVttUseCase = new GetSubtitleVttUseCase(
     torrentRepository,
     subtitleTranslationRepository,
   );
+  const getStreamPortUseCase = new GetStreamPortUseCase(torrentRepository);
+  const getLocalIpUseCase = new GetLocalIpUseCase(torrentRepository);
   const getVideoMetadataUseCase = new GetVideoMetadataUseCase(
     torrentRepository,
   );
@@ -287,8 +288,9 @@ export function createDefaultDIContainer(): DIContainer {
     setTorrentSubjectUseCase,
     clearTorrentSubjectUseCase,
     resolveTorrentUseCase,
-    getTorrentStreamUrlUseCase,
     getSubtitleVttUseCase,
+    getStreamPortUseCase,
+    getLocalIpUseCase,
     getVideoMetadataUseCase,
 
     getSettingsUseCase,

@@ -698,7 +698,7 @@ import type { DIContainer } from "@/di/DIContext";
 import { DIProvider } from "@/di/DIContext";
 
 const container = {
-  getTorrentStreamUrlUseCase: { execute: vi.fn() },
+  getStreamPortUseCase: { execute: vi.fn() },
 } as unknown as DIContainer;
 
 render(

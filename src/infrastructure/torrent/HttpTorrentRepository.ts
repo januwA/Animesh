@@ -107,11 +107,21 @@ export class HttpTorrentRepository implements TorrentRepository {
     return result.data;
   }
 
-  async getTorrentStreamUrl(infoHash: string, fileId: number): Promise<string> {
-    const response = await this.httpClient.request(
-      `${baseUrl}/torrents/${infoHash}/files/${fileId}/stream-url`,
+  async getStreamPort(): Promise<number> {
+    const raw = await this.httpClient.getJson<unknown>(
+      `${baseUrl}/stream-port`,
     );
-    return response.text();
+    const result = z.object({ port: z.number() }).safeParse(raw);
+    if (!result.success) {
+      throw new Error("stream-port API structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data.port;
+  }
+
+  async getLocalIp(): Promise<string> {
+    return window.location.hostname;
   }
 
   async getVideoMetadata(

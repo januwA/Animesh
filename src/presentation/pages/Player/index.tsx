@@ -3,6 +3,7 @@ import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
+import { useStreamServer } from "@/presentation/context/StreamServerContext";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { AiTranslateButton } from "./AiTranslateButton";
 import { ChaptersSection } from "./ChaptersSection";
@@ -61,12 +62,13 @@ function PlayerView({
   fileName,
 }: z.infer<typeof playerParamsSchema>) {
   const {
-    getTorrentStreamUrlUseCase,
+    getLocalIpUseCase,
     getVideoMetadataUseCase,
     getSubtitleTranslationsUseCase,
     getSubtitleVttUseCase,
     logger,
   } = useDI();
+  const { streamPort } = useStreamServer();
   const { torrents } = useTorrentStatus();
   const torrentStatus = torrents.find((t) => t?.info_hash === infoHash) ?? null;
   // 下载进度百分比
@@ -82,9 +84,8 @@ function PlayerView({
     chapters,
     videoInfo,
   } = usePlayerData(
-    { infoHash, fileId, torrentStatus, downloadProgress },
+    { infoHash, fileId, streamPort, torrentStatus, downloadProgress },
     {
-      getTorrentStreamUrlUseCase,
       getVideoMetadataUseCase,
       getSubtitleTranslationsUseCase,
     },
@@ -140,7 +141,11 @@ function PlayerView({
                 fileId={fileId}
                 fileName={fileName}
               />
-              <CopyStreamUrlButton streamUrl={streamUrl} />
+              <CopyStreamUrlButton
+                infoHash={infoHash}
+                fileId={fileId}
+                getLocalIpUseCase={getLocalIpUseCase}
+              />
             </div>
           </CardContent>
         </Card>
