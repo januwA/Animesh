@@ -24,13 +24,13 @@ describe("SearchHistory 搜索历史组件", () => {
   it("历史为空时不渲染任何内容", () => {
     renderHistory([]);
 
-    expect(screen.queryByText("最近搜索:")).not.toBeInTheDocument();
+    expect(screen.queryByText("最近搜索")).not.toBeInTheDocument();
   });
 
   it("应该渲染历史关键词", () => {
     renderHistory(["xxx", "柯南"]);
 
-    expect(screen.getByText("最近搜索:")).toBeInTheDocument();
+    expect(screen.getByText("最近搜索")).toBeInTheDocument();
     expect(screen.getByText("xxx")).toBeInTheDocument();
     expect(screen.getByText("柯南")).toBeInTheDocument();
   });

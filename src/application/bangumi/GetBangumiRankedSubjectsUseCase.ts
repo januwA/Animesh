@@ -1,6 +1,6 @@
 import type { Context } from "ajanuw-context";
 import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
-import type { BangumiRankedSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 
 /** 背景壁纸最多使用的榜单条目数 */
@@ -30,13 +30,13 @@ export class GetBangumiRankedSubjectsUseCase {
     private readonly bangumiCache: BangumiCache,
   ) {}
 
-  async execute(ctx: Context): Promise<BangumiRankedSubject[]> {
+  async execute(ctx: Context): Promise<BangumiSubject[]> {
     const cached = await this.bangumiCache.getRankedSubjects(ctx);
     if (cached) {
       return cached;
     }
 
-    const subjects: BangumiRankedSubject[] = [];
+    const subjects: BangumiSubject[] = [];
     for (const { year, month } of recentMonthWindows(
       RANKED_SUBJECT_MONTH_WINDOW,
       new Date(),

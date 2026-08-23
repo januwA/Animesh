@@ -71,7 +71,7 @@ export function WeeklyCalendar({
       </div>
 
       <div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-4"
         style={{ transform: "translate3d(0, 0, 0)" }}
       >
         {currentItems.map((item) => (

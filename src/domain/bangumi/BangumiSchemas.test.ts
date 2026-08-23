@@ -109,8 +109,7 @@ describe("Bangumi 条目搜索 Schema", () => {
           id: 1,
           name: "动画",
           summary: "简介",
-          image:
-            "https://api.bgm.tv/v0/subjects/1/image?subject_id=1&type=common",
+          image: "https://img.example/m.jpg",
           rating: 8.5,
           date: "2026-01-01",
           eps: 12,
@@ -191,6 +190,7 @@ describe("Bangumi 数据缓存 Schema 回读校验", () => {
       name: "Shin Seiki Evangelion",
       name_cn: "新世纪福音战士",
       images,
+      rank: 1,
       rating: { score: 9.1, rank: 1 },
     };
     const page = BangumiRankedSubjectsResponseSchema.parse({
@@ -205,10 +205,9 @@ describe("Bangumi 数据缓存 Schema 回读校验", () => {
         {
           id: 326,
           name: "新世纪福音战士",
-          image:
-            "https://api.bgm.tv/v0/subjects/326/image?subject_id=326&type=common",
+          image: "https://img.example/m.jpg",
           rating: 9.1,
-          rank: 1,
+          summary: "",
         },
       ],
       total: 1,
@@ -224,13 +223,12 @@ describe("Bangumi 数据缓存 Schema 回读校验", () => {
       total: 1,
       limit: 10,
       offset: 0,
-      data: [{ id: 1, name: "Anime", name_cn: "" }],
+      data: [{ id: 1, name: "Anime", name_cn: "", images: {} }],
     });
 
     expect(page.items[0]).toMatchObject({
-      image: "https://api.bgm.tv/v0/subjects/1/image?subject_id=1&type=common",
+      image: "",
       rating: 0,
-      rank: null,
     });
   });
 });

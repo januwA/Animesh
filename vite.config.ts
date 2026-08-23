@@ -52,8 +52,8 @@ export default defineConfig(({ mode }) => {
       environment: "happy-dom",
       setupFiles: "./src/test/setup.ts",
       reporters: ["minimal"], // minimal,dot
-      maxWorkers: '50%',
-      silent : 'passed-only',
+      maxWorkers: "50%",
+      silent: "passed-only",
       coverage: {
         provider: "v8",
         reporter: ["text"],

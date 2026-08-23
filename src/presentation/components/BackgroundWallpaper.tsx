@@ -196,13 +196,25 @@ export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
             s.y = height / 2;
             s.alpha = 1 - fade;
             s.visible = true;
-            applyKenBurns(s, width, height, progress, baseScaleCache.get(s)!);
+            applyKenBurns(
+              s,
+              width,
+              height,
+              progress,
+              baseScaleCache.get(s) || 0,
+            );
           } else if (i === nextIdx && fade > 0) {
             s.x = width / 2;
             s.y = height / 2;
             s.alpha = fade;
             s.visible = true;
-            applyKenBurns(s, width, height, progress, baseScaleCache.get(s)!);
+            applyKenBurns(
+              s,
+              width,
+              height,
+              progress,
+              baseScaleCache.get(s) || 0,
+            );
           } else if (s.visible) {
             // 只有之前可见的精灵才需要被隐藏，减少不必要的写入
             s.alpha = 0;

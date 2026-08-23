@@ -9,7 +9,6 @@ import {
   BangumiEpisodesResponseSchema,
   type BangumiPerson,
   BangumiPersonsResponseSchema,
-  type BangumiRankedSubject,
   BangumiRankedSubjectsResponseSchema,
   type BangumiSubject,
   BangumiSubjectSchema,
@@ -49,7 +48,7 @@ export class HttpBangumiRepository implements BangumiRepository {
     year: number,
     month: number,
     limit: number,
-  ): Promise<BangumiRankedSubject[]> {
+  ): Promise<BangumiSubject[]> {
     let data: unknown;
     try {
       const query = new URLSearchParams({

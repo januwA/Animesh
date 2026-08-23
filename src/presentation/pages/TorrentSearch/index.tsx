@@ -72,16 +72,12 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         />
       )}
 
-      <Card className="ani-card">
-        <CardContent>
-          <SearchHistory
-            history={page.searchHistory.history}
-            onSelectKeyword={page.search.setSearchKeyword}
-            onDelete={page.searchHistory.handleDeleteHistory}
-            onClear={page.searchHistory.handleClearHistory}
-          />
-        </CardContent>
-      </Card>
+      <SearchHistory
+        history={page.searchHistory.history}
+        onSelectKeyword={page.search.setSearchKeyword}
+        onDelete={page.searchHistory.handleDeleteHistory}
+        onClear={page.searchHistory.handleClearHistory}
+      />
 
       {page.status.loading &&
         (page.ai.selectedAiAlias !== "none" ? (

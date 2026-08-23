@@ -5,7 +5,6 @@ import type {
   BangumiCharacter,
   BangumiEpisodesPage,
   BangumiPerson,
-  BangumiRankedSubject,
   BangumiSubject,
   BangumiSubjectSearchParams,
   BangumiSubjectSearchResult,
@@ -19,7 +18,7 @@ export interface BangumiRepository {
     year: number,
     month: number,
     limit: number,
-  ): Promise<BangumiRankedSubject[]>;
+  ): Promise<BangumiSubject[]>;
   getSubject(ctx: Context, subjectId: NonEmptyString): Promise<BangumiSubject>;
   getEpisodes(
     ctx: Context,

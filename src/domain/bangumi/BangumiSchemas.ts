@@ -8,11 +8,24 @@ const BangumiWeekdaySchema = z.object({
 });
 
 const BangumiImagesSchema = z.object({
-  large: z.string(),
-  medium: z.string(),
-  small: z.string(),
-  grid: z.string(),
+  large: z.string().optional(),
+  common: z.string().optional(),
+  medium: z.string().optional(),
+  small: z.string().optional(),
+  grid: z.string().optional(),
 });
+
+function transformImagesObj(
+  imagesObject: z.infer<typeof BangumiImagesSchema>,
+): string {
+  return (
+    imagesObject.common ||
+    imagesObject.medium ||
+    imagesObject.large ||
+    imagesObject.small ||
+    ""
+  );
+}
 
 const BangumiSubjectRatingSchema = z.object({
   total: z.number(),
@@ -29,15 +42,14 @@ const BangumiCalendarItemSchema = z
     air_weekday: z.number(),
     rating: BangumiSubjectRatingSchema.nullable().optional(),
     rank: z.number().nullable().optional(),
-    images: BangumiImagesSchema.nullable().optional(),
-    collection: z.object({ doing: z.number() }).nullable().optional(),
+    images: BangumiImagesSchema,
   })
   .transform((dto) => {
-    const { images, name_cn, collection, rank, air_date, ...other } = dto;
+    const { images, name_cn, rank, air_date, ...other } = dto;
     return {
       ...other,
       name: dto.name_cn || dto.name,
-      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
+      image: transformImagesObj(dto.images),
       rating: dto.rating?.score || 0,
     };
   });
@@ -54,8 +66,8 @@ export const BangumiSubjectSchema = z
     id: z.number(),
     name: z.string(),
     name_cn: z.string(),
-    summary: z.string().optional().nullable(),
-    images: BangumiImagesSchema.nullable().optional(),
+    summary: z.string().nullable().optional(),
+    images: BangumiImagesSchema,
     rating: z
       .object({
         score: z.number(),
@@ -64,27 +76,17 @@ export const BangumiSubjectSchema = z
       })
       .nullable()
       .optional(),
-    collection: z
-      .object({
-        wish: z.number().optional().nullable(),
-        collect: z.number().optional().nullable(),
-        doing: z.number().optional().nullable(),
-        on_hold: z.number().optional().nullable(),
-        dropped: z.number().optional().nullable(),
-      })
-      .nullable()
-      .optional(),
     date: z.string().nullable().optional(),
     eps: z.number().nullable().optional(),
     platform: z.string().nullable().optional(),
   })
   .transform((dto) => {
-    const { images, name_cn, collection, ...other } = dto;
+    const { images, name_cn, ...other } = dto;
     return {
       ...other,
       name: dto.name_cn || dto.name,
       summary: dto.summary || "",
-      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
+      image: transformImagesObj(dto.images),
       rating: dto.rating?.score || 0,
     };
   });
@@ -143,50 +145,18 @@ export type BangumiSubjectSearchResult = z.infer<
   typeof BangumiSubjectSearchResponseSchema
 >;
 
-/**
- * 榜单条目 Schema — GET /v0/subjects 响应中 data 的条目形状。
- * 仅保留背景壁纸所需字段，避免缓存存储冗余数据。
- * API: https://api.bgm.tv/v0/subjects?type=2&sort=rank
- */
-export const BangumiRankedSubjectSchema = z
-  .object({
-    id: z.number(),
-    name: z.string(),
-    name_cn: z.string(),
-    images: BangumiImagesSchema.nullable().optional(),
-    rating: z
-      .object({
-        score: z.number(),
-        rank: z.number().nullable().optional(),
-      })
-      .nullable()
-      .optional(),
-  })
-  .transform((dto) => {
-    const { images, name_cn, ...other } = dto;
-    return {
-      ...other,
-      name: dto.name_cn || dto.name,
-      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
-      rating: dto.rating?.score || 0,
-      rank: dto.rating?.rank ?? null,
-    };
-  });
-
 /** GET /v0/subjects 响应 Schema（Paged_Subject 形状），transform 后仅暴露 items。 */
 export const BangumiRankedSubjectsResponseSchema = z
   .object({
     total: z.number(),
     limit: z.number(),
     offset: z.number(),
-    data: z.array(BangumiRankedSubjectSchema),
+    data: z.array(BangumiSubjectSchema),
   })
   .transform((dto) => ({
     items: dto.data,
     total: dto.total,
   }));
-
-export type BangumiRankedSubject = z.infer<typeof BangumiRankedSubjectSchema>;
 
 export type BangumiCalendarItem = z.infer<typeof BangumiCalendarItemSchema>;
 export type BangumiCalendarDay = z.infer<typeof BangumiCalendarDaySchema>;
@@ -211,7 +181,7 @@ export const BangumiPersonSchema = z
     const { images, ...other } = dto;
     return {
       ...other,
-      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
+      image: transformImagesObj(dto.images),
     };
   });
 
@@ -232,7 +202,7 @@ export const BangumiActorSchema = z
     const { images, ...other } = dto;
     return {
       ...other,
-      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
+      image: transformImagesObj(dto.images),
     };
   });
 
@@ -254,7 +224,7 @@ export const BangumiCharacterSchema = z
     const { images, ...other } = dto;
     return {
       ...other,
-      image: `https://api.bgm.tv/v0/subjects/${dto.id}/image?subject_id=${dto.id}&type=common`,
+      image: transformImagesObj(dto.images),
     };
   });
 
@@ -354,14 +324,6 @@ export const BangumiCharactersStoredSchema = z.array(
   BangumiCharacterStoredSchema,
 );
 
-export const BangumiRankedSubjectStoredSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  image: z.string(),
-  rating: z.number(),
-  rank: z.number().nullable(),
-});
-
 export const BangumiRankedSubjectsStoredSchema = z.array(
-  BangumiRankedSubjectStoredSchema,
+  BangumiSubjectStoredSchema,
 );

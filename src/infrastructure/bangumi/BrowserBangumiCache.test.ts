@@ -6,7 +6,6 @@ import {
   BangumiCharactersStoredSchema,
   BangumiEpisodesPageStoredSchema,
   BangumiPersonsStoredSchema,
-  BangumiRankedSubjectSchema,
   BangumiRankedSubjectsStoredSchema,
   BangumiSubjectSchema,
   BangumiSubjectStoredSchema,
@@ -155,7 +154,7 @@ describe("BrowserBangumiCache 缓存读取", () => {
 
   it("setRankedSubjects 应写入榜单缓存", async () => {
     const cache = new BrowserBangumiCache(createMemoryCacheStore());
-    const ranked = BangumiRankedSubjectSchema.parse({
+    const ranked = BangumiSubjectSchema.parse({
       id: 326,
       name: "Shin Seiki Evangelion",
       name_cn: "新世纪福音战士",

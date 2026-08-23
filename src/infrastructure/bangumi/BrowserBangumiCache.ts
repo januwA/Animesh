@@ -10,7 +10,6 @@ import {
   BangumiEpisodesPageStoredSchema,
   type BangumiPerson,
   BangumiPersonsStoredSchema,
-  type BangumiRankedSubject,
   BangumiRankedSubjectsStoredSchema,
   type BangumiSubject,
   BangumiSubjectStoredSchema,
@@ -34,17 +33,14 @@ export class BrowserBangumiCache implements BangumiCache {
     );
   }
 
-  getRankedSubjects(_ctx: Context): Promise<BangumiRankedSubject[] | null> {
+  getRankedSubjects(_ctx: Context): Promise<BangumiSubject[] | null> {
     return this.store.getItem(
       "bangumi:ranked-subjects",
       BangumiRankedSubjectsStoredSchema,
     );
   }
 
-  setRankedSubjects(
-    _ctx: Context,
-    subjects: BangumiRankedSubject[],
-  ): Promise<void> {
+  setRankedSubjects(_ctx: Context, subjects: BangumiSubject[]): Promise<void> {
     return this.store.setItem(
       "bangumi:ranked-subjects",
       subjects,

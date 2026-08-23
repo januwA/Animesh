@@ -37,10 +37,9 @@ describe("HttpBangumiRepository 榜单条目获取", () => {
       {
         id: 326,
         name: "新世纪福音战士",
-        image:
-          "https://api.bgm.tv/v0/subjects/326/image?subject_id=326&type=common",
+        image: "https://img.example/m.jpg",
         rating: 9.1,
-        rank: 1,
+        summary: "",
       },
     ]);
   });

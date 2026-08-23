@@ -1,5 +1,6 @@
 import { Background } from "ajanuw-context";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import type { BangumiCache } from "../../domain/bangumi/BangumiCache";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 import {
@@ -9,12 +10,12 @@ import {
   recentMonthWindows,
 } from "./GetBangumiRankedSubjectsUseCase";
 
-const rankedSubject = {
+const rankedSubject: BangumiSubject = {
   id: 326,
   name: "新世纪福音战士",
   image: "https://img.example/l.jpg",
   rating: 9.1,
-  rank: 1,
+  summary: "",
 };
 
 const currentMonthSubject = { ...rankedSubject, id: 101 };
