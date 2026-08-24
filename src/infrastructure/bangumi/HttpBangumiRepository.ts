@@ -1,17 +1,17 @@
 import type { Context } from "ajanuw-context";
 import type {
-  BangumiCalendarDay,
-  BangumiCharacter,
-  BangumiEpisodesPage,
-  BangumiPerson,
-  BangumiSubject,
-  BangumiSubjectSearchParams,
-  BangumiSubjectSearchResult,
-} from "@/domain/bangumi/BangumiSchemas";
+  AnimeCalendarDay,
+  AnimeCharacter,
+  AnimeEpisodesPage,
+  AnimePerson,
+  AnimeSubject,
+  AnimeSubjectSearchParams,
+  AnimeSubjectSearchResult,
+} from "@/domain/anime/AnimeSchemas";
 import type {
-  BangumiRepository,
+  AnimeRepository,
   RankedSubjectsPage,
-} from "../../domain/bangumi/BangumiRepository";
+} from "../../domain/anime/AnimeRepository";
 import type { HttpClient } from "../http/HttpClient";
 import {
   BangumiCalendarResponseSchema,
@@ -23,10 +23,10 @@ import {
   BangumiSubjectSearchResponseSchema,
 } from "./BangumiSchemas";
 
-export class HttpBangumiRepository implements BangumiRepository {
+export class HttpBangumiRepository implements AnimeRepository {
   constructor(private readonly client: HttpClient) {}
 
-  async getCalendar(ctx: Context): Promise<BangumiCalendarDay[]> {
+  async getCalendar(ctx: Context): Promise<AnimeCalendarDay[]> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>("https://api.bgm.tv/calendar", {
@@ -88,7 +88,7 @@ export class HttpBangumiRepository implements BangumiRepository {
     return result.data;
   }
 
-  async getSubject(ctx: Context, subjectId: string): Promise<BangumiSubject> {
+  async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
@@ -116,7 +116,7 @@ export class HttpBangumiRepository implements BangumiRepository {
     subjectId: string,
     offset: number,
     limit: number,
-  ): Promise<BangumiEpisodesPage> {
+  ): Promise<AnimeEpisodesPage> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
@@ -142,7 +142,7 @@ export class HttpBangumiRepository implements BangumiRepository {
   async getSubjectPersons(
     ctx: Context,
     subjectId: string,
-  ): Promise<BangumiPerson[]> {
+  ): Promise<AnimePerson[]> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
@@ -168,7 +168,7 @@ export class HttpBangumiRepository implements BangumiRepository {
   async getSubjectCharacters(
     ctx: Context,
     subjectId: string,
-  ): Promise<BangumiCharacter[]> {
+  ): Promise<AnimeCharacter[]> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
@@ -193,8 +193,8 @@ export class HttpBangumiRepository implements BangumiRepository {
 
   async searchSubjects(
     ctx: Context,
-    params: BangumiSubjectSearchParams,
-  ): Promise<BangumiSubjectSearchResult> {
+    params: AnimeSubjectSearchParams,
+  ): Promise<AnimeSubjectSearchResult> {
     let raw: unknown;
     try {
       const response = await this.client.request(

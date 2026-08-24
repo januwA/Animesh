@@ -1,4 +1,4 @@
-import type { BangumiCharacter } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import {
   Empty,
@@ -9,7 +9,7 @@ import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { CharacterCard } from "./CharacterCard";
 
 export interface CharactersSectionProps {
-  characters: BangumiCharacter[];
+  characters: AnimeCharacter[];
   loading: boolean;
   error: Error | null;
   onRetry: () => void;

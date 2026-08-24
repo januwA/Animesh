@@ -1,4 +1,4 @@
-import type { BangumiEpisode } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeEpisode } from "@/domain/anime/AnimeSchemas";
 import { EpisodePaginationBar } from "@/presentation/components/EpisodePaginationBar";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import {
@@ -9,7 +9,7 @@ import {
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 
 export interface EpisodesSectionProps {
-  episodes: BangumiEpisode[];
+  episodes: AnimeEpisode[];
   totalEpisodes: number;
   totalPages: number;
   page: number;
@@ -17,7 +17,7 @@ export interface EpisodesSectionProps {
   loading: boolean;
   error: Error | null;
   onRetry: () => void;
-  onEpisodeClick: (episode: BangumiEpisode) => void;
+  onEpisodeClick: (episode: AnimeEpisode) => void;
   onPageChange: (page: number) => void;
   onJumpToEpisode: (episodeNumber: number) => void;
 }

@@ -1,7 +1,7 @@
-import type { GetBangumiCharactersUseCase } from "@/application/bangumi/GetBangumiCharactersUseCase";
-import type { GetBangumiEpisodesUseCase } from "@/application/bangumi/GetBangumiEpisodesUseCase";
-import type { GetBangumiPersonsUseCase } from "@/application/bangumi/GetBangumiPersonsUseCase";
-import type { GetBangumiSubjectUseCase } from "@/application/bangumi/GetBangumiSubjectUseCase";
+import type { GetAnimeCharactersUseCase } from "@/application/anime/GetAnimeCharactersUseCase";
+import type { GetAnimeEpisodesUseCase } from "@/application/anime/GetAnimeEpisodesUseCase";
+import type { GetAnimePersonsUseCase } from "@/application/anime/GetAnimePersonsUseCase";
+import type { GetAnimeSubjectUseCase } from "@/application/anime/GetAnimeSubjectUseCase";
 import type { OpenUrlUseCase } from "@/application/opener/OpenUrlUseCase";
 import type { ClearTorrentSubjectUseCase } from "@/application/torrent/ClearTorrentSubjectUseCase";
 import type { SetTorrentSubjectUseCase } from "@/application/torrent/SetTorrentSubjectUseCase";
@@ -26,10 +26,10 @@ export interface UseSubjectDetailParams {
 
 /** useSubjectDetail 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectDetailDeps {
-  getBangumiSubjectUseCase: Pick<GetBangumiSubjectUseCase, "execute">;
-  getBangumiEpisodesUseCase: Pick<GetBangumiEpisodesUseCase, "execute">;
-  getBangumiPersonsUseCase: Pick<GetBangumiPersonsUseCase, "execute">;
-  getBangumiCharactersUseCase: Pick<GetBangumiCharactersUseCase, "execute">;
+  getBangumiSubjectUseCase: Pick<GetAnimeSubjectUseCase, "execute">;
+  getBangumiEpisodesUseCase: Pick<GetAnimeEpisodesUseCase, "execute">;
+  getBangumiPersonsUseCase: Pick<GetAnimePersonsUseCase, "execute">;
+  getBangumiCharactersUseCase: Pick<GetAnimeCharactersUseCase, "execute">;
   openUrlUseCase: Pick<OpenUrlUseCase, "execute">;
   setTorrentSubjectUseCase: Pick<SetTorrentSubjectUseCase, "execute">;
   clearTorrentSubjectUseCase: Pick<ClearTorrentSubjectUseCase, "execute">;

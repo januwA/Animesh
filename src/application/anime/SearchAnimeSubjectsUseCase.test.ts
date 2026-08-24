@@ -1,13 +1,13 @@
 import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
-import type { BangumiSubjectSearchResult } from "../../domain/bangumi/BangumiSchemas";
-import { SearchBangumiSubjectsUseCase } from "./SearchBangumiSubjectsUseCase";
+import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
+import type { AnimeSubjectSearchResult } from "../../domain/anime/AnimeSchemas";
+import { SearchAnimeSubjectsUseCase } from "./SearchAnimeSubjectsUseCase";
 
-describe("SearchBangumiSubjectsUseCase 搜索动漫条目", () => {
+describe("SearchAnimeSubjectsUseCase 搜索动漫条目", () => {
   const mockRepo = {
     searchSubjects: vi.fn(),
-  } as unknown as BangumiRepository;
+  } as unknown as AnimeRepository;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -15,7 +15,7 @@ describe("SearchBangumiSubjectsUseCase 搜索动漫条目", () => {
 
   it("应透传参数调用 Repository 并返回搜索结果", async () => {
     const params = { keyword: "间谍过家家", limit: 20, offset: 0 };
-    const searchResult: BangumiSubjectSearchResult = {
+    const searchResult: AnimeSubjectSearchResult = {
       items: [
         {
           id: 1,
@@ -32,7 +32,7 @@ describe("SearchBangumiSubjectsUseCase 搜索动漫条目", () => {
     };
     vi.mocked(mockRepo.searchSubjects).mockResolvedValueOnce(searchResult);
 
-    const useCase = new SearchBangumiSubjectsUseCase(mockRepo);
+    const useCase = new SearchAnimeSubjectsUseCase(mockRepo);
     const result = await useCase.execute(Background, params);
 
     expect(mockRepo.searchSubjects).toHaveBeenCalledWith(Background, params);
@@ -43,7 +43,7 @@ describe("SearchBangumiSubjectsUseCase 搜索动漫条目", () => {
     const error = new Error("network error");
     vi.mocked(mockRepo.searchSubjects).mockRejectedValueOnce(error);
 
-    const useCase = new SearchBangumiSubjectsUseCase(mockRepo);
+    const useCase = new SearchAnimeSubjectsUseCase(mockRepo);
 
     await expect(
       useCase.execute(Background, { keyword: "xxx", limit: 20, offset: 0 }),

@@ -1,12 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { SubjectInfoCard } from "./SubjectInfoCard";
 
-const makeSubject = (
-  overrides: Partial<BangumiSubject> = {},
-): BangumiSubject => ({
+const makeSubject = (overrides: Partial<AnimeSubject> = {}): AnimeSubject => ({
   id: 123,
   name: "测试动漫标题",
   summary: "这是一个测试动漫的简介内容。",
@@ -19,7 +17,7 @@ const makeSubject = (
 });
 
 const renderCard = async (
-  subject: BangumiSubject | undefined,
+  subject: AnimeSubject | undefined,
   options: { displayName?: string; imageUrl?: string } = {},
 ) => {
   const result = render(

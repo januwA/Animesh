@@ -1,13 +1,13 @@
 import type { Context } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
-import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
+import type { AnimeCache } from "@/domain/anime/AnimeCache";
 import type {
-  BangumiCalendarDay,
-  BangumiCharacter,
-  BangumiEpisodesPage,
-  BangumiPerson,
-  BangumiSubject,
-} from "@/domain/bangumi/BangumiSchemas";
+  AnimeCalendarDay,
+  AnimeCharacter,
+  AnimeEpisodesPage,
+  AnimePerson,
+  AnimeSubject,
+} from "@/domain/anime/AnimeSchemas";
 import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 import {
   BangumiCalendarStoredSchema,
@@ -18,16 +18,16 @@ import {
   BangumiSubjectStoredSchema,
 } from "./BangumiSchemas";
 
-export class BrowserBangumiCache implements BangumiCache {
+export class BrowserBangumiCache implements AnimeCache {
   private readonly ttl1MMs = new Duration({ days: 30 }).inMilliseconds;
 
   constructor(private readonly store: CacheStore) {}
 
-  getCalendar(_ctx: Context): Promise<BangumiCalendarDay[] | null> {
+  getCalendar(_ctx: Context): Promise<AnimeCalendarDay[] | null> {
     return this.store.getItem("bangumi:calendar", BangumiCalendarStoredSchema);
   }
 
-  setCalendar(_ctx: Context, calendar: BangumiCalendarDay[]): Promise<void> {
+  setCalendar(_ctx: Context, calendar: AnimeCalendarDay[]): Promise<void> {
     return this.store.setItem(
       "bangumi:calendar",
       calendar,
@@ -35,14 +35,14 @@ export class BrowserBangumiCache implements BangumiCache {
     );
   }
 
-  getRankedSubjects(_ctx: Context): Promise<BangumiSubject[] | null> {
+  getRankedSubjects(_ctx: Context): Promise<AnimeSubject[] | null> {
     return this.store.getItem(
       "bangumi:ranked-subjects",
       BangumiRankedSubjectsStoredSchema,
     );
   }
 
-  setRankedSubjects(_ctx: Context, subjects: BangumiSubject[]): Promise<void> {
+  setRankedSubjects(_ctx: Context, subjects: AnimeSubject[]): Promise<void> {
     return this.store.setItem(
       "bangumi:ranked-subjects",
       subjects,
@@ -50,7 +50,7 @@ export class BrowserBangumiCache implements BangumiCache {
     );
   }
 
-  getSubject(_ctx: Context, subjectId: string): Promise<BangumiSubject | null> {
+  getSubject(_ctx: Context, subjectId: string): Promise<AnimeSubject | null> {
     return this.store.getItem(
       `bangumi:subject:${subjectId}`,
       BangumiSubjectStoredSchema,
@@ -60,7 +60,7 @@ export class BrowserBangumiCache implements BangumiCache {
   setSubject(
     _ctx: Context,
     subjectId: string,
-    subject: BangumiSubject,
+    subject: AnimeSubject,
   ): Promise<void> {
     return this.store.setItem(
       `bangumi:subject:${subjectId}`,
@@ -74,7 +74,7 @@ export class BrowserBangumiCache implements BangumiCache {
     subjectId: string,
     offset: number,
     limit: number,
-  ): Promise<BangumiEpisodesPage | null> {
+  ): Promise<AnimeEpisodesPage | null> {
     return this.store.getItem(
       `bangumi:episodes:${subjectId}:${offset}:${limit}`,
       BangumiEpisodesPageStoredSchema,
@@ -86,7 +86,7 @@ export class BrowserBangumiCache implements BangumiCache {
     subjectId: string,
     offset: number,
     limit: number,
-    page: BangumiEpisodesPage,
+    page: AnimeEpisodesPage,
   ): Promise<void> {
     return this.store.setItem(
       `bangumi:episodes:${subjectId}:${offset}:${limit}`,
@@ -95,10 +95,7 @@ export class BrowserBangumiCache implements BangumiCache {
     );
   }
 
-  getPersons(
-    _ctx: Context,
-    subjectId: string,
-  ): Promise<BangumiPerson[] | null> {
+  getPersons(_ctx: Context, subjectId: string): Promise<AnimePerson[] | null> {
     return this.store.getItem(
       `bangumi:persons:${subjectId}`,
       BangumiPersonsStoredSchema,
@@ -108,7 +105,7 @@ export class BrowserBangumiCache implements BangumiCache {
   setPersons(
     _ctx: Context,
     subjectId: string,
-    persons: BangumiPerson[],
+    persons: AnimePerson[],
   ): Promise<void> {
     return this.store.setItem(
       `bangumi:persons:${subjectId}`,
@@ -120,7 +117,7 @@ export class BrowserBangumiCache implements BangumiCache {
   getCharacters(
     _ctx: Context,
     subjectId: string,
-  ): Promise<BangumiCharacter[] | null> {
+  ): Promise<AnimeCharacter[] | null> {
     return this.store.getItem(
       `bangumi:characters:${subjectId}`,
       BangumiCharactersStoredSchema,
@@ -130,7 +127,7 @@ export class BrowserBangumiCache implements BangumiCache {
   setCharacters(
     _ctx: Context,
     subjectId: string,
-    characters: BangumiCharacter[],
+    characters: AnimeCharacter[],
   ): Promise<void> {
     return this.store.setItem(
       `bangumi:characters:${subjectId}`,

@@ -3,13 +3,13 @@ import { useState } from "react";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { Button } from "@/presentation/components/ui/button";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 
 interface FavoriteButtonProps {
-  subject: BangumiSubject;
+  subject: AnimeSubject;
   showLabel?: boolean;
   getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;
   addFavoriteUseCase: Pick<AddFavoriteUseCase, "execute">;

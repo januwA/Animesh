@@ -7,7 +7,7 @@ export interface SetTorrentSubjectParams {
   subjectName: NonEmptyString;
 }
 
-/** 将下载资源绑定到 Bangumi 条目。 */
+/** 将下载资源绑定到条目。 */
 export class SetTorrentSubjectUseCase {
   constructor(private torrentRepository: TorrentRepository) {}
 

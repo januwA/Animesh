@@ -1,18 +1,18 @@
 import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BangumiCache } from "../../domain/bangumi/BangumiCache";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
-import { GetBangumiCalendarUseCase } from "./GetBangumiCalendarUseCase";
+import type { AnimeCache } from "../../domain/anime/AnimeCache";
+import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
+import { GetAnimeCalendarUseCase } from "./GetAnimeCalendarUseCase";
 
-describe("GetBangumiCalendarUseCase 获取新番日历", () => {
+describe("GetAnimeCalendarUseCase 获取新番日历", () => {
   const mockRepo = {
     getCalendar: vi.fn(),
-  } as unknown as BangumiRepository;
+  } as unknown as AnimeRepository;
 
   const mockCache = {
     getCalendar: vi.fn(),
     setCalendar: vi.fn(),
-  } as unknown as BangumiCache;
+  } as unknown as AnimeCache;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -27,7 +27,7 @@ describe("GetBangumiCalendarUseCase 获取新番日历", () => {
     ];
     vi.mocked(mockCache.getCalendar).mockResolvedValueOnce(cachedData);
 
-    const useCase = new GetBangumiCalendarUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeCalendarUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
     expect(mockCache.getCalendar).toHaveBeenCalledWith(Background);
@@ -45,7 +45,7 @@ describe("GetBangumiCalendarUseCase 获取新番日历", () => {
     vi.mocked(mockCache.getCalendar).mockResolvedValueOnce(null);
     vi.mocked(mockRepo.getCalendar).mockResolvedValueOnce(freshData);
 
-    const useCase = new GetBangumiCalendarUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeCalendarUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
     expect(mockCache.getCalendar).toHaveBeenCalledWith(Background);

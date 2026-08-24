@@ -2,13 +2,13 @@ import { createContext, use } from "react";
 import { FetchAiClient } from "@/infrastructure/ai/FetchAiClient";
 import { TauriAiClient } from "@/infrastructure/ai/TauriAiClient";
 import { TauriSubtitleTranslationRepository } from "@/infrastructure/subtitle/TauriSubtitleTranslationRepository";
-import { GetBangumiCalendarUseCase } from "../application/bangumi/GetBangumiCalendarUseCase";
-import { GetBangumiCharactersUseCase } from "../application/bangumi/GetBangumiCharactersUseCase";
-import { GetBangumiEpisodesUseCase } from "../application/bangumi/GetBangumiEpisodesUseCase";
-import { GetBangumiPersonsUseCase } from "../application/bangumi/GetBangumiPersonsUseCase";
-import { GetBangumiRankedSubjectsUseCase } from "../application/bangumi/GetBangumiRankedSubjectsUseCase";
-import { GetBangumiSubjectUseCase } from "../application/bangumi/GetBangumiSubjectUseCase";
-import { SearchBangumiSubjectsUseCase } from "../application/bangumi/SearchBangumiSubjectsUseCase";
+import { GetAnimeCalendarUseCase } from "../application/anime/GetAnimeCalendarUseCase";
+import { GetAnimeCharactersUseCase } from "../application/anime/GetAnimeCharactersUseCase";
+import { GetAnimeEpisodesUseCase } from "../application/anime/GetAnimeEpisodesUseCase";
+import { GetAnimePersonsUseCase } from "../application/anime/GetAnimePersonsUseCase";
+import { GetAnimeRankedSubjectsUseCase } from "../application/anime/GetAnimeRankedSubjectsUseCase";
+import { GetAnimeSubjectUseCase } from "../application/anime/GetAnimeSubjectUseCase";
+import { SearchAnimeSubjectsUseCase } from "../application/anime/SearchAnimeSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
 import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
@@ -106,13 +106,13 @@ export interface DIContainer {
   saveSubtitleTranslationUseCase: SaveSubtitleTranslationUseCase;
   getSubtitleTranslationByIdUseCase: GetSubtitleTranslationByIdUseCase;
 
-  getBangumiCalendarUseCase: GetBangumiCalendarUseCase;
-  getBangumiSubjectUseCase: GetBangumiSubjectUseCase;
-  getBangumiEpisodesUseCase: GetBangumiEpisodesUseCase;
-  getBangumiPersonsUseCase: GetBangumiPersonsUseCase;
-  getBangumiCharactersUseCase: GetBangumiCharactersUseCase;
-  getBangumiRankedSubjectsUseCase: GetBangumiRankedSubjectsUseCase;
-  searchBangumiSubjectsUseCase: SearchBangumiSubjectsUseCase;
+  getBangumiCalendarUseCase: GetAnimeCalendarUseCase;
+  getBangumiSubjectUseCase: GetAnimeSubjectUseCase;
+  getBangumiEpisodesUseCase: GetAnimeEpisodesUseCase;
+  getBangumiPersonsUseCase: GetAnimePersonsUseCase;
+  getBangumiCharactersUseCase: GetAnimeCharactersUseCase;
+  getBangumiRankedSubjectsUseCase: GetAnimeRankedSubjectsUseCase;
+  searchBangumiSubjectsUseCase: SearchAnimeSubjectsUseCase;
   getIptvCountriesUseCase: GetIptvCountriesUseCase;
   getIptvChannelsUseCase: GetIptvChannelsUseCase;
   resolvePlayableStreamUrlUseCase: ResolvePlayableStreamUrlUseCase;
@@ -217,31 +217,31 @@ export function createDefaultDIContainer(): DIContainer {
     new GetSubtitleTranslationByIdUseCase(subtitleTranslationRepository);
 
   const bangumiCache = new BrowserBangumiCache(cacheStore);
-  const getBangumiCalendarUseCase = new GetBangumiCalendarUseCase(
+  const getBangumiCalendarUseCase = new GetAnimeCalendarUseCase(
     bangumiRepository,
     bangumiCache,
   );
-  const getBangumiSubjectUseCase = new GetBangumiSubjectUseCase(
+  const getBangumiSubjectUseCase = new GetAnimeSubjectUseCase(
     bangumiRepository,
     bangumiCache,
   );
-  const getBangumiEpisodesUseCase = new GetBangumiEpisodesUseCase(
+  const getBangumiEpisodesUseCase = new GetAnimeEpisodesUseCase(
     bangumiRepository,
     bangumiCache,
   );
-  const getBangumiPersonsUseCase = new GetBangumiPersonsUseCase(
+  const getBangumiPersonsUseCase = new GetAnimePersonsUseCase(
     bangumiRepository,
     bangumiCache,
   );
-  const getBangumiCharactersUseCase = new GetBangumiCharactersUseCase(
+  const getBangumiCharactersUseCase = new GetAnimeCharactersUseCase(
     bangumiRepository,
     bangumiCache,
   );
-  const getBangumiRankedSubjectsUseCase = new GetBangumiRankedSubjectsUseCase(
+  const getBangumiRankedSubjectsUseCase = new GetAnimeRankedSubjectsUseCase(
     bangumiRepository,
     bangumiCache,
   );
-  const searchBangumiSubjectsUseCase = new SearchBangumiSubjectsUseCase(
+  const searchBangumiSubjectsUseCase = new SearchAnimeSubjectsUseCase(
     bangumiRepository,
   );
   const iptvCache = new BrowserIptvCache(cacheStore);

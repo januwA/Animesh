@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import type {
-  BangumiCalendarDay,
-  BangumiCalendarItem,
-} from "@/domain/bangumi/BangumiSchemas";
+  AnimeCalendarDay,
+  AnimeCalendarItem,
+} from "@/domain/anime/AnimeSchemas";
 import { MediaCard } from "@/presentation/components/MediaCard";
 import {
   Empty,
@@ -20,8 +20,8 @@ function getTodayWeekdayId(): number {
 }
 
 interface WeeklyCalendarProps {
-  calendar: BangumiCalendarDay[];
-  onAnimeClick: (item: BangumiCalendarItem) => void;
+  calendar: AnimeCalendarDay[];
+  onAnimeClick: (item: AnimeCalendarItem) => void;
 }
 
 export function WeeklyCalendar({

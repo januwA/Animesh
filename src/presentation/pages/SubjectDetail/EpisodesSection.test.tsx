@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
-import type { BangumiEpisode } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeEpisode } from "@/domain/anime/AnimeSchemas";
 import { EpisodesSection } from "./EpisodesSection";
 
-const makeEpisode = (sort: number): BangumiEpisode => ({
+const makeEpisode = (sort: number): AnimeEpisode => ({
   id: 1000 + sort,
   sort,
   name: `第 ${sort} 集`,
@@ -19,7 +19,7 @@ const formatDate = (d: Date) => {
 };
 
 const defaultProps = () => ({
-  episodes: [] as BangumiEpisode[],
+  episodes: [] as AnimeEpisode[],
   totalEpisodes: 0,
   totalPages: 1,
   page: 1,

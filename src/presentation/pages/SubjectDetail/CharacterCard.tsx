@@ -1,9 +1,9 @@
 import { Tv } from "lucide-react";
-import type { BangumiCharacter } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
 import { LazyImage } from "@/presentation/components/LazyImage";
 
 export interface CharacterCardProps {
-  character: BangumiCharacter;
+  character: AnimeCharacter;
 }
 
 export function CharacterCard({ character }: CharacterCardProps) {

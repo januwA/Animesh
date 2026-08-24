@@ -1,10 +1,7 @@
 import { useMemo } from "react";
-import type { GetBangumiCharactersUseCase } from "@/application/bangumi/GetBangumiCharactersUseCase";
-import type { GetBangumiPersonsUseCase } from "@/application/bangumi/GetBangumiPersonsUseCase";
-import type {
-  BangumiCharacter,
-  BangumiPerson,
-} from "@/domain/bangumi/BangumiSchemas";
+import type { GetAnimeCharactersUseCase } from "@/application/anime/GetAnimeCharactersUseCase";
+import type { GetAnimePersonsUseCase } from "@/application/anime/GetAnimePersonsUseCase";
+import type { AnimeCharacter, AnimePerson } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { UseQueryResult } from "@/presentation/hooks/useQuery";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -19,7 +16,7 @@ export interface ConsolidatedStaffMember {
 
 /** Deduplicate staff by (id, relation), then group by person ID to collect all roles. */
 export function consolidateStaff(
-  persons: BangumiPerson[],
+  persons: AnimePerson[],
 ): ConsolidatedStaffMember[] {
   const seen = new Set<string>();
   const personMap = new Map<number, ConsolidatedStaffMember>();
@@ -53,15 +50,15 @@ export interface UseSubjectCastParams {
 
 /** useSubjectCast 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectCastDeps {
-  getBangumiPersonsUseCase: Pick<GetBangumiPersonsUseCase, "execute">;
-  getBangumiCharactersUseCase: Pick<GetBangumiCharactersUseCase, "execute">;
+  getBangumiPersonsUseCase: Pick<GetAnimePersonsUseCase, "execute">;
+  getBangumiCharactersUseCase: Pick<GetAnimeCharactersUseCase, "execute">;
 }
 
 export interface SubjectCastResult {
-  charactersQuery: UseQueryResult<BangumiCharacter[]>;
-  characters: BangumiCharacter[];
-  personsQuery: UseQueryResult<BangumiPerson[]>;
-  persons: BangumiPerson[];
+  charactersQuery: UseQueryResult<AnimeCharacter[]>;
+  characters: AnimeCharacter[];
+  personsQuery: UseQueryResult<AnimePerson[]>;
+  persons: AnimePerson[];
   consolidatedStaff: ConsolidatedStaffMember[];
   staffGroupedByRole: Map<string, ConsolidatedStaffMember[]>;
 }
@@ -73,7 +70,7 @@ export function useSubjectCast(
   const { subjectId, enabledCharacters = true, enabledPersons = true } = params;
   const { getBangumiPersonsUseCase, getBangumiCharactersUseCase } = deps;
 
-  const charactersQuery = useQuery<BangumiCharacter[]>(
+  const charactersQuery = useQuery<AnimeCharacter[]>(
     (ctx) =>
       getBangumiCharactersUseCase.execute(
         ctx,
@@ -84,7 +81,7 @@ export function useSubjectCast(
   );
   const characters = charactersQuery.data ?? [];
 
-  const personsQuery = useQuery<BangumiPerson[]>(
+  const personsQuery = useQuery<AnimePerson[]>(
     (ctx) =>
       getBangumiPersonsUseCase.execute(
         ctx,

@@ -1,27 +1,27 @@
 import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { BangumiCache } from "../../domain/bangumi/BangumiCache";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
-import { GetBangumiSubjectUseCase } from "./GetBangumiSubjectUseCase";
+import type { AnimeCache } from "../../domain/anime/AnimeCache";
+import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
+import { GetAnimeSubjectUseCase } from "./GetAnimeSubjectUseCase";
 
-describe("GetBangumiSubjectUseCase 获取条目信息", () => {
+describe("GetAnimeSubjectUseCase 获取条目信息", () => {
   const mockRepo = {
     getSubject: vi.fn(),
-  } as unknown as BangumiRepository;
+  } as unknown as AnimeRepository;
 
   const mockCache = {
     getSubject: vi.fn(),
     setSubject: vi.fn(),
-  } as unknown as BangumiCache;
+  } as unknown as AnimeCache;
 
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
   it("应该在缓存命中时直接返回缓存数据且不请求 Repository", async () => {
-    const cachedData: BangumiSubject = {
+    const cachedData: AnimeSubject = {
       id: 1,
       name: "cached",
       summary: "缓存",
@@ -30,7 +30,7 @@ describe("GetBangumiSubjectUseCase 获取条目信息", () => {
     };
     vi.mocked(mockCache.getSubject).mockResolvedValueOnce(cachedData as any);
 
-    const useCase = new GetBangumiSubjectUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeSubjectUseCase(mockRepo, mockCache);
     const result = await useCase.execute(
       Background,
       NonEmptyStringSchema.parse("1"),
@@ -45,7 +45,7 @@ describe("GetBangumiSubjectUseCase 获取条目信息", () => {
   });
 
   it("应该在缓存未命中时请求 Repository 并写入缓存", async () => {
-    const freshData: BangumiSubject = {
+    const freshData: AnimeSubject = {
       id: 1,
       name: "fresh",
       summary: "新鲜",
@@ -55,7 +55,7 @@ describe("GetBangumiSubjectUseCase 获取条目信息", () => {
     vi.mocked(mockCache.getSubject).mockResolvedValueOnce(null);
     vi.mocked(mockRepo.getSubject).mockResolvedValueOnce(freshData as any);
 
-    const useCase = new GetBangumiSubjectUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeSubjectUseCase(mockRepo, mockCache);
     const result = await useCase.execute(
       Background,
       NonEmptyStringSchema.parse("1"),

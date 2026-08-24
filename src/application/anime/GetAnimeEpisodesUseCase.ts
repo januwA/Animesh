@@ -1,8 +1,8 @@
 import type { Context } from "ajanuw-context";
-import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
-import type { BangumiEpisodesPage } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCache } from "@/domain/anime/AnimeCache";
+import type { AnimeEpisodesPage } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
+import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
 
 export interface GetEpisodesPageCommand {
   subjectId: string;
@@ -10,18 +10,18 @@ export interface GetEpisodesPageCommand {
   limit: number;
 }
 
-export class GetBangumiEpisodesUseCase {
+export class GetAnimeEpisodesUseCase {
   constructor(
-    private readonly bangumiRepository: BangumiRepository,
-    private readonly bangumiCache: BangumiCache,
+    private readonly animeRepository: AnimeRepository,
+    private readonly animeCache: AnimeCache,
   ) {}
 
   async execute(
     ctx: Context,
     command: GetEpisodesPageCommand,
-  ): Promise<BangumiEpisodesPage> {
+  ): Promise<AnimeEpisodesPage> {
     const { subjectId, offset, limit } = command;
-    const cached = await this.bangumiCache.getEpisodes(
+    const cached = await this.animeCache.getEpisodes(
       ctx,
       NonEmptyStringSchema.parse(subjectId),
       offset,
@@ -30,13 +30,13 @@ export class GetBangumiEpisodesUseCase {
     if (cached) {
       return cached;
     }
-    const page = await this.bangumiRepository.getEpisodes(
+    const page = await this.animeRepository.getEpisodes(
       ctx,
       NonEmptyStringSchema.parse(subjectId),
       offset,
       limit,
     );
-    await this.bangumiCache.setEpisodes(
+    await this.animeCache.setEpisodes(
       ctx,
       NonEmptyStringSchema.parse(subjectId),
       offset,

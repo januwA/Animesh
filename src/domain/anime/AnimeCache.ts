@@ -1,28 +1,28 @@
 import type { Context } from "ajanuw-context";
 import type { NonEmptyString } from "../common/NonEmptyString";
 import type {
-  BangumiCalendarDay,
-  BangumiCharacter,
-  BangumiEpisodesPage,
-  BangumiPerson,
-  BangumiSubject,
-} from "./BangumiSchemas";
+  AnimeCalendarDay,
+  AnimeCharacter,
+  AnimeEpisodesPage,
+  AnimePerson,
+  AnimeSubject,
+} from "./AnimeSchemas";
 
-export interface BangumiCache {
-  getCalendar(ctx: Context): Promise<BangumiCalendarDay[] | null>;
-  setCalendar(ctx: Context, calendar: BangumiCalendarDay[]): Promise<void>;
+export interface AnimeCache {
+  getCalendar(ctx: Context): Promise<AnimeCalendarDay[] | null>;
+  setCalendar(ctx: Context, calendar: AnimeCalendarDay[]): Promise<void>;
 
-  getRankedSubjects(ctx: Context): Promise<BangumiSubject[] | null>;
-  setRankedSubjects(ctx: Context, subjects: BangumiSubject[]): Promise<void>;
+  getRankedSubjects(ctx: Context): Promise<AnimeSubject[] | null>;
+  setRankedSubjects(ctx: Context, subjects: AnimeSubject[]): Promise<void>;
 
   getSubject(
     ctx: Context,
     subjectId: NonEmptyString,
-  ): Promise<BangumiSubject | null>;
+  ): Promise<AnimeSubject | null>;
   setSubject(
     ctx: Context,
     subjectId: NonEmptyString,
-    subject: BangumiSubject,
+    subject: AnimeSubject,
   ): Promise<void>;
 
   getEpisodes(
@@ -30,32 +30,32 @@ export interface BangumiCache {
     subjectId: NonEmptyString,
     offset: number,
     limit: number,
-  ): Promise<BangumiEpisodesPage | null>;
+  ): Promise<AnimeEpisodesPage | null>;
   setEpisodes(
     ctx: Context,
     subjectId: NonEmptyString,
     offset: number,
     limit: number,
-    page: BangumiEpisodesPage,
+    page: AnimeEpisodesPage,
   ): Promise<void>;
 
   getPersons(
     ctx: Context,
     subjectId: NonEmptyString,
-  ): Promise<BangumiPerson[] | null>;
+  ): Promise<AnimePerson[] | null>;
   setPersons(
     ctx: Context,
     subjectId: NonEmptyString,
-    persons: BangumiPerson[],
+    persons: AnimePerson[],
   ): Promise<void>;
 
   getCharacters(
     ctx: Context,
     subjectId: NonEmptyString,
-  ): Promise<BangumiCharacter[] | null>;
+  ): Promise<AnimeCharacter[] | null>;
   setCharacters(
     ctx: Context,
     subjectId: NonEmptyString,
-    characters: BangumiCharacter[],
+    characters: AnimeCharacter[],
   ): Promise<void>;
 }

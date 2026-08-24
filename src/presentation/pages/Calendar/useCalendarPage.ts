@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import type { GetBangumiCalendarUseCase } from "@/application/bangumi/GetBangumiCalendarUseCase";
-import type { BangumiCalendarItem } from "@/domain/bangumi/BangumiSchemas";
+import type { GetAnimeCalendarUseCase } from "@/application/anime/GetAnimeCalendarUseCase";
+import type { AnimeCalendarItem } from "@/domain/anime/AnimeSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { useCalendarStore } from "../../store/calendarStore";
 
 export interface UseCalendarPageDeps {
-  getBangumiCalendarUseCase: Pick<GetBangumiCalendarUseCase, "execute">;
+  getBangumiCalendarUseCase: Pick<GetAnimeCalendarUseCase, "execute">;
 }
 
 export function useCalendarPage(deps: UseCalendarPageDeps) {
@@ -31,7 +31,7 @@ export function useCalendarPage(deps: UseCalendarPageDeps) {
   );
 
   const handleAnimeClick = useCallback(
-    (item: BangumiCalendarItem) => {
+    (item: AnimeCalendarItem) => {
       navigate(`/subject/${item.id}`, {
         viewTransition: true,
         state: {

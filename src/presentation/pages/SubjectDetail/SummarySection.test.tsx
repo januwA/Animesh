@@ -1,10 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { SummarySection } from "./SummarySection";
 
-const makeSubject = (
-  overrides: Partial<BangumiSubject> = {},
-): BangumiSubject => ({
+const makeSubject = (overrides: Partial<AnimeSubject> = {}): AnimeSubject => ({
   id: 123,
   name: "测试动漫标题",
   summary: "这是一个测试动漫的简介内容。",

@@ -1,4 +1,4 @@
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { MediaCard } from "@/presentation/components/MediaCard";
 import {
   Empty,
@@ -9,8 +9,8 @@ import {
 import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
 
 interface SubjectSearchResultsProps {
-  items: BangumiSubject[];
-  onSubjectClick: (item: BangumiSubject) => void;
+  items: AnimeSubject[];
+  onSubjectClick: (item: AnimeSubject) => void;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;

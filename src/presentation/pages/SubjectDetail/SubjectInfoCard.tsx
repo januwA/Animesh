@@ -3,12 +3,12 @@ import type { CSSProperties, ReactNode } from "react";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { FavoriteButton } from "./FavoriteButton";
 
 export interface SubjectInfoCardProps {
-  subject: BangumiSubject | undefined;
+  subject: AnimeSubject | undefined;
   subjectId: number;
   displayName: string;
   imageUrl: string | undefined;

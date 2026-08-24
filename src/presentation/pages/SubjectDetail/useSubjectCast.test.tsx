@@ -2,14 +2,11 @@ import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
-import type {
-  BangumiCharacter,
-  BangumiPerson,
-} from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCharacter, AnimePerson } from "@/domain/anime/AnimeSchemas";
 import type { UseSubjectCastDeps } from "./useSubjectCast";
 import { consolidateStaff, useSubjectCast } from "./useSubjectCast";
 
-const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
+const makePerson = (overrides: Partial<AnimePerson> = {}): AnimePerson => ({
   image: "",
   name: "木村拓",
   relation: "导演",
@@ -18,7 +15,7 @@ const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
   ...overrides,
 });
 
-const makeCharacter = (): BangumiCharacter => ({
+const makeCharacter = (): AnimeCharacter => ({
   image: "http://example.com/large.jpg",
   name: "ヤニねこ",
   relation: "主角",

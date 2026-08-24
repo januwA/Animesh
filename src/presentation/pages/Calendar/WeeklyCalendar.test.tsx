@@ -2,11 +2,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCalendarDay } from "@/domain/anime/AnimeSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { WeeklyCalendar } from "./WeeklyCalendar";
 
-const makeCalendar = (todayId: number): BangumiCalendarDay[] => [
+const makeCalendar = (todayId: number): AnimeCalendarDay[] => [
   {
     weekday: { id: todayId },
     items: [
@@ -101,7 +101,7 @@ describe("WeeklyCalendar 周历组件", () => {
 
   it("当天没有数据时应该显示暂无更新", async () => {
     const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
-    const calendar: BangumiCalendarDay[] = [
+    const calendar: AnimeCalendarDay[] = [
       {
         weekday: { id: todayId },
         items: [],
@@ -172,7 +172,7 @@ describe("WeeklyCalendar 周历组件", () => {
 
   it("今天是周日时应该激活星期日并展示当日动漫", async () => {
     vi.spyOn(Date.prototype, "getDay").mockReturnValue(0);
-    const calendar: BangumiCalendarDay[] = [
+    const calendar: AnimeCalendarDay[] = [
       {
         weekday: { id: 7 },
         items: [
@@ -206,7 +206,7 @@ describe("WeeklyCalendar 周历组件", () => {
 
   it("周历数据中不存在活跃天时应该显示暂无更新", async () => {
     vi.spyOn(Date.prototype, "getDay").mockReturnValue(3);
-    const calendar: BangumiCalendarDay[] = [
+    const calendar: AnimeCalendarDay[] = [
       {
         weekday: { id: 1 },
         items: [

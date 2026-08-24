@@ -1,19 +1,19 @@
 import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { BangumiCache } from "../../domain/bangumi/BangumiCache";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
-import { GetBangumiCharactersUseCase } from "./GetBangumiCharactersUseCase";
+import type { AnimeCache } from "../../domain/anime/AnimeCache";
+import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
+import { GetAnimeCharactersUseCase } from "./GetAnimeCharactersUseCase";
 
-describe("GetBangumiCharactersUseCase 获取条目角色", () => {
+describe("GetAnimeCharactersUseCase 获取条目角色", () => {
   const mockRepo = {
     getSubjectCharacters: vi.fn(),
-  } as unknown as BangumiRepository;
+  } as unknown as AnimeRepository;
 
   const mockCache = {
     getCharacters: vi.fn(),
     setCharacters: vi.fn(),
-  } as unknown as BangumiCache;
+  } as unknown as AnimeCache;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -33,7 +33,7 @@ describe("GetBangumiCharactersUseCase 获取条目角色", () => {
     ];
     vi.mocked(mockCache.getCharacters).mockResolvedValueOnce(cachedData as any);
 
-    const useCase = new GetBangumiCharactersUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeCharactersUseCase(mockRepo, mockCache);
     const result = await useCase.execute(
       Background,
       NonEmptyStringSchema.parse("1"),
@@ -64,7 +64,7 @@ describe("GetBangumiCharactersUseCase 获取条目角色", () => {
       freshData as any,
     );
 
-    const useCase = new GetBangumiCharactersUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeCharactersUseCase(mockRepo, mockCache);
     const result = await useCase.execute(
       Background,
       NonEmptyStringSchema.parse("1"),

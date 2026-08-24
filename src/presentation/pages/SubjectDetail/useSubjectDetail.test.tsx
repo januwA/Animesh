@@ -4,11 +4,11 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type {
-  BangumiCharacter,
-  BangumiEpisode,
-  BangumiPerson,
-  BangumiSubject,
-} from "@/domain/bangumi/BangumiSchemas";
+  AnimeCharacter,
+  AnimeEpisode,
+  AnimePerson,
+  AnimeSubject,
+} from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
@@ -32,7 +32,7 @@ function RouterWrapper({ children }: { children: ReactNode }) {
   );
 }
 
-const makeSubject = (): BangumiSubject => ({
+const makeSubject = (): AnimeSubject => ({
   id: 123,
   name: "测试动漫",
   summary: "简介",
@@ -43,7 +43,7 @@ const makeSubject = (): BangumiSubject => ({
   platform: "TV",
 });
 
-const makeEpisode = (sort: number): BangumiEpisode => ({
+const makeEpisode = (sort: number): AnimeEpisode => ({
   id: 1000 + sort,
   sort,
   name: `第 ${sort} 集`,
@@ -51,7 +51,7 @@ const makeEpisode = (sort: number): BangumiEpisode => ({
   airdate: "2026-07-01",
 });
 
-const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
+const makePerson = (overrides: Partial<AnimePerson> = {}): AnimePerson => ({
   image: "",
   name: "木村拓",
   relation: "导演",
@@ -60,7 +60,7 @@ const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
   ...overrides,
 });
 
-const makeCharacter = (): BangumiCharacter => ({
+const makeCharacter = (): AnimeCharacter => ({
   image: "",
   name: "ヤニねこ",
   relation: "主角",

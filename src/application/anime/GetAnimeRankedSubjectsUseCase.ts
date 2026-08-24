@@ -1,7 +1,7 @@
 import type { Context } from "ajanuw-context";
-import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
+import type { AnimeCache } from "@/domain/anime/AnimeCache";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
 
 /** 最终返回的榜单条目数 */
 export const RANKED_SUBJECT_LIMIT = 10;
@@ -24,24 +24,24 @@ export function recentMonthWindows(
   return windows;
 }
 
-export class GetBangumiRankedSubjectsUseCase {
+export class GetAnimeRankedSubjectsUseCase {
   constructor(
-    private readonly bangumiRepository: BangumiRepository,
-    private readonly bangumiCache: BangumiCache,
+    private readonly animeRepository: AnimeRepository,
+    private readonly animeCache: AnimeCache,
   ) {}
 
-  async execute(ctx: Context): Promise<BangumiSubject[]> {
-    const cached = await this.bangumiCache.getRankedSubjects(ctx);
+  async execute(ctx: Context): Promise<AnimeSubject[]> {
+    const cached = await this.animeCache.getRankedSubjects(ctx);
     if (cached) {
       return cached;
     }
 
-    const subjects: BangumiSubject[] = [];
+    const subjects: AnimeSubject[] = [];
     for (const { year, month } of recentMonthWindows(
       RANKED_SUBJECT_MONTH_WINDOW,
       new Date(),
     )) {
-      const { items } = await this.bangumiRepository.getRankedSubjects(
+      const { items } = await this.animeRepository.getRankedSubjects(
         ctx,
         year,
         month,
@@ -49,7 +49,7 @@ export class GetBangumiRankedSubjectsUseCase {
       subjects.push(...items);
     }
     const top = subjects.slice(0, RANKED_SUBJECT_LIMIT);
-    await this.bangumiCache.setRankedSubjects(ctx, top);
+    await this.animeCache.setRankedSubjects(ctx, top);
     return top;
   }
 }

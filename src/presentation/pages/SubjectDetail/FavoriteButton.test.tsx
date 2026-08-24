@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 import { resetAppStores } from "@/test/store-reset";
 import { FavoriteButton } from "./FavoriteButton";
@@ -34,7 +34,7 @@ function renderButton(deps: FavoriteDeps = createDeps()) {
   );
 }
 
-const mockSubject: BangumiSubject = {
+const mockSubject: AnimeSubject = {
   id: 101,
   name: "中文名称",
   image: "https://example.com/image.jpg",

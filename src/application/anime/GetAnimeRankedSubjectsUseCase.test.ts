@@ -1,15 +1,15 @@
 import { Background } from "ajanuw-context";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
-import type { BangumiCache } from "../../domain/bangumi/BangumiCache";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import type { AnimeCache } from "../../domain/anime/AnimeCache";
+import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
 import {
-  GetBangumiRankedSubjectsUseCase,
+  GetAnimeRankedSubjectsUseCase,
   RANKED_SUBJECT_LIMIT,
   recentMonthWindows,
-} from "./GetBangumiRankedSubjectsUseCase";
+} from "./GetAnimeRankedSubjectsUseCase";
 
-const rankedSubject: BangumiSubject = {
+const rankedSubject: AnimeSubject = {
   id: 326,
   name: "新世纪福音战士",
   image: "https://img.example/l.jpg",
@@ -18,21 +18,21 @@ const rankedSubject: BangumiSubject = {
 };
 
 function paged(
-  items: BangumiSubject[],
+  items: AnimeSubject[],
   total?: number,
-): { items: BangumiSubject[]; total: number } {
+): { items: AnimeSubject[]; total: number } {
   return { items, total: total ?? items.length };
 }
 
-describe("GetBangumiRankedSubjectsUseCase 获取榜单条目", () => {
+describe("GetAnimeRankedSubjectsUseCase 获取榜单条目", () => {
   const mockRepo = {
     getRankedSubjects: vi.fn(),
-  } as unknown as BangumiRepository;
+  } as unknown as AnimeRepository;
 
   const mockCache = {
     getRankedSubjects: vi.fn(),
     setRankedSubjects: vi.fn(),
-  } as unknown as BangumiCache;
+  } as unknown as AnimeCache;
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -49,7 +49,7 @@ describe("GetBangumiRankedSubjectsUseCase 获取榜单条目", () => {
       rankedSubject,
     ]);
 
-    const useCase = new GetBangumiRankedSubjectsUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
     expect(mockCache.getRankedSubjects).toHaveBeenCalledWith(Background);
@@ -66,7 +66,7 @@ describe("GetBangumiRankedSubjectsUseCase 获取榜单条目", () => {
       .mockResolvedValueOnce(paged(current))
       .mockResolvedValueOnce(paged(last));
 
-    const useCase = new GetBangumiRankedSubjectsUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
     expect(mockRepo.getRankedSubjects).toHaveBeenNthCalledWith(
@@ -99,7 +99,7 @@ describe("GetBangumiRankedSubjectsUseCase 获取榜单条目", () => {
       .mockResolvedValueOnce(paged(items.slice(0, RANKED_SUBJECT_LIMIT)))
       .mockResolvedValueOnce(paged(items.slice(RANKED_SUBJECT_LIMIT)));
 
-    const useCase = new GetBangumiRankedSubjectsUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
     expect(results).toHaveLength(RANKED_SUBJECT_LIMIT);
@@ -111,7 +111,7 @@ describe("GetBangumiRankedSubjectsUseCase 获取榜单条目", () => {
       .mockResolvedValueOnce(paged([rankedSubject]))
       .mockRejectedValueOnce(new Error("network error"));
 
-    const useCase = new GetBangumiRankedSubjectsUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
     const promise = useCase.execute(Background);
 
     await expect(promise).rejects.toThrow("network error");

@@ -2,12 +2,12 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { UseSubjectInfoDeps } from "./useSubjectInfo";
 import { useSubjectInfo } from "./useSubjectInfo";
 
-const makeSubject = (): BangumiSubject => ({
+const makeSubject = (): AnimeSubject => ({
   id: 123,
   name: "测试动漫",
   summary: "简介",

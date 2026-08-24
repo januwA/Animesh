@@ -1,16 +1,16 @@
 import { create } from "zustand";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 
 interface BangumiSearchStoreState {
   keyword: string;
   searchedKeyword: string;
-  results: BangumiSubject[];
+  results: AnimeSubject[];
   total: number;
   hasSearched: boolean;
   setKeyword: (val: string) => void;
   setSearchedKeyword: (val: string) => void;
-  setResults: (val: BangumiSubject[]) => void;
-  appendResults: (val: BangumiSubject[]) => void;
+  setResults: (val: AnimeSubject[]) => void;
+  appendResults: (val: AnimeSubject[]) => void;
   setTotal: (val: number) => void;
   setHasSearched: (val: boolean) => void;
   reset: () => void;
@@ -19,7 +19,7 @@ interface BangumiSearchStoreState {
 const initialState = {
   keyword: "",
   searchedKeyword: "",
-  results: [] as BangumiSubject[],
+  results: [] as AnimeSubject[],
   total: 0,
   hasSearched: false,
 };

@@ -2,10 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { vi } from "vitest";
-import type {
-  BangumiEpisode,
-  BangumiSubject,
-} from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeEpisode, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { UseSubjectEpisodesDeps } from "./useSubjectEpisodes";
 import { useSubjectEpisodes } from "./useSubjectEpisodes";
@@ -18,7 +15,7 @@ function LocationCapture() {
   return null;
 }
 
-const makeSubject = (): BangumiSubject => ({
+const makeSubject = (): AnimeSubject => ({
   id: 123,
   name: "测试动漫",
   summary: "简介",
@@ -29,7 +26,7 @@ const makeSubject = (): BangumiSubject => ({
   platform: "TV",
 });
 
-const makeEpisode = (sort: number): BangumiEpisode => ({
+const makeEpisode = (sort: number): AnimeEpisode => ({
   id: 1000 + sort,
   sort,
   name: `第 ${sort} 集`,

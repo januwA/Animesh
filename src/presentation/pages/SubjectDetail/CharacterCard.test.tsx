@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
-import type { BangumiCharacter } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
 import { CharacterCard } from "./CharacterCard";
 
 const makeCharacter = (
-  overrides: Partial<BangumiCharacter> = {},
-): BangumiCharacter => ({
+  overrides: Partial<AnimeCharacter> = {},
+): AnimeCharacter => ({
   image: "http://example.com/large.jpg",
   name: "ヤニねこ",
   relation: "主角",

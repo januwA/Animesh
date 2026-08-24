@@ -1,11 +1,11 @@
 import { Application, Sprite, Texture, type Ticker } from "pixi.js";
 import { useEffect, useMemo, useRef } from "react";
-import type { GetBangumiRankedSubjectsUseCase } from "@/application/bangumi/GetBangumiRankedSubjectsUseCase";
+import type { GetAnimeRankedSubjectsUseCase } from "@/application/anime/GetAnimeRankedSubjectsUseCase";
 import { useQuery } from "@/presentation/hooks/useQuery";
 
 export interface BackgroundWallpaperDeps {
   getBangumiRankedSubjectsUseCase: Pick<
-    GetBangumiRankedSubjectsUseCase,
+    GetAnimeRankedSubjectsUseCase,
     "execute"
   >;
 }

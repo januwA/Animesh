@@ -1,9 +1,9 @@
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 
 export interface SummarySectionProps {
-  subject: BangumiSubject | undefined;
+  subject: AnimeSubject | undefined;
 }
 
 export function SummarySection({ subject }: SummarySectionProps) {

@@ -1,11 +1,11 @@
 import type { SubmitEvent } from "react";
 import { useCallback, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import type { SearchBangumiSubjectsUseCase } from "@/application/bangumi/SearchBangumiSubjectsUseCase";
+import type { SearchAnimeSubjectsUseCase } from "@/application/anime/SearchAnimeSubjectsUseCase";
 import type {
-  BangumiSubject,
-  BangumiSubjectSearchResult,
-} from "@/domain/bangumi/BangumiSchemas";
+  AnimeSubject,
+  AnimeSubjectSearchResult,
+} from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useBangumiSearchStore } from "@/presentation/store/bangumiSearchStore";
@@ -14,7 +14,7 @@ const SEARCH_LIMIT = 20;
 
 /** useBangumiSearchPage 的依赖，由调用方（页面组合根）注入 */
 export interface UseBangumiSearchPageDeps {
-  searchBangumiSubjectsUseCase: Pick<SearchBangumiSubjectsUseCase, "execute">;
+  searchBangumiSubjectsUseCase: Pick<SearchAnimeSubjectsUseCase, "execute">;
 }
 
 export function useBangumiSearchPage(
@@ -38,7 +38,7 @@ export function useBangumiSearchPage(
   const setSearchedKeyword = useBangumiSearchStore((s) => s.setSearchedKeyword);
 
   const searchMutation = useMutation<
-    BangumiSubjectSearchResult,
+    AnimeSubjectSearchResult,
     { queryText: string }
   >(
     (ctx, { queryText }) =>
@@ -60,7 +60,7 @@ export function useBangumiSearchPage(
   );
 
   const loadMoreMutation = useMutation<
-    BangumiSubject[],
+    AnimeSubject[],
     { queryText: string; offset: number }
   >(
     (ctx, { queryText, offset }) =>
@@ -125,7 +125,7 @@ export function useBangumiSearchPage(
   };
 
   const handleSubjectClick = useCallback(
-    (item: BangumiSubject) => {
+    (item: AnimeSubject) => {
       navigate(`/subject/${item.id}`, {
         viewTransition: true,
         state: { name: item.name, imageUrl: item.image },

@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import type { GetBangumiSubjectUseCase } from "@/application/bangumi/GetBangumiSubjectUseCase";
+import type { GetAnimeSubjectUseCase } from "@/application/anime/GetAnimeSubjectUseCase";
 import type { OpenUrlUseCase } from "@/application/opener/OpenUrlUseCase";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { UseQueryResult } from "@/presentation/hooks/useQuery";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -12,13 +12,13 @@ export interface UseSubjectInfoParams {
 
 /** useSubjectInfo 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectInfoDeps {
-  getBangumiSubjectUseCase: Pick<GetBangumiSubjectUseCase, "execute">;
+  getBangumiSubjectUseCase: Pick<GetAnimeSubjectUseCase, "execute">;
   openUrlUseCase: Pick<OpenUrlUseCase, "execute">;
 }
 
 export interface SubjectInfoResult {
-  subjectQuery: UseQueryResult<BangumiSubject>;
-  subject: BangumiSubject | undefined;
+  subjectQuery: UseQueryResult<AnimeSubject>;
+  subject: AnimeSubject | undefined;
   displayName: string;
   imageUrl: string | undefined;
   handleBack: () => void;

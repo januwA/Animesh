@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { SubjectSearchResults } from "./SubjectSearchResults";
 
-function makeSubject(overrides: Partial<BangumiSubject> = {}): BangumiSubject {
+function makeSubject(overrides: Partial<AnimeSubject> = {}): AnimeSubject {
   return {
     id: 1,
     name: "间谍过家家",

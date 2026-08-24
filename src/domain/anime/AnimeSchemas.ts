@@ -1,16 +1,16 @@
-export interface BangumiCalendarItem {
+export interface AnimeCalendarItem {
   id: number;
   name: string;
   image: string;
   rating: number;
 }
 
-export interface BangumiCalendarDay {
+export interface AnimeCalendarDay {
   weekday: { id: number };
-  items: BangumiCalendarItem[];
+  items: AnimeCalendarItem[];
 }
 
-export interface BangumiSubject {
+export interface AnimeSubject {
   id: number;
   name: string;
   summary: string;
@@ -21,7 +21,7 @@ export interface BangumiSubject {
   platform?: string | null;
 }
 
-export interface BangumiEpisode {
+export interface AnimeEpisode {
   id: number;
   sort: number;
   name: string;
@@ -29,7 +29,7 @@ export interface BangumiEpisode {
   airdate?: string | null;
 }
 
-export interface BangumiPerson {
+export interface AnimePerson {
   id: number;
   name: string;
   relation: string;
@@ -37,31 +37,31 @@ export interface BangumiPerson {
   image: string;
 }
 
-export interface BangumiActor {
+export interface AnimeActor {
   name: string;
 }
 
-export interface BangumiCharacter {
+export interface AnimeCharacter {
   id: number;
   name: string;
   relation: string;
   image: string;
-  actors: BangumiActor[];
+  actors: AnimeActor[];
 }
 
-export interface BangumiEpisodesPage {
-  items: BangumiEpisode[];
+export interface AnimeEpisodesPage {
+  items: AnimeEpisode[];
   total: number;
 }
 
 /** 条目搜索请求参数（POST /v0/search/subjects） */
-export interface BangumiSubjectSearchParams {
+export interface AnimeSubjectSearchParams {
   keyword: string;
   limit: number;
   offset: number;
 }
 
-export interface BangumiSubjectSearchResult {
-  items: BangumiSubject[];
+export interface AnimeSubjectSearchResult {
+  items: AnimeSubject[];
   total: number;
 }

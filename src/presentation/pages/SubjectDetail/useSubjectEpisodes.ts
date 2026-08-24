@@ -1,10 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import type { GetBangumiEpisodesUseCase } from "@/application/bangumi/GetBangumiEpisodesUseCase";
-import type {
-  BangumiEpisode,
-  BangumiSubject,
-} from "@/domain/bangumi/BangumiSchemas";
+import type { GetAnimeEpisodesUseCase } from "@/application/anime/GetAnimeEpisodesUseCase";
+import type { AnimeEpisode, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { UseQueryResult } from "@/presentation/hooks/useQuery";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -12,28 +9,28 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 export const EPISODES_PAGE_SIZE = 50;
 
 export interface EpisodesPageData {
-  items: BangumiEpisode[];
+  items: AnimeEpisode[];
   total: number;
 }
 
 export interface UseSubjectEpisodesParams {
   subjectId: number;
   page: number;
-  subject: BangumiSubject | undefined;
+  subject: AnimeSubject | undefined;
 }
 
 /** useSubjectEpisodes 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectEpisodesDeps {
-  getBangumiEpisodesUseCase: Pick<GetBangumiEpisodesUseCase, "execute">;
+  getBangumiEpisodesUseCase: Pick<GetAnimeEpisodesUseCase, "execute">;
 }
 
 export interface SubjectEpisodesResult {
   episodesQuery: UseQueryResult<EpisodesPageData>;
-  episodes: BangumiEpisode[];
+  episodes: AnimeEpisode[];
   totalEpisodes: number;
   totalPages: number;
   todayStr: string;
-  handleEpisodeClick: (episode: BangumiEpisode) => void;
+  handleEpisodeClick: (episode: AnimeEpisode) => void;
   changePage: (nextPage: number) => void;
   jumpToEpisode: (episodeNumber: number) => void;
 }
@@ -74,7 +71,7 @@ export function useSubjectEpisodes(
     return `${year}-${month}-${day}`;
   }, []);
 
-  const handleEpisodeClick = (episode: BangumiEpisode) => {
+  const handleEpisodeClick = (episode: AnimeEpisode) => {
     /* v8 ignore start */
     if (!subject) return;
     const epNum = String(episode.sort).padStart(2, "0");

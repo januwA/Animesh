@@ -1,22 +1,22 @@
 import type { Context } from "ajanuw-context";
 import type { NonEmptyString } from "../common/NonEmptyString";
 import type {
-  BangumiCalendarDay,
-  BangumiCharacter,
-  BangumiEpisodesPage,
-  BangumiPerson,
-  BangumiSubject,
-  BangumiSubjectSearchParams,
-  BangumiSubjectSearchResult,
-} from "./BangumiSchemas";
+  AnimeCalendarDay,
+  AnimeCharacter,
+  AnimeEpisodesPage,
+  AnimePerson,
+  AnimeSubject,
+  AnimeSubjectSearchParams,
+  AnimeSubjectSearchResult,
+} from "./AnimeSchemas";
 
 export interface RankedSubjectsPage {
-  items: BangumiSubject[];
+  items: AnimeSubject[];
   total: number;
 }
 
-export interface BangumiRepository {
-  getCalendar(ctx: Context): Promise<BangumiCalendarDay[]>;
+export interface AnimeRepository {
+  getCalendar(ctx: Context): Promise<AnimeCalendarDay[]>;
   /** 获取指定类型指定年月的按 rank 排序榜单条目（GET /v0/subjects）。 */
   getRankedSubjects(
     ctx: Context,
@@ -25,23 +25,23 @@ export interface BangumiRepository {
     limit?: number,
     offset?: number,
   ): Promise<RankedSubjectsPage>;
-  getSubject(ctx: Context, subjectId: NonEmptyString): Promise<BangumiSubject>;
+  getSubject(ctx: Context, subjectId: NonEmptyString): Promise<AnimeSubject>;
   getEpisodes(
     ctx: Context,
     subjectId: NonEmptyString,
     offset: number,
     limit: number,
-  ): Promise<BangumiEpisodesPage>;
+  ): Promise<AnimeEpisodesPage>;
   getSubjectPersons(
     ctx: Context,
     subjectId: NonEmptyString,
-  ): Promise<BangumiPerson[]>;
+  ): Promise<AnimePerson[]>;
   getSubjectCharacters(
     ctx: Context,
     subjectId: NonEmptyString,
-  ): Promise<BangumiCharacter[]>;
+  ): Promise<AnimeCharacter[]>;
   searchSubjects(
     ctx: Context,
-    params: BangumiSubjectSearchParams,
-  ): Promise<BangumiSubjectSearchResult>;
+    params: AnimeSubjectSearchParams,
+  ): Promise<AnimeSubjectSearchResult>;
 }

@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
-import type { BangumiCharacter } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
 import { CharactersSection } from "./CharactersSection";
 
 const makeCharacter = (
-  overrides: Partial<BangumiCharacter> = {},
-): BangumiCharacter => ({
+  overrides: Partial<AnimeCharacter> = {},
+): AnimeCharacter => ({
   image: "http://example.com/large.jpg",
   name: "ヤニねこ",
   relation: "主角",

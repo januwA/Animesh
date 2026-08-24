@@ -29,7 +29,7 @@ describe("ClearCacheUseCase 清理联网缓存用例", () => {
     }
   }
 
-  it("应该清空 bangumi 与 iptv 等全部缓存", async () => {
+  it("应该清空全部缓存", async () => {
     await seedCache();
     await useCase.execute();
     for (const key of cacheKeys) {

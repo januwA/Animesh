@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import type { BangumiCalendarItem } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCalendarItem } from "@/domain/anime/AnimeSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseCalendarPageDeps } from "./useCalendarPage";
 import { useCalendarPage } from "./useCalendarPage";
@@ -118,7 +118,7 @@ describe("useCalendarPage 日历页面 hook", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    const mockItem: BangumiCalendarItem = {
+    const mockItem: AnimeCalendarItem = {
       id: 456,
       name: "Raw Anime",
       image: "",

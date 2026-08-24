@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode, SubmitEvent } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { vi } from "vitest";
-import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseBangumiSearchPageDeps } from "./useBangumiSearchPage";
 import { useBangumiSearchPage } from "./useBangumiSearchPage";
@@ -23,7 +23,7 @@ function RouterWrapper({ children }: { children: ReactNode }) {
   );
 }
 
-function makeSubject(overrides: Partial<BangumiSubject> = {}): BangumiSubject {
+function makeSubject(overrides: Partial<AnimeSubject> = {}): AnimeSubject {
   return {
     id: 1,
     name: "间谍过家家",
