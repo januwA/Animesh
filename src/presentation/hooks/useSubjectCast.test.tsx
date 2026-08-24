@@ -3,8 +3,11 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import type { AnimeCharacter, AnimePerson } from "@/domain/anime/AnimeSchemas";
-import type { UseSubjectCastDeps } from "./useSubjectCast";
-import { consolidateStaff, useSubjectCast } from "./useSubjectCast";
+import type { UseSubjectCastDeps } from "@/presentation/hooks/useSubjectCast";
+import {
+  consolidateStaff,
+  useSubjectCast,
+} from "@/presentation/hooks/useSubjectCast";
 
 const makePerson = (overrides: Partial<AnimePerson> = {}): AnimePerson => ({
   image: "",

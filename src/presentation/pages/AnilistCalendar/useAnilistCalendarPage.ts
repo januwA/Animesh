@@ -32,7 +32,7 @@ export function useAnilistCalendarPage(deps: UseAnilistCalendarPageDeps) {
 
   const handleAnimeClick = useCallback(
     (item: AnimeCalendarItem) => {
-      navigate(`/subject/${item.id}`, {
+      navigate(`/anilist/subject/${item.id}`, {
         viewTransition: true,
         state: {
           name: item.name,

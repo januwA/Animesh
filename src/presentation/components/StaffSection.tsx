@@ -5,8 +5,8 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
+import type { ConsolidatedStaffMember } from "@/presentation/hooks/useSubjectCast";
 import { StaffPersonBadge } from "./StaffPersonBadge";
-import type { ConsolidatedStaffMember } from "./useSubjectDetail";
 
 export interface StaffSectionProps {
   staffGroupedByRole: Map<string, ConsolidatedStaffMember[]>;

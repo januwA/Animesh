@@ -13,7 +13,13 @@ import type {
   AnimeSubjectSearchResult,
 } from "@/domain/anime/AnimeSchemas";
 import type { HttpClient } from "../http/HttpClient";
-import { AnilistCalendarResponseSchema } from "./AnilistSchemas";
+import {
+  AnilistCalendarResponseSchema,
+  AnilistCharactersResponseSchema,
+  AnilistEpisodesResponseSchema,
+  AnilistStaffResponseSchema,
+  AnilistSubjectResponseSchema,
+} from "./AnilistSchemas";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
 
@@ -34,6 +40,73 @@ query ($startDate: Int!, $endDate: Int!, $page: Int!) {
         id
         title { romaji english native userPreferred }
         coverImage { large medium color }
+      }
+    }
+  }
+}
+`;
+
+const MEDIA_DETAIL_QUERY = `
+query ($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    id
+    title { romaji english native userPreferred }
+    description(asHtml: false)
+    coverImage { large medium color }
+    averageScore
+    episodes
+    startDate { year month day }
+    format
+    status
+  }
+}
+`;
+
+const MEDIA_EPISODES_QUERY = `
+query ($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    airingSchedule(notYetAired: false, page: 1, perPage: 250) {
+      nodes {
+        id
+        airingAt
+        episode
+      }
+    }
+  }
+}
+`;
+
+const MEDIA_CHARACTERS_QUERY = `
+query ($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    characters(sort: ROLE) {
+      edges {
+        role
+        node {
+          id
+          name { full }
+          image { large }
+        }
+        voiceActors(language: JAPANESE) {
+          name { full }
+        }
+      }
+    }
+  }
+}
+`;
+
+const MEDIA_STAFF_QUERY = `
+query ($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    staff(sort: RELEVANCE) {
+      edges {
+        role
+        node {
+          id
+          name { full }
+          image { large }
+        }
       }
     }
   }
@@ -153,6 +226,30 @@ export class HttpAnilistRepository implements AnimeRepository {
     ).data.Page;
   }
 
+  private async graphqlRequest(
+    ctx: Context,
+    query: string,
+    variables: Record<string, unknown>,
+  ): Promise<unknown> {
+    try {
+      const response = await this.client.request(ANILIST_ENDPOINT, {
+        ctx,
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query, variables }),
+      });
+      return await response.json();
+    } catch (err: unknown) {
+      if (ctx.err() && err === ctx.err()) {
+        throw err;
+      }
+      throw new Error("Failed to fetch AniList data", { cause: err });
+    }
+  }
+
   getRankedSubjects(
     _ctx: Context,
     _year: number,
@@ -163,28 +260,67 @@ export class HttpAnilistRepository implements AnimeRepository {
     notImplemented("getRankedSubjects");
   }
 
-  getSubject(_ctx: Context, _subjectId: string): Promise<AnimeSubject> {
-    notImplemented("getSubject");
+  async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
+    const data = await this.graphqlRequest(ctx, MEDIA_DETAIL_QUERY, {
+      id: Number(subjectId),
+    });
+    const result = AnilistSubjectResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("AniList subject response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 
-  getEpisodes(
-    _ctx: Context,
-    _subjectId: string,
+  async getEpisodes(
+    ctx: Context,
+    subjectId: string,
     _offset: number,
     _limit: number,
   ): Promise<AnimeEpisodesPage> {
-    notImplemented("getEpisodes");
+    const data = await this.graphqlRequest(ctx, MEDIA_EPISODES_QUERY, {
+      id: Number(subjectId),
+    });
+    const result = AnilistEpisodesResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("AniList episodes response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 
-  getSubjectPersons(_ctx: Context, _subjectId: string): Promise<AnimePerson[]> {
-    notImplemented("getSubjectPersons");
+  async getSubjectPersons(
+    ctx: Context,
+    subjectId: string,
+  ): Promise<AnimePerson[]> {
+    const data = await this.graphqlRequest(ctx, MEDIA_STAFF_QUERY, {
+      id: Number(subjectId),
+    });
+    const result = AnilistStaffResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("AniList staff response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 
-  getSubjectCharacters(
-    _ctx: Context,
-    _subjectId: string,
+  async getSubjectCharacters(
+    ctx: Context,
+    subjectId: string,
   ): Promise<AnimeCharacter[]> {
-    notImplemented("getSubjectCharacters");
+    const data = await this.graphqlRequest(ctx, MEDIA_CHARACTERS_QUERY, {
+      id: Number(subjectId),
+    });
+    const result = AnilistCharactersResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("AniList characters response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 
   searchSubjects(

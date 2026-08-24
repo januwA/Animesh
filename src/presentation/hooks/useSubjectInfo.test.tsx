@@ -4,8 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { UseSubjectInfoDeps } from "./useSubjectInfo";
-import { useSubjectInfo } from "./useSubjectInfo";
+import type { UseSubjectInfoDeps } from "@/presentation/hooks/useSubjectInfo";
+import { useSubjectInfo } from "@/presentation/hooks/useSubjectInfo";
 
 const makeSubject = (): AnimeSubject => ({
   id: 123,
@@ -21,7 +21,7 @@ const makeSubject = (): AnimeSubject => ({
 const makeDeps = (
   overrides: Partial<UseSubjectInfoDeps> = {},
 ): UseSubjectInfoDeps => ({
-  getBangumiSubjectUseCase: {
+  getSubjectUseCase: {
     execute: vi.fn().mockResolvedValue(makeSubject()),
   },
   openUrlUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
@@ -59,7 +59,7 @@ describe("useSubjectInfo 条目信息 hook", () => {
     });
     expect(result.current.displayName).toBe("测试动漫");
     expect(result.current.imageUrl).toBe("http://example.com/large.jpg");
-    expect(deps.getBangumiSubjectUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.getSubjectUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       NonEmptyStringSchema.parse("123"),
     );
@@ -67,7 +67,7 @@ describe("useSubjectInfo 条目信息 hook", () => {
 
   it("条目加载失败时暴露错误并使用 location.state 回退", async () => {
     const deps = makeDeps({
-      getBangumiSubjectUseCase: {
+      getSubjectUseCase: {
         execute: vi.fn().mockRejectedValue(new Error("Subject API Error")),
       },
     });

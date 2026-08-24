@@ -1,4 +1,4 @@
-import type { ConsolidatedStaffMember } from "./useSubjectDetail";
+import type { ConsolidatedStaffMember } from "@/presentation/hooks/useSubjectCast";
 
 export interface StaffPersonBadgeProps {
   person: ConsolidatedStaffMember;

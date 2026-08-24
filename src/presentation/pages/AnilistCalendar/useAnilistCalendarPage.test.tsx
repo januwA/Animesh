@@ -101,7 +101,7 @@ describe("useAnilistCalendarPage Anilist 日历页面 hook", () => {
       result.current.handleAnimeClick(mockItem);
     });
 
-    expect(lastNavigation.current?.pathname).toBe("/subject/123");
+    expect(lastNavigation.current?.pathname).toBe("/anilist/subject/123");
     expect(lastNavigation.current?.state).toEqual({
       name: "测试动漫",
       imageUrl: "http://example.com/cover.jpg",

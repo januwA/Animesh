@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { SubjectInfoCard } from "@/presentation/components/SubjectInfoCard";
 import { resetAppStores } from "@/test/store-reset";
-import { SubjectInfoCard } from "./SubjectInfoCard";
 
 const makeSubject = (overrides: Partial<AnimeSubject> = {}): AnimeSubject => ({
   id: 123,

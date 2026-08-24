@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import type { AnimeEpisode } from "@/domain/anime/AnimeSchemas";
-import { EpisodesSection } from "./EpisodesSection";
+import { EpisodesSection } from "@/presentation/components/EpisodesSection";
 
 const makeEpisode = (sort: number): AnimeEpisode => ({
   id: 1000 + sort,

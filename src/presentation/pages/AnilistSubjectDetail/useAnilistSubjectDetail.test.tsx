@@ -1,7 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { toast } from "sonner";
 import { vi } from "vitest";
 import type {
   AnimeCharacter,
@@ -10,11 +9,9 @@ import type {
   AnimeSubject,
 } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
-import { consolidateStaff } from "@/presentation/hooks/useSubjectCast";
 import { resetAppStores } from "@/test/store-reset";
-import type { UseSubjectDetailDeps } from "./useSubjectDetail";
-import { useSubjectDetail } from "./useSubjectDetail";
+import type { UseAnilistSubjectDetailDeps } from "./useAnilistSubjectDetail";
+import { useAnilistSubjectDetail } from "./useAnilistSubjectDetail";
 
 const locationRef: { current: { pathname: string; search: string } | null } = {
   current: null,
@@ -25,7 +22,7 @@ function LocationCapture() {
 }
 function RouterWrapper({ children }: { children: ReactNode }) {
   return (
-    <MemoryRouter initialEntries={["/subject/123"]}>
+    <MemoryRouter initialEntries={["/anilist/subject/123"]}>
       <LocationCapture />
       {children}
     </MemoryRouter>
@@ -65,62 +62,39 @@ const makeCharacter = (): AnimeCharacter => ({
   name: "ヤニねこ",
   relation: "主角",
   id: 174916,
-  actors: [
-    {
-      name: "夏吉ゆうこ",
-    },
-  ],
-});
-
-const makeTorrent = (
-  overrides: Partial<TorrentStatusInfo>,
-): TorrentStatusInfo => ({
-  info_hash: NonEmptyStringSchema.parse("hash-1"),
-  name: NonEmptyStringSchema.parse("测试种子"),
-  progress_bytes: 100,
-  total_bytes: 100,
-  finished: false,
-  download_speed_bytes_per_sec: 0,
-  upload_speed_bytes_per_sec: 0,
-  paused: false,
-  peers_connected: 0,
-  peers_total: 0,
-  trackers: [],
-  ...overrides,
+  actors: [{ name: "夏吉ゆうこ" }],
 });
 
 const makeDeps = (
-  overrides: Partial<UseSubjectDetailDeps> = {},
-): UseSubjectDetailDeps => ({
-  getBangumiSubjectUseCase: {
+  overrides: Partial<UseAnilistSubjectDetailDeps> = {},
+): UseAnilistSubjectDetailDeps => ({
+  getAnilistSubjectUseCase: {
     execute: vi.fn().mockResolvedValue(makeSubject()),
   },
-  getBangumiEpisodesUseCase: {
+  getAnilistEpisodesUseCase: {
     execute: vi.fn().mockResolvedValue({
       items: [makeEpisode(2), makeEpisode(1)],
       total: 2,
     }),
   },
-  getBangumiPersonsUseCase: { execute: vi.fn().mockResolvedValue([]) },
-  getBangumiCharactersUseCase: { execute: vi.fn().mockResolvedValue([]) },
+  getAnilistPersonsUseCase: { execute: vi.fn().mockResolvedValue([]) },
+  getAnilistCharactersUseCase: { execute: vi.fn().mockResolvedValue([]) },
   openUrlUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
-  setTorrentSubjectUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
-  clearTorrentSubjectUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
   ...overrides,
 });
 
 const renderPage = async (
-  params: Parameters<typeof useSubjectDetail>[0],
-  deps: UseSubjectDetailDeps,
+  params: Parameters<typeof useAnilistSubjectDetail>[0],
+  deps: UseAnilistSubjectDetailDeps,
 ) => {
-  const hook = renderHook(() => useSubjectDetail(params, deps), {
+  const hook = renderHook(() => useAnilistSubjectDetail(params, deps), {
     wrapper: RouterWrapper,
   });
   await act(async () => {});
   return { result: hook.result, deps, unmount: hook.unmount };
 };
 
-describe("useSubjectDetail 条目详情 hook", () => {
+describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
   beforeEach(() => {
     locationRef.current = null;
     resetAppStores();
@@ -129,15 +103,15 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("应该加载动漫详情、剧集、角色与制作人员数据", async () => {
     const deps = makeDeps({
-      getBangumiPersonsUseCase: {
+      getAnilistPersonsUseCase: {
         execute: vi.fn().mockResolvedValue([makePerson()]),
       },
-      getBangumiCharactersUseCase: {
+      getAnilistCharactersUseCase: {
         execute: vi.fn().mockResolvedValue([makeCharacter()]),
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "characters" },
+      { subjectId: 123, page: 1, activeTab: "characters" },
       deps,
     );
 
@@ -147,7 +121,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     expect(result.current.episodes.episodes).toHaveLength(2);
     expect(result.current.episodes.episodes[0].sort).toBe(1);
     expect(result.current.cast.characters).toHaveLength(1);
-    expect(deps.getBangumiSubjectUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.getAnilistSubjectUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       NonEmptyStringSchema.parse("123"),
     );
@@ -155,7 +129,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("剧集应该按 sort 升序排列，并计算总页数", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getAnilistEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,
@@ -163,7 +137,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      { subjectId: 123, page: 1, activeTab: "summary" },
       deps,
     );
 
@@ -172,7 +146,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     });
     expect(result.current.episodes.totalEpisodes).toBe(103);
     expect(result.current.episodes.totalPages).toBe(3);
-    expect(deps.getBangumiEpisodesUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.getAnilistEpisodesUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       { subjectId: NonEmptyStringSchema.parse("123"), offset: 0, limit: 50 },
     );
@@ -180,7 +154,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("应该派生 displayName / imageUrl", async () => {
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      { subjectId: 123, page: 1, activeTab: "summary" },
       makeDeps(),
     );
 
@@ -193,7 +167,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("应该按角色分组制作人员并正确去重", async () => {
     const deps = makeDeps({
-      getBangumiPersonsUseCase: {
+      getAnilistPersonsUseCase: {
         execute: vi
           .fn()
           .mockResolvedValue([
@@ -204,7 +178,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "staff" },
+      { subjectId: 123, page: 1, activeTab: "staff" },
       deps,
     );
 
@@ -220,24 +194,9 @@ describe("useSubjectDetail 条目详情 hook", () => {
     expect(result.current.cast.staffGroupedByRole.get("脚本")).toHaveLength(1);
   });
 
-  it("应该统计绑定资源数量并拆分已绑定/未绑定资源", async () => {
-    const torrents = [
-      makeTorrent({ subject_id: 123 }),
-      makeTorrent({ info_hash: NonEmptyStringSchema.parse("hash-2") }),
-    ];
-    const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents, activeTab: "resources" },
-      makeDeps(),
-    );
-
-    expect(result.current.resources.boundResourcesCount).toBe(1);
-    expect(result.current.resources.boundTorrents).toHaveLength(1);
-    expect(result.current.resources.unboundTorrents).toHaveLength(1);
-  });
-
   it("点击剧集时应该跳转到主页搜索", async () => {
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      { subjectId: 123, page: 1, activeTab: "summary" },
       makeDeps(),
     );
 
@@ -253,7 +212,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("changePage 应该更新 URL 的 page 参数并限制范围", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getAnilistEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,
@@ -261,7 +220,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      { subjectId: 123, page: 1, activeTab: "summary" },
       deps,
     );
 
@@ -276,7 +235,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("jumpToEpisode 应该切换到对应页码", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getAnilistEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,
@@ -284,7 +243,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      { subjectId: 123, page: 1, activeTab: "summary" },
       deps,
     );
 
@@ -297,108 +256,12 @@ describe("useSubjectDetail 条目详情 hook", () => {
     });
   });
 
-  it("绑定资源成功时应该调用 setTorrentSubjectUseCase 并提示成功", async () => {
-    const deps = makeDeps({
-      setTorrentSubjectUseCase: {
-        execute: vi.fn().mockResolvedValue(undefined),
-      },
-    });
-    const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
-      deps,
-    );
-
-    await waitFor(() => {
-      expect(result.current.info.subject).not.toBeNull();
-    });
-    await act(async () => {
-      await result.current.resources.handleBind("hash-1");
-    });
-    expect(deps.setTorrentSubjectUseCase.execute).toHaveBeenCalledWith({
-      infoHash: NonEmptyStringSchema.parse("hash-1"),
-      subjectId: 123,
-      subjectName: NonEmptyStringSchema.parse("测试动漫"),
-    });
-    expect(toast.success).toHaveBeenCalledWith("已绑定下载资源");
-  });
-
-  it("绑定资源失败时应该提示错误", async () => {
-    const deps = makeDeps({
-      setTorrentSubjectUseCase: {
-        execute: vi.fn().mockRejectedValue(new Error("Bind failed")),
-      },
-    });
-    const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
-      deps,
-    );
-
-    await waitFor(() => {
-      expect(result.current.info.subject).not.toBeNull();
-    });
-    await act(async () => {
-      await result.current.resources.handleBind("hash-1");
-    });
-    expect(toast.error).toHaveBeenCalledWith(
-      expect.stringContaining("绑定失败: Bind failed"),
-    );
-  });
-
-  it("解绑资源时应该调用 clearTorrentSubjectUseCase", async () => {
-    const deps = makeDeps({
-      clearTorrentSubjectUseCase: {
-        execute: vi.fn().mockResolvedValue(undefined),
-      },
-    });
-    const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
-      deps,
-    );
-
-    await act(async () => {
-      await result.current.resources.handleUnbind(
-        NonEmptyStringSchema.parse("hash-1"),
-      );
-    });
-    expect(deps.clearTorrentSubjectUseCase.execute).toHaveBeenCalledWith(
-      NonEmptyStringSchema.parse("hash-1"),
-    );
-    expect(toast.success).toHaveBeenCalledWith("已解除绑定");
-  });
-
-  it("解绑资源失败时应该显示错误提示", async () => {
-    const deps = makeDeps({
-      clearTorrentSubjectUseCase: {
-        execute: vi.fn().mockRejectedValue(new Error("解绑失败")),
-      },
-    });
-    const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
-      deps,
-    );
-
-    await act(async () => {
-      try {
-        await result.current.resources.handleUnbind(
-          NonEmptyStringSchema.parse("hash-1"),
-        );
-      } catch {
-        // 忽略错误
-      }
-    });
-
-    expect(deps.clearTorrentSubjectUseCase.execute).toHaveBeenCalledWith(
-      NonEmptyStringSchema.parse("hash-1"),
-    );
-    expect(toast.error).toHaveBeenCalledWith("解绑失败: 解绑失败");
-  });
-
-  it("打开详情链接时应该调用 openUrlUseCase", async () => {
+  it("打开详情链接时应该使用 Anilist URL", async () => {
     const deps = makeDeps({
       openUrlUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      { subjectId: 123, page: 1, activeTab: "summary" },
       deps,
     );
 
@@ -408,19 +271,19 @@ describe("useSubjectDetail 条目详情 hook", () => {
     act(() => result.current.info.handleOpenUrl());
     await waitFor(() => {
       expect(deps.openUrlUseCase.execute).toHaveBeenCalledWith(
-        NonEmptyStringSchema.parse("https://bgm.tv/subject/123"),
+        NonEmptyStringSchema.parse("https://anilist.co/anime/123"),
       );
     });
   });
 
   it("动漫详情接口失败时应该暴露错误", async () => {
     const deps = makeDeps({
-      getBangumiSubjectUseCase: {
+      getAnilistSubjectUseCase: {
         execute: vi.fn().mockRejectedValue(new Error("Subject API Error")),
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      { subjectId: 123, page: 1, activeTab: "summary" },
       deps,
     );
 
@@ -430,23 +293,5 @@ describe("useSubjectDetail 条目详情 hook", () => {
     expect(result.current.info.subjectQuery.error?.message).toBe(
       "Subject API Error",
     );
-  });
-});
-
-describe("consolidateStaff 制作人员去重", () => {
-  it("同一个人相同角色出现多次时应去重，不同角色应合并", () => {
-    const staff = consolidateStaff([
-      makePerson(),
-      makePerson(),
-      makePerson({ relation: "脚本", eps: "1-3" }),
-    ]);
-    expect(staff).toHaveLength(1);
-    expect(staff[0].relations).toEqual(["导演", "脚本"]);
-    expect(staff[0].eps).toBe("");
-  });
-
-  it("图片为空时 image 字段应为空字符串", () => {
-    const staff = consolidateStaff([makePerson()]);
-    expect(staff[0].image).toBe("");
   });
 });

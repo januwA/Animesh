@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import { CharactersSection } from "@/presentation/components/CharactersSection";
@@ -17,9 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/presentation/components/ui/tabs";
-import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
-import { SubjectResourcesTab } from "./SubjectResourcesTab";
-import { useSubjectDetail } from "./useSubjectDetail";
+import { useAnilistSubjectDetail } from "./useAnilistSubjectDetail";
 
 const subjectParamsSchema = z.object({
   subjectId: z
@@ -28,20 +26,10 @@ const subjectParamsSchema = z.object({
     .regex(/^\d+$/, "条目 ID 必须是数字"),
 });
 
-const pageParamSchema = z
-  .string()
-  .regex(/^\d+$/, "页码必须是数字")
-  .optional()
-  .default("1");
-
-export default function SubjectDetail() {
+export default function AnilistSubjectDetail() {
   const { subjectId = "" } = useParams<{ subjectId: string }>();
-  const [searchParams] = useSearchParams();
 
   const subjectResult = subjectParamsSchema.safeParse({ subjectId });
-  const pageResult = pageParamSchema.safeParse(
-    searchParams.get("page") ?? undefined,
-  );
 
   if (!subjectResult.success) {
     return (
@@ -51,52 +39,32 @@ export default function SubjectDetail() {
       />
     );
   }
-  if (!pageResult.success) {
-    return (
-      <InvalidParamsView title="无效的条目详情参数" error={pageResult.error} />
-    );
-  }
 
   return (
-    <SubjectDetailView
+    <AnilistSubjectDetailView
       subjectId={Number(subjectResult.data.subjectId)}
-      page={Number(pageResult.data)}
     />
   );
 }
 
-function SubjectDetailView({
-  subjectId,
-  page,
-}: {
-  subjectId: number;
-  page: number;
-}) {
+function AnilistSubjectDetailView({ subjectId }: { subjectId: number }) {
   const {
-    getBangumiSubjectUseCase,
-    getBangumiEpisodesUseCase,
-    getBangumiPersonsUseCase,
-    getBangumiCharactersUseCase,
-    getFavoriteStatusUseCase,
-    addFavoriteUseCase,
-    removeFavoriteUseCase,
+    getAnilistSubjectUseCase,
+    getAnilistEpisodesUseCase,
+    getAnilistPersonsUseCase,
+    getAnilistCharactersUseCase,
     openUrlUseCase,
-    setTorrentSubjectUseCase,
-    clearTorrentSubjectUseCase,
   } = useDI();
-  const { torrents } = useTorrentStatus();
   const [activeTab, setActiveTab] = useState("summary");
 
-  const detail = useSubjectDetail(
-    { subjectId, page, torrents, activeTab },
+  const detail = useAnilistSubjectDetail(
+    { subjectId, page: 1, activeTab },
     {
-      getBangumiSubjectUseCase,
-      getBangumiEpisodesUseCase,
-      getBangumiPersonsUseCase,
-      getBangumiCharactersUseCase,
+      getAnilistSubjectUseCase,
+      getAnilistEpisodesUseCase,
+      getAnilistPersonsUseCase,
+      getAnilistCharactersUseCase,
       openUrlUseCase,
-      setTorrentSubjectUseCase,
-      clearTorrentSubjectUseCase,
     },
   );
 
@@ -104,7 +72,7 @@ function SubjectDetailView({
     return (
       <div className="space-y-4">
         <ErrorState
-          title="获取动漫详情失败"
+          title="获取 AniList 动漫详情失败"
           message={detail.info.subjectQuery.error}
           onRetry={detail.info.subjectQuery.refetch}
         />
@@ -114,38 +82,43 @@ function SubjectDetailView({
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
-      {/* Info Header Card */}
       <SubjectInfoCard
         subject={detail.info.subject}
         subjectId={subjectId}
         displayName={detail.info.displayName}
         imageUrl={detail.info.imageUrl}
         onOpenUrl={detail.info.handleOpenUrl}
-        getFavoriteStatusUseCase={getFavoriteStatusUseCase}
-        addFavoriteUseCase={addFavoriteUseCase}
-        removeFavoriteUseCase={removeFavoriteUseCase}
+        getFavoriteStatusUseCase={{
+          execute: () => Promise.resolve(false),
+        }}
+        addFavoriteUseCase={{
+          execute: () => Promise.resolve(),
+        }}
+        removeFavoriteUseCase={{
+          execute: () => Promise.resolve(),
+        }}
       />
 
-      {/* Episodes List */}
-      <Card className="ani-card">
-        <CardContent>
-          <EpisodesSection
-            episodes={detail.episodes.episodes}
-            totalEpisodes={detail.episodes.totalEpisodes}
-            totalPages={detail.episodes.totalPages}
-            page={page}
-            todayStr={detail.episodes.todayStr}
-            loading={detail.episodes.episodesQuery.loading}
-            error={detail.episodes.episodesQuery.error}
-            onRetry={detail.episodes.episodesQuery.refetch}
-            onEpisodeClick={detail.episodes.handleEpisodeClick}
-            onPageChange={detail.episodes.changePage}
-            onJumpToEpisode={detail.episodes.jumpToEpisode}
-          />
-        </CardContent>
-      </Card>
+      {detail.episodes.episodes.length > 0 && (
+        <Card className="ani-card">
+          <CardContent>
+            <EpisodesSection
+              episodes={detail.episodes.episodes}
+              totalEpisodes={detail.episodes.totalEpisodes}
+              totalPages={detail.episodes.totalPages}
+              page={1}
+              todayStr={detail.episodes.todayStr}
+              loading={detail.episodes.episodesQuery.loading}
+              error={detail.episodes.episodesQuery.error}
+              onRetry={detail.episodes.episodesQuery.refetch}
+              onEpisodeClick={detail.episodes.handleEpisodeClick}
+              onPageChange={detail.episodes.changePage}
+              onJumpToEpisode={detail.episodes.jumpToEpisode}
+            />
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="summary">简介</TabsTrigger>
@@ -160,14 +133,6 @@ function SubjectDetailView({
             {detail.cast.persons.length > 0 && (
               <Badge variant="secondary">
                 {detail.cast.consolidatedStaff.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="resources">
-            资源
-            {detail.resources.boundResourcesCount > 0 && (
-              <Badge variant="secondary">
-                {detail.resources.boundResourcesCount}
               </Badge>
             )}
           </TabsTrigger>
@@ -198,22 +163,6 @@ function SubjectDetailView({
                 loading={detail.cast.personsQuery.loading}
                 error={detail.cast.personsQuery.error}
                 onRetry={detail.cast.personsQuery.refetch}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="resources" className="pt-0">
-          <Card className="ani-card">
-            <CardContent>
-              <SubjectResourcesTab
-                subjectName={detail.info.displayName}
-                boundTorrents={detail.resources.boundTorrents}
-                unboundTorrents={detail.resources.unboundTorrents}
-                bindLoading={detail.resources.bindLoading}
-                unbindLoading={detail.resources.unbindLoading}
-                onBind={detail.resources.handleBind}
-                onUnbind={detail.resources.handleUnbind}
               />
             </CardContent>
           </Card>

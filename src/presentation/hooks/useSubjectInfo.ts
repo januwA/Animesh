@@ -8,11 +8,12 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 
 export interface UseSubjectInfoParams {
   subjectId: number;
+  externalUrl?: (subject: AnimeSubject) => string;
 }
 
 /** useSubjectInfo 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectInfoDeps {
-  getBangumiSubjectUseCase: Pick<GetAnimeSubjectUseCase, "execute">;
+  getSubjectUseCase: Pick<GetAnimeSubjectUseCase, "execute">;
   openUrlUseCase: Pick<OpenUrlUseCase, "execute">;
 }
 
@@ -29,8 +30,8 @@ export function useSubjectInfo(
   params: UseSubjectInfoParams,
   deps: UseSubjectInfoDeps,
 ): SubjectInfoResult {
-  const { subjectId } = params;
-  const { getBangumiSubjectUseCase, openUrlUseCase } = deps;
+  const { subjectId, externalUrl } = params;
+  const { getSubjectUseCase, openUrlUseCase } = deps;
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,11 +39,11 @@ export function useSubjectInfo(
 
   const subjectQuery = useQuery(
     (ctx) =>
-      getBangumiSubjectUseCase.execute(
+      getSubjectUseCase.execute(
         ctx,
         NonEmptyStringSchema.parse(String(subjectId)),
       ),
-    [subjectId, getBangumiSubjectUseCase],
+    [subjectId, getSubjectUseCase],
   );
   const subject = subjectQuery.data ?? undefined;
 
@@ -64,9 +65,10 @@ export function useSubjectInfo(
   const handleOpenUrl = () => {
     // v8 ignore next
     if (!subject) return;
-    void openUrlUseCase.execute(
-      NonEmptyStringSchema.parse(`https://bgm.tv/subject/${subject.id}`),
-    );
+    const url = externalUrl
+      ? externalUrl(subject)
+      : `https://bgm.tv/subject/${subject.id}`;
+    void openUrlUseCase.execute(NonEmptyStringSchema.parse(url));
   };
 
   return {

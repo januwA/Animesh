@@ -4,8 +4,8 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type { AnimeEpisode, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { UseSubjectEpisodesDeps } from "./useSubjectEpisodes";
-import { useSubjectEpisodes } from "./useSubjectEpisodes";
+import type { UseSubjectEpisodesDeps } from "@/presentation/hooks/useSubjectEpisodes";
+import { useSubjectEpisodes } from "@/presentation/hooks/useSubjectEpisodes";
 
 const locationRef: { current: { pathname: string; search: string } | null } = {
   current: null,

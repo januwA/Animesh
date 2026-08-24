@@ -4,9 +4,9 @@ import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUse
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { FavoriteButton } from "@/presentation/components/FavoriteButton";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 import { resetAppStores } from "@/test/store-reset";
-import { FavoriteButton } from "./FavoriteButton";
 
 type FavoriteDeps = {
   getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;

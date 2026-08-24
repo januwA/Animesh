@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
-import { SummarySection } from "./SummarySection";
+import { SummarySection } from "@/presentation/components/SummarySection";
 
 const makeSubject = (overrides: Partial<AnimeSubject> = {}): AnimeSubject => ({
   id: 123,

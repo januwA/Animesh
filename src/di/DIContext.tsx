@@ -116,6 +116,10 @@ export interface DIContainer {
   getBangumiCharactersUseCase: GetAnimeCharactersUseCase;
   getBangumiRankedSubjectsUseCase: GetAnimeRankedSubjectsUseCase;
   searchBangumiSubjectsUseCase: SearchAnimeSubjectsUseCase;
+  getAnilistSubjectUseCase: GetAnimeSubjectUseCase;
+  getAnilistEpisodesUseCase: GetAnimeEpisodesUseCase;
+  getAnilistPersonsUseCase: GetAnimePersonsUseCase;
+  getAnilistCharactersUseCase: GetAnimeCharactersUseCase;
   getIptvCountriesUseCase: GetIptvCountriesUseCase;
   getIptvChannelsUseCase: GetIptvChannelsUseCase;
   resolvePlayableStreamUrlUseCase: ResolvePlayableStreamUrlUseCase;
@@ -230,6 +234,22 @@ export function createDefaultDIContainer(): DIContainer {
     anilistRepository,
     anilistCache,
   );
+  const getAnilistSubjectUseCase = new GetAnimeSubjectUseCase(
+    anilistRepository,
+    anilistCache,
+  );
+  const getAnilistEpisodesUseCase = new GetAnimeEpisodesUseCase(
+    anilistRepository,
+    anilistCache,
+  );
+  const getAnilistPersonsUseCase = new GetAnimePersonsUseCase(
+    anilistRepository,
+    anilistCache,
+  );
+  const getAnilistCharactersUseCase = new GetAnimeCharactersUseCase(
+    anilistRepository,
+    anilistCache,
+  );
   const getBangumiSubjectUseCase = new GetAnimeSubjectUseCase(
     bangumiRepository,
     bangumiCache,
@@ -322,6 +342,10 @@ export function createDefaultDIContainer(): DIContainer {
     getBangumiCharactersUseCase,
     getBangumiRankedSubjectsUseCase,
     searchBangumiSubjectsUseCase,
+    getAnilistSubjectUseCase,
+    getAnilistEpisodesUseCase,
+    getAnilistPersonsUseCase,
+    getAnilistCharactersUseCase,
     getIptvCountriesUseCase,
     getIptvChannelsUseCase,
     resolvePlayableStreamUrlUseCase,

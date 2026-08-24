@@ -6,16 +6,14 @@ import type { OpenUrlUseCase } from "@/application/opener/OpenUrlUseCase";
 import type { ClearTorrentSubjectUseCase } from "@/application/torrent/ClearTorrentSubjectUseCase";
 import type { SetTorrentSubjectUseCase } from "@/application/torrent/SetTorrentSubjectUseCase";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
-import type { SubjectCastResult } from "./useSubjectCast";
-import { useSubjectCast } from "./useSubjectCast";
-import type { SubjectEpisodesResult } from "./useSubjectEpisodes";
-import { useSubjectEpisodes } from "./useSubjectEpisodes";
-import type { SubjectInfoResult } from "./useSubjectInfo";
-import { useSubjectInfo } from "./useSubjectInfo";
+import type { SubjectCastResult } from "@/presentation/hooks/useSubjectCast";
+import { useSubjectCast } from "@/presentation/hooks/useSubjectCast";
+import type { SubjectEpisodesResult } from "@/presentation/hooks/useSubjectEpisodes";
+import { useSubjectEpisodes } from "@/presentation/hooks/useSubjectEpisodes";
+import type { SubjectInfoResult } from "@/presentation/hooks/useSubjectInfo";
+import { useSubjectInfo } from "@/presentation/hooks/useSubjectInfo";
 import type { SubjectResourcesResult } from "./useSubjectResources";
 import { useSubjectResources } from "./useSubjectResources";
-
-export type { ConsolidatedStaffMember } from "./useSubjectCast";
 
 export interface UseSubjectDetailParams {
   subjectId: number;
@@ -59,7 +57,7 @@ export function useSubjectDetail(
 
   const info = useSubjectInfo(
     { subjectId },
-    { getBangumiSubjectUseCase, openUrlUseCase },
+    { getSubjectUseCase: getBangumiSubjectUseCase, openUrlUseCase },
   );
 
   const episodes = useSubjectEpisodes(
