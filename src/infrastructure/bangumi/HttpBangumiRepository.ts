@@ -55,22 +55,20 @@ export class HttpBangumiRepository implements BangumiRepository {
   ): Promise<RankedSubjectsPage> {
     let data: unknown;
     try {
-      const query = new URLSearchParams({
-        type: "2", // 动漫
-        cat: "1", // 动画类型 0 为 其他, 1 为 TV, 2 为 OVA, 3 为 Movie, 5 为 WEB
-        sort: "rank",
-        year: year.toString(),
-        month: month.toString(),
-      });
-      if (offset !== undefined) {
-        query.append("offset", offset.toString());
-      }
-      if (limit !== undefined) {
-        query.append("limit", limit.toString());
-      }
       data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects?${query.toString()}`,
-        { ctx },
+        "https://api.bgm.tv/v0/subjects",
+        {
+          ctx,
+          params: {
+            type: "2",
+            cat: "1",
+            sort: "rank",
+            year,
+            month,
+            limit,
+            offset,
+          },
+        },
       );
     } catch (err: unknown) {
       if (ctx.err() && err === ctx.err()) {
@@ -120,8 +118,8 @@ export class HttpBangumiRepository implements BangumiRepository {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/episodes?subject_id=${subjectId}&limit=${limit}&offset=${offset}`,
-        { ctx },
+        "https://api.bgm.tv/v0/episodes",
+        { ctx, params: { subject_id: subjectId, limit, offset } },
       );
     } catch (err: unknown) {
       if (ctx.err() && err === ctx.err()) {
@@ -146,8 +144,8 @@ export class HttpBangumiRepository implements BangumiRepository {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects/${subjectId}/persons?subject_id=${subjectId}`,
-        { ctx },
+        `https://api.bgm.tv/v0/subjects/${subjectId}/persons`,
+        { ctx, params: { subject_id: subjectId } },
       );
     } catch (err: unknown) {
       if (ctx.err() && err === ctx.err()) {
@@ -172,8 +170,8 @@ export class HttpBangumiRepository implements BangumiRepository {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects/${subjectId}/characters?subject_id=${subjectId}`,
-        { ctx },
+        `https://api.bgm.tv/v0/subjects/${subjectId}/characters`,
+        { ctx, params: { subject_id: subjectId } },
       );
     } catch (err: unknown) {
       if (ctx.err() && err === ctx.err()) {
@@ -198,7 +196,7 @@ export class HttpBangumiRepository implements BangumiRepository {
     let raw: unknown;
     try {
       const response = await this.client.request(
-        `https://api.bgm.tv/v0/search/subjects?limit=${params.limit}&offset=${params.offset}`,
+        "https://api.bgm.tv/v0/search/subjects",
         {
           ctx,
           method: "POST",
@@ -206,6 +204,7 @@ export class HttpBangumiRepository implements BangumiRepository {
             Accept: "application/json",
             "Content-Type": "application/json",
           },
+          params: { limit: params.limit, offset: params.offset },
           body: JSON.stringify({
             keyword: params.keyword,
             filter: { type: [2], nsfw: false },

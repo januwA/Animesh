@@ -28,10 +28,9 @@ export class HttpTorrentRepository implements TorrentRepository {
     keyword: string,
     engine: TorrentSearchEngine,
   ): Promise<SearchResultItem[]> {
-    const query = new URLSearchParams({ keyword, engine });
     const raw = await this.httpClient.getJson<unknown>(
-      `${baseUrl}/torrents/search?${query.toString()}`,
-      { ctx },
+      `${baseUrl}/torrents/search`,
+      { ctx, params: { keyword, engine } },
     );
     const result = z.array(SearchResultItemSchema).safeParse(raw);
     if (!result.success) {
@@ -55,15 +54,10 @@ export class HttpTorrentRepository implements TorrentRepository {
   }
 
   async deleteTorrent(infoHash: string, deleteFiles: boolean): Promise<void> {
-    const query = new URLSearchParams({
-      deleteFiles: deleteFiles.toString(),
+    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}`, {
+      method: "DELETE",
+      params: { deleteFiles },
     });
-    await this.httpClient.request(
-      `${baseUrl}/torrents/${infoHash}?${query.toString()}`,
-      {
-        method: "DELETE",
-      },
-    );
   }
 
   async addTorrentMagnet(

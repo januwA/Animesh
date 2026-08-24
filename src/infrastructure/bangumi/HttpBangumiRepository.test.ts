@@ -30,8 +30,19 @@ describe("HttpBangumiRepository 榜单条目获取", () => {
     const subjects = await repo.getRankedSubjects(Background, 2026, 8, 5);
 
     expect(client.getJson).toHaveBeenCalledWith(
-      "https://api.bgm.tv/v0/subjects?type=2&cat=1&sort=rank&year=2026&month=8&limit=5",
-      { ctx: Background },
+      "https://api.bgm.tv/v0/subjects",
+      {
+        ctx: Background,
+        params: {
+          cat: "1",
+          limit: 5,
+          month: 8,
+          offset: undefined,
+          sort: "rank",
+          type: "2",
+          year: 2026,
+        },
+      },
     );
     expect(subjects).toEqual({
       items: [
