@@ -17,6 +17,7 @@ import {
   AnilistCalendarResponseSchema,
   AnilistCharactersResponseSchema,
   AnilistEpisodesResponseSchema,
+  AnilistResponseSchema,
   AnilistStaffResponseSchema,
   AnilistSubjectResponseSchema,
 } from "./AnilistSchemas";
@@ -215,16 +216,17 @@ export class HttpAnilistRepository implements AnimeRepository {
     });
     const pageData: unknown = await response.json();
 
-    return (
-      pageData as {
-        data: {
-          Page: {
-            hasNextPage: boolean;
-            airingSchedules: unknown[];
-          };
-        };
-      }
-    ).data.Page;
+    const result = AnilistResponseSchema.safeParse(pageData);
+    if (!result.success) {
+      throw new Error("AniList API response structure mismatch", {
+        cause: result.error,
+      });
+    }
+
+    return {
+      hasNextPage: result.data.data.Page.pageInfo.hasNextPage,
+      airingSchedules: result.data.data.Page.airingSchedules,
+    };
   }
 
   private async graphqlRequest(

@@ -34,7 +34,7 @@ const AnilistPageInfoSchema = z.object({
   hasNextPage: z.boolean(),
 });
 
-const AnilistPageSchema = z.object({
+export const AnilistPageSchema = z.object({
   pageInfo: AnilistPageInfoSchema,
   airingSchedules: z.array(AnilistAiringScheduleSchema),
 });
