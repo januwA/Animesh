@@ -40,6 +40,7 @@ query ($startDate: Int!, $endDate: Int!, $page: Int!) {
         id
         title { romaji english native userPreferred }
         coverImage { large medium color }
+        averageScore
       }
     }
   }

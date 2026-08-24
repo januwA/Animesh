@@ -19,6 +19,7 @@ const AnilistMediaSchema = z.object({
   id: z.number(),
   title: AnilistTitleSchema,
   coverImage: AnilistCoverImageSchema,
+  averageScore: z.number().nullable().optional(),
 });
 
 const AnilistAiringScheduleSchema = z.object({
@@ -88,7 +89,7 @@ export const AnilistCalendarResponseSchema = AnilistResponseSchema.transform(
         id: schedule.mediaId,
         name: pickTitle(schedule.media.title),
         image: pickCoverImage(schedule.media.coverImage),
-        rating: 0,
+        rating: (schedule.media.averageScore ?? 0) / 10,
       });
       grouped.set(weekdayId, items);
     }
