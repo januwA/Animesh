@@ -137,4 +137,86 @@ describe("CopyStreamUrlButton 复制流地址按钮组件", () => {
 
     expect(vi.mocked(toast.error)).toHaveBeenCalledWith("复制失败，请手动复制");
   });
+
+  it("关闭弹窗时不应该重复请求地址", async () => {
+    const user = userEvent.setup();
+    mockGetLocalIpUseCase.execute.mockClear();
+    render(
+      <CopyStreamUrlButton
+        infoHash="abc123"
+        fileId={0}
+        getLocalIpUseCase={mockGetLocalIpUseCase}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "复制视频流地址" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    expect(mockGetLocalIpUseCase.execute).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    expect(mockGetLocalIpUseCase.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("再次打开弹窗时不应该重复请求地址", async () => {
+    const user = userEvent.setup();
+    mockGetLocalIpUseCase.execute.mockClear();
+    render(
+      <CopyStreamUrlButton
+        infoHash="abc123"
+        fileId={0}
+        getLocalIpUseCase={mockGetLocalIpUseCase}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "复制视频流地址" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    expect(mockGetLocalIpUseCase.execute).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "复制视频流地址" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    expect(mockGetLocalIpUseCase.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it("获取局域网地址失败时应该提示错误", async () => {
+    const user = userEvent.setup();
+    mockGetLocalIpUseCase.execute.mockRejectedValueOnce(
+      new Error("network error"),
+    );
+    render(
+      <CopyStreamUrlButton
+        infoHash="abc123"
+        fileId={0}
+        getLocalIpUseCase={mockGetLocalIpUseCase}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "复制视频流地址" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(toast.error)).toHaveBeenCalledWith("获取局域网地址失败");
+    });
+  });
 });

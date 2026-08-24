@@ -70,7 +70,7 @@ export const BangumiSubjectSchema = z
     images: BangumiImagesSchema,
     rating: z
       .object({
-        score: z.number(),
+        score: z.number().nullable().optional(),
         rank: z.number().nullable().optional(),
         total: z.number().nullable().optional(),
       })

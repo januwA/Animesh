@@ -1,5 +1,8 @@
 import type { Context } from "ajanuw-context";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
+import type {
+  BangumiRepository,
+  RankedSubjectsPage,
+} from "../../domain/bangumi/BangumiRepository";
 import {
   type BangumiCalendarDay,
   BangumiCalendarResponseSchema,
@@ -47,8 +50,9 @@ export class HttpBangumiRepository implements BangumiRepository {
     ctx: Context,
     year: number,
     month: number,
-    limit: number,
-  ): Promise<BangumiSubject[]> {
+    limit?: number,
+    offset?: number,
+  ): Promise<RankedSubjectsPage> {
     let data: unknown;
     try {
       const query = new URLSearchParams({
@@ -57,8 +61,13 @@ export class HttpBangumiRepository implements BangumiRepository {
         sort: "rank",
         year: year.toString(),
         month: month.toString(),
-        limit: limit.toString(),
       });
+      if (offset !== undefined) {
+        query.append("offset", offset.toString());
+      }
+      if (limit !== undefined) {
+        query.append("limit", limit.toString());
+      }
       data = await this.client.getJson<unknown>(
         `https://api.bgm.tv/v0/subjects?${query.toString()}`,
         { ctx },
@@ -76,7 +85,7 @@ export class HttpBangumiRepository implements BangumiRepository {
         cause: result.error,
       });
     }
-    return result.data.items;
+    return result.data;
   }
 
   async getSubject(ctx: Context, subjectId: string): Promise<BangumiSubject> {

@@ -3,8 +3,8 @@ import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
 import type { BangumiSubject } from "@/domain/bangumi/BangumiSchemas";
 import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
 
-/** 背景壁纸最多使用的榜单条目数 */
-export const RANKED_SUBJECT_LIMIT = 20;
+/** 最终返回的榜单条目数 */
+export const RANKED_SUBJECT_LIMIT = 10;
 /** 榜单按最近月数拉取（本月 + 上月） */
 export const RANKED_SUBJECT_MONTH_WINDOW = 2;
 
@@ -41,15 +41,15 @@ export class GetBangumiRankedSubjectsUseCase {
       RANKED_SUBJECT_MONTH_WINDOW,
       new Date(),
     )) {
-      const page = await this.bangumiRepository.getRankedSubjects(
+      const { items } = await this.bangumiRepository.getRankedSubjects(
         ctx,
         year,
         month,
-        RANKED_SUBJECT_LIMIT,
       );
-      subjects.push(...page);
+      subjects.push(...items);
     }
-    await this.bangumiCache.setRankedSubjects(ctx, subjects);
-    return subjects;
+    const top = subjects.slice(0, RANKED_SUBJECT_LIMIT);
+    await this.bangumiCache.setRankedSubjects(ctx, top);
+    return top;
   }
 }

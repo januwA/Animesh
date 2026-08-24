@@ -10,6 +10,11 @@ import type {
   BangumiSubjectSearchResult,
 } from "./BangumiSchemas";
 
+export interface RankedSubjectsPage {
+  items: BangumiSubject[];
+  total: number;
+}
+
 export interface BangumiRepository {
   getCalendar(ctx: Context): Promise<BangumiCalendarDay[]>;
   /** 获取指定类型指定年月的按 rank 排序榜单条目（GET /v0/subjects）。 */
@@ -17,8 +22,9 @@ export interface BangumiRepository {
     ctx: Context,
     year: number,
     month: number,
-    limit: number,
-  ): Promise<BangumiSubject[]>;
+    limit?: number,
+    offset?: number,
+  ): Promise<RankedSubjectsPage>;
   getSubject(ctx: Context, subjectId: NonEmptyString): Promise<BangumiSubject>;
   getEpisodes(
     ctx: Context,

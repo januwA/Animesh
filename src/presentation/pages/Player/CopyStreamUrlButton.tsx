@@ -53,6 +53,7 @@ export function CopyStreamUrlButton({
   };
 
   const handleCopy = async () => {
+    // v8 ignore next -- 按钮已通过 disabled 禁用,此防御性检查不可达
     if (!shareableUrl) return;
     try {
       await navigator.clipboard.writeText(shareableUrl);

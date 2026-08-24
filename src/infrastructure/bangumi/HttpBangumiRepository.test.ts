@@ -33,15 +33,18 @@ describe("HttpBangumiRepository 榜单条目获取", () => {
       "https://api.bgm.tv/v0/subjects?type=2&cat=1&sort=rank&year=2026&month=8&limit=5",
       { ctx: Background },
     );
-    expect(subjects).toEqual([
-      {
-        id: 326,
-        name: "新世纪福音战士",
-        image: "https://img.example/m.jpg",
-        rating: 9.1,
-        summary: "",
-      },
-    ]);
+    expect(subjects).toEqual({
+      items: [
+        {
+          id: 326,
+          name: "新世纪福音战士",
+          image: "https://img.example/m.jpg",
+          rating: 9.1,
+          summary: "",
+        },
+      ],
+      total: 1,
+    });
   });
 
   it("响应结构异常时应抛出包含 cause 的错误", async () => {
