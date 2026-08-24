@@ -1,25 +1,27 @@
 import type { Context } from "ajanuw-context";
 import type {
+  BangumiCalendarDay,
+  BangumiCharacter,
+  BangumiEpisodesPage,
+  BangumiPerson,
+  BangumiSubject,
+  BangumiSubjectSearchParams,
+  BangumiSubjectSearchResult,
+} from "@/domain/bangumi/BangumiSchemas";
+import type {
   BangumiRepository,
   RankedSubjectsPage,
 } from "../../domain/bangumi/BangumiRepository";
+import type { HttpClient } from "../http/HttpClient";
 import {
-  type BangumiCalendarDay,
   BangumiCalendarResponseSchema,
-  type BangumiCharacter,
   BangumiCharactersResponseSchema,
-  type BangumiEpisodesPage,
   BangumiEpisodesResponseSchema,
-  type BangumiPerson,
   BangumiPersonsResponseSchema,
   BangumiRankedSubjectsResponseSchema,
-  type BangumiSubject,
   BangumiSubjectSchema,
-  type BangumiSubjectSearchParams,
   BangumiSubjectSearchResponseSchema,
-  type BangumiSubjectSearchResult,
-} from "../../domain/bangumi/BangumiSchemas";
-import type { HttpClient } from "../http/HttpClient";
+} from "./BangumiSchemas";
 
 export class HttpBangumiRepository implements BangumiRepository {
   constructor(private readonly client: HttpClient) {}

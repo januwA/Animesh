@@ -8,13 +8,11 @@ import { WeeklyCalendar } from "./WeeklyCalendar";
 
 const makeCalendar = (todayId: number): BangumiCalendarDay[] => [
   {
-    weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+    weekday: { id: todayId },
     items: [
       {
         id: 1,
-        url: "http://example.com/1",
         name: "今天动漫",
-        air_weekday: todayId,
         image: "http://example.com/cover.jpg",
         rating: 0,
       },
@@ -23,17 +21,12 @@ const makeCalendar = (todayId: number): BangumiCalendarDay[] => [
   {
     weekday: {
       id: todayId === 1 ? 2 : 1,
-      en: "other",
-      cn: "其他",
-      ja: "other",
     },
     items: [
       {
         image: "",
         id: 2,
-        url: "http://example.com/2",
         name: "其他动漫",
-        air_weekday: todayId === 1 ? 2 : 1,
         rating: 0,
       },
     ],
@@ -110,7 +103,7 @@ describe("WeeklyCalendar 周历组件", () => {
     const todayId = new Date().getDay() === 0 ? 7 : new Date().getDay();
     const calendar: BangumiCalendarDay[] = [
       {
-        weekday: { id: todayId, en: "today", cn: "今天", ja: "today" },
+        weekday: { id: todayId },
         items: [],
       },
     ];
@@ -181,14 +174,12 @@ describe("WeeklyCalendar 周历组件", () => {
     vi.spyOn(Date.prototype, "getDay").mockReturnValue(0);
     const calendar: BangumiCalendarDay[] = [
       {
-        weekday: { id: 7, en: "Sunday", cn: "星期日", ja: "日曜日" },
+        weekday: { id: 7 },
         items: [
           {
             id: 3,
-            url: "http://example.com/3",
             name: "周日动漫",
             image: "",
-            air_weekday: 7,
             rating: 0,
           },
         ],
@@ -217,14 +208,12 @@ describe("WeeklyCalendar 周历组件", () => {
     vi.spyOn(Date.prototype, "getDay").mockReturnValue(3);
     const calendar: BangumiCalendarDay[] = [
       {
-        weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
+        weekday: { id: 1 },
         items: [
           {
             id: 9,
-            url: "http://example.com/9",
             name: "周一动漫",
             image: "",
-            air_weekday: 1,
             rating: 0,
           },
         ],

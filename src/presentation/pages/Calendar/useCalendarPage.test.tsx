@@ -120,9 +120,7 @@ describe("useCalendarPage 日历页面 hook", () => {
 
     const mockItem: BangumiCalendarItem = {
       id: 456,
-      url: "http://example.com/456",
       name: "Raw Anime",
-      air_weekday: 2,
       image: "",
       rating: 0,
     };

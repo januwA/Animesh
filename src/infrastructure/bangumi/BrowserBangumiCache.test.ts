@@ -1,6 +1,8 @@
 import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
+import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 import {
   BangumiCalendarStoredSchema,
   BangumiCharactersStoredSchema,
@@ -9,9 +11,7 @@ import {
   BangumiRankedSubjectsStoredSchema,
   BangumiSubjectSchema,
   BangumiSubjectStoredSchema,
-} from "@/domain/bangumi/BangumiSchemas";
-import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { CacheStore } from "@/infrastructure/storage/CacheStore";
+} from "./BangumiSchemas";
 import { BrowserBangumiCache } from "./BrowserBangumiCache";
 
 const images = {

@@ -5,12 +5,10 @@ import { EpisodesSection } from "./EpisodesSection";
 
 const makeEpisode = (sort: number): BangumiEpisode => ({
   id: 1000 + sort,
-  type: 0,
   sort,
   name: `第 ${sort} 集`,
   duration: "24:00",
   airdate: "2026-07-01",
-  desc: "",
 });
 
 const formatDate = (d: Date) => {

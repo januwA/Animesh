@@ -1,20 +1,22 @@
 import type { Context } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
 import type { BangumiCache } from "@/domain/bangumi/BangumiCache";
-import {
-  type BangumiCalendarDay,
-  BangumiCalendarStoredSchema,
-  type BangumiCharacter,
-  BangumiCharactersStoredSchema,
-  type BangumiEpisodesPage,
-  BangumiEpisodesPageStoredSchema,
-  type BangumiPerson,
-  BangumiPersonsStoredSchema,
-  BangumiRankedSubjectsStoredSchema,
-  type BangumiSubject,
-  BangumiSubjectStoredSchema,
+import type {
+  BangumiCalendarDay,
+  BangumiCharacter,
+  BangumiEpisodesPage,
+  BangumiPerson,
+  BangumiSubject,
 } from "@/domain/bangumi/BangumiSchemas";
 import type { CacheStore } from "@/infrastructure/storage/CacheStore";
+import {
+  BangumiCalendarStoredSchema,
+  BangumiCharactersStoredSchema,
+  BangumiEpisodesPageStoredSchema,
+  BangumiPersonsStoredSchema,
+  BangumiRankedSubjectsStoredSchema,
+  BangumiSubjectStoredSchema,
+} from "./BangumiSchemas";
 
 export class BrowserBangumiCache implements BangumiCache {
   private readonly ttl1MMs = new Duration({ days: 30 }).inMilliseconds;

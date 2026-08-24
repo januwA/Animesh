@@ -21,7 +21,7 @@ describe("GetBangumiEpisodesUseCase 获取条目剧集列表", () => {
 
   it("应该在缓存命中时直接返回缓存数据且不请求 Repository", async () => {
     const cachedData: BangumiEpisodesPage = {
-      items: [{ id: 1, name: "ep1", sort: 1, type: 0 }],
+      items: [{ id: 1, name: "ep1", sort: 1 }],
       total: 150,
     };
     vi.mocked(mockCache.getEpisodes).mockResolvedValueOnce(cachedData as any);
@@ -40,7 +40,7 @@ describe("GetBangumiEpisodesUseCase 获取条目剧集列表", () => {
 
   it("应该在缓存未命中时请求 Repository 并写入缓存", async () => {
     const freshData: BangumiEpisodesPage = {
-      items: [{ id: 1, name: "ep1", sort: 1, type: 0 }],
+      items: [{ id: 1, name: "ep1", sort: 1 }],
       total: 150,
     };
     vi.mocked(mockCache.getEpisodes).mockResolvedValueOnce(null);

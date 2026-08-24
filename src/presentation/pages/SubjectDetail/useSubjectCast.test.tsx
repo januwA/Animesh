@@ -13,8 +13,6 @@ const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
   image: "",
   name: "木村拓",
   relation: "导演",
-  career: ["producer"],
-  type: 1,
   id: 44615,
   eps: "",
   ...overrides,
@@ -23,9 +21,7 @@ const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
 const makeCharacter = (): BangumiCharacter => ({
   image: "http://example.com/large.jpg",
   name: "ヤニねこ",
-  summary: "主角猫",
   relation: "主角",
-  type: 1,
   id: 174916,
   actors: [],
 });

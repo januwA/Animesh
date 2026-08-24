@@ -8,19 +8,11 @@ const makeCharacter = (
 ): BangumiCharacter => ({
   image: "http://example.com/large.jpg",
   name: "ヤニねこ",
-  summary: "主角猫",
   relation: "主角",
-  type: 1,
   id: 174916,
   actors: [
     {
-      image: "",
       name: "夏吉ゆうこ",
-      short_summary: "声优",
-      career: ["seiyu"],
-      id: 36024,
-      type: 1,
-      locked: false,
     },
   ],
   ...overrides,

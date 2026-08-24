@@ -45,20 +45,16 @@ const makeSubject = (): BangumiSubject => ({
 
 const makeEpisode = (sort: number): BangumiEpisode => ({
   id: 1000 + sort,
-  type: 0,
   sort,
   name: `第 ${sort} 集`,
   duration: "24:00",
   airdate: "2026-07-01",
-  desc: "",
 });
 
 const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
   image: "",
   name: "木村拓",
   relation: "导演",
-  career: ["producer"],
-  type: 1,
   id: 44615,
   eps: "",
   ...overrides,
@@ -67,19 +63,11 @@ const makePerson = (overrides: Partial<BangumiPerson> = {}): BangumiPerson => ({
 const makeCharacter = (): BangumiCharacter => ({
   image: "",
   name: "ヤニねこ",
-  summary: "主角猫",
   relation: "主角",
-  type: 1,
   id: 174916,
   actors: [
     {
-      image: "",
       name: "夏吉ゆうこ",
-      short_summary: "声优",
-      career: ["seiyu"],
-      id: 36024,
-      type: 1,
-      locked: false,
     },
   ],
 });
