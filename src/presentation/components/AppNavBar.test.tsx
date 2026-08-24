@@ -115,21 +115,18 @@ describe("AppNavBar 组件", () => {
     expect(await screen.findByText("1")).toBeInTheDocument();
   });
 
-  it("点击更多按钮应展开菜单，显示动漫、直播、设置", async () => {
+  it("点击更多按钮应展开菜单，显示直播、设置", async () => {
     const user = userEvent.setup();
     renderNavBar();
 
     await user.click(screen.getByRole("button", { name: "更多" }));
 
-    expect(
-      await screen.findByRole("menuitem", { name: "动漫" }),
-    ).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "直播" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "设置" })).toBeInTheDocument();
   });
 
   it("路由命中更多菜单项时，更多按钮应呈现高亮态", async () => {
-    renderNavBar("/search");
+    renderNavBar("/live");
 
     const moreButton = screen.getByRole("button", { name: "更多" });
     expect(moreButton.className).toContain("bg-primary/10");

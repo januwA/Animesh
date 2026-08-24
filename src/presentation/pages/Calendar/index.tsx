@@ -1,5 +1,8 @@
+import { Search } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import { ErrorState } from "@/presentation/components/ErrorState";
+import { Button } from "@/presentation/components/ui/button";
 import {
   Empty,
   EmptyContent,
@@ -18,6 +21,14 @@ export default function Calendar() {
 
   return (
     <div className="w-full flex flex-col gap-4">
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-xl font-semibold">新番日历</h1>
+        <Button variant="outline" size="icon" asChild>
+          <Link to="/search">
+            <Search className="h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
       {isLoading ? (
         <CalendarSkeleton />
       ) : error ? (

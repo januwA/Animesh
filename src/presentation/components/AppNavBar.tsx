@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Calendar,
-  Clapperboard,
   Download,
   Heart,
   Search,
@@ -47,7 +46,6 @@ const primaryItems: NavItem[] = [
 ];
 
 const moreItems: NavItem[] = [
-  { path: "/search", label: "动漫", icon: Clapperboard },
   { path: "/live", label: "直播", icon: Tv },
   { path: "/settings", label: "设置", icon: SettingsIcon },
 ];
