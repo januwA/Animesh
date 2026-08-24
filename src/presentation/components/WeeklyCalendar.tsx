@@ -10,7 +10,6 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Tabs, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
-import { useCalendarStore } from "../../store/calendarStore";
 
 const WEEKDAY_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -21,22 +20,20 @@ function getTodayWeekdayId(): number {
 
 interface WeeklyCalendarProps {
   calendar: AnimeCalendarDay[];
+  calendarActiveDay: number | null;
+  onActiveDayChange: (dayId: number | null) => void;
   onAnimeClick: (item: AnimeCalendarItem) => void;
 }
 
 export function WeeklyCalendar({
   calendar,
+  calendarActiveDay,
+  onActiveDayChange,
   onAnimeClick,
 }: WeeklyCalendarProps) {
-  const calendarActiveDay = useCalendarStore((s) => s.calendarActiveDay);
-  const setCalendarActiveDay = useCalendarStore((s) => s.setCalendarActiveDay);
   const todayId = useMemo(() => getTodayWeekdayId(), []);
 
   const activeDay = calendarActiveDay ?? todayId;
-
-  const setActiveDay = (dayId: number) => {
-    setCalendarActiveDay(dayId);
-  };
 
   const currentItems = useMemo(() => {
     return calendar.find((day) => day.weekday.id === activeDay)?.items ?? [];
@@ -47,7 +44,7 @@ export function WeeklyCalendar({
       <div className="sticky-safe-top z-10 bg-background/85 backdrop-blur-md pt-2 pb-2 -mx-4 px-4">
         <Tabs
           value={String(activeDay)}
-          onValueChange={(v) => setActiveDay(Number(v))}
+          onValueChange={(v) => onActiveDayChange(Number(v))}
         >
           <TabsList className="w-full" variant="line">
             {WEEKDAY_LABELS.map((label, index) => {

@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnimeCalendarDay } from "@/domain/anime/AnimeSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import { WeeklyCalendar } from "./WeeklyCalendar";
@@ -51,6 +52,8 @@ describe("WeeklyCalendar 周历组件", () => {
         element: (
           <WeeklyCalendar
             calendar={makeCalendar(todayId)}
+            calendarActiveDay={null}
+            onActiveDayChange={vi.fn()}
             onAnimeClick={onAnimeClick}
           />
         ),
@@ -72,15 +75,23 @@ describe("WeeklyCalendar 周历组件", () => {
     const otherDayId = todayId === 1 ? 2 : 1;
     const labels = ["一", "二", "三", "四", "五", "六", "日"];
     const onAnimeClick = vi.fn();
+
+    function Wrapper() {
+      const [activeDay, setActiveDay] = useState<number | null>(null);
+      return (
+        <WeeklyCalendar
+          calendar={makeCalendar(todayId)}
+          calendarActiveDay={activeDay}
+          onActiveDayChange={setActiveDay}
+          onAnimeClick={onAnimeClick}
+        />
+      );
+    }
+
     const router = createMemoryRouter([
       {
         path: "/",
-        element: (
-          <WeeklyCalendar
-            calendar={makeCalendar(todayId)}
-            onAnimeClick={onAnimeClick}
-          />
-        ),
+        element: <Wrapper />,
       },
     ]);
 
@@ -110,7 +121,14 @@ describe("WeeklyCalendar 周历组件", () => {
     const router = createMemoryRouter([
       {
         path: "/",
-        element: <WeeklyCalendar calendar={calendar} onAnimeClick={vi.fn()} />,
+        element: (
+          <WeeklyCalendar
+            calendar={calendar}
+            calendarActiveDay={null}
+            onActiveDayChange={vi.fn()}
+            onAnimeClick={vi.fn()}
+          />
+        ),
       },
     ]);
 
@@ -130,6 +148,8 @@ describe("WeeklyCalendar 周历组件", () => {
         element: (
           <WeeklyCalendar
             calendar={makeCalendar(todayId)}
+            calendarActiveDay={null}
+            onActiveDayChange={vi.fn()}
             onAnimeClick={onAnimeClick}
           />
         ),
@@ -153,7 +173,14 @@ describe("WeeklyCalendar 周历组件", () => {
     const router = createMemoryRouter([
       {
         path: "/",
-        element: <WeeklyCalendar calendar={calendar} onAnimeClick={vi.fn()} />,
+        element: (
+          <WeeklyCalendar
+            calendar={calendar}
+            calendarActiveDay={null}
+            onActiveDayChange={vi.fn()}
+            onAnimeClick={vi.fn()}
+          />
+        ),
       },
     ]);
 
@@ -188,7 +215,14 @@ describe("WeeklyCalendar 周历组件", () => {
     const router = createMemoryRouter([
       {
         path: "/",
-        element: <WeeklyCalendar calendar={calendar} onAnimeClick={vi.fn()} />,
+        element: (
+          <WeeklyCalendar
+            calendar={calendar}
+            calendarActiveDay={null}
+            onActiveDayChange={vi.fn()}
+            onAnimeClick={vi.fn()}
+          />
+        ),
       },
     ]);
 
@@ -222,7 +256,14 @@ describe("WeeklyCalendar 周历组件", () => {
     const router = createMemoryRouter([
       {
         path: "/",
-        element: <WeeklyCalendar calendar={calendar} onAnimeClick={vi.fn()} />,
+        element: (
+          <WeeklyCalendar
+            calendar={calendar}
+            calendarActiveDay={null}
+            onActiveDayChange={vi.fn()}
+            onAnimeClick={vi.fn()}
+          />
+        ),
       },
     ]);
 

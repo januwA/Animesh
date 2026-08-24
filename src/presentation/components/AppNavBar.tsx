@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Calendar,
+  CalendarDays,
   Download,
   Heart,
   Search,
@@ -40,7 +41,8 @@ interface NavItem {
 
 const primaryItems: NavItem[] = [
   { path: "/", label: "搜索", icon: Search },
-  { path: "/calendar", label: "新番", icon: Calendar },
+  { path: "/calendar", label: "Bangumi", icon: Calendar },
+  { path: "/anilist", label: "AniList", icon: CalendarDays },
   { path: "/collections", label: "收藏", icon: Heart },
   { path: "/downloads", label: "下载", icon: Download },
 ];

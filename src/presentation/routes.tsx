@@ -7,6 +7,7 @@ import TorrentSearch from "./pages/TorrentSearch";
 const AiSubtitleTranslation = lazy(
   () => import("./pages/AiSubtitleTranslation"),
 );
+const AnilistCalendar = lazy(() => import("./pages/AnilistCalendar"));
 const BangumiSearch = lazy(() => import("./pages/BangumiSearch"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Collections = lazy(() => import("./pages/Collections"));
@@ -90,6 +91,10 @@ export const routes: RouteObject[] = [
           {
             path: "calendar",
             element: <Calendar />,
+          },
+          {
+            path: "anilist",
+            element: <AnilistCalendar />,
           },
           {
             path: "collections",

@@ -48,6 +48,8 @@ import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersio
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { AiClient } from "../domain/ai/AiClient";
 import type { Logger } from "../domain/logger/logger";
+import { BrowserAnilistCache } from "../infrastructure/anilist/BrowserAnilistCache";
+import { HttpAnilistRepository } from "../infrastructure/anilist/HttpAnilistRepository";
 import { BrowserBangumiCache } from "../infrastructure/bangumi/BrowserBangumiCache";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpCollectionRepository } from "../infrastructure/collection/HttpCollectionRepository";
@@ -107,6 +109,7 @@ export interface DIContainer {
   getSubtitleTranslationByIdUseCase: GetSubtitleTranslationByIdUseCase;
 
   getBangumiCalendarUseCase: GetAnimeCalendarUseCase;
+  getAnilistCalendarUseCase: GetAnimeCalendarUseCase;
   getBangumiSubjectUseCase: GetAnimeSubjectUseCase;
   getBangumiEpisodesUseCase: GetAnimeEpisodesUseCase;
   getBangumiPersonsUseCase: GetAnimePersonsUseCase;
@@ -221,6 +224,12 @@ export function createDefaultDIContainer(): DIContainer {
     bangumiRepository,
     bangumiCache,
   );
+  const anilistRepository = new HttpAnilistRepository(httpClient);
+  const anilistCache = new BrowserAnilistCache(cacheStore);
+  const getAnilistCalendarUseCase = new GetAnimeCalendarUseCase(
+    anilistRepository,
+    anilistCache,
+  );
   const getBangumiSubjectUseCase = new GetAnimeSubjectUseCase(
     bangumiRepository,
     bangumiCache,
@@ -306,6 +315,7 @@ export function createDefaultDIContainer(): DIContainer {
     getSubtitleTranslationByIdUseCase,
 
     getBangumiCalendarUseCase,
+    getAnilistCalendarUseCase,
     getBangumiSubjectUseCase,
     getBangumiEpisodesUseCase,
     getBangumiPersonsUseCase,

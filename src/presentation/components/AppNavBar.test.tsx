@@ -89,11 +89,12 @@ describe("AppNavBar 组件", () => {
     expect(unsubMock).toHaveBeenCalled();
   });
 
-  it("应该渲染 4 个主导航项与更多按钮，更多菜单项默认隐藏", () => {
+  it("应该渲染 5 个主导航项与更多按钮，更多菜单项默认隐藏", () => {
     renderNavBar();
 
     expect(screen.getByRole("link", { name: "搜索" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "新番" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Bangumi" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "AniList" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "收藏" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "下载" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "更多" })).toBeInTheDocument();
