@@ -1,5 +1,6 @@
 import type { Context } from "ajanuw-context";
 import { z } from "zod";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
@@ -148,6 +149,7 @@ export class HttpTorrentRepository implements TorrentRepository {
   async setTorrentSubject(
     infoHash: string,
     subject_id: number,
+    platform: AnimePlatform,
     subject_name: string,
   ): Promise<void> {
     await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
@@ -155,14 +157,18 @@ export class HttpTorrentRepository implements TorrentRepository {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ subject_id, subject_name }),
+      body: JSON.stringify({ subject_id, platform, subject_name }),
     });
   }
 
-  async clearTorrentSubject(infoHash: string): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
-      method: "DELETE",
-    });
+  async clearTorrentSubject(
+    infoHash: string,
+    platform: AnimePlatform,
+  ): Promise<void> {
+    await this.httpClient.request(
+      `${baseUrl}/torrents/${infoHash}/subject/${platform}`,
+      { method: "DELETE" },
+    );
   }
 
   async subscribeTorrents(

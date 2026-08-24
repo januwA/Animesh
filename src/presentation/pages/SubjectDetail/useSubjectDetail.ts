@@ -5,6 +5,7 @@ import type { GetAnimeSubjectUseCase } from "@/application/anime/GetAnimeSubject
 import type { OpenUrlUseCase } from "@/application/opener/OpenUrlUseCase";
 import type { ClearTorrentSubjectUseCase } from "@/application/torrent/ClearTorrentSubjectUseCase";
 import type { SetTorrentSubjectUseCase } from "@/application/torrent/SetTorrentSubjectUseCase";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import type { SubjectCastResult } from "@/presentation/hooks/useSubjectCast";
 import { useSubjectCast } from "@/presentation/hooks/useSubjectCast";
@@ -12,12 +13,13 @@ import type { SubjectEpisodesResult } from "@/presentation/hooks/useSubjectEpiso
 import { useSubjectEpisodes } from "@/presentation/hooks/useSubjectEpisodes";
 import type { SubjectInfoResult } from "@/presentation/hooks/useSubjectInfo";
 import { useSubjectInfo } from "@/presentation/hooks/useSubjectInfo";
-import type { SubjectResourcesResult } from "./useSubjectResources";
-import { useSubjectResources } from "./useSubjectResources";
+import type { SubjectResourcesResult } from "@/presentation/hooks/useSubjectResources";
+import { useSubjectResources } from "@/presentation/hooks/useSubjectResources";
 
 export interface UseSubjectDetailParams {
   subjectId: number;
   page: number;
+  platform: AnimePlatform;
   torrents: TorrentStatusInfo[];
   activeTab: string;
 }
@@ -44,7 +46,7 @@ export function useSubjectDetail(
   params: UseSubjectDetailParams,
   deps: UseSubjectDetailDeps,
 ): SubjectDetailResult {
-  const { subjectId, page, torrents, activeTab } = params;
+  const { subjectId, page, platform, torrents, activeTab } = params;
   const {
     getBangumiSubjectUseCase,
     getBangumiEpisodesUseCase,
@@ -56,7 +58,7 @@ export function useSubjectDetail(
   } = deps;
 
   const info = useSubjectInfo(
-    { subjectId },
+    { subjectId, platform },
     { getSubjectUseCase: getBangumiSubjectUseCase, openUrlUseCase },
   );
 
@@ -75,7 +77,7 @@ export function useSubjectDetail(
   );
 
   const resources = useSubjectResources(
-    { subjectId, torrents, subjectName: info.displayName },
+    { subjectId, platform, torrents, subjectName: info.displayName },
     { setTorrentSubjectUseCase, clearTorrentSubjectUseCase },
   );
 

@@ -137,7 +137,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "characters" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "characters",
+      },
       deps,
     );
 
@@ -163,7 +169,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -180,7 +192,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("应该派生 displayName / imageUrl", async () => {
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "summary",
+      },
       makeDeps(),
     );
 
@@ -204,7 +222,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "staff" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "staff",
+      },
       deps,
     );
 
@@ -226,7 +250,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       makeTorrent({ info_hash: NonEmptyStringSchema.parse("hash-2") }),
     ];
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents, activeTab: "resources" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents,
+        activeTab: "resources",
+      },
       makeDeps(),
     );
 
@@ -237,7 +267,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("点击剧集时应该跳转到主页搜索", async () => {
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "summary",
+      },
       makeDeps(),
     );
 
@@ -261,7 +297,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -284,7 +326,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -304,7 +352,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "resources",
+      },
       deps,
     );
 
@@ -317,6 +371,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     expect(deps.setTorrentSubjectUseCase.execute).toHaveBeenCalledWith({
       infoHash: NonEmptyStringSchema.parse("hash-1"),
       subjectId: 123,
+      platform: "bangumi",
       subjectName: NonEmptyStringSchema.parse("测试动漫"),
     });
     expect(toast.success).toHaveBeenCalledWith("已绑定下载资源");
@@ -329,7 +384,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "resources",
+      },
       deps,
     );
 
@@ -351,7 +412,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "resources",
+      },
       deps,
     );
 
@@ -362,6 +429,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     });
     expect(deps.clearTorrentSubjectUseCase.execute).toHaveBeenCalledWith(
       NonEmptyStringSchema.parse("hash-1"),
+      "bangumi",
     );
     expect(toast.success).toHaveBeenCalledWith("已解除绑定");
   });
@@ -373,7 +441,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "resources" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "resources",
+      },
       deps,
     );
 
@@ -389,6 +463,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
     expect(deps.clearTorrentSubjectUseCase.execute).toHaveBeenCalledWith(
       NonEmptyStringSchema.parse("hash-1"),
+      "bangumi",
     );
     expect(toast.error).toHaveBeenCalledWith("解绑失败: 解绑失败");
   });
@@ -398,7 +473,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       openUrlUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -420,7 +501,13 @@ describe("useSubjectDetail 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, torrents: [], activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "bangumi",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 

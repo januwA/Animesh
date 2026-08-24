@@ -1,3 +1,4 @@
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 
@@ -5,7 +6,7 @@ import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 export class ClearTorrentSubjectUseCase {
   constructor(private torrentRepository: TorrentRepository) {}
 
-  execute(infoHash: NonEmptyString): Promise<void> {
-    return this.torrentRepository.clearTorrentSubject(infoHash);
+  execute(infoHash: NonEmptyString, platform: AnimePlatform): Promise<void> {
+    return this.torrentRepository.clearTorrentSubject(infoHash, platform);
   }
 }

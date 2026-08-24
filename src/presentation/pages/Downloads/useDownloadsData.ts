@@ -13,6 +13,7 @@ import { formatError } from "@/utils";
 export interface SubjectGroup {
   subjectId: number;
   subjectName: string;
+  subjectPlatform: string;
   items: TorrentStatusInfo[];
 }
 
@@ -33,6 +34,7 @@ export function groupTorrents(torrents: TorrentStatusInfo[]): {
       const group = groupMap.get(subjectId) ?? {
         subjectId,
         subjectName: torrent.subject_name,
+        subjectPlatform: torrent.subject_platform ?? "bangumi",
         items: [],
       };
       group.items.push(torrent);

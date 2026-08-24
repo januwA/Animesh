@@ -100,7 +100,13 @@ function DownloadsView() {
                     title="查看条目"
                     asChild
                   >
-                    <Link to={`/subject/${group.subjectId}`}>
+                    <Link
+                      to={
+                        group.subjectPlatform === "anilist"
+                          ? `/anilist/subject/${group.subjectId}`
+                          : `/subject/${group.subjectId}`
+                      }
+                    >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Link>
                   </Button>

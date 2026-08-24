@@ -1,11 +1,12 @@
 import { create } from "zustand";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
 
 interface CollectionsStoreState {
   items: FavoriteItem[];
   setItems: (val: FavoriteItem[]) => void;
   addItem: (item: Omit<FavoriteItem, "addedAt">) => void;
-  removeItem: (subjectId: number) => void;
+  removeItem: (subjectId: number, platform: AnimePlatform) => void;
   reset: () => void;
 }
 
@@ -20,9 +21,11 @@ export const useCollectionsStore = create<CollectionsStoreState>()((set) => ({
     set((s) => ({
       items: [{ ...item, addedAt: Date.now() }, ...s.items],
     })),
-  removeItem: (subjectId) =>
+  removeItem: (subjectId, platform) =>
     set((s) => ({
-      items: s.items.filter((item) => item.subjectId !== subjectId),
+      items: s.items.filter(
+        (item) => !(item.subjectId === subjectId && item.platform === platform),
+      ),
     })),
   reset: () => set(initialState),
 }));

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import type { GetCollectionsUseCase } from "@/application/collection/GetCollectionsUseCase";
+import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 
@@ -17,12 +18,12 @@ export function useCollectionsPage(deps: UseCollectionsPageDeps) {
     onSuccess: setItems,
   });
 
-  const handleItemClick = (item: {
-    subjectId: number;
-    name: string;
-    imageUrl: string | null;
-  }) => {
-    navigate(`/subject/${item.subjectId}`, {
+  const handleItemClick = (item: FavoriteItem) => {
+    const route =
+      item.platform === "anilist"
+        ? `/anilist/subject/${item.subjectId}`
+        : `/subject/${item.subjectId}`;
+    navigate(route, {
       viewTransition: true,
       state: {
         name: item.name,

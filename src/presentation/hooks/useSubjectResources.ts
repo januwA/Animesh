@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import type { ClearTorrentSubjectUseCase } from "@/application/torrent/ClearTorrentSubjectUseCase";
 import type { SetTorrentSubjectUseCase } from "@/application/torrent/SetTorrentSubjectUseCase";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
@@ -10,6 +11,7 @@ import { formatError } from "@/utils";
 
 export interface UseSubjectResourcesParams {
   subjectId: number;
+  platform: AnimePlatform;
   torrents: TorrentStatusInfo[];
   subjectName: string;
 }
@@ -34,7 +36,7 @@ export function useSubjectResources(
   params: UseSubjectResourcesParams,
   deps: UseSubjectResourcesDeps,
 ): SubjectResourcesResult {
-  const { subjectId, torrents, subjectName } = params;
+  const { subjectId, platform, torrents, subjectName } = params;
   const { setTorrentSubjectUseCase, clearTorrentSubjectUseCase } = deps;
 
   const boundResourcesCount = useMemo(
@@ -57,6 +59,7 @@ export function useSubjectResources(
       setTorrentSubjectUseCase.execute({
         infoHash: NonEmptyStringSchema.parse(p.infoHash),
         subjectId,
+        platform,
         subjectName: NonEmptyStringSchema.parse(subjectName),
       }),
     {
@@ -68,7 +71,7 @@ export function useSubjectResources(
 
   const unbindMutation = useMutation(
     (_ctx, p: { infoHash: NonEmptyString }) =>
-      clearTorrentSubjectUseCase.execute(p.infoHash),
+      clearTorrentSubjectUseCase.execute(p.infoHash, platform),
     {
       onSuccess: () => toast.success("已解除绑定"),
       onError: (err) => toast.error(`解绑失败: ${formatError(err)}`),

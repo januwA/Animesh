@@ -47,10 +47,12 @@ impl AppDatabase {
     async fn migrate(&self) -> Result<(), sqlx::Error> {
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS collections (
-                subject_id INTEGER PRIMARY KEY,
+                subject_id INTEGER NOT NULL,
+                platform TEXT NOT NULL DEFAULT 'bangumi',
                 name TEXT NOT NULL,
                 image_url TEXT,
-                added_at INTEGER NOT NULL
+                added_at INTEGER NOT NULL,
+                PRIMARY KEY (subject_id, platform)
             )",
         )
         .execute(&self.pool)
@@ -58,9 +60,11 @@ impl AppDatabase {
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS torrent_subject_bindings (
-                info_hash TEXT PRIMARY KEY,
+                info_hash TEXT NOT NULL,
+                platform TEXT NOT NULL DEFAULT 'bangumi',
                 subject_id INTEGER NOT NULL,
-                subject_name TEXT NOT NULL
+                subject_name TEXT NOT NULL,
+                PRIMARY KEY (info_hash, platform)
             )",
         )
         .execute(&self.pool)

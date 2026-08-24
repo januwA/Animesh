@@ -15,13 +15,9 @@ describe("AddFavoriteUseCase 添加收藏", () => {
     const useCase = new AddFavoriteUseCase(mockRepo);
     const item = {
       subjectId: 101,
+      platform: "bangumi" as const,
       name: "Name",
-      nameCn: "名称",
       imageUrl: null,
-      rating: null,
-      platform: null,
-      date: null,
-      summary: null,
     };
 
     await useCase.execute(item);

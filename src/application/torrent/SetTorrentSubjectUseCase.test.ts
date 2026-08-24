@@ -18,11 +18,13 @@ describe("SetTorrentSubjectUseCase 关联条目", () => {
     await useCase.execute({
       infoHash: NonEmptyStringSchema.parse("123"),
       subjectId: 42,
+      platform: "bangumi",
       subjectName: NonEmptyStringSchema.parse("测试条目"),
     });
     expect(mockRepo.setTorrentSubject).toHaveBeenCalledWith(
       "123",
       42,
+      "bangumi",
       "测试条目",
     );
   });

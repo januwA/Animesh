@@ -213,6 +213,7 @@ impl TorrentRepository for RqbitTorrentRepository {
                     trackers,
                     subject_id: None,
                     subject_name: None,
+                    subject_platform: None,
                 }
             })
             .collect()

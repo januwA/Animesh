@@ -8,6 +8,7 @@ import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { StaffSection } from "@/presentation/components/StaffSection";
 import { SubjectInfoCard } from "@/presentation/components/SubjectInfoCard";
+import { SubjectResourcesTab } from "@/presentation/components/SubjectResourcesTab";
 import { SummarySection } from "@/presentation/components/SummarySection";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Card, CardContent } from "@/presentation/components/ui/card";
@@ -17,6 +18,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/presentation/components/ui/tabs";
+import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { useAnilistSubjectDetail } from "./useAnilistSubjectDetail";
 
 const subjectParamsSchema = z.object({
@@ -53,18 +55,26 @@ function AnilistSubjectDetailView({ subjectId }: { subjectId: number }) {
     getAnilistEpisodesUseCase,
     getAnilistPersonsUseCase,
     getAnilistCharactersUseCase,
+    getFavoriteStatusUseCase,
+    addFavoriteUseCase,
+    removeFavoriteUseCase,
     openUrlUseCase,
+    setTorrentSubjectUseCase,
+    clearTorrentSubjectUseCase,
   } = useDI();
+  const { torrents } = useTorrentStatus();
   const [activeTab, setActiveTab] = useState("summary");
 
   const detail = useAnilistSubjectDetail(
-    { subjectId, page: 1, activeTab },
+    { subjectId, page: 1, platform: "anilist", torrents, activeTab },
     {
       getAnilistSubjectUseCase,
       getAnilistEpisodesUseCase,
       getAnilistPersonsUseCase,
       getAnilistCharactersUseCase,
       openUrlUseCase,
+      setTorrentSubjectUseCase,
+      clearTorrentSubjectUseCase,
     },
   );
 
@@ -85,18 +95,13 @@ function AnilistSubjectDetailView({ subjectId }: { subjectId: number }) {
       <SubjectInfoCard
         subject={detail.info.subject}
         subjectId={subjectId}
+        platform="anilist"
         displayName={detail.info.displayName}
         imageUrl={detail.info.imageUrl}
         onOpenUrl={detail.info.handleOpenUrl}
-        getFavoriteStatusUseCase={{
-          execute: () => Promise.resolve(false),
-        }}
-        addFavoriteUseCase={{
-          execute: () => Promise.resolve(),
-        }}
-        removeFavoriteUseCase={{
-          execute: () => Promise.resolve(),
-        }}
+        getFavoriteStatusUseCase={getFavoriteStatusUseCase}
+        addFavoriteUseCase={addFavoriteUseCase}
+        removeFavoriteUseCase={removeFavoriteUseCase}
       />
 
       {detail.episodes.episodes.length > 0 && (
@@ -136,6 +141,14 @@ function AnilistSubjectDetailView({ subjectId }: { subjectId: number }) {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="resources">
+            资源
+            {detail.resources.boundResourcesCount > 0 && (
+              <Badge variant="secondary">
+                {detail.resources.boundResourcesCount}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="pt-4">
@@ -163,6 +176,22 @@ function AnilistSubjectDetailView({ subjectId }: { subjectId: number }) {
                 loading={detail.cast.personsQuery.loading}
                 error={detail.cast.personsQuery.error}
                 onRetry={detail.cast.personsQuery.refetch}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="resources" className="pt-0">
+          <Card className="ani-card">
+            <CardContent>
+              <SubjectResourcesTab
+                subjectName={detail.info.displayName}
+                boundTorrents={detail.resources.boundTorrents}
+                unboundTorrents={detail.resources.unboundTorrents}
+                bindLoading={detail.resources.bindLoading}
+                unbindLoading={detail.resources.unbindLoading}
+                onBind={detail.resources.handleBind}
+                onUnbind={detail.resources.handleUnbind}
               />
             </CardContent>
           </Card>

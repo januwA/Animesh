@@ -325,15 +325,16 @@ async fn torrent_delete(
 async fn torrent_set_subject(
     info_hash: &str,
     subject_id: u64,
+    platform: String,
     subject_name: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
     trace_log(&format!(
-        "torrent_set_subject info_hash: {}, subject_id: {}, subject_name: {}",
-        info_hash, subject_id, subject_name
+        "torrent_set_subject info_hash: {}, subject_id: {}, platform: {}, subject_name: {}",
+        info_hash, subject_id, platform, subject_name
     ));
     manager
-        .set_subject_binding(info_hash, subject_id, subject_name.to_string())
+        .set_subject_binding(info_hash, subject_id, platform, subject_name.to_string())
         .await;
     Ok(())
 }
@@ -341,10 +342,14 @@ async fn torrent_set_subject(
 #[tauri::command]
 async fn torrent_clear_subject(
     info_hash: &str,
+    platform: String,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
-    trace_log(&format!("torrent_clear_subject info_hash: {}", info_hash));
-    manager.clear_subject_binding(info_hash).await;
+    trace_log(&format!(
+        "torrent_clear_subject info_hash: {}, platform: {}",
+        info_hash, platform
+    ));
+    manager.clear_subject_binding(info_hash, &platform).await;
     Ok(())
 }
 
@@ -358,9 +363,10 @@ async fn collection_get_all(
 #[tauri::command]
 async fn collection_is_favorited(
     subject_id: i64,
+    platform: String,
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<bool, CoreError> {
-    service.is_favorited(subject_id).await
+    service.is_favorited(subject_id, &platform).await
 }
 
 #[tauri::command]
@@ -368,11 +374,13 @@ async fn collection_add(
     subject_id: i64,
     name: String,
     image_url: Option<String>,
+    platform: String,
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<(), CoreError> {
     service
         .add(animesh_core::domain::collection::NewCollectionItem {
             subject_id,
+            platform,
             name,
             image_url,
         })
@@ -382,9 +390,10 @@ async fn collection_add(
 #[tauri::command]
 async fn collection_remove(
     subject_id: i64,
+    platform: String,
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<(), CoreError> {
-    service.remove(subject_id).await
+    service.remove(subject_id, &platform).await
 }
 
 #[tauri::command]

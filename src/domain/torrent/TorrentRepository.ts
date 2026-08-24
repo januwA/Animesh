@@ -1,4 +1,5 @@
 import type { Context } from "ajanuw-context";
+import type { AnimePlatform } from "../anime/AnimeSchemas";
 import type { NonEmptyString } from "../common/NonEmptyString";
 import type { TorrentSearchEngine } from "./TorrentEngines";
 import type {
@@ -37,9 +38,13 @@ export interface TorrentRepository {
   setTorrentSubject(
     infoHash: NonEmptyString,
     subject_id: number,
+    platform: AnimePlatform,
     subject_name: NonEmptyString,
   ): Promise<void>;
-  clearTorrentSubject(infoHash: NonEmptyString): Promise<void>;
+  clearTorrentSubject(
+    infoHash: NonEmptyString,
+    platform: AnimePlatform,
+  ): Promise<void>;
   subscribeTorrents(
     onUpdate: (torrents: TorrentStatusInfo[]) => void,
   ): Promise<() => void>;

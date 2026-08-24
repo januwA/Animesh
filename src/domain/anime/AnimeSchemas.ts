@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export interface AnimeCalendarItem {
   id: number;
   name: string;
@@ -65,3 +67,6 @@ export interface AnimeSubjectSearchResult {
   items: AnimeSubject[];
   total: number;
 }
+
+export const AnimePlatformSchema = z.enum(["bangumi", "anilist"]);
+export type AnimePlatform = z.infer<typeof AnimePlatformSchema>;

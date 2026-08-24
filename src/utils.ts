@@ -1,3 +1,5 @@
+import type { AnimePlatform } from "./domain/anime/AnimeSchemas";
+
 export function formatBytes(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined || bytes === 0) return "0 B";
   const k = 1024;
@@ -54,6 +56,16 @@ export function formatPlaybackTime(ms: number): string {
   return `${padTimePart(hours)}:${padTimePart(minutes)}:${padTimePart(
     seconds,
   )}`;
+}
+
+export function getSubjectExternalUrl(
+  platform: AnimePlatform,
+  subjectId: number,
+): string {
+  if (platform === "anilist") {
+    return `https://anilist.co/anime/${subjectId}`;
+  }
+  return `https://bgm.tv/subject/${subjectId}`;
 }
 
 export function formatError(err: unknown): string {

@@ -1,14 +1,15 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import type { GetAnimeSubjectUseCase } from "@/application/anime/GetAnimeSubjectUseCase";
 import type { OpenUrlUseCase } from "@/application/opener/OpenUrlUseCase";
-import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { UseQueryResult } from "@/presentation/hooks/useQuery";
 import { useQuery } from "@/presentation/hooks/useQuery";
+import { getSubjectExternalUrl } from "@/utils";
 
 export interface UseSubjectInfoParams {
   subjectId: number;
-  externalUrl?: (subject: AnimeSubject) => string;
+  platform: AnimePlatform;
 }
 
 /** useSubjectInfo 的依赖，由调用方（页面组合根）注入 */
@@ -30,7 +31,7 @@ export function useSubjectInfo(
   params: UseSubjectInfoParams,
   deps: UseSubjectInfoDeps,
 ): SubjectInfoResult {
-  const { subjectId, externalUrl } = params;
+  const { subjectId, platform } = params;
   const { getSubjectUseCase, openUrlUseCase } = deps;
 
   const navigate = useNavigate();
@@ -65,9 +66,7 @@ export function useSubjectInfo(
   const handleOpenUrl = () => {
     // v8 ignore next
     if (!subject) return;
-    const url = externalUrl
-      ? externalUrl(subject)
-      : `https://bgm.tv/subject/${subject.id}`;
+    const url = getSubjectExternalUrl(platform, subject.id);
     void openUrlUseCase.execute(NonEmptyStringSchema.parse(url));
   };
 

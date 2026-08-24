@@ -3,13 +3,15 @@ import type { CSSProperties, ReactNode } from "react";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
-import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { FavoriteButton } from "./FavoriteButton";
+import { Button } from "./ui/button";
 
 export interface SubjectInfoCardProps {
   subject: AnimeSubject | undefined;
   subjectId: number;
+  platform: AnimePlatform;
   displayName: string;
   imageUrl: string | undefined;
   onOpenUrl: () => void;
@@ -43,6 +45,7 @@ function StatItem({
 export function SubjectInfoCard({
   subject,
   subjectId,
+  platform,
   displayName,
   imageUrl,
   onOpenUrl,
@@ -119,22 +122,19 @@ export function SubjectInfoCard({
                 <div className="flex items-center gap-1 shrink-0">
                   <FavoriteButton
                     subject={subject}
+                    platform={platform}
                     showLabel={false}
                     getFavoriteStatusUseCase={getFavoriteStatusUseCase}
                     addFavoriteUseCase={addFavoriteUseCase}
                     removeFavoriteUseCase={removeFavoriteUseCase}
                   />
-                  <a
-                    href={`https://bgm.tv/subject/${subject.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2.5 py-1 rounded-md hover:bg-accent"
-                    title={`在 Bangumi 打开: ${displayName}`}
+                  <Button
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2.5 py-1 rounded-md hover:bg-accent cursor-pointer"
                     onClick={handleOpenUrl}
                   >
                     <Globe className="h-3.5 w-3.5" />
                     <span>详情</span>
-                  </a>
+                  </Button>
                 </div>
               )}
             </div>

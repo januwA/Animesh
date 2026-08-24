@@ -9,6 +9,7 @@ import type {
   AnimeSubject,
 } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
+import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseAnilistSubjectDetailDeps } from "./useAnilistSubjectDetail";
 import { useAnilistSubjectDetail } from "./useAnilistSubjectDetail";
@@ -80,6 +81,8 @@ const makeDeps = (
   getAnilistPersonsUseCase: { execute: vi.fn().mockResolvedValue([]) },
   getAnilistCharactersUseCase: { execute: vi.fn().mockResolvedValue([]) },
   openUrlUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
+  setTorrentSubjectUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
+  clearTorrentSubjectUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
   ...overrides,
 });
 
@@ -111,7 +114,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "characters" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "characters",
+      },
       deps,
     );
 
@@ -137,7 +146,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -154,7 +169,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
 
   it("应该派生 displayName / imageUrl", async () => {
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "summary",
+      },
       makeDeps(),
     );
 
@@ -178,7 +199,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "staff" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "staff",
+      },
       deps,
     );
 
@@ -196,7 +223,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
 
   it("点击剧集时应该跳转到主页搜索", async () => {
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "summary",
+      },
       makeDeps(),
     );
 
@@ -220,7 +253,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -243,7 +282,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -261,7 +306,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
       openUrlUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -283,7 +334,13 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
       },
     });
     const { result } = await renderPage(
-      { subjectId: 123, page: 1, activeTab: "summary" },
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [],
+        activeTab: "summary",
+      },
       deps,
     );
 
@@ -293,5 +350,57 @@ describe("useAnilistSubjectDetail Anilist 条目详情 hook", () => {
     expect(result.current.info.subjectQuery.error?.message).toBe(
       "Subject API Error",
     );
+  });
+
+  it("应该暴露资源绑定状态并支持绑定与解绑", async () => {
+    const boundTorrent: TorrentStatusInfo = {
+      info_hash: NonEmptyStringSchema.parse("abc123"),
+      name: NonEmptyStringSchema.parse("测试资源"),
+      progress_bytes: 100,
+      total_bytes: 100,
+      finished: true,
+      download_speed_bytes_per_sec: 0,
+      upload_speed_bytes_per_sec: 0,
+      paused: false,
+      peers_connected: 0,
+      peers_total: 0,
+      trackers: [],
+      subject_id: 123,
+      subject_name: NonEmptyStringSchema.parse("测试动漫"),
+      subject_platform: "anilist",
+    };
+    const deps = makeDeps();
+    const { result } = await renderPage(
+      {
+        subjectId: 123,
+        page: 1,
+        platform: "anilist",
+        torrents: [boundTorrent],
+        activeTab: "resources",
+      },
+      deps,
+    );
+
+    await waitFor(() => {
+      expect(result.current.resources.boundTorrents).toHaveLength(1);
+    });
+    expect(result.current.resources.boundResourcesCount).toBe(1);
+    expect(result.current.resources.unboundTorrents).toHaveLength(0);
+
+    await act(async () => {
+      result.current.resources.handleBind("new_hash");
+    });
+    await waitFor(() => {
+      expect(deps.setTorrentSubjectUseCase.execute).toHaveBeenCalled();
+    });
+
+    await act(async () => {
+      result.current.resources.handleUnbind(
+        NonEmptyStringSchema.parse("abc123"),
+      );
+    });
+    await waitFor(() => {
+      expect(deps.clearTorrentSubjectUseCase.execute).toHaveBeenCalled();
+    });
   });
 });

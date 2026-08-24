@@ -3,13 +3,14 @@ import { useState } from "react";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
-import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { Button } from "@/presentation/components/ui/button";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 
 interface FavoriteButtonProps {
   subject: AnimeSubject;
+  platform: AnimePlatform;
   showLabel?: boolean;
   getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;
   addFavoriteUseCase: Pick<AddFavoriteUseCase, "execute">;
@@ -18,14 +19,15 @@ interface FavoriteButtonProps {
 
 export function FavoriteButton({
   subject,
+  platform,
   showLabel = true,
   getFavoriteStatusUseCase,
   addFavoriteUseCase,
   removeFavoriteUseCase,
 }: FavoriteButtonProps) {
   const { data, loading, refetch } = useQuery(
-    () => getFavoriteStatusUseCase.execute(subject.id),
-    [getFavoriteStatusUseCase, subject.id],
+    () => getFavoriteStatusUseCase.execute(subject.id, platform),
+    [getFavoriteStatusUseCase, subject.id, platform],
     {
       onSuccess: () => setOptimistic(null),
     },
@@ -43,17 +45,19 @@ export function FavoriteButton({
     if (next) {
       await addFavoriteUseCase.execute({
         subjectId: subject.id,
+        platform,
         name: subject.name,
         imageUrl: subject.image,
       });
       addItem({
         subjectId: subject.id,
+        platform,
         name: subject.name,
         imageUrl: subject.image,
       });
     } else {
-      await removeFavoriteUseCase.execute(subject.id);
-      removeItem(subject.id);
+      await removeFavoriteUseCase.execute(subject.id, platform);
+      removeItem(subject.id, platform);
     }
     refetch();
   };

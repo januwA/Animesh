@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
-import type { UseSubjectResourcesDeps } from "./useSubjectResources";
-import { useSubjectResources } from "./useSubjectResources";
+import type { UseSubjectResourcesDeps } from "@/presentation/hooks/useSubjectResources";
+import { useSubjectResources } from "@/presentation/hooks/useSubjectResources";
 
 const makeTorrent = (
   overrides: Partial<TorrentStatusInfo>,
@@ -45,7 +45,12 @@ const renderResources = (
   const hook = renderHook(
     () =>
       useSubjectResources(
-        { subjectId: 123, torrents, subjectName: "测试动漫" },
+        {
+          subjectId: 123,
+          platform: "bangumi",
+          torrents,
+          subjectName: "测试动漫",
+        },
         deps,
       ),
     { wrapper },
@@ -80,6 +85,7 @@ describe("useSubjectResources 资源绑定 hook", () => {
     expect(deps.setTorrentSubjectUseCase.execute).toHaveBeenCalledWith({
       infoHash: NonEmptyStringSchema.parse("hash-1"),
       subjectId: 123,
+      platform: "bangumi",
       subjectName: NonEmptyStringSchema.parse("测试动漫"),
     });
     expect(toast.success).toHaveBeenCalledWith("已绑定下载资源");
@@ -110,6 +116,7 @@ describe("useSubjectResources 资源绑定 hook", () => {
     });
     expect(deps.clearTorrentSubjectUseCase.execute).toHaveBeenCalledWith(
       NonEmptyStringSchema.parse("hash-1"),
+      "bangumi",
     );
     expect(toast.success).toHaveBeenCalledWith("已解除绑定");
   });

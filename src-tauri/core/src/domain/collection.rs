@@ -7,6 +7,7 @@ use crate::error::CoreError;
 #[derive(Debug, Clone, Serialize, FromRow, PartialEq)]
 pub struct CollectionRecord {
     pub subject_id: i64,
+    pub platform: String,
     pub name: String,
     pub image_url: Option<String>,
     pub added_at: i64,
@@ -15,6 +16,7 @@ pub struct CollectionRecord {
 /// 新增收藏所需的字段，added_at 由仓储填充。
 pub struct NewCollectionItem {
     pub subject_id: i64,
+    pub platform: String,
     pub name: String,
     pub image_url: Option<String>,
 }
@@ -23,7 +25,7 @@ pub struct NewCollectionItem {
 #[async_trait::async_trait]
 pub trait CollectionRepository: Send + Sync {
     async fn list(&self) -> Result<Vec<CollectionRecord>, CoreError>;
-    async fn is_favorited(&self, subject_id: i64) -> Result<bool, CoreError>;
+    async fn is_favorited(&self, subject_id: i64, platform: &str) -> Result<bool, CoreError>;
     async fn add(&self, item: NewCollectionItem) -> Result<(), CoreError>;
-    async fn remove(&self, subject_id: i64) -> Result<(), CoreError>;
+    async fn remove(&self, subject_id: i64, platform: &str) -> Result<(), CoreError>;
 }

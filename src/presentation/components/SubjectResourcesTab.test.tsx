@@ -10,7 +10,7 @@ import { vi } from "vitest";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
-import { SubjectResourcesTab } from "./SubjectResourcesTab";
+import { SubjectResourcesTab } from "@/presentation/components/SubjectResourcesTab";
 
 const currentLocation = {
   current: null as { pathname: string; search: string } | null,

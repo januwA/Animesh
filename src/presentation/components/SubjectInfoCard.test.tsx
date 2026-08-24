@@ -24,6 +24,7 @@ const renderCard = async (
     <SubjectInfoCard
       subject={subject}
       subjectId={123}
+      platform="bangumi"
       displayName={options.displayName ?? "测试动漫标题"}
       imageUrl={options.imageUrl}
       onOpenUrl={vi.fn()}

@@ -8,6 +8,7 @@ import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { StaffSection } from "@/presentation/components/StaffSection";
 import { SubjectInfoCard } from "@/presentation/components/SubjectInfoCard";
+import { SubjectResourcesTab } from "@/presentation/components/SubjectResourcesTab";
 import { SummarySection } from "@/presentation/components/SummarySection";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Card, CardContent } from "@/presentation/components/ui/card";
@@ -18,7 +19,6 @@ import {
   TabsTrigger,
 } from "@/presentation/components/ui/tabs";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
-import { SubjectResourcesTab } from "./SubjectResourcesTab";
 import { useSubjectDetail } from "./useSubjectDetail";
 
 const subjectParamsSchema = z.object({
@@ -88,7 +88,7 @@ function SubjectDetailView({
   const [activeTab, setActiveTab] = useState("summary");
 
   const detail = useSubjectDetail(
-    { subjectId, page, torrents, activeTab },
+    { subjectId, page, platform: "bangumi", torrents, activeTab },
     {
       getBangumiSubjectUseCase,
       getBangumiEpisodesUseCase,
@@ -118,6 +118,7 @@ function SubjectDetailView({
       <SubjectInfoCard
         subject={detail.info.subject}
         subjectId={subjectId}
+        platform="bangumi"
         displayName={detail.info.displayName}
         imageUrl={detail.info.imageUrl}
         onOpenUrl={detail.info.handleOpenUrl}

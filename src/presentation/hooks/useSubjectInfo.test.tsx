@@ -44,9 +44,12 @@ const renderInfo = (
       {children}
     </MemoryRouter>
   );
-  return renderHook(() => useSubjectInfo({ subjectId: 123 }, deps), {
-    wrapper,
-  });
+  return renderHook(
+    () => useSubjectInfo({ subjectId: 123, platform: "bangumi" }, deps),
+    {
+      wrapper,
+    },
+  );
 };
 
 describe("useSubjectInfo 条目信息 hook", () => {

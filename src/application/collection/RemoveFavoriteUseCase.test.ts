@@ -11,10 +11,10 @@ describe("RemoveFavoriteUseCase 移除收藏", () => {
     vi.resetAllMocks();
   });
 
-  it("应该使用 subjectId 调用 repo.remove()", async () => {
+  it("应该使用 subjectId 和 platform 调用 repo.remove()", async () => {
     const useCase = new RemoveFavoriteUseCase(mockRepo);
-    await useCase.execute(101);
+    await useCase.execute(101, "bangumi");
 
-    expect(mockRepo.remove).toHaveBeenCalledWith(101);
+    expect(mockRepo.remove).toHaveBeenCalledWith(101, "bangumi");
   });
 });

@@ -75,11 +75,19 @@ describe("useCollectionsPage 收藏页面 hook", () => {
   it("store 已有缓存时应该立即返回缓存，并后台刷新覆盖 store", async () => {
     const cachedItem = {
       subjectId: 101,
+      platform: "bangumi" as const,
       name: "缓存动画",
       imageUrl: null,
       addedAt: 1,
     };
-    const freshItems = [{ subjectId: 102, name: "新动画", imageUrl: null }];
+    const freshItems = [
+      {
+        subjectId: 102,
+        platform: "bangumi" as const,
+        name: "新动画",
+        imageUrl: null,
+      },
+    ];
     useCollectionsStore.getState().setItems([cachedItem]);
     const deps = makeDeps({
       getCollectionsUseCase: {
@@ -96,7 +104,7 @@ describe("useCollectionsPage 收藏页面 hook", () => {
     });
   });
 
-  it("handleItemClick 应该导航到 subject 页面并传递名称与封面", async () => {
+  it("handleItemClick 应该根据 platform 导航到对应详情页面", async () => {
     const deps = makeDeps();
     const { result } = renderUseCollectionsPage(deps);
 
@@ -107,14 +115,41 @@ describe("useCollectionsPage 收藏页面 hook", () => {
     act(() => {
       result.current.handleItemClick({
         subjectId: 101,
+        platform: "bangumi",
         name: "测试动画",
         imageUrl: null,
+        addedAt: 1,
       });
     });
 
     expect(lastNavigation.current?.pathname).toBe("/subject/101");
     expect(lastNavigation.current?.state).toEqual({
       name: "测试动画",
+      imageUrl: null,
+    });
+  });
+
+  it("handleItemClick anilist 平台应该导航到 anilist 详情页面", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseCollectionsPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual([]);
+    });
+
+    act(() => {
+      result.current.handleItemClick({
+        subjectId: 202,
+        platform: "anilist",
+        name: "Anilist动画",
+        imageUrl: null,
+        addedAt: 1,
+      });
+    });
+
+    expect(lastNavigation.current?.pathname).toBe("/anilist/subject/202");
+    expect(lastNavigation.current?.state).toEqual({
+      name: "Anilist动画",
       imageUrl: null,
     });
   });

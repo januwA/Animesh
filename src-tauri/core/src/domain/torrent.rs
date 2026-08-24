@@ -35,12 +35,15 @@ pub struct TorrentStatusInfo {
     pub subject_id: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subject_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject_platform: Option<String>,
 }
 
-/// 下载资源与 Bangumi 条目的绑定信息。
+/// 下载资源与条目的绑定信息。
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SubjectBinding {
     pub subject_id: u64,
+    pub platform: String,
     pub subject_name: String,
 }
 
@@ -70,13 +73,16 @@ pub trait TorrentRepository: Send + Sync {
 /// 下载资源与条目绑定关系的仓储。
 #[async_trait]
 pub trait SubjectBindingRepository: Send + Sync {
-    async fn get(&self, info_hash: &str) -> Option<SubjectBinding>;
+    async fn get(&self, info_hash: &str, platform: &str) -> Option<SubjectBinding>;
 
-    /// 绑定下载资源到 Bangumi 条目。已存在同名绑定时会覆盖。
+    /// 绑定下载资源到条目。已存在同平台绑定时会覆盖。
     async fn set(&self, info_hash: &str, binding: SubjectBinding);
 
-    /// 解除下载资源与条目的绑定。
-    async fn clear(&self, info_hash: &str);
+    /// 解除下载资源与指定平台条目的绑定。
+    async fn clear(&self, info_hash: &str, platform: &str);
+
+    /// 解除下载资源与所有平台条目的绑定（删除种子时调用）。
+    async fn clear_all(&self, info_hash: &str);
 }
 
 pub fn format_hash(bytes: &[u8; 20]) -> String {

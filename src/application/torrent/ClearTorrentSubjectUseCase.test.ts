@@ -15,7 +15,7 @@ describe("ClearTorrentSubjectUseCase 清除条目关联", () => {
   it("应该正确调用 repository 的 clearTorrentSubject 方法", async () => {
     const useCase = new ClearTorrentSubjectUseCase(mockRepo);
     vi.mocked(mockRepo.clearTorrentSubject).mockResolvedValueOnce(undefined);
-    await useCase.execute(NonEmptyStringSchema.parse("123"));
-    expect(mockRepo.clearTorrentSubject).toHaveBeenCalledWith("123");
+    await useCase.execute(NonEmptyStringSchema.parse("123"), "bangumi");
+    expect(mockRepo.clearTorrentSubject).toHaveBeenCalledWith("123", "bangumi");
   });
 });

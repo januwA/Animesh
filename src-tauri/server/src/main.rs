@@ -175,7 +175,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/torrents/:hash/resume", post(torrent_resume_handler))
         .route("/torrents/:hash/subject", put(torrent_set_subject_handler))
         .route(
-            "/torrents/:hash/subject",
+            "/torrents/:hash/subject/:platform",
             delete(torrent_clear_subject_handler),
         )
         .route("/torrents/:hash", delete(torrent_delete_handler))
@@ -205,7 +205,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/collections", get(collection_get_all_handler))
         .route("/collections", put(collection_add_handler))
         .route(
-            "/collections/:subject_id",
+            "/collections/:platform/:subject_id",
             delete(collection_remove_handler),
         )
         .route("/ai/chat-request", post(ai_chat_request_handler))
@@ -352,6 +352,7 @@ struct DeleteQuery {
 #[derive(serde::Deserialize)]
 struct SetSubjectInput {
     subject_id: u64,
+    platform: String,
     subject_name: String,
 }
 
@@ -362,18 +363,23 @@ async fn torrent_set_subject_handler(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
         .torrent_manager
-        .set_subject_binding(&info_hash, payload.subject_id, payload.subject_name)
+        .set_subject_binding(
+            &info_hash,
+            payload.subject_id,
+            payload.platform,
+            payload.subject_name,
+        )
         .await;
     Ok(StatusCode::OK)
 }
 
 async fn torrent_clear_subject_handler(
     State(state): State<Arc<AppState>>,
-    Path(info_hash): Path<String>,
+    Path((info_hash, platform)): Path<(String, String)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
         .torrent_manager
-        .clear_subject_binding(&info_hash)
+        .clear_subject_binding(&info_hash, &platform)
         .await;
     Ok(StatusCode::OK)
 }
@@ -528,6 +534,7 @@ struct CollectionAddInput {
     subject_id: i64,
     name: String,
     image_url: Option<String>,
+    platform: String,
 }
 
 async fn collection_add_handler(
@@ -538,6 +545,7 @@ async fn collection_add_handler(
         .collection_service
         .add(animesh_core::domain::collection::NewCollectionItem {
             subject_id: payload.subject_id,
+            platform: payload.platform,
             name: payload.name,
             image_url: payload.image_url,
         })
@@ -548,11 +556,11 @@ async fn collection_add_handler(
 
 async fn collection_remove_handler(
     State(state): State<Arc<AppState>>,
-    Path(subject_id): Path<i64>,
+    Path((platform, subject_id)): Path<(String, i64)>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     state
         .collection_service
-        .remove(subject_id)
+        .remove(subject_id, &platform)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)

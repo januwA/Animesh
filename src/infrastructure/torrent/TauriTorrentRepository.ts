@@ -1,6 +1,7 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import type { Context } from "ajanuw-context";
 import { z } from "zod";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import { commands } from "@/generated/tauri-commands";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
@@ -134,17 +135,22 @@ export class TauriTorrentRepository implements TorrentRepository {
   async setTorrentSubject(
     infoHash: string,
     subject_id: number,
+    platform: AnimePlatform,
     subject_name: string,
   ): Promise<void> {
     return invoke<void>(commands.torrent_set_subject, {
       infoHash,
       subjectId: subject_id,
+      platform,
       subjectName: subject_name,
     });
   }
 
-  async clearTorrentSubject(infoHash: string): Promise<void> {
-    return invoke<void>(commands.torrent_clear_subject, { infoHash });
+  async clearTorrentSubject(
+    infoHash: string,
+    platform: AnimePlatform,
+  ): Promise<void> {
+    return invoke<void>(commands.torrent_clear_subject, { infoHash, platform });
   }
 
   async subscribeTorrents(

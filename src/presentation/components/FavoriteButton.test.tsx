@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
-import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { FavoriteButton } from "@/presentation/components/FavoriteButton";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 import { resetAppStores } from "@/test/store-reset";
@@ -23,10 +23,14 @@ function createDeps(overrides: Partial<FavoriteDeps> = {}): FavoriteDeps {
   };
 }
 
-function renderButton(deps: FavoriteDeps = createDeps()) {
+function renderButton(
+  deps: FavoriteDeps = createDeps(),
+  platform: AnimePlatform = "bangumi",
+) {
   return render(
     <FavoriteButton
       subject={mockSubject}
+      platform={platform}
       getFavoriteStatusUseCase={deps.getFavoriteStatusUseCase}
       addFavoriteUseCase={deps.addFavoriteUseCase}
       removeFavoriteUseCase={deps.removeFavoriteUseCase}
@@ -87,6 +91,7 @@ describe("FavoriteButton 收藏按钮", () => {
 
     expect(useCollectionsStore.getState().items[0]).toMatchObject({
       subjectId: mockSubject.id,
+      platform: "bangumi",
       name: mockSubject.name,
       imageUrl: mockSubject.image,
     });
@@ -96,6 +101,7 @@ describe("FavoriteButton 收藏按钮", () => {
     useCollectionsStore.getState().setItems([
       {
         subjectId: mockSubject.id,
+        platform: "bangumi",
         name: mockSubject.name,
         imageUrl: mockSubject.image,
         addedAt: 1,

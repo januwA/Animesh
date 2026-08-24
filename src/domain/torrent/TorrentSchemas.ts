@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AnimePlatformSchema } from "../anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "../common/NonEmptyString";
 
 export const SearchResultItemSchema = z.object({
@@ -35,6 +36,7 @@ export const TorrentStatusInfoSchema = z.object({
   trackers: z.array(z.string()).default([]),
   subject_id: z.number().optional(),
   subject_name: NonEmptyStringSchema.optional(),
+  subject_platform: AnimePlatformSchema.optional(),
 });
 
 export const SubtitleTrackInfoSchema = z.object({
