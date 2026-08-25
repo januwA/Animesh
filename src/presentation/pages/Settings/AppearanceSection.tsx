@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
+import { Switch } from "@/presentation/components/ui/switch";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -20,6 +21,8 @@ export interface AppearanceSectionProps {
   onThemeChange: (theme: string) => void;
   accent: AccentId;
   onAccentChange: (accent: AccentId) => void;
+  showWallpaper: boolean;
+  onShowWallpaperChange: (show: boolean) => void;
 }
 
 export function AppearanceSection({
@@ -27,6 +30,8 @@ export function AppearanceSection({
   onThemeChange,
   accent,
   onAccentChange,
+  showWallpaper,
+  onShowWallpaperChange,
 }: AppearanceSectionProps) {
   return (
     <Card className="ani-card">
@@ -80,6 +85,17 @@ export function AppearanceSection({
               );
             })}
           </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-muted-foreground font-medium">
+            显示背景壁纸
+          </span>
+          <Switch
+            aria-label="显示背景壁纸"
+            checked={showWallpaper}
+            onCheckedChange={onShowWallpaperChange}
+          />
         </div>
       </CardContent>
     </Card>

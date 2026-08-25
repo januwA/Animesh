@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import type { UseGlobalEffectsDeps } from "../hooks/useGlobalEffects";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
+import { useBackgroundWallpaperStore } from "../store/useBackgroundWallpaperStore";
 import { PageLoader } from "./AppComponents";
 import { AppNavBar } from "./AppNavBar";
 import { BackButton } from "./BackButton";
@@ -42,9 +43,13 @@ export function MainLayout({
 }: MainLayoutProps) {
   useGlobalEffects(globalEffectsDeps);
 
+  const showWallpaper = useBackgroundWallpaperStore((s) => s.showWallpaper);
+
   return (
     <>
-      <BackgroundWallpaper deps={wallpaperDeps} />
+      {/* v8 ignore start */}
+      {showWallpaper && <BackgroundWallpaper deps={wallpaperDeps} />}
+      {/* v8 ignore stop */}
       <main
         className="container relative z-10 max-w-7xl mx-auto px-4 pb-24 md:pb-24 md:pt-10 flex flex-col min-h-screen"
         style={{

@@ -2,6 +2,7 @@ import { useTheme } from "next-themes";
 import { useBlocker } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import { useAccentTheme } from "@/presentation/hooks/useAccentTheme";
+import { useBackgroundWallpaperStore } from "@/presentation/store/useBackgroundWallpaperStore";
 import { AiSettingsSection } from "./AiSettingsSection";
 import { AppearanceSection } from "./AppearanceSection";
 import { CacheSettingsSection } from "./CacheSettingsSection";
@@ -17,6 +18,12 @@ import { useSettingsPage } from "./useSettingsPage";
 export default function Settings() {
   const { theme, setTheme } = useTheme();
   const { accent, setAccent } = useAccentTheme();
+  const showWallpaper = useBackgroundWallpaperStore(
+    (state) => state.showWallpaper,
+  );
+  const setShowWallpaper = useBackgroundWallpaperStore(
+    (state) => state.setShowWallpaper,
+  );
   const {
     getSettingsUseCase,
     getCurrentVersionUseCase,
@@ -114,6 +121,8 @@ export default function Settings() {
           onThemeChange={setTheme}
           accent={accent}
           onAccentChange={setAccent}
+          showWallpaper={showWallpaper}
+          onShowWallpaperChange={setShowWallpaper}
         />
       </form>
 

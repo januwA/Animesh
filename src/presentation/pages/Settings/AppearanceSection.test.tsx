@@ -10,6 +10,8 @@ const makeProps = (
   onThemeChange: vi.fn(),
   accent: "indigo" as AccentId,
   onAccentChange: vi.fn(),
+  showWallpaper: false,
+  onShowWallpaperChange: vi.fn(),
   ...overrides,
 });
 
@@ -61,5 +63,23 @@ describe("AppearanceSection 外观设置区块", () => {
     fireEvent.click(screen.getByRole("button", { name: "玫瑰" }));
 
     expect(onAccentChange).toHaveBeenCalledWith("rose");
+  });
+
+  it("应该显示壁纸开关并在切换时触发回调", () => {
+    const onShowWallpaperChange = vi.fn();
+    render(
+      <AppearanceSection
+        {...makeProps({ showWallpaper: true, onShowWallpaperChange })}
+      />,
+    );
+
+    const wallpaperSwitch = screen.getByRole("switch", {
+      name: "显示背景壁纸",
+    });
+    expect(wallpaperSwitch).toBeChecked();
+
+    fireEvent.click(wallpaperSwitch);
+
+    expect(onShowWallpaperChange).toHaveBeenCalledWith(false);
   });
 });
