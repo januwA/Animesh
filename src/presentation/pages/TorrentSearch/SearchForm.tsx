@@ -39,7 +39,7 @@ export function SearchForm({
   setSearchEngine,
 }: SearchFormProps) {
   return (
-    <section className="mx-auto w-full mb-8">
+    <section className="mx-auto w-full">
       <form
         onSubmit={onSubmit}
         className="relative flex items-center bg-card/40 backdrop-blur-md rounded-xl border border-border shadow-lg p-1 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20 transition-all duration-300"

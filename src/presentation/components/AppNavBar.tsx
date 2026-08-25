@@ -94,65 +94,63 @@ export function AppNavBar() {
   );
 
   return (
-    <header className="flex flex-col items-center">
-      <nav
-        data-testid="app-navbar"
-        className={cn(
-          "flex justify-around p-2 rounded-2xl shadow-2xl backdrop-blur-xl fixed bottom-5 left-4 right-4 z-50",
-          "bg-card/90 border border-border",
-          "md:bottom-6 md:left-1/2 md:-translate-x-1/2 md:w-auto md:justify-center md:gap-1 md:px-2 md:py-1.5 md:rounded-2xl md:shadow-xl md:backdrop-blur-2xl",
-        )}
-      >
-        {primaryItems.map((item) => (
-          <NavItemLink
-            key={item.path}
-            item={item}
-            isActive={location.pathname === item.path}
-            badgeCount={item.path === "/downloads" ? activeCount : 0}
-          />
-        ))}
+    <nav
+      data-testid="app-navbar"
+      className={cn(
+        "flex justify-around p-2 rounded-2xl shadow-2xl backdrop-blur-xl fixed bottom-5 left-4 right-4 z-50",
+        "bg-card/90 border border-border",
+        "md:bottom-6 md:left-1/2 md:-translate-x-1/2 md:w-auto md:justify-center md:gap-1 md:px-2 md:py-1.5 md:rounded-2xl md:shadow-xl md:backdrop-blur-2xl",
+      )}
+    >
+      {primaryItems.map((item) => (
+        <NavItemLink
+          key={item.path}
+          item={item}
+          isActive={location.pathname === item.path}
+          badgeCount={item.path === "/downloads" ? activeCount : 0}
+        />
+      ))}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label="更多"
-              className={cn(
-                navItemBaseClass,
-                navItemStateClass(isMoreActive),
-                "cursor-pointer",
-              )}
-            >
-              {isMoreActive && (
-                <span className="absolute inset-0 bg-primary/10 rounded-xl blur-xs -z-10 md:hidden animate-fade-in" />
-              )}
-              <span>更多</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" side="top" sideOffset={10}>
-            <DropdownMenuGroup>
-              {moreItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <DropdownMenuItem key={item.path} asChild>
-                    <Link
-                      to={item.path}
-                      className={cn(
-                        "gap-2 cursor-pointer",
-                        isActive && "bg-accent text-accent-foreground",
-                      )}
-                    >
-                      <Icon />
-                      {item.label}
-                    </Link>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </nav>
-    </header>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label="更多"
+            className={cn(
+              navItemBaseClass,
+              navItemStateClass(isMoreActive),
+              "cursor-pointer",
+            )}
+          >
+            {isMoreActive && (
+              <span className="absolute inset-0 bg-primary/10 rounded-xl blur-xs -z-10 md:hidden animate-fade-in" />
+            )}
+            <span>更多</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" side="top" sideOffset={10}>
+          <DropdownMenuGroup>
+            {moreItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <DropdownMenuItem key={item.path} asChild>
+                  <Link
+                    to={item.path}
+                    className={cn(
+                      "gap-2 cursor-pointer",
+                      isActive && "bg-accent text-accent-foreground",
+                    )}
+                  >
+                    <Icon />
+                    {item.label}
+                  </Link>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </nav>
   );
 }

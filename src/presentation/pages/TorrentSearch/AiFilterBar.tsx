@@ -19,7 +19,7 @@ export function AiFilterBar({
   onSelect,
 }: AiFilterBarProps) {
   return (
-    <div className="mx-auto w-full mb-6 -mt-4 flex items-center justify-end animate-in fade-in duration-200">
+    <div className="mx-auto w-full flex items-center justify-end animate-in fade-in duration-200">
       <div className="flex items-center gap-2 bg-card border border-border backdrop-blur-md px-3 py-1 rounded-lg shadow-sm hover:border-muted-foreground/30 transition-all duration-300">
         <span className="text-[11px] font-medium text-muted-foreground select-none pl-1 flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-primary" />

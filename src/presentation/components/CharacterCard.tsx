@@ -1,6 +1,7 @@
 import { Tv } from "lucide-react";
 import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
 import { LazyImage } from "@/presentation/components/LazyImage";
+import { Badge } from "./ui/badge";
 
 export interface CharacterCardProps {
   character: AnimeCharacter;
@@ -18,7 +19,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
   return (
     <div className="group flex flex-col rounded-xl border border-border bg-card overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-sm">
       {/* Character portrait */}
-      <div className="relative aspect-3/4 bg-linear-to-b from-muted/50 to-muted overflow-hidden">
+      <div className="relative aspect-3/4 overflow-hidden">
         <LazyImage
           src={character.image}
           alt={character.name}
@@ -27,11 +28,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
         />
         {/* Relation badge overlay */}
         {character.relation && (
-          <span
-            className={`absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold rounded-full border`}
-          >
-            {character.relation} {/* style-ignore */}
-          </span>
+          <Badge className="absolute top-2 left-2">{character.relation}</Badge>
         )}
       </div>
 

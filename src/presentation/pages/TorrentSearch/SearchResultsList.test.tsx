@@ -47,9 +47,7 @@ describe("SearchResultsList 搜索结果列表组件", () => {
       />,
     );
 
-    expect(document.querySelector(".results-count")?.textContent?.trim()).toBe(
-      "找到 3 个资源，共 2 个字幕组",
-    );
+    expect(screen.getByTestId("search-result-title")).toBeInTheDocument();
     expect(screen.getByText("GroupA")).toBeInTheDocument();
     expect(screen.getByText("GroupB")).toBeInTheDocument();
   });

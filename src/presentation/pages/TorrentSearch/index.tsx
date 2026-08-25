@@ -53,7 +53,7 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
   });
 
   return (
-    <>
+    <div className="flex flex-col gap-6">
       <SearchForm
         keyword={page.search.searchKeyword}
         setKeyword={page.search.setSearchKeyword}
@@ -128,6 +128,6 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
             showBestAi={page.ai.selectedAiAlias !== "none"}
           />
         )}
-    </>
+    </div>
   );
 }
