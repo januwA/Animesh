@@ -128,10 +128,7 @@ export function SubjectInfoCard({
                     addFavoriteUseCase={addFavoriteUseCase}
                     removeFavoriteUseCase={removeFavoriteUseCase}
                   />
-                  <Button
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2.5 py-1 rounded-md hover:bg-accent cursor-pointer"
-                    onClick={handleOpenUrl}
-                  >
+                  <Button onClick={handleOpenUrl}>
                     <Globe className="h-3.5 w-3.5" />
                     <span>详情</span>
                   </Button>

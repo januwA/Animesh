@@ -77,7 +77,7 @@ export const AnilistCalendarResponseSchema = AnilistResponseSchema.transform(
   (dto) => {
     const schedules = dto.data.Page.airingSchedules;
 
-    // 按星期分组（同番不同集可能在不同天播出，不去重）
+    // 按星期分组，同一天内按 mediaId 去重（同番不同集可能在不同天播出）
     const grouped = new Map<
       number,
       { id: number; name: string; image: string; rating: number }[]
@@ -85,12 +85,14 @@ export const AnilistCalendarResponseSchema = AnilistResponseSchema.transform(
     for (const schedule of schedules) {
       const weekdayId = getLocalWeekday(schedule.airingAt);
       const items = grouped.get(weekdayId) ?? [];
-      items.push({
-        id: schedule.mediaId,
-        name: pickTitle(schedule.media.title),
-        image: pickCoverImage(schedule.media.coverImage),
-        rating: (schedule.media.averageScore ?? 0) / 10,
-      });
+      if (!items.some((item) => item.id === schedule.mediaId)) {
+        items.push({
+          id: schedule.mediaId,
+          name: pickTitle(schedule.media.title),
+          image: pickCoverImage(schedule.media.coverImage),
+          rating: (schedule.media.averageScore ?? 0) / 10,
+        });
+      }
       grouped.set(weekdayId, items);
     }
 

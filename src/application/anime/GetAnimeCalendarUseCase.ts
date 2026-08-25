@@ -15,7 +15,15 @@ export class GetAnimeCalendarUseCase {
       return cached;
     }
     const calendar = await this.animeRepository.getCalendar(ctx);
-    await this.animeCache.setCalendar(ctx, calendar);
-    return calendar;
+    const sorted = calendar.map((day) => ({
+      ...day,
+      items: [...day.items].sort((a, b) => {
+        if (a.rating === 0) return 1;
+        if (b.rating === 0) return -1;
+        return b.rating - a.rating;
+      }),
+    }));
+    await this.animeCache.setCalendar(ctx, sorted);
+    return sorted;
   }
 }
