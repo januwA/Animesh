@@ -18,6 +18,7 @@ import {
   AnilistCharactersResponseSchema,
   AnilistEpisodesResponseSchema,
   AnilistResponseSchema,
+  AnilistSearchResponseSchema,
   AnilistStaffResponseSchema,
   AnilistSubjectResponseSchema,
 } from "./AnilistSchemas";
@@ -110,6 +111,20 @@ query ($id: Int!) {
           image { large }
         }
       }
+    }
+  }
+}
+`;
+
+const SEARCH_MEDIA_QUERY = `
+query ($search: String, $page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo { total }
+    media(search: $search, type: ANIME) {
+      id
+      title { romaji english native userPreferred }
+      coverImage { large medium color }
+      averageScore
     }
   }
 }
@@ -326,10 +341,22 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
-  searchSubjects(
-    _ctx: Context,
-    _params: AnimeSubjectSearchParams,
+  async searchSubjects(
+    ctx: Context,
+    params: AnimeSubjectSearchParams,
   ): Promise<AnimeSubjectSearchResult> {
-    notImplemented("searchSubjects");
+    const page = Math.floor(params.offset / params.limit) + 1;
+    const data = await this.graphqlRequest(ctx, SEARCH_MEDIA_QUERY, {
+      search: params.keyword,
+      page,
+      perPage: params.limit,
+    });
+    const result = AnilistSearchResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Anilist search response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 }

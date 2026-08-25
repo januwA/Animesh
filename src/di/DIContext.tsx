@@ -116,6 +116,7 @@ export interface DIContainer {
   getBangumiCharactersUseCase: GetAnimeCharactersUseCase;
   getBangumiRankedSubjectsUseCase: GetAnimeRankedSubjectsUseCase;
   searchBangumiSubjectsUseCase: SearchAnimeSubjectsUseCase;
+  searchAnilistSubjectsUseCase: SearchAnimeSubjectsUseCase;
   getAnilistSubjectUseCase: GetAnimeSubjectUseCase;
   getAnilistEpisodesUseCase: GetAnimeEpisodesUseCase;
   getAnilistPersonsUseCase: GetAnimePersonsUseCase;
@@ -273,6 +274,9 @@ export function createDefaultDIContainer(): DIContainer {
   const searchBangumiSubjectsUseCase = new SearchAnimeSubjectsUseCase(
     bangumiRepository,
   );
+  const searchAnilistSubjectsUseCase = new SearchAnimeSubjectsUseCase(
+    anilistRepository,
+  );
   const iptvCache = new BrowserIptvCache(cacheStore);
   const iptvRepository = new HttpIptvRepository(httpClient);
   const getIptvCountriesUseCase = new GetIptvCountriesUseCase(
@@ -342,6 +346,7 @@ export function createDefaultDIContainer(): DIContainer {
     getBangumiCharactersUseCase,
     getBangumiRankedSubjectsUseCase,
     searchBangumiSubjectsUseCase,
+    searchAnilistSubjectsUseCase,
     getAnilistSubjectUseCase,
     getAnilistEpisodesUseCase,
     getAnilistPersonsUseCase,

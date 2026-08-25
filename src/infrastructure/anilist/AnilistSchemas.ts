@@ -259,6 +259,38 @@ export const AnilistStaffResponseSchema = z
     }));
   });
 
+// ── 搜索 → AnimeSubjectSearchResult (searchSubjects) ─────────────────────
+
+const AnilistSearchMediaSchema = z.object({
+  id: z.number(),
+  title: AnilistTitleSchema,
+  coverImage: AnilistCoverImageSchema,
+  averageScore: z.number().nullable().optional(),
+});
+
+export const AnilistSearchResponseSchema = z
+  .object({
+    data: z.object({
+      Page: z.object({
+        pageInfo: z.object({ total: z.number() }),
+        media: z.array(AnilistSearchMediaSchema),
+      }),
+    }),
+  })
+  .transform((dto) => ({
+    items: dto.data.Page.media.map((m) => ({
+      id: m.id,
+      name: pickTitle(m.title),
+      summary: "",
+      image: pickCoverImage(m.coverImage),
+      rating: (m.averageScore ?? 0) / 10,
+      date: null as string | null,
+      eps: null as number | null,
+      platform: null as string | null,
+    })),
+    total: dto.data.Page.pageInfo.total,
+  }));
+
 // ── 存储 Schema（用于缓存回读校验，与领域形状一致，无需 transform）────────
 
 export const AnilistCalendarItemStoredSchema = z.object({

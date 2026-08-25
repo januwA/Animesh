@@ -6,7 +6,7 @@ import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { SubjectSearchForm } from "@/presentation/components/SubjectSearchForm";
 import { SubjectSearchLoading } from "@/presentation/components/SubjectSearchLoading";
 import { SubjectSearchResults } from "@/presentation/components/SubjectSearchResults";
-import { useBangumiSearchPage } from "./useBangumiSearchPage";
+import { useAnilistSearchPage } from "./useAnilistSearchPage";
 
 const keywordParamSchema = z
   .string()
@@ -14,7 +14,7 @@ const keywordParamSchema = z
   .min(1, "搜索关键词不能为空")
   .optional();
 
-export default function BangumiSearch() {
+export default function AnilistSearch() {
   const [searchParams] = useSearchParams();
   const keywordResult = keywordParamSchema.safeParse(
     searchParams.get("keyword") ?? undefined,
@@ -26,24 +26,24 @@ export default function BangumiSearch() {
     );
   }
 
-  return <BangumiSearchView keywordParam={keywordResult.data} />;
+  return <AnilistSearchView keywordParam={keywordResult.data} />;
 }
 
-function BangumiSearchView({
+function AnilistSearchView({
   keywordParam,
 }: {
   keywordParam: string | undefined;
 }) {
-  const { searchBangumiSubjectsUseCase } = useDI();
-  const page = useBangumiSearchPage(keywordParam, {
-    searchBangumiSubjectsUseCase,
+  const { searchAnilistSubjectsUseCase } = useDI();
+  const page = useAnilistSearchPage(keywordParam, {
+    searchAnilistSubjectsUseCase,
   });
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">动漫搜索</h1>
-        <p className="text-sm text-muted-foreground">搜索 Bangumi 动漫条目</p>
+        <h1 className="text-xl font-semibold">AniList 搜索</h1>
+        <p className="text-sm text-muted-foreground">搜索 AniList 动漫条目</p>
       </div>
 
       <SubjectSearchForm
@@ -51,6 +51,8 @@ function BangumiSearchView({
         setKeyword={page.search.setKeyword}
         loading={page.status.loading}
         onSubmit={page.search.handleSearch}
+        placeholder="输入动漫名称"
+        searchingText="搜索中..."
       />
 
       {page.status.loading ? (

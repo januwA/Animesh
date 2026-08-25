@@ -4,9 +4,15 @@ import { Skeleton } from "@/presentation/components/ui/skeleton";
 
 interface SubjectSearchLoadingProps {
   onCancel: () => void;
+  loadingText?: string;
+  cancelText?: string;
 }
 
-export function SubjectSearchLoading({ onCancel }: SubjectSearchLoadingProps) {
+export function SubjectSearchLoading({
+  onCancel,
+  loadingText = "正在搜索条目...",
+  cancelText = "取消搜索",
+}: SubjectSearchLoadingProps) {
   return (
     <div className="flex flex-col gap-4" data-testid="subject-search-loading">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -25,7 +31,7 @@ export function SubjectSearchLoading({ onCancel }: SubjectSearchLoadingProps) {
       </div>
       <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        正在搜索条目...
+        {loadingText}
       </div>
       <div className="flex justify-center">
         <Button
@@ -34,7 +40,7 @@ export function SubjectSearchLoading({ onCancel }: SubjectSearchLoadingProps) {
           onClick={onCancel}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
-          取消搜索
+          {cancelText}
         </Button>
       </div>
     </div>

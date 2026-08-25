@@ -8,6 +8,7 @@ const AiSubtitleTranslation = lazy(
   () => import("./pages/AiSubtitleTranslation"),
 );
 const AnilistCalendar = lazy(() => import("./pages/AnilistCalendar"));
+const AnilistSearch = lazy(() => import("./pages/AnilistSearch"));
 const AnilistSubjectDetail = lazy(() => import("./pages/AnilistSubjectDetail"));
 const BangumiSearch = lazy(() => import("./pages/BangumiSearch"));
 const Calendar = lazy(() => import("./pages/Calendar"));
@@ -75,6 +76,10 @@ export const routes: RouteObject[] = [
           {
             path: "search",
             element: <BangumiSearch />,
+          },
+          {
+            path: "anilist/search",
+            element: <AnilistSearch />,
           },
           {
             path: "live",

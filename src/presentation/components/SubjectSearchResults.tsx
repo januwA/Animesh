@@ -14,6 +14,8 @@ interface SubjectSearchResultsProps {
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }
 
 export function SubjectSearchResults({
@@ -22,13 +24,15 @@ export function SubjectSearchResults({
   hasMore,
   loadingMore,
   onLoadMore,
+  emptyTitle = "未找到相关条目",
+  emptyDescription = "换个关键词试试",
 }: SubjectSearchResultsProps) {
   if (items.length === 0) {
     return (
       <Empty>
         <EmptyContent>
-          <EmptyTitle>未找到相关条目</EmptyTitle>
-          <EmptyDescription>换个关键词试试</EmptyDescription>
+          <EmptyTitle>{emptyTitle}</EmptyTitle>
+          <EmptyDescription>{emptyDescription}</EmptyDescription>
         </EmptyContent>
       </Empty>
     );

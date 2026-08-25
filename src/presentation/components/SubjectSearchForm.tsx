@@ -8,6 +8,8 @@ interface SubjectSearchFormProps {
   setKeyword: (val: string) => void;
   loading: boolean;
   onSubmit: (e: SubmitEvent) => void;
+  placeholder?: string;
+  searchingText?: string;
 }
 
 export function SubjectSearchForm({
@@ -15,6 +17,8 @@ export function SubjectSearchForm({
   setKeyword,
   loading,
   onSubmit,
+  placeholder = "输入动漫名称",
+  searchingText = "搜索中...",
 }: SubjectSearchFormProps) {
   return (
     <section className="mx-auto w-full mb-4">
@@ -29,7 +33,7 @@ export function SubjectSearchForm({
           className="flex-1 pl-2 md:pl-3 pr-12 py-5 md:py-6 bg-transparent border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base min-w-0"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="输入动漫名称"
+          placeholder={placeholder}
           disabled={loading}
         />
         <Button
@@ -40,7 +44,7 @@ export function SubjectSearchForm({
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-              <span className="hidden md:inline ml-2">搜索中...</span>
+              <span className="hidden md:inline ml-2">{searchingText}</span>
             </>
           ) : (
             <>
