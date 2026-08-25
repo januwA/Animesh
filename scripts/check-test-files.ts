@@ -209,7 +209,7 @@ function main() {
 	if (violations.length > 0) {
 		printViolations(violations);
 		console.error(
-			`\n🛑 校验未通过：发现了 ${violations.length} 处测试文件组织违规。请确保每个源码文件都有同目录同名测试文件，且页面测试不得集中在 index.test.tsx。`,
+			`\n🛑 校验未通过：发现了 ${violations.length} 处测试文件组织违规。请确保每个源码文件都有同目录同名测试文件。`,
 		);
 		process.exit(1);
 	} else {

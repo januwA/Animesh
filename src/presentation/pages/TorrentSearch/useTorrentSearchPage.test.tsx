@@ -10,6 +10,7 @@ import {
   type TorrentSearchEngine,
 } from "@/domain/torrent/TorrentEngines";
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import { useSearchHistoryStore } from "@/presentation/store/searchHistoryStore";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseTorrentSearchPageDeps } from "./useTorrentSearchPage";
 import { useTorrentSearchPage } from "./useTorrentSearchPage";
@@ -270,70 +271,52 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     act(() => result.current.search.performSearch("xxx"));
 
     expect(result.current.searchHistory.history).toEqual(["xxx", "柯南"]);
-    expect(
-      JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
-    ).toEqual(["xxx", "柯南"]);
 
     for (let i = 1; i <= 10; i++) {
       act(() => result.current.search.performSearch(`动漫_${i}`));
     }
     await act(async () => {});
-    const historyList = JSON.parse(
-      localStorage.getItem("animesh_search_history") || "[]",
-    );
-    expect(historyList.length).toBe(12);
-    expect(historyList[0]).toBe("动漫_10");
+    expect(result.current.searchHistory.history).toHaveLength(12);
+    expect(result.current.searchHistory.history[0]).toBe("动漫_10");
   });
 
-  it("应该从 localStorage 初始化历史记录，非法 JSON 降级为空数组", async () => {
-    localStorage.setItem(
-      "animesh_search_history",
-      JSON.stringify(["xxx", "柯南"]),
-    );
+  it("应该从 store 初始化历史记录", async () => {
+    useSearchHistoryStore.setState({ history: ["xxx", "柯南"] });
     const { result } = await renderPage();
     expect(result.current.searchHistory.history).toEqual(["xxx", "柯南"]);
-
-    localStorage.setItem("animesh_search_history", "invalid-json{");
-    const invalid = await renderPage();
-    expect(invalid.result.current.searchHistory.history).toEqual([]);
   });
 
-  it("删除单个历史记录项时更新列表与 localStorage", async () => {
-    localStorage.setItem(
-      "animesh_search_history",
-      JSON.stringify(["xxx", "柯南"]),
-    );
+  it("非法 JSON 降级为空数组", async () => {
+    localStorage.setItem("animesh_search_history", "invalid-json{");
+    const { result } = await renderPage();
+    expect(result.current.searchHistory.history).toEqual([]);
+  });
+
+  it("删除单个历史记录项时更新列表", async () => {
+    useSearchHistoryStore.setState({ history: ["xxx", "柯南"] });
     const { result } = await renderPage();
 
     act(() => result.current.searchHistory.handleDeleteHistory("xxx"));
 
     expect(result.current.searchHistory.history).toEqual(["柯南"]);
-    expect(
-      JSON.parse(localStorage.getItem("animesh_search_history") || "[]"),
-    ).toEqual(["柯南"]);
   });
 
-  it("删除最后一项历史记录时移除 localStorage 键", async () => {
-    localStorage.setItem("animesh_search_history", JSON.stringify(["xxx"]));
+  it("删除最后一项历史记录时清空列表", async () => {
+    useSearchHistoryStore.setState({ history: ["xxx"] });
     const { result } = await renderPage();
 
     act(() => result.current.searchHistory.handleDeleteHistory("xxx"));
 
     expect(result.current.searchHistory.history).toEqual([]);
-    expect(localStorage.getItem("animesh_search_history")).toBeNull();
   });
 
-  it("清空历史记录时清空列表并移除 localStorage 键", async () => {
-    localStorage.setItem(
-      "animesh_search_history",
-      JSON.stringify(["xxx", "柯南"]),
-    );
+  it("清空历史记录时清空列表", async () => {
+    useSearchHistoryStore.setState({ history: ["xxx", "柯南"] });
     const { result } = await renderPage();
 
     act(() => result.current.searchHistory.handleClearHistory());
 
     expect(result.current.searchHistory.history).toEqual([]);
-    expect(localStorage.getItem("animesh_search_history")).toBeNull();
   });
 
   it("复制磁力成功时提示成功", async () => {

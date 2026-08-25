@@ -10,10 +10,10 @@ import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
+import { useSearchHistoryStore } from "@/presentation/store/searchHistoryStore";
 import { useSearchStore } from "@/presentation/store/searchStore";
 
 const SELECTED_AI_ALIAS_KEY = "animesh_selected_ai_alias";
-const SEARCH_HISTORY_KEY = "animesh_search_history";
 
 /** useTorrentSearchPage 的依赖，由调用方（页面组合根）注入 */
 export interface UseTorrentSearchPageDeps {
@@ -42,6 +42,11 @@ export function useTorrentSearchPage(
   const setSearchResults = useSearchStore((s) => s.setSearchResults);
   const searchHasSearched = useSearchStore((s) => s.searchHasSearched);
   const setSearchHasSearched = useSearchStore((s) => s.setSearchHasSearched);
+
+  const history = useSearchHistoryStore((s) => s.history);
+  const addHistory = useSearchHistoryStore((s) => s.addHistory);
+  const deleteHistory = useSearchHistoryStore((s) => s.deleteHistory);
+  const clearHistory = useSearchHistoryStore((s) => s.clearHistory);
 
   const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
     () => localStorage.getItem(SELECTED_AI_ALIAS_KEY) || "none",
@@ -75,15 +80,6 @@ export function useTorrentSearchPage(
     },
   );
 
-  const [history, setHistory] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem(SEARCH_HISTORY_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
-
   const groups = useSearchStore((s) => s.groups);
   const collapsedGroups = useSearchStore((s) => s.collapsedGroups);
   const toggleGroup = useSearchStore((s) => s.toggleGroup);
@@ -106,13 +102,7 @@ export function useTorrentSearchPage(
   const performSearch = useCallback(
     (queryText: string) => {
       setSearchHasSearched(true);
-
-      setHistory((prev) => {
-        const filtered = prev.filter((item) => item !== queryText);
-        const nextHistory = [queryText, ...filtered];
-        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(nextHistory));
-        return nextHistory;
-      });
+      addHistory(queryText);
 
       searchMutation.execute({
         queryText,
@@ -125,6 +115,7 @@ export function useTorrentSearchPage(
       selectedAiAlias,
       searchMutation.execute,
       setSearchHasSearched,
+      addHistory,
     ],
   );
 
@@ -142,20 +133,11 @@ export function useTorrentSearchPage(
   };
 
   const handleDeleteHistory = (item: string) => {
-    setHistory((prev) => {
-      const nextHistory = prev.filter((x) => x !== item);
-      if (nextHistory.length === 0) {
-        localStorage.removeItem(SEARCH_HISTORY_KEY);
-      } else {
-        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(nextHistory));
-      }
-      return nextHistory;
-    });
+    deleteHistory(item);
   };
 
   const handleClearHistory = () => {
-    setHistory([]);
-    localStorage.removeItem(SEARCH_HISTORY_KEY);
+    clearHistory();
   };
 
   const handleCopyMagnet = async (magnet: string) => {
