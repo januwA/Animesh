@@ -5,12 +5,12 @@ import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { useStream } from "@/presentation/hooks/useStream";
 import { formatError } from "@/utils";
 
-interface TorrentStatusContextType {
+export interface TorrentStatusContextType {
   torrents: TorrentStatusInfo[];
   isLoading: boolean;
 }
 
-const TorrentStatusContext = createContext<
+export const TorrentStatusContext = createContext<
   TorrentStatusContextType | undefined
 >(undefined);
 

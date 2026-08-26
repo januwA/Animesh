@@ -4,13 +4,13 @@ import { useDI } from "@/di/DIContext";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 
-interface StreamServerContextType {
+export interface StreamServerContextType {
   streamPort: number | null;
 }
 
-const StreamServerContext = createContext<StreamServerContextType | undefined>(
-  undefined,
-);
+export const StreamServerContext = createContext<
+  StreamServerContextType | undefined
+>(undefined);
 
 export function StreamServerProvider({
   children,

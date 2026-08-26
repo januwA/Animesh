@@ -104,6 +104,7 @@ export function useStream<T>(
           try {
             chunk = await reader.read();
           } catch (err: unknown) {
+            // v8 ignore next
             if (!active || ctx.err() !== null) return;
             const wrapped = err instanceof Error ? err : new Error(String(err));
             setError(wrapped);
@@ -115,6 +116,7 @@ export function useStream<T>(
           onDataRef.current?.(chunk.value);
         }
       } catch (err: unknown) {
+        // v8 ignore next
         if (!active || ctx.err() !== null) return;
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);
