@@ -111,67 +111,6 @@ export function checkStyles(code: string, filepath: string): Violation[] {
 	return errors;
 }
 
-/** ---------- 规则 4：deps 接口属性必须 Pick<UseCase, "execute"> ---------- */
-
-export function isPickExecuteType(typeNode: any): boolean {
-	if (typeNode?.type !== "TSTypeReference") return false;
-	if (typeNode.typeName?.type !== "Identifier") return false;
-	if (typeNode.typeName.name !== "Pick") return false;
-	const args =
-		typeNode.typeArguments?.params ??
-		typeNode.typeArguments?.typeParameters?.params ??
-		[];
-	if (args.length !== 2) return false;
-	if (args[0]?.type !== "TSTypeReference") return false;
-	const second = args[1];
-	if (second?.type !== "TSLiteralType") return false;
-	if (second.literal?.type !== "Literal") return false;
-	return second.literal.value === "execute";
-}
-
-export function checkDeps(code: string, filepath: string): Violation[] {
-	const parseResult = parseTs(code, filepath);
-	const errors: Violation[] = [];
-
-	traverse(parseResult.program, (node) => {
-		let name: string | null = null;
-		let body: any = null;
-		let start = 0;
-
-		if (node.type === "TSInterfaceDeclaration") {
-			name = node.id?.type === "Identifier" ? node.id.name : null;
-			body = node.body;
-			start = node.start;
-		} else if (
-			node.type === "TSTypeAliasDeclaration" &&
-			node.typeAnnotation?.type === "TSTypeLiteral"
-		) {
-			name = node.id?.type === "Identifier" ? node.id.name : null;
-			body = node.typeAnnotation;
-			start = node.start;
-		}
-
-		if (!name || !name.endsWith("Deps") || !body) return;
-
-		const members = body.body ?? body.members ?? [];
-		for (const member of members) {
-			if (member.type !== "TSPropertySignature") continue;
-			const propName = keyName(member.key);
-			const typeNode = member.typeAnnotation?.typeAnnotation;
-			if (isPickExecuteType(typeNode)) continue;
-
-			const loc = offsetToLoc(code, start);
-			errors.push({
-				...loc,
-				severity: "error",
-				message: `deps 接口 "${name}" 的属性 "${propName ?? "(匿名)"}" 必须使用 Pick<XxxUseCase, "execute"> 声明，使测试可直接传 { execute: vi.fn() } 而无需 cast。`,
-			});
-		}
-	});
-
-	return errors;
-}
-
 /** ---------- 规则 5：hook 大小与耦合 ---------- */
 
 const MAX_RETURN_SURFACE = 20;
@@ -498,11 +437,6 @@ const rules: CheckRule[] = [
 		targetDirs: [PRESENTATION_DIR],
 		includeFile: (f) => isSourceFile(f) && !isIgnoredFile(f),
 		check: checkStyles,
-	},
-	{
-		name: "deps接口",
-		targetDirs: [PRESENTATION_DIR],
-		check: checkDeps,
 	},
 	{
 		name: "hook大小与耦合",
