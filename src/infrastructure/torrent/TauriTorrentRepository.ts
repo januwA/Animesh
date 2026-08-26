@@ -153,24 +153,28 @@ export class TauriTorrentRepository implements TorrentRepository {
     return invoke<void>(commands.torrent_clear_subject, { infoHash, platform });
   }
 
-  async subscribeTorrents(
-    onUpdate: (torrents: TorrentStatusInfo[]) => void,
-  ): Promise<() => void> {
-    const channel = new Channel<unknown>((data) => {
-      const result = z.array(TorrentStatusInfoSchema).safeParse(data);
-      if (!result.success) {
-        throw new Error("torrent_subscribe API structure mismatch", {
-          cause: result.error,
-        });
-      }
-      onUpdate(result.data);
-    });
+  async subscribeTorrents(): Promise<ReadableStream<TorrentStatusInfo[]>> {
+    const channel = new Channel<unknown>();
 
     await invoke<void>(commands.torrent_subscribe, {
       onEvent: channel,
     });
 
-    // 订阅贯穿整个应用生命周期，后端 loop 依赖 Channel 关闭自动退出，无需手动取消
-    return () => {};
+    return new ReadableStream<TorrentStatusInfo[]>({
+      start(controller) {
+        channel.onmessage = (data) => {
+          const result = z.array(TorrentStatusInfoSchema).safeParse(data);
+          if (!result.success) {
+            controller.error(
+              new Error("torrent_subscribe API structure mismatch", {
+                cause: result.error,
+              }),
+            );
+            return;
+          }
+          controller.enqueue(result.data);
+        };
+      },
+    });
   }
 }

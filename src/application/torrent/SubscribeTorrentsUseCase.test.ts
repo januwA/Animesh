@@ -11,15 +11,14 @@ describe("SubscribeTorrentsUseCase 订阅任务状态", () => {
     vi.clearAllMocks();
   });
 
-  it("应该把订阅回调透传给 repository 的 subscribeTorrents 方法并返回退订函数", async () => {
-    const unsubscribe = vi.fn();
-    vi.mocked(mockRepo.subscribeTorrents).mockResolvedValueOnce(unsubscribe);
+  it("应该返回 repository 的 ReadableStream", async () => {
+    const mockStream = new ReadableStream();
+    vi.mocked(mockRepo.subscribeTorrents).mockResolvedValueOnce(mockStream);
 
     const useCase = new SubscribeTorrentsUseCase(mockRepo);
-    const onUpdate = vi.fn();
-    const result = await useCase.execute(onUpdate);
+    const result = await useCase.execute();
 
-    expect(mockRepo.subscribeTorrents).toHaveBeenCalledWith(onUpdate);
-    expect(result).toBe(unsubscribe);
+    expect(mockRepo.subscribeTorrents).toHaveBeenCalledOnce();
+    expect(result).toBe(mockStream);
   });
 });

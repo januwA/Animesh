@@ -45,7 +45,5 @@ export interface TorrentRepository {
     infoHash: NonEmptyString,
     platform: AnimePlatform,
   ): Promise<void>;
-  subscribeTorrents(
-    onUpdate: (torrents: TorrentStatusInfo[]) => void,
-  ): Promise<() => void>;
+  subscribeTorrents(): Promise<ReadableStream<TorrentStatusInfo[]>>;
 }

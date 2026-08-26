@@ -171,29 +171,34 @@ export class HttpTorrentRepository implements TorrentRepository {
     );
   }
 
-  async subscribeTorrents(
-    onUpdate: (torrents: TorrentStatusInfo[]) => void,
-  ): Promise<() => void> {
+  async subscribeTorrents(): Promise<ReadableStream<TorrentStatusInfo[]>> {
     const eventSource = new EventSource(`${baseUrl}/torrents/subscribe`);
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const result = z.array(TorrentStatusInfoSchema).safeParse(data);
-        if (!result.success) {
-          throw new Error("torrent_subscribe API structure mismatch", {
-            cause: result.error,
-          });
-        }
-        onUpdate(result.data);
-      } catch (e) {
-        throw new Error("Failed to parse SSE data", { cause: e });
-      }
-    };
-    eventSource.onerror = (err) => {
-      throw new Error("EventSource failed", { cause: err });
-    };
-    return () => {
-      eventSource.close();
-    };
+
+    return new ReadableStream<TorrentStatusInfo[]>({
+      start(controller) {
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            const result = z.array(TorrentStatusInfoSchema).safeParse(data);
+            if (!result.success) {
+              throw new Error("torrent_subscribe API structure mismatch", {
+                cause: result.error,
+              });
+            }
+            controller.enqueue(result.data);
+          } catch (e) {
+            controller.error(
+              new Error("Failed to parse SSE data", { cause: e }),
+            );
+          }
+        };
+        eventSource.onerror = (err) => {
+          controller.error(new Error("EventSource failed", { cause: err }));
+        };
+      },
+      cancel() {
+        eventSource.close();
+      },
+    });
   }
 }
