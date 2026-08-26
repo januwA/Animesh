@@ -50,8 +50,8 @@ export interface UseSubjectCastParams {
 
 /** useSubjectCast 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectCastDeps {
-  getBangumiPersonsUseCase: Pick<GetAnimePersonsUseCase, "execute">;
-  getBangumiCharactersUseCase: Pick<GetAnimeCharactersUseCase, "execute">;
+  getAnimePersonsUseCase: Pick<GetAnimePersonsUseCase, "execute">;
+  getAnimeCharactersUseCase: Pick<GetAnimeCharactersUseCase, "execute">;
 }
 
 export interface SubjectCastResult {
@@ -68,7 +68,10 @@ export function useSubjectCast(
   deps: UseSubjectCastDeps,
 ): SubjectCastResult {
   const { subjectId, enabledCharacters = true, enabledPersons = true } = params;
-  const { getBangumiPersonsUseCase, getBangumiCharactersUseCase } = deps;
+  const {
+    getAnimePersonsUseCase: getBangumiPersonsUseCase,
+    getAnimeCharactersUseCase: getBangumiCharactersUseCase,
+  } = deps;
 
   const charactersQuery = useQuery<AnimeCharacter[]>(
     (ctx) =>

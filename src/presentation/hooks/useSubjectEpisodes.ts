@@ -21,7 +21,7 @@ export interface UseSubjectEpisodesParams {
 
 /** useSubjectEpisodes 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectEpisodesDeps {
-  getBangumiEpisodesUseCase: Pick<GetAnimeEpisodesUseCase, "execute">;
+  getAnimeEpisodesUseCase: Pick<GetAnimeEpisodesUseCase, "execute">;
 }
 
 export interface SubjectEpisodesResult {
@@ -40,7 +40,7 @@ export function useSubjectEpisodes(
   deps: UseSubjectEpisodesDeps,
 ): SubjectEpisodesResult {
   const { subjectId, page, subject } = params;
-  const { getBangumiEpisodesUseCase } = deps;
+  const { getAnimeEpisodesUseCase: getBangumiEpisodesUseCase } = deps;
 
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();

@@ -29,8 +29,8 @@ const makeCharacter = (): AnimeCharacter => ({
 const makeDeps = (
   overrides: Partial<UseSubjectCastDeps> = {},
 ): UseSubjectCastDeps => ({
-  getBangumiPersonsUseCase: { execute: vi.fn().mockResolvedValue([]) },
-  getBangumiCharactersUseCase: { execute: vi.fn().mockResolvedValue([]) },
+  getAnimePersonsUseCase: { execute: vi.fn().mockResolvedValue([]) },
+  getAnimeCharactersUseCase: { execute: vi.fn().mockResolvedValue([]) },
   ...overrides,
 });
 
@@ -50,7 +50,7 @@ describe("useSubjectCast 角色与制作人员 hook", () => {
 
   it("应该加载角色与制作人员并派生分组数据", async () => {
     const deps = makeDeps({
-      getBangumiPersonsUseCase: {
+      getAnimePersonsUseCase: {
         execute: vi
           .fn()
           .mockResolvedValue([
@@ -59,7 +59,7 @@ describe("useSubjectCast 角色与制作人员 hook", () => {
             makePerson({ relation: "脚本", eps: "1-3" }),
           ]),
       },
-      getBangumiCharactersUseCase: {
+      getAnimeCharactersUseCase: {
         execute: vi.fn().mockResolvedValue([makeCharacter()]),
       },
     });

@@ -37,7 +37,7 @@ const makeEpisode = (sort: number): AnimeEpisode => ({
 const makeDeps = (
   overrides: Partial<UseSubjectEpisodesDeps> = {},
 ): UseSubjectEpisodesDeps => ({
-  getBangumiEpisodesUseCase: {
+  getAnimeEpisodesUseCase: {
     execute: vi.fn().mockResolvedValue({
       items: [makeEpisode(2), makeEpisode(1)],
       total: 2,
@@ -71,7 +71,7 @@ describe("useSubjectEpisodes 剧集分页 hook", () => {
 
   it("应该加载剧集并按 sort 升序排列、计算总页数", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getAnimeEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,
@@ -85,7 +85,7 @@ describe("useSubjectEpisodes 剧集分页 hook", () => {
     });
     expect(result.current.totalEpisodes).toBe(103);
     expect(result.current.totalPages).toBe(3);
-    expect(deps.getBangumiEpisodesUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.getAnimeEpisodesUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       { subjectId: NonEmptyStringSchema.parse("123"), offset: 0, limit: 50 },
     );
@@ -101,7 +101,7 @@ describe("useSubjectEpisodes 剧集分页 hook", () => {
 
   it("changePage 应该更新 URL 的 page 参数并限制范围", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getAnimeEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,
@@ -121,7 +121,7 @@ describe("useSubjectEpisodes 剧集分页 hook", () => {
 
   it("jumpToEpisode 应该切换到对应页码", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getAnimeEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,

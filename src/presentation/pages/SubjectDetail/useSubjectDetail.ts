@@ -64,7 +64,7 @@ export function useSubjectDetail(
 
   const episodes = useSubjectEpisodes(
     { subjectId, page, subject: info.subject },
-    { getBangumiEpisodesUseCase },
+    { getAnimeEpisodesUseCase: getBangumiEpisodesUseCase },
   );
 
   const cast = useSubjectCast(
@@ -73,7 +73,10 @@ export function useSubjectDetail(
       enabledCharacters: activeTab === "characters",
       enabledPersons: activeTab === "staff",
     },
-    { getBangumiPersonsUseCase, getBangumiCharactersUseCase },
+    {
+      getAnimePersonsUseCase: getBangumiPersonsUseCase,
+      getAnimeCharactersUseCase: getBangumiCharactersUseCase,
+    },
   );
 
   const resources = useSubjectResources(

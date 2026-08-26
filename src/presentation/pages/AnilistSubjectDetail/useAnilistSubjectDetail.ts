@@ -63,7 +63,7 @@ export function useAnilistSubjectDetail(
 
   const episodes = useSubjectEpisodes(
     { subjectId, page, subject: info.subject },
-    { getBangumiEpisodesUseCase: getAnilistEpisodesUseCase },
+    { getAnimeEpisodesUseCase: getAnilistEpisodesUseCase },
   );
 
   const cast = useSubjectCast(
@@ -73,8 +73,8 @@ export function useAnilistSubjectDetail(
       enabledPersons: activeTab === "staff",
     },
     {
-      getBangumiPersonsUseCase: getAnilistPersonsUseCase,
-      getBangumiCharactersUseCase: getAnilistCharactersUseCase,
+      getAnimePersonsUseCase: getAnilistPersonsUseCase,
+      getAnimeCharactersUseCase: getAnilistCharactersUseCase,
     },
   );
 
