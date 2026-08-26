@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
-import type { UseGlobalEffectsDeps } from "../hooks/useGlobalEffects";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
 import { useBackgroundWallpaperStore } from "../store/useBackgroundWallpaperStore";
 import { PageLoader } from "./AppComponents";
@@ -31,12 +30,8 @@ export function NavBarLayout() {
   );
 }
 
-interface MainLayoutProps {
-  globalEffectsDeps: UseGlobalEffectsDeps;
-}
-
-export function MainLayout({ globalEffectsDeps }: MainLayoutProps) {
-  useGlobalEffects(globalEffectsDeps);
+export function MainLayout() {
+  useGlobalEffects();
 
   const showWallpaper = useBackgroundWallpaperStore((s) => s.showWallpaper);
 

@@ -3,15 +3,15 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import { DetailLayout, MainLayout, NavBarLayout } from "./Layout";
 
-const mockDeps = {
-  setThemeUseCase: { execute: vi.fn() },
-};
+vi.mock("../hooks/useGlobalEffects", () => ({
+  useGlobalEffects: vi.fn(),
+}));
 
 function renderMainLayout(children: React.ReactNode) {
   return render(
     <MemoryRouter initialEntries={["/"]}>
       <Routes>
-        <Route element={<MainLayout globalEffectsDeps={mockDeps} />}>
+        <Route element={<MainLayout />}>
           <Route index element={children} />
         </Route>
       </Routes>

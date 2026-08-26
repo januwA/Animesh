@@ -1,21 +1,13 @@
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
-import type { SetThemeUseCase } from "@/application/settings/SetThemeUseCase";
+import { useDI } from "@/di/DIContext";
 
-/** useGlobalEffects 的依赖，由调用方（应用外壳组合根）注入 */
-export interface UseGlobalEffectsDeps {
-  setThemeUseCase: Pick<SetThemeUseCase, "execute">;
-}
-
-export function useGlobalEffects(deps: UseGlobalEffectsDeps) {
-  const { setThemeUseCase } = deps;
+export function useGlobalEffects() {
+  const { setThemeUseCase } = useDI();
   const { theme } = useTheme();
 
   // 同步主题到 Tauri 原生窗口标题栏
   useEffect(() => {
-    const syncTheme = async () => {
-      await setThemeUseCase.execute(theme);
-    };
-    syncTheme();
+    setThemeUseCase.execute(theme);
   }, [theme, setThemeUseCase]);
 }
