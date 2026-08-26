@@ -26,6 +26,17 @@ function makeTorrent(name: string): TorrentStatusInfo {
   };
 }
 
+function createStream(
+  data: TorrentStatusInfo[],
+): ReadableStream<TorrentStatusInfo[]> {
+  return new ReadableStream<TorrentStatusInfo[]>({
+    start(controller) {
+      controller.enqueue(data);
+      controller.close();
+    },
+  });
+}
+
 function StatusConsumer() {
   const { torrents, isLoading } = useTorrentStatus();
   return (
@@ -49,6 +60,15 @@ const renderProvider = (
     </DIProvider>,
   );
 
+const mockNotifyDownloadCompletionUseCase = { execute: vi.fn() };
+
+function createContainer(overrides: Record<string, unknown> = {}): DIContainer {
+  return {
+    notifyDownloadCompletionUseCase: mockNotifyDownloadCompletionUseCase,
+    ...overrides,
+  } as unknown as DIContainer;
+}
+
 describe("TorrentStatusContext 种子状态上下文", () => {
   it("未提供 Provider 时 useTorrentStatus 返回默认空状态", () => {
     function DefaultConsumer() {
@@ -70,13 +90,12 @@ describe("TorrentStatusContext 种子状态上下文", () => {
   it("订阅成功后应把种子列表提供给消费者", async () => {
     const subscribe = vi
       .fn()
-      .mockImplementation((onUpdate: (list: TorrentStatusInfo[]) => void) => {
-        onUpdate([makeTorrent("xxx")]);
-        return Promise.resolve(() => {});
-      });
-    renderProvider({
-      subscribeTorrentsUseCase: { execute: subscribe },
-    } as unknown as DIContainer);
+      .mockResolvedValue(createStream([makeTorrent("xxx")]));
+    renderProvider(
+      createContainer({
+        subscribeTorrentsUseCase: { execute: subscribe },
+      }),
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId("status-count")).toHaveTextContent("1");
@@ -87,9 +106,11 @@ describe("TorrentStatusContext 种子状态上下文", () => {
 
   it("订阅失败时应提示错误并结束加载状态", async () => {
     const subscribe = vi.fn().mockRejectedValue(new Error("订阅失败"));
-    renderProvider({
-      subscribeTorrentsUseCase: { execute: subscribe },
-    } as unknown as DIContainer);
+    renderProvider(
+      createContainer({
+        subscribeTorrentsUseCase: { execute: subscribe },
+      }),
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId("status-loading")).toHaveTextContent("false");
@@ -102,15 +123,22 @@ describe("TorrentStatusContext 种子状态上下文", () => {
 
   it("卸载时应该调用取消订阅函数", async () => {
     const unsubscribe = vi.fn();
-    const subscribe = vi
-      .fn()
-      .mockImplementation((onUpdate: (list: unknown[]) => void) => {
-        onUpdate([]);
-        return Promise.resolve(unsubscribe);
+    const subscribe = vi.fn().mockImplementation(() => {
+      const stream = new ReadableStream<TorrentStatusInfo[]>({
+        start(controller) {
+          controller.enqueue([]);
+        },
+        cancel() {
+          unsubscribe();
+        },
       });
-    const view = renderProvider({
-      subscribeTorrentsUseCase: { execute: subscribe },
-    } as unknown as DIContainer);
+      return Promise.resolve(stream);
+    });
+    const view = renderProvider(
+      createContainer({
+        subscribeTorrentsUseCase: { execute: subscribe },
+      }),
+    );
 
     await waitFor(() => {
       expect(subscribe).toHaveBeenCalled();

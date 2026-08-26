@@ -19,7 +19,7 @@ export function TorrentStatusProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { subscribeTorrentsUseCase } = useDI();
+  const { subscribeTorrentsUseCase, notifyDownloadCompletionUseCase } = useDI();
 
   const { data: torrents, status } = useStream(
     (_ctx) => subscribeTorrentsUseCase.execute(),
@@ -27,6 +27,9 @@ export function TorrentStatusProvider({
     {
       onError: (err) => {
         toast.error(`获取下载列表失败: ${formatError(err)}`);
+      },
+      onData(torrents) {
+        notifyDownloadCompletionUseCase.execute(torrents);
       },
     },
   );

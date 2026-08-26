@@ -25,7 +25,6 @@ const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
 function MainLayoutRoute() {
   const {
     requestNotificationPermissionUseCase,
-    notifyDownloadCompletionUseCase,
     setThemeUseCase,
     getBangumiRankedSubjectsUseCase,
   } = useDI();
@@ -34,7 +33,6 @@ function MainLayoutRoute() {
     <MainLayout
       globalEffectsDeps={{
         requestNotificationPermissionUseCase,
-        notifyDownloadCompletionUseCase,
         setThemeUseCase,
       }}
       wallpaperDeps={{ getBangumiRankedSubjectsUseCase }}
