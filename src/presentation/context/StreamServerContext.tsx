@@ -1,6 +1,7 @@
-import { createContext, use, useEffect, useState } from "react";
+import { createContext, use } from "react";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 
 interface StreamServerContextType {
@@ -17,18 +18,16 @@ export function StreamServerProvider({
   children: React.ReactNode;
 }) {
   const { getStreamPortUseCase } = useDI();
-  const [streamPort, setStreamPort] = useState<number | null>(null);
 
-  useEffect(() => {
-    getStreamPortUseCase
-      .execute()
-      .then((port) => {
-        setStreamPort(port);
-      })
-      .catch((err: unknown) => {
+  const { data: streamPort } = useQuery(
+    () => getStreamPortUseCase.execute(),
+    [getStreamPortUseCase],
+    {
+      onError: (err) => {
         toast.error(`获取流媒体端口失败: ${formatError(err)}`);
-      });
-  }, [getStreamPortUseCase]);
+      },
+    },
+  );
 
   return (
     <StreamServerContext value={{ streamPort }}>{children}</StreamServerContext>
