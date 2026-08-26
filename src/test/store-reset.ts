@@ -1,9 +1,19 @@
+import { useAnilistCalendarStore } from "@/presentation/store/anilistCalendarStore";
+import { useAnilistSearchStore } from "@/presentation/store/anilistSearchStore";
+import { useBangumiSearchStore } from "@/presentation/store/bangumiSearchStore";
 import { useCalendarStore } from "@/presentation/store/calendarStore";
+import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 import { useIptvStore } from "@/presentation/store/iptvStore";
+import { useSearchHistoryStore } from "@/presentation/store/searchHistoryStore";
 import { useSearchStore } from "@/presentation/store/searchStore";
 
 export function resetAppStores(): void {
+  useAnilistCalendarStore.getState().reset();
+  useAnilistSearchStore.getState().reset();
+  useBangumiSearchStore.getState().reset();
   useCalendarStore.getState().reset();
+  useCollectionsStore.getState().reset();
   useIptvStore.getState().reset();
+  useSearchHistoryStore.getState().reset();
   useSearchStore.getState().reset();
 }

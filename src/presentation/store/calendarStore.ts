@@ -1,16 +1,16 @@
 import { create } from "zustand";
-import type { BangumiCalendarDay } from "@/domain/bangumi/BangumiSchemas";
+import type { AnimeCalendarDay } from "@/domain/anime/AnimeSchemas";
 
 interface CalendarStoreState {
-  calendar: BangumiCalendarDay[];
+  calendar: AnimeCalendarDay[];
   calendarActiveDay: number | null;
-  setCalendar: (val: BangumiCalendarDay[]) => void;
+  setCalendar: (val: AnimeCalendarDay[]) => void;
   setCalendarActiveDay: (val: number | null) => void;
   reset: () => void;
 }
 
 const initialState = {
-  calendar: [] as BangumiCalendarDay[],
+  calendar: [] as AnimeCalendarDay[],
   calendarActiveDay: null as number | null,
 };
 

@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { TORRENT_SEARCH_ENGINES } from "@/domain/torrent/TorrentEngines";
+import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { DEFAULT_SEARCH_ENGINE, useSearchStore } from "./searchStore";
 
-const mockResult = {
-  title: "xxx 第1集",
-  link: "http://example.com/1",
+const mockResult: AiSearchResultItem = {
+  title: NonEmptyStringSchema.parse("xxx 第1集"),
+  link: NonEmptyStringSchema.parse("http://example.com/1"),
   pub_date: "2026-06-23",
-  magnet: "magnet:?xt=urn:btih:TEST1",
+  magnet: NonEmptyStringSchema.parse("magnet:?xt=urn:btih:TEST1"),
   description: "",
-  size: 350000000,
 };
 
 describe("搜索全局状态 store", () => {
@@ -44,10 +45,10 @@ describe("搜索全局状态 store", () => {
   it("应该能在设置搜索结果为分组计算 groups", () => {
     const state = useSearchStore.getState();
     state.setSearchResults([
-      { ...mockResult, title: "[GroupB] 某番 01" },
-      { ...mockResult, title: "[GroupA] 某番 01" },
-      { ...mockResult, title: "[GroupA] 某番 02" },
-      { ...mockResult, title: "无前缀 某番 01" },
+      { ...mockResult, title: NonEmptyStringSchema.parse("[GroupB] 某番 01") },
+      { ...mockResult, title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
+      { ...mockResult, title: NonEmptyStringSchema.parse("[GroupA] 某番 02") },
+      { ...mockResult, title: NonEmptyStringSchema.parse("无前缀 某番 01") },
     ]);
 
     const { groups } = useSearchStore.getState();
@@ -64,6 +65,17 @@ describe("搜索全局状态 store", () => {
       startIndex: 3,
       items: [{ ...mockResult, title: "无前缀 某番 01" }],
     });
+  });
+
+  it("未标注组在输入靠前时仍应恒排最后", () => {
+    const state = useSearchStore.getState();
+    state.setSearchResults([
+      { ...mockResult, title: NonEmptyStringSchema.parse("无前缀 某番 01") },
+      { ...mockResult, title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
+    ]);
+
+    const { groups } = useSearchStore.getState();
+    expect(groups.map((g) => g.name)).toEqual(["GroupA", "未标注"]);
   });
 
   it("应该能通过 toggleGroup 折叠或展开指定的组", () => {

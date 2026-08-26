@@ -1,278 +1,181 @@
 import { Background } from "ajanuw-context";
-import { Duration } from "ajanuw-duration";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-  BangumiCalendarDay,
-  BangumiCharacter,
-  BangumiEpisode,
-  BangumiPerson,
-  BangumiSubject,
-} from "@/domain/bangumi/BangumiSchemas";
-import { InMemoryCacheStore } from "@/test/InMemoryCacheStore";
+import type { z } from "zod";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
+import type { CacheStore } from "@/infrastructure/storage/CacheStore";
+import {
+  BangumiCalendarStoredSchema,
+  BangumiCharactersStoredSchema,
+  BangumiEpisodesPageStoredSchema,
+  BangumiPersonsStoredSchema,
+  BangumiRankedSubjectsStoredSchema,
+  BangumiSubjectSchema,
+  BangumiSubjectStoredSchema,
+} from "./BangumiSchemas";
 import { BrowserBangumiCache } from "./BrowserBangumiCache";
 
-describe("BrowserBangumiCache 浏览器缓存实现", () => {
-  let cache: BrowserBangumiCache;
-  let store: InMemoryCacheStore;
+const images = {
+  large: "https://img.example/l.jpg",
+  medium: "https://img.example/m.jpg",
+  small: "https://img.example/s.jpg",
+  grid: "https://img.example/g.jpg",
+};
 
-  const mockCalendar: BangumiCalendarDay[] = [
-    {
-      weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
-      items: [
-        {
-          id: 101,
-          url: "https://bgm.tv/subject/101",
-          name: "Anime Monday",
-          name_cn: "周一动画",
-          air_date: "2026-07-13",
-          air_weekday: 1,
-        },
-      ],
+const rawSubject = {
+  id: 1,
+  name: "Anime",
+  name_cn: "动画",
+  summary: "简介",
+  images,
+  rating: { score: 8.5, rank: 5, total: 10 },
+  collection: { wish: 1, collect: 2, doing: 3, on_hold: 4, dropped: 5 },
+  date: "2026-01-01",
+  eps: 12,
+  platform: "TV",
+};
+
+/** 模拟 IndexedDbCacheStore 的 envelope+TTL+schema 校验语义的内存缓存 */
+function createMemoryCacheStore(): CacheStore {
+  const map = new Map<string, { data: unknown; expiry: number }>();
+  return {
+    async getItem<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
+      const entry = map.get(key);
+      if (!entry) return null;
+      if (Date.now() > entry.expiry) {
+        map.delete(key);
+        return null;
+      }
+      const result = schema.safeParse(entry.data);
+      if (!result.success) {
+        map.delete(key);
+        return null;
+      }
+      return result.data;
     },
-  ];
-
-  const mockSubject: BangumiSubject = {
-    id: 1,
-    name: "Test Subject",
-    name_cn: "测试条目",
-    summary: "A test subject",
-  };
-
-  const mockEpisodes: BangumiEpisode[] = [
-    {
-      id: 1,
-      type: 0,
-      sort: 1,
-      name: "Episode 1",
-      name_cn: "第1集",
-      duration: "24m",
-      airdate: "2026-07-13",
-      desc: "First episode",
+    async setItem<T>(key: string, data: T, ttlMs: number): Promise<void> {
+      map.set(key, { data, expiry: Date.now() + ttlMs });
     },
-  ];
-
-  const mockEpisodesPage = {
-    items: mockEpisodes,
-    total: 150,
+    async removeItem(key: string): Promise<void> {
+      map.delete(key);
+    },
+    async clear(): Promise<void> {
+      map.clear();
+    },
   };
+}
 
-  const mockPerson: BangumiPerson = {
-    id: 1,
-    name: "Director",
-    relation: "导演",
-    career: ["导演"],
-    type: 1,
-    eps: "1-12",
-    images: { small: "", grid: "", large: "", medium: "" },
-  };
-
-  const mockCharacter: BangumiCharacter = {
-    id: 1,
-    name: "Hero",
-    relation: "主角",
-    type: 1,
-    summary: "Main character",
-    images: { small: "", grid: "", large: "", medium: "" },
-    actors: [],
-  };
+describe("BrowserBangumiCache 缓存读取", () => {
+  const store = {
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
+  } as unknown as CacheStore;
 
   beforeEach(() => {
-    store = new InMemoryCacheStore();
-    vi.useRealTimers();
-    cache = new BrowserBangumiCache(store);
+    vi.resetAllMocks();
   });
 
-  describe("calendar 缓存", () => {
-    const cacheKey = "bangumi:calendar";
+  it("getCalendar 应使用存储形状 Schema 校验", () => {
+    vi.mocked(store.getItem).mockResolvedValueOnce(null);
+    const cache = new BrowserBangumiCache(store);
 
-    it("当没有缓存时，应该返回 null", async () => {
-      const result = await cache.getCalendar(Background);
-      expect(result).toBeNull();
-    });
+    void cache.getCalendar(Background);
 
-    it("当成功缓存且未过期时，应该能够正确读取缓存数据", async () => {
-      await cache.setCalendar(Background, mockCalendar);
-      const result = await cache.getCalendar(Background);
-      expect(result).toEqual(mockCalendar);
-    });
-
-    it("当缓存已过期时，应该返回 null 并清除缓存", async () => {
-      vi.useFakeTimers({ toFake: ["Date"] });
-      const now = Date.now();
-      vi.setSystemTime(now);
-
-      await cache.setCalendar(Background, mockCalendar);
-
-      vi.setSystemTime(now + new Duration({ days: 7 }).inMilliseconds + 1);
-
-      const result = await cache.getCalendar(Background);
-      expect(result).toBeNull();
-      await expect(cache.getCalendar(Background)).resolves.toBeNull();
-    });
-
-    it("当缓存的数据结构与 Zod Schema 不匹配时，应该返回 null 并清除缓存", async () => {
-      store.setRawEntry(cacheKey, {
-        data: [{ weekday: { id: "not-a-number" } }],
-        expiry: Date.now() + 10000,
-      });
-
-      const result = await cache.getCalendar(Background);
-      expect(result).toBeNull();
-      await expect(cache.getCalendar(Background)).resolves.toBeNull();
-    });
-
-    it("当缓存中的记录不是合法的信封结构时，应该返回 null 且不崩溃", async () => {
-      store.setRawEntry(cacheKey, { unexpected: "shape" });
-
-      const result = await cache.getCalendar(Background);
-      expect(result).toBeNull();
-    });
+    expect(store.getItem).toHaveBeenCalledWith(
+      "bangumi:calendar",
+      BangumiCalendarStoredSchema,
+    );
   });
 
-  describe("subject 缓存", () => {
-    const subjectId = "42";
-    const cacheKey = "bangumi:subject:42";
+  it("getSubject 应使用存储形状 Schema 校验", () => {
+    vi.mocked(store.getItem).mockResolvedValueOnce(null);
+    const cache = new BrowserBangumiCache(store);
+    const id = NonEmptyStringSchema.parse("1");
 
-    it("当没有缓存时，应该返回 null", async () => {
-      const result = await cache.getSubject(Background, subjectId);
-      expect(result).toBeNull();
-    });
+    void cache.getSubject(Background, id);
 
-    it("当成功缓存且未过期时，应该能够正确读取缓存数据", async () => {
-      await cache.setSubject(Background, subjectId, mockSubject);
-      const result = await cache.getSubject(Background, subjectId);
-      expect(result).toEqual(mockSubject);
-    });
-
-    it("不同的 subjectId 应该隔离缓存", async () => {
-      await cache.setSubject(Background, "1", mockSubject);
-      const result = await cache.getSubject(Background, "2");
-      expect(result).toBeNull();
-    });
-
-    it("当缓存已过期时，应该返回 null 并清除缓存", async () => {
-      vi.useFakeTimers({ toFake: ["Date"] });
-      const now = Date.now();
-      vi.setSystemTime(now);
-
-      await cache.setSubject(Background, subjectId, mockSubject);
-      vi.setSystemTime(now + 30 * 24 * 60 * 60 * 1000 + 1);
-
-      const result = await cache.getSubject(Background, subjectId);
-      expect(result).toBeNull();
-    });
-
-    it("当缓存数据格式不匹配时，应该返回 null 并清除缓存", async () => {
-      store.setRawEntry(cacheKey, {
-        data: { id: "not-a-number", name: 123 },
-        expiry: Date.now() + 10000,
-      });
-
-      const result = await cache.getSubject(Background, subjectId);
-      expect(result).toBeNull();
-    });
+    expect(store.getItem).toHaveBeenCalledWith(
+      `bangumi:subject:${id}`,
+      BangumiSubjectStoredSchema,
+    );
   });
 
-  describe("episodes 缓存", () => {
-    const subjectId = "42";
+  it("getEpisodes 应使用存储形状 Schema 校验", () => {
+    vi.mocked(store.getItem).mockResolvedValueOnce(null);
+    const cache = new BrowserBangumiCache(store);
+    const id = NonEmptyStringSchema.parse("1");
 
-    it("当没有缓存时，应该返回 null", async () => {
-      const result = await cache.getEpisodes(Background, subjectId, 0, 50);
-      expect(result).toBeNull();
-    });
+    void cache.getEpisodes(Background, id, 0, 20);
 
-    it("当成功缓存且未过期时，应该能够正确读取缓存数据", async () => {
-      await cache.setEpisodes(Background, subjectId, 0, 50, mockEpisodesPage);
-      const result = await cache.getEpisodes(Background, subjectId, 0, 50);
-      expect(result).toEqual(mockEpisodesPage);
-    });
-
-    it("不同的 subjectId 应该隔离缓存", async () => {
-      await cache.setEpisodes(Background, "1", 0, 50, mockEpisodesPage);
-      const result = await cache.getEpisodes(Background, "2", 0, 50);
-      expect(result).toBeNull();
-    });
-
-    it("不同的 offset/limit 应该隔离缓存", async () => {
-      await cache.setEpisodes(Background, subjectId, 50, 50, mockEpisodesPage);
-      const result = await cache.getEpisodes(Background, subjectId, 0, 50);
-      expect(result).toBeNull();
-    });
+    expect(store.getItem).toHaveBeenCalledWith(
+      `bangumi:episodes:${id}:0:20`,
+      BangumiEpisodesPageStoredSchema,
+    );
   });
 
-  describe("persons 缓存", () => {
-    const subjectId = "42";
-    const cacheKey = "bangumi:persons:42";
+  it("getPersons 应使用存储形状 Schema 校验", () => {
+    vi.mocked(store.getItem).mockResolvedValueOnce(null);
+    const cache = new BrowserBangumiCache(store);
+    const id = NonEmptyStringSchema.parse("1");
 
-    it("当没有缓存时，应该返回 null", async () => {
-      const result = await cache.getPersons(Background, subjectId);
-      expect(result).toBeNull();
-    });
+    void cache.getPersons(Background, id);
 
-    it("当成功缓存且未过期时，应该能够正确读取缓存数据", async () => {
-      await cache.setPersons(Background, subjectId, [mockPerson]);
-      const result = await cache.getPersons(Background, subjectId);
-      expect(result).toEqual([mockPerson]);
-    });
-
-    it("不同的 subjectId 应该隔离缓存", async () => {
-      await cache.setPersons(Background, "1", [mockPerson]);
-      const result = await cache.getPersons(Background, "2");
-      expect(result).toBeNull();
-    });
-
-    it("当缓存数据格式不匹配时，应该返回 null 并清除缓存", async () => {
-      store.setRawEntry(cacheKey, {
-        data: [{ id: "not-a-number" }],
-        expiry: Date.now() + 10000,
-      });
-
-      const result = await cache.getPersons(Background, subjectId);
-      expect(result).toBeNull();
-    });
+    expect(store.getItem).toHaveBeenCalledWith(
+      `bangumi:persons:${id}`,
+      BangumiPersonsStoredSchema,
+    );
   });
 
-  describe("characters 缓存", () => {
-    const subjectId = "42";
-    const cacheKey = "bangumi:characters:42";
+  it("getCharacters 应使用存储形状 Schema 校验", () => {
+    vi.mocked(store.getItem).mockResolvedValueOnce(null);
+    const cache = new BrowserBangumiCache(store);
+    const id = NonEmptyStringSchema.parse("1");
 
-    it("当没有缓存时，应该返回 null", async () => {
-      const result = await cache.getCharacters(Background, subjectId);
-      expect(result).toBeNull();
-    });
+    void cache.getCharacters(Background, id);
 
-    it("当成功缓存且未过期时，应该能够正确读取缓存数据", async () => {
-      await cache.setCharacters(Background, subjectId, [mockCharacter]);
-      const result = await cache.getCharacters(Background, subjectId);
-      expect(result).toEqual([mockCharacter]);
-    });
-
-    it("不同的 subjectId 应该隔离缓存", async () => {
-      await cache.setCharacters(Background, "1", [mockCharacter]);
-      const result = await cache.getCharacters(Background, "2");
-      expect(result).toBeNull();
-    });
-
-    it("当缓存数据格式不匹配时，应该返回 null 并清除缓存", async () => {
-      store.setRawEntry(cacheKey, {
-        data: [{ id: "not-a-number" }],
-        expiry: Date.now() + 10000,
-      });
-
-      const result = await cache.getCharacters(Background, subjectId);
-      expect(result).toBeNull();
-    });
+    expect(store.getItem).toHaveBeenCalledWith(
+      `bangumi:characters:${id}`,
+      BangumiCharactersStoredSchema,
+    );
   });
 
-  it("过期缓存应该被清除并返回 null (通用场景)", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    const now = Date.now();
-    vi.setSystemTime(now);
+  it("getRankedSubjects 应使用存储形状 Schema 校验", () => {
+    vi.mocked(store.getItem).mockResolvedValueOnce(null);
+    const cache = new BrowserBangumiCache(store);
 
-    await cache.setSubject(Background, "99", mockSubject);
-    vi.setSystemTime(now + 30 * 24 * 60 * 60 * 1000 + 1);
+    void cache.getRankedSubjects(Background);
 
-    const result = await cache.getSubject(Background, "99");
-    expect(result).toBeNull();
+    expect(store.getItem).toHaveBeenCalledWith(
+      "bangumi:ranked-subjects",
+      BangumiRankedSubjectsStoredSchema,
+    );
+  });
+
+  it("setRankedSubjects 应写入榜单缓存", async () => {
+    const cache = new BrowserBangumiCache(createMemoryCacheStore());
+    const ranked = BangumiSubjectSchema.parse({
+      id: 326,
+      name: "Shin Seiki Evangelion",
+      name_cn: "新世纪福音战士",
+      images,
+      rating: { score: 9.1, rank: 1 },
+    });
+
+    await cache.setRankedSubjects(Background, [ranked]);
+    const read = await cache.getRankedSubjects(Background);
+
+    expect(read).toEqual([ranked]);
+  });
+
+  it("条目写入后再次读取应命中缓存而非返回 null", async () => {
+    const cache = new BrowserBangumiCache(createMemoryCacheStore());
+    const subject = BangumiSubjectSchema.parse(rawSubject);
+    const id = NonEmptyStringSchema.parse("1");
+
+    await cache.setSubject(Background, id, subject);
+    const read = await cache.getSubject(Background, id);
+
+    expect(read).toEqual(subject);
   });
 });

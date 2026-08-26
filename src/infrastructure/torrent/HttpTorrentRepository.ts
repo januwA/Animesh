@@ -1,5 +1,6 @@
 import type { Context } from "ajanuw-context";
 import { z } from "zod";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import {
@@ -28,10 +29,9 @@ export class HttpTorrentRepository implements TorrentRepository {
     keyword: string,
     engine: TorrentSearchEngine,
   ): Promise<SearchResultItem[]> {
-    const query = new URLSearchParams({ keyword, engine });
     const raw = await this.httpClient.getJson<unknown>(
-      `${baseUrl}/torrents/search?${query.toString()}`,
-      { ctx },
+      `${baseUrl}/torrents/search`,
+      { ctx, params: { keyword, engine } },
     );
     const result = z.array(SearchResultItemSchema).safeParse(raw);
     if (!result.success) {
@@ -55,15 +55,10 @@ export class HttpTorrentRepository implements TorrentRepository {
   }
 
   async deleteTorrent(infoHash: string, deleteFiles: boolean): Promise<void> {
-    const query = new URLSearchParams({
-      deleteFiles: deleteFiles.toString(),
+    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}`, {
+      method: "DELETE",
+      params: { deleteFiles },
     });
-    await this.httpClient.request(
-      `${baseUrl}/torrents/${infoHash}?${query.toString()}`,
-      {
-        method: "DELETE",
-      },
-    );
   }
 
   async addTorrentMagnet(
@@ -107,11 +102,21 @@ export class HttpTorrentRepository implements TorrentRepository {
     return result.data;
   }
 
-  async getTorrentStreamUrl(infoHash: string, fileId: number): Promise<string> {
-    const response = await this.httpClient.request(
-      `${baseUrl}/torrents/${infoHash}/files/${fileId}/stream-url`,
+  async getStreamPort(): Promise<number> {
+    const raw = await this.httpClient.getJson<unknown>(
+      `${baseUrl}/stream-port`,
     );
-    return response.text();
+    const result = z.object({ port: z.number() }).safeParse(raw);
+    if (!result.success) {
+      throw new Error("stream-port API structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data.port;
+  }
+
+  async getLocalIp(): Promise<string> {
+    return window.location.hostname;
   }
 
   async getVideoMetadata(
@@ -144,6 +149,7 @@ export class HttpTorrentRepository implements TorrentRepository {
   async setTorrentSubject(
     infoHash: string,
     subject_id: number,
+    platform: AnimePlatform,
     subject_name: string,
   ): Promise<void> {
     await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
@@ -151,39 +157,48 @@ export class HttpTorrentRepository implements TorrentRepository {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ subject_id, subject_name }),
+      body: JSON.stringify({ subject_id, platform, subject_name }),
     });
   }
 
-  async clearTorrentSubject(infoHash: string): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
-      method: "DELETE",
-    });
+  async clearTorrentSubject(
+    infoHash: string,
+    platform: AnimePlatform,
+  ): Promise<void> {
+    await this.httpClient.request(
+      `${baseUrl}/torrents/${infoHash}/subject/${platform}`,
+      { method: "DELETE" },
+    );
   }
 
-  async subscribeTorrents(
-    onUpdate: (torrents: TorrentStatusInfo[]) => void,
-  ): Promise<() => void> {
+  async subscribeTorrents(): Promise<ReadableStream<TorrentStatusInfo[]>> {
     const eventSource = new EventSource(`${baseUrl}/torrents/subscribe`);
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const result = z.array(TorrentStatusInfoSchema).safeParse(data);
-        if (!result.success) {
-          throw new Error("torrent_subscribe API structure mismatch", {
-            cause: result.error,
-          });
-        }
-        onUpdate(result.data);
-      } catch (e) {
-        throw new Error("Failed to parse SSE data", { cause: e });
-      }
-    };
-    eventSource.onerror = (err) => {
-      throw new Error("EventSource failed", { cause: err });
-    };
-    return () => {
-      eventSource.close();
-    };
+
+    return new ReadableStream<TorrentStatusInfo[]>({
+      start(controller) {
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            const result = z.array(TorrentStatusInfoSchema).safeParse(data);
+            if (!result.success) {
+              throw new Error("torrent_subscribe API structure mismatch", {
+                cause: result.error,
+              });
+            }
+            controller.enqueue(result.data);
+          } catch (e) {
+            controller.error(
+              new Error("Failed to parse SSE data", { cause: e }),
+            );
+          }
+        };
+        eventSource.onerror = (err) => {
+          controller.error(new Error("EventSource failed", { cause: err }));
+        };
+      },
+      cancel() {
+        eventSource.close();
+      },
+    });
   }
 }

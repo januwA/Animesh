@@ -1,0 +1,25 @@
+import { z } from "zod";
+import { NonEmptyStringSchema } from "../common/NonEmptyString";
+
+/**
+ * 完整的字幕翻译记录。
+ *
+ * 每次翻译都会生成一条带唯一 `id`（UUID）的新记录，保留翻译历史。
+ * list_by_torrent 返回时 vtt_content 为空字符串（避免传输过大），
+ * getById 返回时包含完整 vtt_content。
+ */
+export const SubtitleTranslationRecordSchema = z.object({
+  id: NonEmptyStringSchema,
+  info_hash: NonEmptyStringSchema,
+  file_id: z.number(),
+  original_track_id: z.number(),
+  source_lang: NonEmptyStringSchema,
+  target_lang: NonEmptyStringSchema,
+  vtt_content: z.string(),
+  created_at: z.number(),
+  last_accessed_at: z.number(),
+});
+
+export type SubtitleTranslationRecord = z.infer<
+  typeof SubtitleTranslationRecordSchema
+>;

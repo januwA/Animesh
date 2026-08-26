@@ -1,54 +1,66 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
-import { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
-import { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
-import { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
-import type { DIContainer } from "@/di/DIContext";
-import { DIProvider } from "@/di/DIContext";
-import { InMemoryCollectionRepository } from "@/test/InMemoryCollectionRepository";
-import { FavoriteButton } from "./FavoriteButton";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
+import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
+import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
+import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { FavoriteButton } from "@/presentation/components/FavoriteButton";
+import { useCollectionsStore } from "@/presentation/store/collectionsStore";
+import { resetAppStores } from "@/test/store-reset";
 
-function createContainer(
-  repo: InMemoryCollectionRepository = new InMemoryCollectionRepository(),
-): DIContainer {
+type FavoriteDeps = {
+  getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;
+  addFavoriteUseCase: Pick<AddFavoriteUseCase, "execute">;
+  removeFavoriteUseCase: Pick<RemoveFavoriteUseCase, "execute">;
+};
+
+function createDeps(overrides: Partial<FavoriteDeps> = {}): FavoriteDeps {
   return {
-    getFavoriteStatusUseCase: new GetFavoriteStatusUseCase(repo),
-    addFavoriteUseCase: new AddFavoriteUseCase(repo),
-    removeFavoriteUseCase: new RemoveFavoriteUseCase(repo),
-  } as unknown as DIContainer;
+    getFavoriteStatusUseCase: { execute: vi.fn().mockResolvedValue(false) },
+    addFavoriteUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
+    removeFavoriteUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
+    ...overrides,
+  };
 }
 
+function renderButton(
+  deps: FavoriteDeps = createDeps(),
+  platform: AnimePlatform = "bangumi",
+) {
+  return render(
+    <FavoriteButton
+      subject={mockSubject}
+      platform={platform}
+      getFavoriteStatusUseCase={deps.getFavoriteStatusUseCase}
+      addFavoriteUseCase={deps.addFavoriteUseCase}
+      removeFavoriteUseCase={deps.removeFavoriteUseCase}
+    />,
+  );
+}
+
+const mockSubject: AnimeSubject = {
+  id: 101,
+  name: "中文名称",
+  image: "https://example.com/image.jpg",
+  rating: 8.5,
+  platform: "TV",
+  date: "2026-07-01",
+  summary: "剧情简介",
+};
+
 describe("FavoriteButton 收藏按钮", () => {
-  const mockSubject = {
-    subjectId: 101,
-    name: "Original Name",
-    nameCn: "中文名称",
-    imageUrl: "https://example.com/image.jpg",
-    rating: 8.5,
-    platform: "TV",
-    date: "2026-07-01",
-    summary: "剧情简介",
-  };
-
-  function renderWithProvider(repo?: InMemoryCollectionRepository) {
-    return render(
-      <DIProvider value={createContainer(repo)}>
-        <FavoriteButton subject={mockSubject} />
-      </DIProvider>,
-    );
-  }
-
   beforeEach(() => {
     localStorage.clear();
+    resetAppStores();
   });
 
   it("初始状态应该显示'收藏'文字", async () => {
-    renderWithProvider();
+    renderButton();
     expect(await screen.findByText("收藏")).toBeInTheDocument();
   });
 
   it("点击未收藏按钮后应显示已收藏", async () => {
-    renderWithProvider();
+    renderButton();
     await screen.findByText("收藏");
     act(() => screen.getByRole("button").click());
     await waitFor(() => {
@@ -57,17 +69,53 @@ describe("FavoriteButton 收藏按钮", () => {
   });
 
   it("已收藏状态下点击按钮应取消收藏", async () => {
-    const repo = new InMemoryCollectionRepository();
-    await repo.add({
-      subjectId: mockSubject.subjectId,
-      name: "已收藏",
-      imageUrl: null,
-    });
-    renderWithProvider(repo);
+    renderButton(
+      createDeps({
+        getFavoriteStatusUseCase: { execute: vi.fn().mockResolvedValue(true) },
+      }),
+    );
     await screen.findByText("已收藏");
     act(() => screen.getByRole("button").click());
     await waitFor(() => {
       expect(screen.getByText("收藏")).toBeInTheDocument();
+    });
+  });
+
+  it("收藏成功后应该前插到收藏列表 store", async () => {
+    renderButton();
+    await screen.findByText("收藏");
+    act(() => screen.getByRole("button").click());
+    await waitFor(() => {
+      expect(useCollectionsStore.getState().items).toHaveLength(1);
+    });
+
+    expect(useCollectionsStore.getState().items[0]).toMatchObject({
+      subjectId: mockSubject.id,
+      platform: "bangumi",
+      name: mockSubject.name,
+      imageUrl: mockSubject.image,
+    });
+  });
+
+  it("取消收藏成功后应该从收藏列表 store 移除", async () => {
+    useCollectionsStore.getState().setItems([
+      {
+        subjectId: mockSubject.id,
+        platform: "bangumi",
+        name: mockSubject.name,
+        imageUrl: mockSubject.image,
+        addedAt: 1,
+      },
+    ]);
+    renderButton(
+      createDeps({
+        getFavoriteStatusUseCase: { execute: vi.fn().mockResolvedValue(true) },
+      }),
+    );
+    await screen.findByText("已收藏");
+    act(() => screen.getByRole("button").click());
+    await waitFor(() => {
+      expect(useCollectionsStore.getState().items).toEqual([]);
     });
   });
 });

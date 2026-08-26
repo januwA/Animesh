@@ -105,16 +105,33 @@ pub trait SubtitleCache: Send + Sync {
 pub fn strip_ass_tags(text: &str) -> String {
     let mut result = String::new();
     let mut in_tag = false;
-    for c in text.chars() {
+    let mut chars = text.chars().peekable();
+
+    while let Some(c) = chars.next() {
         if c == '{' {
             in_tag = true;
         } else if c == '}' {
             in_tag = false;
         } else if !in_tag {
-            result.push(c);
+            if c == '\\' {
+                match chars.peek() {
+                    Some('N') | Some('n') => {
+                        chars.next();
+                        result.push('\n');
+                    }
+                    Some('h') => {
+                        chars.next();
+                        result.push(' ');
+                    }
+                    _ => {}
+                }
+            } else {
+                result.push(c);
+            }
         }
     }
-    result.replace("\\N", "\n").replace("\\n", "\n")
+
+    result
 }
 
 pub fn decode_subtitle_bytes(bytes: &[u8]) -> String {

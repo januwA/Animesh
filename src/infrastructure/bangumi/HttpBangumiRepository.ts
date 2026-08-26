@@ -1,23 +1,32 @@
 import type { Context } from "ajanuw-context";
-import type { BangumiRepository } from "../../domain/bangumi/BangumiRepository";
-import {
-  type BangumiCalendarDay,
-  BangumiCalendarResponseSchema,
-  type BangumiCharacter,
-  BangumiCharactersResponseSchema,
-  type BangumiEpisodesPage,
-  BangumiEpisodesResponseSchema,
-  type BangumiPerson,
-  BangumiPersonsResponseSchema,
-  type BangumiSubject,
-  BangumiSubjectSchema,
-} from "../../domain/bangumi/BangumiSchemas";
+import type {
+  AnimeCalendarDay,
+  AnimeCharacter,
+  AnimeEpisodesPage,
+  AnimePerson,
+  AnimeSubject,
+  AnimeSubjectSearchParams,
+  AnimeSubjectSearchResult,
+} from "@/domain/anime/AnimeSchemas";
+import type {
+  AnimeRepository,
+  RankedSubjectsPage,
+} from "../../domain/anime/AnimeRepository";
 import type { HttpClient } from "../http/HttpClient";
+import {
+  BangumiCalendarResponseSchema,
+  BangumiCharactersResponseSchema,
+  BangumiEpisodesResponseSchema,
+  BangumiPersonsResponseSchema,
+  BangumiRankedSubjectsResponseSchema,
+  BangumiSubjectSchema,
+  BangumiSubjectSearchResponseSchema,
+} from "./BangumiSchemas";
 
-export class HttpBangumiRepository implements BangumiRepository {
+export class HttpBangumiRepository implements AnimeRepository {
   constructor(private readonly client: HttpClient) {}
 
-  async getCalendar(ctx: Context): Promise<BangumiCalendarDay[]> {
+  async getCalendar(ctx: Context): Promise<AnimeCalendarDay[]> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>("https://api.bgm.tv/calendar", {
@@ -39,7 +48,47 @@ export class HttpBangumiRepository implements BangumiRepository {
     return result.data;
   }
 
-  async getSubject(ctx: Context, subjectId: string): Promise<BangumiSubject> {
+  async getRankedSubjects(
+    ctx: Context,
+    year: number,
+    month: number,
+    limit?: number,
+    offset?: number,
+  ): Promise<RankedSubjectsPage> {
+    let data: unknown;
+    try {
+      data = await this.client.getJson<unknown>(
+        "https://api.bgm.tv/v0/subjects",
+        {
+          ctx,
+          params: {
+            type: "2",
+            cat: "1",
+            sort: "rank",
+            year,
+            month,
+            limit,
+            offset,
+          },
+        },
+      );
+    } catch (err: unknown) {
+      if (ctx.err() && err === ctx.err()) {
+        throw err;
+      }
+      throw new Error("Failed to fetch ranked subjects", { cause: err });
+    }
+
+    const result = BangumiRankedSubjectsResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Ranked subjects API response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
@@ -67,12 +116,12 @@ export class HttpBangumiRepository implements BangumiRepository {
     subjectId: string,
     offset: number,
     limit: number,
-  ): Promise<BangumiEpisodesPage> {
+  ): Promise<AnimeEpisodesPage> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/episodes?subject_id=${subjectId}&limit=${limit}&offset=${offset}`,
-        { ctx },
+        "https://api.bgm.tv/v0/episodes",
+        { ctx, params: { subject_id: subjectId, limit, offset } },
       );
     } catch (err: unknown) {
       if (ctx.err() && err === ctx.err()) {
@@ -93,12 +142,12 @@ export class HttpBangumiRepository implements BangumiRepository {
   async getSubjectPersons(
     ctx: Context,
     subjectId: string,
-  ): Promise<BangumiPerson[]> {
+  ): Promise<AnimePerson[]> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects/${subjectId}/persons?subject_id=${subjectId}`,
-        { ctx },
+        `https://api.bgm.tv/v0/subjects/${subjectId}/persons`,
+        { ctx, params: { subject_id: subjectId } },
       );
     } catch (err: unknown) {
       if (ctx.err() && err === ctx.err()) {
@@ -119,12 +168,12 @@ export class HttpBangumiRepository implements BangumiRepository {
   async getSubjectCharacters(
     ctx: Context,
     subjectId: string,
-  ): Promise<BangumiCharacter[]> {
+  ): Promise<AnimeCharacter[]> {
     let data: unknown;
     try {
       data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects/${subjectId}/characters?subject_id=${subjectId}`,
-        { ctx },
+        `https://api.bgm.tv/v0/subjects/${subjectId}/characters`,
+        { ctx, params: { subject_id: subjectId } },
       );
     } catch (err: unknown) {
       if (ctx.err() && err === ctx.err()) {
@@ -136,6 +185,45 @@ export class HttpBangumiRepository implements BangumiRepository {
     const result = BangumiCharactersResponseSchema.safeParse(data);
     if (!result.success) {
       throw new Error("Characters API response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  async searchSubjects(
+    ctx: Context,
+    params: AnimeSubjectSearchParams,
+  ): Promise<AnimeSubjectSearchResult> {
+    let raw: unknown;
+    try {
+      const response = await this.client.request(
+        "https://api.bgm.tv/v0/search/subjects",
+        {
+          ctx,
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          params: { limit: params.limit, offset: params.offset },
+          body: JSON.stringify({
+            keyword: params.keyword,
+            filter: { type: [2], nsfw: false },
+          }),
+        },
+      );
+      raw = await response.json();
+    } catch (err: unknown) {
+      if (ctx.err() && err === ctx.err()) {
+        throw err;
+      }
+      throw new Error("Failed to search subjects", { cause: err });
+    }
+
+    const result = BangumiSubjectSearchResponseSchema.safeParse(raw);
+    if (!result.success) {
+      throw new Error("Subject search API response structure mismatch", {
         cause: result.error,
       });
     }

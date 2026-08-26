@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { OpenerRepository } from "../../domain/opener/OpenerRepository";
 import { OpenUrlUseCase } from "./OpenUrlUseCase";
 
@@ -12,13 +13,10 @@ describe("OpenUrlUseCase 单元测试", () => {
     const useCase = new OpenUrlUseCase(mockRepo);
     vi.mocked(rawMockRepo.openUrl).mockResolvedValueOnce(undefined);
 
-    await useCase.execute("https://example.com");
+    await useCase.execute(NonEmptyStringSchema.parse("https://example.com"));
 
-    expect(rawMockRepo.openUrl).toHaveBeenCalledWith("https://example.com");
-  });
-
-  it("当 URL 为空时，应该抛出错误", async () => {
-    const useCase = new OpenUrlUseCase(mockRepo);
-    await expect(useCase.execute("")).rejects.toThrow("URL 不能为空");
+    expect(rawMockRepo.openUrl).toHaveBeenCalledWith(
+      NonEmptyStringSchema.parse("https://example.com"),
+    );
   });
 });

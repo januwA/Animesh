@@ -1,3 +1,4 @@
+import type { NonEmptyString } from "../common/NonEmptyString";
 import type { AiConfig, Settings } from "./SettingsSchemas";
 
 export interface SettingsRepository {
@@ -7,6 +8,6 @@ export interface SettingsRepository {
   setAiConfigs(configs: AiConfig[] | null): Promise<void>;
   setMaxDownloadSpeed(speed: number | null): Promise<void>;
   setMaxUploadSpeed(speed: number | null): Promise<void>;
-  selectDirectory(): Promise<string | null>;
+  selectDirectory(): Promise<NonEmptyString | null>;
   setTheme(theme?: "light" | "dark" | null): Promise<void>;
 }

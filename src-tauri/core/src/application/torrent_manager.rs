@@ -41,16 +41,25 @@ impl TorrentManager {
         self.torrent_repo
             .delete_torrent(info_hash_hex, delete_files)
             .await?;
-        self.subject_binding_repo.clear(info_hash_hex).await;
+        self.subject_binding_repo.clear_all(info_hash_hex).await;
         Ok(())
     }
 
     pub async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
         let mut torrents = self.torrent_repo.list_torrents().await;
         for torrent in &mut torrents {
-            if let Some(binding) = self.subject_binding_repo.get(&torrent.info_hash).await {
-                torrent.subject_id = Some(binding.subject_id);
-                torrent.subject_name = Some(binding.subject_name);
+            // 优先返回 bangumi 绑定，其次 anilist
+            for platform in ["bangumi", "anilist"] {
+                if let Some(binding) = self
+                    .subject_binding_repo
+                    .get(&torrent.info_hash, platform)
+                    .await
+                {
+                    torrent.subject_id = Some(binding.subject_id);
+                    torrent.subject_name = Some(binding.subject_name);
+                    torrent.subject_platform = Some(binding.platform);
+                    break;
+                }
             }
         }
         torrents
@@ -64,6 +73,7 @@ impl TorrentManager {
         &self,
         info_hash: &str,
         subject_id: u64,
+        platform: String,
         subject_name: String,
     ) {
         self.subject_binding_repo
@@ -71,14 +81,15 @@ impl TorrentManager {
                 info_hash,
                 SubjectBinding {
                     subject_id,
+                    platform,
                     subject_name,
                 },
             )
             .await;
     }
 
-    pub async fn clear_subject_binding(&self, info_hash: &str) {
-        self.subject_binding_repo.clear(info_hash).await;
+    pub async fn clear_subject_binding(&self, info_hash: &str, platform: &str) {
+        self.subject_binding_repo.clear(info_hash, platform).await;
     }
 }
 
@@ -114,7 +125,6 @@ mod tests {
     async fn 测试_添加磁力链接_委托仓储并返回结果() {
         let repo = MockTorrentRepository::default().with_add_result(Ok(AddTorrentResult {
             info_hash: "abc123".to_string(),
-            name: "示例资源".to_string(),
             files: vec![FileDetails {
                 id: 0,
                 name: "a.mkv".to_string(),
@@ -149,13 +159,17 @@ mod tests {
         let manager = TorrentManager::new(Arc::new(MockTorrentRepository::default()), binding_repo);
 
         manager
-            .set_subject_binding("hash1", 42, "进击的巨人".to_string())
+            .set_subject_binding("hash1", 42, "bangumi".to_string(), "进击的巨人".to_string())
             .await;
-        manager.clear_subject_binding("hash1").await;
+        manager.clear_subject_binding("hash1", "bangumi").await;
 
         assert_eq!(set_calls.lock().unwrap().len(), 1);
         assert_eq!(set_calls.lock().unwrap()[0].1, 42);
-        assert_eq!(*cleared.lock().unwrap(), vec!["hash1".to_string()]);
+        assert_eq!(set_calls.lock().unwrap()[0].2, "bangumi");
+        assert_eq!(
+            *cleared.lock().unwrap(),
+            vec![("hash1".to_string(), "bangumi".to_string())]
+        );
     }
 
     #[tokio::test]
@@ -193,17 +207,18 @@ mod tests {
                 trackers: vec![],
                 subject_id: None,
                 subject_name: None,
+                subject_platform: None,
             }),
         );
         let binding_repo = Arc::new(MockSubjectBindingRepository::default());
-        let cleared = binding_repo.cleared.clone();
+        let cleared_all = binding_repo.cleared_all.clone();
         let manager = TorrentManager::new(repo, binding_repo);
 
         assert_eq!(manager.list_torrents().await.len(), 1);
         assert!(manager.pause_torrent("hash1").await.is_ok());
         assert!(manager.resume_torrent("hash1").await.is_ok());
         assert!(manager.delete_torrent("hash1", false).await.is_ok());
-        assert_eq!(*cleared.lock().unwrap(), vec!["hash1".to_string()]);
+        assert_eq!(*cleared_all.lock().unwrap(), vec!["hash1".to_string()]);
     }
 
     #[tokio::test]
@@ -225,11 +240,13 @@ mod tests {
                 trackers: vec![],
                 subject_id: None,
                 subject_name: None,
+                subject_platform: None,
             }),
         );
         let binding_repo = Arc::new(MockSubjectBindingRepository::default().with_get_result(
             SubjectBinding {
                 subject_id: 42,
+                platform: "bangumi".to_string(),
                 subject_name: "进击的巨人".to_string(),
             },
         ));
@@ -239,6 +256,7 @@ mod tests {
         assert_eq!(torrents.len(), 1);
         assert_eq!(torrents[0].subject_id, Some(42));
         assert_eq!(torrents[0].subject_name.as_deref(), Some("进击的巨人"));
+        assert_eq!(torrents[0].subject_platform.as_deref(), Some("bangumi"));
     }
 
     #[tokio::test]

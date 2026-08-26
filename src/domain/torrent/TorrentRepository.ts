@@ -1,4 +1,6 @@
 import type { Context } from "ajanuw-context";
+import type { AnimePlatform } from "../anime/AnimeSchemas";
+import type { NonEmptyString } from "../common/NonEmptyString";
 import type { TorrentSearchEngine } from "./TorrentEngines";
 import type {
   AddTorrentResult,
@@ -11,28 +13,37 @@ import type {
 export interface TorrentRepository {
   search(
     ctx: Context,
-    keyword: string,
+    keyword: NonEmptyString,
     engine: TorrentSearchEngine,
   ): Promise<SearchResultItem[]>;
-  pauseTorrent(infoHash: string): Promise<void>;
-  resumeTorrent(infoHash: string): Promise<void>;
-  deleteTorrent(infoHash: string, deleteFiles: boolean): Promise<void>;
-  addTorrentMagnet(ctx: Context, magnet: string): Promise<AddTorrentResult>;
-  getTorrentFiles(infoHash: string): Promise<FileDetails[]>;
-  getTorrentStreamUrl(infoHash: string, fileId: number): Promise<string>;
-  getVideoMetadata(infoHash: string, fileId: number): Promise<VideoMetadata>;
+  pauseTorrent(infoHash: NonEmptyString): Promise<void>;
+  resumeTorrent(infoHash: NonEmptyString): Promise<void>;
+  deleteTorrent(infoHash: NonEmptyString, deleteFiles: boolean): Promise<void>;
+  addTorrentMagnet(
+    ctx: Context,
+    magnet: NonEmptyString,
+  ): Promise<AddTorrentResult>;
+  getTorrentFiles(infoHash: NonEmptyString): Promise<FileDetails[]>;
+  getStreamPort(): Promise<number>;
+  getLocalIp(): Promise<string>;
+  getVideoMetadata(
+    infoHash: NonEmptyString,
+    fileId: number,
+  ): Promise<VideoMetadata>;
   getSubtitleVtt(
-    infoHash: string,
+    infoHash: NonEmptyString,
     fileId: number,
     trackId: number,
   ): Promise<string>;
   setTorrentSubject(
-    infoHash: string,
+    infoHash: NonEmptyString,
     subject_id: number,
-    subject_name: string,
+    platform: AnimePlatform,
+    subject_name: NonEmptyString,
   ): Promise<void>;
-  clearTorrentSubject(infoHash: string): Promise<void>;
-  subscribeTorrents(
-    onUpdate: (torrents: TorrentStatusInfo[]) => void,
-  ): Promise<() => void>;
+  clearTorrentSubject(
+    infoHash: NonEmptyString,
+    platform: AnimePlatform,
+  ): Promise<void>;
+  subscribeTorrents(): Promise<ReadableStream<TorrentStatusInfo[]>>;
 }

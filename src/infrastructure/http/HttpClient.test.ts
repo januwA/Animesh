@@ -56,4 +56,60 @@ describe("HttpClient", () => {
 
     expect(mockFetch).not.toHaveBeenCalled();
   });
+
+  it("应将 params 序列化并拼接到 URL 查询字符串", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    } as Response);
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new FetchHttpClient();
+    await client.getJson("https://api.example.com/test", {
+      params: { keyword: "动画", type: 2, nsfw: false },
+    });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    const parsed = new URL(calledUrl);
+    expect(parsed.searchParams.get("keyword")).toBe("动画");
+    expect(parsed.searchParams.get("type")).toBe("2");
+    expect(parsed.searchParams.get("nsfw")).toBe("false");
+  });
+
+  it("应忽略 params 中值为 undefined 的字段", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    } as Response);
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new FetchHttpClient();
+    await client.getJson("https://api.example.com/test", {
+      params: { a: "1", b: undefined, c: "3" },
+    });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    const parsed = new URL(calledUrl);
+    expect(parsed.searchParams.get("a")).toBe("1");
+    expect(parsed.searchParams.has("b")).toBe(false);
+    expect(parsed.searchParams.get("c")).toBe("3");
+  });
+
+  it("应正确合并 URL 已有的查询参数与 params", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    } as Response);
+    vi.stubGlobal("fetch", mockFetch);
+
+    const client = new FetchHttpClient();
+    await client.getJson("https://api.example.com/test?existing=yes", {
+      params: { added: "true" },
+    });
+
+    const calledUrl = mockFetch.mock.calls[0][0] as string;
+    const parsed = new URL(calledUrl);
+    expect(parsed.searchParams.get("existing")).toBe("yes");
+    expect(parsed.searchParams.get("added")).toBe("true");
+  });
 });

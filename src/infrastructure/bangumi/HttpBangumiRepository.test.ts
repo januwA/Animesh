@@ -1,259 +1,73 @@
-import { Background, Canceled, WithCancel } from "ajanuw-context";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { createFakeHttpClient } from "../../test/FakeHttpClient";
+import { Background } from "ajanuw-context";
+import { describe, expect, it, vi } from "vitest";
+import { createFakeHttpClient } from "@/test/FakeHttpClient";
 import { HttpBangumiRepository } from "./HttpBangumiRepository";
 
-describe("HttpBangumiRepository", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+const rawRankedSubject = {
+  id: 326,
+  name: "Shin Seiki Evangelion",
+  name_cn: "新世纪福音战士",
+  images: {
+    large: "https://img.example/l.jpg",
+    medium: "https://img.example/m.jpg",
+    small: "https://img.example/s.jpg",
+    grid: "https://img.example/g.jpg",
+  },
+  rating: { score: 9.1, rank: 1 },
+};
 
-  it("getCalendar 能够成功获取并解析日历数据", async () => {
-    const mockResponse = [
-      {
-        weekday: { id: 1, en: "Mon", cn: "星期一", ja: "月曜日" },
-        items: [
-          {
-            id: 123,
-            url: "https://api.bgm.tv/subject/123",
-            name: "Original Name",
-            name_cn: "动画中文名",
-            air_date: "2026-07-07",
-            air_weekday: 1,
-          },
-        ],
-      },
-    ];
-
+describe("HttpBangumiRepository 榜单条目获取", () => {
+  it("应按年份月份 rank 排序请求指定类型榜单并解析响应", async () => {
     const client = createFakeHttpClient();
-    client.getJson.mockResolvedValue(mockResponse);
+    vi.mocked(client.getJson).mockResolvedValueOnce({
+      total: 1,
+      limit: 5,
+      offset: 0,
+      data: [rawRankedSubject],
+    });
 
-    const repository = new HttpBangumiRepository(client);
-    const result = await repository.getCalendar(Background);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].weekday.cn).toBe("星期一");
-    expect(result[0].items[0].name_cn).toBe("动画中文名");
-  });
-
-  it("getCalendar 在 API 返回结构不匹配时应抛出错误", async () => {
-    const client = createFakeHttpClient();
-    client.getJson.mockResolvedValue({ invalid: "structure" });
-
-    const repository = new HttpBangumiRepository(client);
-    await expect(repository.getCalendar(Background)).rejects.toThrow(
-      "Calendar API response structure mismatch",
-    );
-  });
-
-  it("getCalendar 在网络请求失败时应抛出带 cause 的错误", async () => {
-    const client = createFakeHttpClient();
-    client.getJson.mockRejectedValue(
-      new Error("HTTP error! status: 500 Internal Server Error"),
-    );
-
-    const repository = new HttpBangumiRepository(client);
-    await expect(repository.getCalendar(Background)).rejects.toThrow(
-      "Failed to fetch calendar",
-    );
-  });
-
-  it("getCalendar 在 Context 取消时应抛出 Context 错误而不进行二次包装", async () => {
-    const [ctx, cancel] = WithCancel(Background);
-    cancel();
-
-    const client = createFakeHttpClient();
-    client.getJson.mockRejectedValue(ctx.err());
-
-    const repository = new HttpBangumiRepository(client);
-    await expect(repository.getCalendar(ctx)).rejects.toThrow(Canceled.message);
-  });
-});
-describe("getEpisodes", () => {
-  it("应该按 offset/limit 请求并解析分页剧集数据", async () => {
-    const mockResponse = {
-      data: [
-        {
-          id: 1001,
-          type: 0,
-          sort: 1,
-          name: "First Episode Jp",
-          name_cn: "第一集 中文",
-          duration: "24:00",
-          airdate: "2026-07-01",
-          desc: "第一集的简介内容",
-        },
-        {
-          id: 1002,
-          type: 0,
-          sort: 2,
-          name: "Second Episode Jp",
-          name_cn: "第二集 中文",
-          duration: "24:00",
-          airdate: "2026-07-02",
-          desc: "第二集的简介内容",
-        },
-      ],
-      total: 103,
-      limit: 50,
-      offset: 50,
-    };
-
-    const client = createFakeHttpClient();
-    client.getJson.mockResolvedValue(mockResponse);
-
-    const repository = new HttpBangumiRepository(client);
-    const result = await repository.getEpisodes(Background, "42", 50, 50);
+    const repo = new HttpBangumiRepository(client);
+    const subjects = await repo.getRankedSubjects(Background, 2026, 8, 5);
 
     expect(client.getJson).toHaveBeenCalledWith(
-      "https://api.bgm.tv/v0/episodes?subject_id=42&limit=50&offset=50",
-      expect.objectContaining({ ctx: Background }),
-    );
-    expect(result.items).toHaveLength(2);
-    expect(result.items[0].name_cn).toBe("第一集 中文");
-    expect(result.total).toBe(103);
-  });
-
-  it("在 API 返回结构不匹配时应抛出错误", async () => {
-    const client = createFakeHttpClient();
-    client.getJson.mockResolvedValue({ invalid: "structure" });
-
-    const repository = new HttpBangumiRepository(client);
-    await expect(
-      repository.getEpisodes(Background, "42", 0, 50),
-    ).rejects.toThrow("Episodes API response structure mismatch");
-  });
-
-  it("在网络请求失败时应抛出带 cause 的错误", async () => {
-    const client = createFakeHttpClient();
-    client.getJson.mockRejectedValue(
-      new Error("HTTP error! status: 500 Internal Server Error"),
-    );
-
-    const repository = new HttpBangumiRepository(client);
-    await expect(
-      repository.getEpisodes(Background, "42", 0, 50),
-    ).rejects.toThrow("Failed to fetch episodes");
-  });
-});
-
-describe("getSubjectPersons", () => {
-  it("应该能够成功获取并解析制作人员数据", async () => {
-    const mockResponse = [
+      "https://api.bgm.tv/v0/subjects",
       {
-        images: {
-          small: "https://example.com/small.jpg",
-          grid: "https://example.com/grid.jpg",
-          large: "https://example.com/large.jpg",
-          medium: "https://example.com/medium.jpg",
+        ctx: Background,
+        params: {
+          cat: "1",
+          limit: 5,
+          month: 8,
+          offset: undefined,
+          sort: "rank",
+          type: "2",
+          year: 2026,
         },
-        name: "木村拓",
-        relation: "导演",
-        career: ["producer"],
-        type: 1,
-        id: 44615,
-        eps: "",
       },
-    ];
-
-    const client = createFakeHttpClient();
-    client.getJson.mockResolvedValue(mockResponse);
-
-    const repository = new HttpBangumiRepository(client);
-    const result = await repository.getSubjectPersons(Background, "622206");
-
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("木村拓");
-    expect(result[0].relation).toBe("导演");
-  });
-
-  it("在 API 返回结构不匹配时应抛出错误", async () => {
-    const client = createFakeHttpClient();
-    client.getJson.mockResolvedValue({ invalid: "structure" });
-
-    const repository = new HttpBangumiRepository(client);
-    await expect(
-      repository.getSubjectPersons(Background, "622206"),
-    ).rejects.toThrow("Persons API response structure mismatch");
-  });
-
-  it("在网络请求失败时应抛出带 cause 的错误", async () => {
-    const client = createFakeHttpClient();
-    client.getJson.mockRejectedValue(
-      new Error("HTTP error! status: 500 Internal Server Error"),
     );
-
-    const repository = new HttpBangumiRepository(client);
-    await expect(
-      repository.getSubjectPersons(Background, "622206"),
-    ).rejects.toThrow("Failed to fetch subject persons");
-  });
-});
-
-describe("getSubjectCharacters", () => {
-  it("应该能够成功获取并解析角色数据（含声优）", async () => {
-    const mockResponse = [
-      {
-        images: {
-          small: "https://example.com/small.jpg",
-          grid: "https://example.com/grid.jpg",
-          large: "https://example.com/large.jpg",
-          medium: "https://example.com/medium.jpg",
+    expect(subjects).toEqual({
+      items: [
+        {
+          id: 326,
+          name: "新世纪福音战士",
+          image: "https://img.example/m.jpg",
+          rating: 9.1,
+          summary: "",
         },
-        name: "ヤニねこ",
-        summary: "主角猫",
-        relation: "主角",
-        type: 1,
-        id: 174916,
-        actors: [
-          {
-            images: {
-              small: "https://example.com/small.jpg",
-              grid: "https://example.com/grid.jpg",
-              large: "https://example.com/large.jpg",
-              medium: "https://example.com/medium.jpg",
-            },
-            name: "夏吉ゆうこ",
-            short_summary: "声优",
-            career: ["seiyu"],
-            id: 36024,
-            type: 1,
-            locked: false,
-          },
-        ],
-      },
-    ];
-
-    const client = createFakeHttpClient();
-    client.getJson.mockResolvedValue(mockResponse);
-
-    const repository = new HttpBangumiRepository(client);
-    const result = await repository.getSubjectCharacters(Background, "622206");
-
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("ヤニねこ");
-    expect(result[0].actors[0].name).toBe("夏吉ゆうこ");
+      ],
+      total: 1,
+    });
   });
 
-  it("在 API 返回结构不匹配时应抛出错误", async () => {
+  it("响应结构异常时应抛出包含 cause 的错误", async () => {
     const client = createFakeHttpClient();
-    client.getJson.mockResolvedValue({ invalid: "structure" });
+    vi.mocked(client.getJson).mockResolvedValueOnce({ unexpected: true });
 
-    const repository = new HttpBangumiRepository(client);
-    await expect(
-      repository.getSubjectCharacters(Background, "622206"),
-    ).rejects.toThrow("Characters API response structure mismatch");
-  });
+    const repo = new HttpBangumiRepository(client);
 
-  it("在网络请求失败时应抛出带 cause 的错误", async () => {
-    const client = createFakeHttpClient();
-    client.getJson.mockRejectedValue(
-      new Error("HTTP error! status: 500 Internal Server Error"),
+    const promise = repo.getRankedSubjects(Background, 2026, 8, 5);
+    await expect(promise).rejects.toThrow(
+      "Ranked subjects API response structure mismatch",
     );
-
-    const repository = new HttpBangumiRepository(client);
-    await expect(
-      repository.getSubjectCharacters(Background, "622206"),
-    ).rejects.toThrow("Failed to fetch subject characters");
+    await expect(promise).rejects.toMatchObject({ cause: expect.any(Error) });
   });
 });

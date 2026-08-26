@@ -1,33 +1,33 @@
 import { Heart } from "lucide-react";
 import { useState } from "react";
-import { useDI } from "@/di/DIContext";
+import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
+import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
+import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
+import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { Button } from "@/presentation/components/ui/button";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { Button } from "./ui/button";
-
-export interface FavoriteButtonSubject {
-  subjectId: number;
-  name: string;
-  imageUrl: string | null;
-}
+import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 
 interface FavoriteButtonProps {
-  subject: FavoriteButtonSubject;
+  subject: AnimeSubject;
+  platform: AnimePlatform;
   showLabel?: boolean;
+  getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;
+  addFavoriteUseCase: Pick<AddFavoriteUseCase, "execute">;
+  removeFavoriteUseCase: Pick<RemoveFavoriteUseCase, "execute">;
 }
 
 export function FavoriteButton({
   subject,
+  platform,
   showLabel = true,
+  getFavoriteStatusUseCase,
+  addFavoriteUseCase,
+  removeFavoriteUseCase,
 }: FavoriteButtonProps) {
-  const {
-    getFavoriteStatusUseCase,
-    addFavoriteUseCase,
-    removeFavoriteUseCase,
-  } = useDI();
-
   const { data, loading, refetch } = useQuery(
-    () => getFavoriteStatusUseCase.execute(subject.subjectId),
-    [getFavoriteStatusUseCase, subject.subjectId],
+    () => getFavoriteStatusUseCase.execute(subject.id, platform),
+    [getFavoriteStatusUseCase, subject.id, platform],
     {
       onSuccess: () => setOptimistic(null),
     },
@@ -36,17 +36,28 @@ export function FavoriteButton({
   const favorited = optimistic ?? data ?? false;
   const ready = !loading;
 
+  const addItem = useCollectionsStore((s) => s.addItem);
+  const removeItem = useCollectionsStore((s) => s.removeItem);
+
   const handleClick = async () => {
     const next = !favorited;
     setOptimistic(next);
     if (next) {
       await addFavoriteUseCase.execute({
-        subjectId: subject.subjectId,
+        subjectId: subject.id,
+        platform,
         name: subject.name,
-        imageUrl: subject.imageUrl,
+        imageUrl: subject.image,
+      });
+      addItem({
+        subjectId: subject.id,
+        platform,
+        name: subject.name,
+        imageUrl: subject.image,
       });
     } else {
-      await removeFavoriteUseCase.execute(subject.subjectId);
+      await removeFavoriteUseCase.execute(subject.id, platform);
+      removeItem(subject.id, platform);
     }
     refetch();
   };

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { CollectionRepository } from "@/domain/collection/CollectionRepository";
 import type { FavoriteItem } from "@/domain/collection/CollectionSchemas";
 import {
@@ -27,9 +28,14 @@ export class HttpCollectionRepository implements CollectionRepository {
     return result.data.map(toFavoriteItem);
   }
 
-  async isFavorited(subjectId: number): Promise<boolean> {
+  async isFavorited(
+    subjectId: number,
+    platform: AnimePlatform,
+  ): Promise<boolean> {
     const items = await this.getAll();
-    return items.some((item) => item.subjectId === subjectId);
+    return items.some(
+      (item) => item.subjectId === subjectId && item.platform === platform,
+    );
   }
 
   async add(item: Omit<FavoriteItem, "addedAt">): Promise<void> {
@@ -40,15 +46,17 @@ export class HttpCollectionRepository implements CollectionRepository {
       },
       body: JSON.stringify({
         subject_id: item.subjectId,
+        platform: item.platform,
         name: item.name,
         image_url: item.imageUrl,
       }),
     });
   }
 
-  async remove(subjectId: number): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/collections/${subjectId}`, {
-      method: "DELETE",
-    });
+  async remove(subjectId: number, platform: AnimePlatform): Promise<void> {
+    await this.httpClient.request(
+      `${baseUrl}/collections/${platform}/${subjectId}`,
+      { method: "DELETE" },
+    );
   }
 }

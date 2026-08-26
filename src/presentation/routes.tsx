@@ -1,8 +1,15 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
-import { MainLayout, NavBarLayout } from "./components/Layout";
+import { DetailLayout, MainLayout, NavBarLayout } from "./components/Layout";
 import TorrentSearch from "./pages/TorrentSearch";
 
+const AiSubtitleTranslation = lazy(
+  () => import("./pages/AiSubtitleTranslation"),
+);
+const AnilistCalendar = lazy(() => import("./pages/AnilistCalendar"));
+const AnilistSearch = lazy(() => import("./pages/AnilistSearch"));
+const AnilistSubjectDetail = lazy(() => import("./pages/AnilistSubjectDetail"));
+const BangumiSearch = lazy(() => import("./pages/BangumiSearch"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Collections = lazy(() => import("./pages/Collections"));
 const Downloads = lazy(() => import("./pages/Downloads"));
@@ -18,20 +25,49 @@ export const routes: RouteObject[] = [
     element: <MainLayout />,
     children: [
       {
-        path: "torrent",
-        element: <TorrentDetail />,
-      },
-      {
-        path: "subject/:subjectId",
-        element: <SubjectDetail />,
-      },
-      {
-        path: "play/:infoHash/:fileId",
-        element: <Player />,
-      },
-      {
-        path: "live/play",
-        element: <LivePlayer />,
+        element: <DetailLayout />,
+        children: [
+          {
+            path: "torrent",
+            element: <TorrentDetail />,
+          },
+          {
+            path: "subject/:subjectId",
+            element: <SubjectDetail />,
+          },
+          {
+            path: "anilist/subject/:subjectId",
+            element: <AnilistSubjectDetail />,
+          },
+          {
+            path: "play/:infoHash/:fileId",
+            element: <Player />,
+          },
+          {
+            path: "play/:infoHash/:fileId/ai-subtitle",
+            element: <AiSubtitleTranslation />,
+          },
+          {
+            path: "live/play",
+            element: <LivePlayer />,
+          },
+          {
+            path: "search",
+            element: <BangumiSearch />,
+          },
+          {
+            path: "anilist/search",
+            element: <AnilistSearch />,
+          },
+          {
+            path: "live",
+            element: <Iptv />,
+          },
+          {
+            path: "settings",
+            element: <Settings />,
+          },
+        ],
       },
       {
         element: <NavBarLayout />,
@@ -45,21 +81,16 @@ export const routes: RouteObject[] = [
             element: <Calendar />,
           },
           {
+            path: "anilist",
+            element: <AnilistCalendar />,
+          },
+          {
             path: "collections",
             element: <Collections />,
           },
           {
             path: "downloads",
             element: <Downloads />,
-          },
-          {
-            path: "live",
-            element: <Iptv />,
-          },
-
-          {
-            path: "settings",
-            element: <Settings />,
           },
         ],
       },

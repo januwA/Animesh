@@ -22,18 +22,20 @@ impl CollectionRepository for SqliteCollectionRepository {
     /// 查询全部收藏，按收藏时间倒序。
     async fn list(&self) -> CoreResult<Vec<CollectionRecord>> {
         sqlx::query_as::<_, CollectionRecord>(
-            "SELECT subject_id, name, image_url, added_at FROM collections ORDER BY added_at DESC",
+            "SELECT subject_id, platform, name, image_url, added_at FROM collections ORDER BY added_at DESC",
         )
         .fetch_all(&self.pool)
         .await
         .map_err(CoreError::from)
     }
 
-    async fn is_favorited(&self, subject_id: i64) -> CoreResult<bool> {
-        let row = sqlx::query("SELECT COUNT(*) FROM collections WHERE subject_id = ?")
-            .bind(subject_id)
-            .fetch_one(&self.pool)
-            .await?;
+    async fn is_favorited(&self, subject_id: i64, platform: &str) -> CoreResult<bool> {
+        let row =
+            sqlx::query("SELECT COUNT(*) FROM collections WHERE subject_id = ? AND platform = ?")
+                .bind(subject_id)
+                .bind(platform)
+                .fetch_one(&self.pool)
+                .await?;
         let count: i64 = row.get(0);
         Ok(count > 0)
     }
@@ -45,10 +47,11 @@ impl CollectionRepository for SqliteCollectionRepository {
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
         sqlx::query(
-            "INSERT INTO collections (subject_id, name, image_url, added_at) VALUES (?, ?, ?, ?)
-             ON CONFLICT(subject_id) DO NOTHING",
+            "INSERT INTO collections (subject_id, platform, name, image_url, added_at) VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(subject_id, platform) DO NOTHING",
         )
         .bind(item.subject_id)
+        .bind(&item.platform)
         .bind(&item.name)
         .bind(&item.image_url)
         .bind(added_at)
@@ -57,9 +60,10 @@ impl CollectionRepository for SqliteCollectionRepository {
         Ok(())
     }
 
-    async fn remove(&self, subject_id: i64) -> CoreResult<()> {
-        sqlx::query("DELETE FROM collections WHERE subject_id = ?")
+    async fn remove(&self, subject_id: i64, platform: &str) -> CoreResult<()> {
+        sqlx::query("DELETE FROM collections WHERE subject_id = ? AND platform = ?")
             .bind(subject_id)
+            .bind(platform)
             .execute(&self.pool)
             .await?;
         Ok(())
@@ -83,6 +87,7 @@ mod tests {
         let repo = setup().await;
         repo.add(NewCollectionItem {
             subject_id: 1,
+            platform: "bangumi".to_string(),
             name: "旧条目".to_string(),
             image_url: Some("http://a/1.jpg".to_string()),
         })
@@ -91,6 +96,7 @@ mod tests {
         tokio::time::sleep(std::time::Duration::from_millis(2)).await;
         repo.add(NewCollectionItem {
             subject_id: 2,
+            platform: "bangumi".to_string(),
             name: "新条目".to_string(),
             image_url: None,
         })
@@ -100,6 +106,7 @@ mod tests {
         let items = repo.list().await.expect("列表应成功");
         assert_eq!(items.len(), 2);
         assert_eq!(items[0].subject_id, 2);
+        assert_eq!(items[0].platform, "bangumi");
         assert_eq!(items[1].subject_id, 1);
         assert_eq!(items[1].image_url.as_deref(), Some("http://a/1.jpg"));
         assert!(items[0].added_at > 0);
@@ -111,6 +118,7 @@ mod tests {
         for _ in 0..2 {
             repo.add(NewCollectionItem {
                 subject_id: 7,
+                platform: "bangumi".to_string(),
                 name: "条目".to_string(),
                 image_url: None,
             })
@@ -122,17 +130,45 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn 测试_不同平台同_id可分别收藏() {
+        let repo = setup().await;
+        repo.add(NewCollectionItem {
+            subject_id: 100,
+            platform: "bangumi".to_string(),
+            name: "Bangumi条目".to_string(),
+            image_url: None,
+        })
+        .await
+        .expect("添加应成功");
+        repo.add(NewCollectionItem {
+            subject_id: 100,
+            platform: "anilist".to_string(),
+            name: "Anilist条目".to_string(),
+            image_url: None,
+        })
+        .await
+        .expect("添加应成功");
+
+        let items = repo.list().await.expect("列表应成功");
+        assert_eq!(items.len(), 2);
+        assert!(repo.is_favorited(100, "bangumi").await.expect("查询应成功"));
+        assert!(repo.is_favorited(100, "anilist").await.expect("查询应成功"));
+    }
+
+    #[tokio::test]
     async fn 测试_收藏状态判断() {
         let repo = setup().await;
-        assert!(!repo.is_favorited(3).await.expect("查询应成功"));
+        assert!(!repo.is_favorited(3, "bangumi").await.expect("查询应成功"));
         repo.add(NewCollectionItem {
             subject_id: 3,
+            platform: "bangumi".to_string(),
             name: "条目".to_string(),
             image_url: None,
         })
         .await
         .expect("添加应成功");
-        assert!(repo.is_favorited(3).await.expect("查询应成功"));
+        assert!(repo.is_favorited(3, "bangumi").await.expect("查询应成功"));
+        assert!(!repo.is_favorited(3, "anilist").await.expect("查询应成功"));
     }
 
     #[tokio::test]
@@ -140,13 +176,14 @@ mod tests {
         let repo = setup().await;
         repo.add(NewCollectionItem {
             subject_id: 4,
+            platform: "bangumi".to_string(),
             name: "条目".to_string(),
             image_url: None,
         })
         .await
         .expect("添加应成功");
-        repo.remove(4).await.expect("移除应成功");
-        assert!(!repo.is_favorited(4).await.expect("查询应成功"));
+        repo.remove(4, "bangumi").await.expect("移除应成功");
+        assert!(!repo.is_favorited(4, "bangumi").await.expect("查询应成功"));
         assert!(repo.list().await.expect("列表应成功").is_empty());
     }
 }

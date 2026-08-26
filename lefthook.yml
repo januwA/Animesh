@@ -10,9 +10,12 @@ pre-commit:
       glob: "src/**/*.{ts,tsx,json,css}"
       run: pnpm check:apply {staged_files}
       stage_fixed: true
-    "后端_代码格式化":
+    "后端_Rust代码格式化":
       glob: "src-tauri/**/*.rs"
       run: cargo fmt --manifest-path src-tauri/Cargo.toml --all
+    "后端_TOML配置格式化":
+      glob: "src-tauri/**/*.toml"
+      run: pnpm fmt:toml
     "前端_TypeScript类型检查":
       run: pnpm typecheck # 全量检查，确保类型安全
     "后端_Rust静态代码检查(Clippy)":
@@ -22,39 +25,31 @@ pre-commit:
 pre-push:
   parallel: false
   commands:
-    "前端_错误处理规范检查":
+    "前端_表现层规范检查":
+      glob: "src/presentation/**/*.{ts,tsx}"
+      run: pnpm check:presentation {push_files}
+    "前端_应用层规范检查":
+      glob: "src/{application,infrastructure}/**/*.{ts,tsx}"
+      run: pnpm check:application {push_files}
+    "前端_接口契约检查":
       glob: "src/**/*.{ts,tsx}"
-      run: pnpm check:error-handling {push_files}
-    "前端_接口设计参数检查":
-      glob: "src/application/**/*.{ts,tsx}"
-      run: pnpm check:application-params {push_files}
-    "前端_接口可空设计检查":
-      glob: "src/**/*.{ts,tsx}"
-      run: pnpm check:interface-methods {push_files}
+      run: pnpm check:interface {push_files}
     "前端_函数方法长度检查":
       glob: "src/**/*.{ts,tsx}"
       run: pnpm check:function-length {push_files}
-    "前端_表现层Tauri导入检查":
-      glob: "src/presentation/**/*.{ts,tsx}"
-      run: pnpm check:presentation-tauri-imports {push_files}
-    "前端_表现层样式检查":
-      glob: "src/presentation/**/*.{ts,tsx}"
-      run: pnpm check:presentation-styles {push_files}
+    "前端_应用层接入检查":
+      run: pnpm check:use-case-wiring
+    "前端_Knip死代码检查":
+      run: pnpm knip
     "前端_DI容器架构检查":
       run: pnpm check:di
-    "前端_应用层死代码检查":
-      run: pnpm check:application-dead-code
-    "前端_接口实现契约检查":
-      run: pnpm check:interface-conformance {push_files}
-    "前端_基础设施死代码检查":
-      run: pnpm check:infrastructure-dead-code {push_files}
-    "前端_依赖注入规范检查":
-      glob: "src/{application,infrastructure}/**/*.{ts,tsx}"
-      run: pnpm check:dependency-injection {push_files}
+    "前端_测试文件一一对应检查":
+      glob: "src/**/*.{ts,tsx}"
+      run: pnpm check:test-files {push_files}
     "后端_异步命令检查":
       run: pnpm check:tauri-commands
     "前端_单元测试与覆盖率":
-      run: pnpm test:coverage # 全量测试及覆盖率阈值检查
+      run: pnpm test:coverage
     "后端_Rust单元测试与覆盖率":
       glob: "src-tauri/**/*"
       run: pnpm test:rust:coverage

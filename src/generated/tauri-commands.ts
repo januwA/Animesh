@@ -1,0 +1,41 @@
+// 自动生成的 Tauri Command 注册表
+// 请勿手动编辑，运行 `cargo run -p xtask -- generate` 重新生成
+
+export const commands = {
+  cancel_search: "cancel_search",
+  search_torrents: "search_torrents",
+  torrent_add_magnet: "torrent_add_magnet",
+  cancel_add_magnet: "cancel_add_magnet",
+  get_stream_port: "get_stream_port",
+  get_local_ip: "get_local_ip",
+  iptv_resolve_stream: "iptv_resolve_stream",
+  torrent_get_files: "torrent_get_files",
+  torrent_get_video_metadata: "torrent_get_video_metadata",
+  torrent_get_subtitle_vtt: "torrent_get_subtitle_vtt",
+  torrent_pause: "torrent_pause",
+  torrent_resume: "torrent_resume",
+  torrent_delete: "torrent_delete",
+  torrent_set_subject: "torrent_set_subject",
+  torrent_clear_subject: "torrent_clear_subject",
+  collection_get_all: "collection_get_all",
+  collection_is_favorited: "collection_is_favorited",
+  collection_add: "collection_add",
+  collection_remove: "collection_remove",
+  torrent_subscribe: "torrent_subscribe",
+  settings_get: "settings_get",
+  settings_set_download_dir: "settings_set_download_dir",
+  settings_set_proxy: "settings_set_proxy",
+  settings_set_ai_configs: "settings_set_ai_configs",
+  settings_set_max_download_speed: "settings_set_max_download_speed",
+  settings_set_max_upload_speed: "settings_set_max_upload_speed",
+  select_directory: "select_directory",
+  ai_chat_request: "ai_chat_request",
+  subtitle_translation_get: "subtitle_translation_get",
+  subtitle_translation_list_by_torrent: "subtitle_translation_list_by_torrent",
+  subtitle_translation_save: "subtitle_translation_save",
+  subtitle_translation_delete: "subtitle_translation_delete",
+  subtitle_translation_delete_by_torrent:
+    "subtitle_translation_delete_by_torrent",
+  subtitle_translation_delete_by_info_hash:
+    "subtitle_translation_delete_by_info_hash",
+} as const;

@@ -1,3 +1,5 @@
+import type { NonEmptyString } from "../common/NonEmptyString";
+
 export interface OpenerRepository {
-  openUrl(url: string): Promise<void>;
+  openUrl(url: NonEmptyString): Promise<void>;
 }

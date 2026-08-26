@@ -1,4 +1,8 @@
 import type { Context } from "ajanuw-context";
+import {
+  type NonEmptyString,
+  NonEmptyStringSchema,
+} from "@/domain/common/NonEmptyString";
 import type { AiClient } from "../../domain/ai/AiClient";
 import type { Logger } from "../../domain/logger/logger";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
@@ -54,7 +58,11 @@ export class SearchTorrentsWithAiUseCase {
 
   async execute(
     ctx: Context,
-    dto: { keyword: string; engine: TorrentSearchEngine; aiAlias?: string },
+    dto: {
+      keyword: NonEmptyString;
+      engine: TorrentSearchEngine;
+      aiAlias: NonEmptyString;
+    },
   ): Promise<AiSearchResultItem[]> {
     this.logger.info("开始执行 AI Agent 智能搜索与推荐流程", dto);
 
@@ -81,23 +89,21 @@ export class SearchTorrentsWithAiUseCase {
     }
   }
 
-  private async getAiSettings(aiAlias?: string): Promise<{
-    endpoint: string;
-    apiKey: string;
-    model: string;
+  private async getAiSettings(aiAlias: NonEmptyString): Promise<{
+    endpoint: NonEmptyString;
+    apiKey: NonEmptyString;
+    model: NonEmptyString;
   } | null> {
     const settings = await this.settingsRepository.getSettings();
 
     // If configs exist, look up by alias or use the first one
     if (settings?.ai_configs && settings.ai_configs.length > 0) {
-      const config = aiAlias
-        ? settings.ai_configs.find((c) => c.alias === aiAlias)
-        : settings.ai_configs[0];
+      const config = settings.ai_configs.find((c) => c.alias === aiAlias);
       if (config?.api_endpoint && config.api_key) {
         return {
           endpoint: config.api_endpoint,
           apiKey: config.api_key,
-          model: config.ai_model || "gpt-3.5-turbo",
+          model: config.ai_model,
         };
       }
     }
@@ -107,8 +113,12 @@ export class SearchTorrentsWithAiUseCase {
 
   private async runAiPipeline(
     ctx: Context,
-    dto: { keyword: string; engine: TorrentSearchEngine },
-    aiSettings: { endpoint: string; apiKey: string; model: string },
+    dto: { keyword: NonEmptyString; engine: TorrentSearchEngine },
+    aiSettings: {
+      endpoint: NonEmptyString;
+      apiKey: NonEmptyString;
+      model: NonEmptyString;
+    },
     rawResults: SearchResultItem[],
   ): Promise<AiSearchResultItem[]> {
     const { endpoint, apiKey, model } = aiSettings;
@@ -160,9 +170,9 @@ export class SearchTorrentsWithAiUseCase {
 
   private async runSingleReActStep(
     ctx: Context,
-    endpoint: string,
-    apiKey: string,
-    model: string,
+    endpoint: NonEmptyString,
+    apiKey: NonEmptyString,
+    model: NonEmptyString,
     messages: ChatCompletionMessage[],
     tools: ChatCompletionTool[],
     currentTorrents: SearchResultItem[],
@@ -194,11 +204,11 @@ export class SearchTorrentsWithAiUseCase {
 
   private async executeReActLoop(
     ctx: Context,
-    endpoint: string,
-    apiKey: string,
-    model: string,
+    endpoint: NonEmptyString,
+    apiKey: NonEmptyString,
+    model: NonEmptyString,
     rawResults: SearchResultItem[],
-    keyword: string,
+    keyword: NonEmptyString,
     initialEngine: TorrentSearchEngine,
   ): Promise<{ currentTorrents: SearchResultItem[]; content: string }> {
     const tools = this.getTools();
@@ -257,9 +267,9 @@ export class SearchTorrentsWithAiUseCase {
   }
 
   private async fetchAiResponse(
-    endpoint: string,
-    apiKey: string,
-    model: string,
+    endpoint: NonEmptyString,
+    apiKey: NonEmptyString,
+    model: NonEmptyString,
     messages: ChatCompletionMessage[],
     tools: ChatCompletionTool[],
   ): Promise<ChatCompletionResponse | null> {
@@ -319,7 +329,7 @@ export class SearchTorrentsWithAiUseCase {
     );
     const searchResults = await this.torrentRepository.search(
       ctx,
-      args.keyword,
+      NonEmptyStringSchema.parse(args.keyword),
       args.engine,
     );
     this.logger.info(
@@ -401,11 +411,11 @@ export class SearchTorrentsWithAiUseCase {
   }
 
   private async fallbackEvaluate(
-    endpoint: string,
-    apiKey: string,
-    model: string,
+    endpoint: NonEmptyString,
+    apiKey: NonEmptyString,
+    model: NonEmptyString,
     torrents: SearchResultItem[],
-    keyword: string,
+    keyword: NonEmptyString,
   ): Promise<string> {
     this.logger.info(
       "[Agent 兜底] AI 经历了工具调用但没有输出评分文本，发起一轮单轮打分评估",

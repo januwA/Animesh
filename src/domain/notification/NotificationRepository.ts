@@ -1,4 +1,6 @@
+import type { NonEmptyString } from "../common/NonEmptyString";
+
 export interface NotificationRepository {
   requestPermission(): Promise<boolean>;
-  sendNotification(title: string, body: string): Promise<void>;
+  sendNotification(title: NonEmptyString, body: NonEmptyString): Promise<void>;
 }

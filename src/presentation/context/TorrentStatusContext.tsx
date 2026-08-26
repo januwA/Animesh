@@ -1,15 +1,16 @@
-import { createContext, use, useEffect, useState } from "react";
+import { createContext, use } from "react";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
+import { useStream } from "@/presentation/hooks/useStream";
 import { formatError } from "@/utils";
 
-interface TorrentStatusContextType {
+export interface TorrentStatusContextType {
   torrents: TorrentStatusInfo[];
   isLoading: boolean;
 }
 
-const TorrentStatusContext = createContext<
+export const TorrentStatusContext = createContext<
   TorrentStatusContextType | undefined
 >(undefined);
 
@@ -18,41 +19,25 @@ export function TorrentStatusProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { subscribeTorrentsUseCase } = useDI();
-  const [torrents, setTorrents] = useState<TorrentStatusInfo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { subscribeTorrentsUseCase, notifyDownloadCompletionUseCase } = useDI();
 
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
-    let isCleanedUp = false;
-
-    subscribeTorrentsUseCase
-      .execute((list) => {
-        setTorrents(list);
-        setIsLoading(false);
-      })
-      .then((unsub) => {
-        if (isCleanedUp) {
-          unsub();
-        } else {
-          unsubscribe = unsub;
-        }
-      })
-      .catch((err: unknown) => {
+  const { data: torrents, status } = useStream(
+    (_ctx) => subscribeTorrentsUseCase.execute(),
+    [subscribeTorrentsUseCase],
+    {
+      onError: (err) => {
         toast.error(`获取下载列表失败: ${formatError(err)}`);
-        setIsLoading(false);
-      });
-
-    return () => {
-      isCleanedUp = true;
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [subscribeTorrentsUseCase]);
+      },
+      onData(torrents) {
+        notifyDownloadCompletionUseCase.execute(torrents);
+      },
+    },
+  );
 
   return (
-    <TorrentStatusContext value={{ torrents, isLoading }}>
+    <TorrentStatusContext
+      value={{ torrents: torrents ?? [], isLoading: status === "connecting" }}
+    >
       {children}
     </TorrentStatusContext>
   );

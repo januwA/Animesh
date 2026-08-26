@@ -248,3 +248,17 @@ body {
   position: sticky;
   bottom: env(safe-area-inset-bottom, 0px);
 }
+
+.ani-card {
+  @apply backdrop-blur-md bg-card/40 hover:bg-card/60 shadow-lg hover:shadow-xl transition-all duration-300 ease-out;
+}
+
+/* 解决 shadcn dialog 弹窗加滚动条导致屏幕抖动 */
+html body[data-scroll-locked] {
+  /* biome-ignore lint/complexity/noImportantStyles: 覆盖 shadcn 样式 */
+  overflow: auto !important;
+  /* biome-ignore lint/complexity/noImportantStyles: 覆盖 shadcn 样式 */
+  margin-right: 0px !important;
+  /* biome-ignore lint/complexity/noImportantStyles: 覆盖 shadcn 样式 */
+  padding-right: 0px !important;
+}

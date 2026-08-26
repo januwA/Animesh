@@ -113,24 +113,32 @@ impl TorrentRepository for MockTorrentRepository {
 #[derive(Default, Clone)]
 pub struct MockSubjectBindingRepository {
     pub get_result: Option<SubjectBinding>,
-    pub set_calls: Arc<Mutex<Vec<(String, u64, String)>>>,
-    pub cleared: Arc<Mutex<Vec<String>>>,
+    pub set_calls: Arc<Mutex<Vec<(String, u64, String, String)>>>,
+    pub cleared: Arc<Mutex<Vec<(String, String)>>>,
+    pub cleared_all: Arc<Mutex<Vec<String>>>,
 }
 
 #[async_trait::async_trait]
 impl SubjectBindingRepository for MockSubjectBindingRepository {
-    async fn get(&self, _info_hash: &str) -> Option<SubjectBinding> {
+    async fn get(&self, _info_hash: &str, _platform: &str) -> Option<SubjectBinding> {
         self.get_result.clone()
     }
     async fn set(&self, info_hash: &str, binding: SubjectBinding) {
         self.set_calls.lock().unwrap().push((
             info_hash.to_string(),
             binding.subject_id,
+            binding.platform,
             binding.subject_name,
         ));
     }
-    async fn clear(&self, info_hash: &str) {
-        self.cleared.lock().unwrap().push(info_hash.to_string());
+    async fn clear(&self, info_hash: &str, platform: &str) {
+        self.cleared
+            .lock()
+            .unwrap()
+            .push((info_hash.to_string(), platform.to_string()));
+    }
+    async fn clear_all(&self, info_hash: &str) {
+        self.cleared_all.lock().unwrap().push(info_hash.to_string());
     }
 }
 

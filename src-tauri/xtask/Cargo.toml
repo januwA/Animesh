@@ -1,0 +1,11 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+description = "Build tools and code generation for Animesh"
+
+[dependencies]
+anyhow = "1"
+syn = { version = "2", features = ["full", "visit", "parsing", "printing"] }
+quote = "1"
+walkdir = "2"

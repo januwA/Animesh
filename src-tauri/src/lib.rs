@@ -8,6 +8,9 @@ use animesh_core::application::torrent_manager::TorrentManager;
 use animesh_core::domain::collection::CollectionRecord;
 use animesh_core::domain::crawler::SearchResultItem;
 use animesh_core::domain::settings::SettingsRepository;
+use animesh_core::domain::subtitle_translations::{
+    SubtitleTranslationRecord, SubtitleTranslationRepository,
+};
 use animesh_core::domain::subtitles::VideoMetadata;
 use animesh_core::domain::torrent::{
     AddTorrentResult, FileDetails, SubjectBindingRepository, TorrentStatusInfo,
@@ -15,6 +18,7 @@ use animesh_core::domain::torrent::{
 use animesh_core::error::CoreError;
 use animesh_core::infrastructure::settings_repository::SqliteSettingsRepository;
 use animesh_core::infrastructure::subject_binding_repository::SqliteSubjectBindingRepository;
+use animesh_core::infrastructure::subtitle_translation_repository::SqliteSubtitleTranslationRepository;
 use anyhow::Context;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -224,19 +228,16 @@ async fn cancel_add_magnet(
 }
 
 #[tauri::command]
-async fn torrent_get_stream_url(
-    info_hash: &str,
-    file_id: usize,
+async fn get_stream_port(
     stream_service: tauri::State<'_, Arc<StreamService>>,
-) -> Result<String, CoreError> {
-    Ok(stream_service.get_stream_url(info_hash, file_id))
+) -> Result<u16, CoreError> {
+    Ok(stream_service.port())
 }
 
 #[tauri::command]
-async fn iptv_proxy_base_url(
-    stream_service: tauri::State<'_, Arc<StreamService>>,
-) -> Result<String, CoreError> {
-    Ok(stream_service.proxy_base_url())
+async fn get_local_ip() -> Result<String, CoreError> {
+    Ok(animesh_core::infrastructure::local_ip::get_local_ip()
+        .unwrap_or_else(|| "127.0.0.1".to_string()))
 }
 
 #[tauri::command]
@@ -324,15 +325,16 @@ async fn torrent_delete(
 async fn torrent_set_subject(
     info_hash: &str,
     subject_id: u64,
+    platform: String,
     subject_name: &str,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
     trace_log(&format!(
-        "torrent_set_subject info_hash: {}, subject_id: {}, subject_name: {}",
-        info_hash, subject_id, subject_name
+        "torrent_set_subject info_hash: {}, subject_id: {}, platform: {}, subject_name: {}",
+        info_hash, subject_id, platform, subject_name
     ));
     manager
-        .set_subject_binding(info_hash, subject_id, subject_name.to_string())
+        .set_subject_binding(info_hash, subject_id, platform, subject_name.to_string())
         .await;
     Ok(())
 }
@@ -340,10 +342,14 @@ async fn torrent_set_subject(
 #[tauri::command]
 async fn torrent_clear_subject(
     info_hash: &str,
+    platform: String,
     manager: tauri::State<'_, Arc<TorrentManager>>,
 ) -> Result<(), CoreError> {
-    trace_log(&format!("torrent_clear_subject info_hash: {}", info_hash));
-    manager.clear_subject_binding(info_hash).await;
+    trace_log(&format!(
+        "torrent_clear_subject info_hash: {}, platform: {}",
+        info_hash, platform
+    ));
+    manager.clear_subject_binding(info_hash, &platform).await;
     Ok(())
 }
 
@@ -357,9 +363,10 @@ async fn collection_get_all(
 #[tauri::command]
 async fn collection_is_favorited(
     subject_id: i64,
+    platform: String,
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<bool, CoreError> {
-    service.is_favorited(subject_id).await
+    service.is_favorited(subject_id, &platform).await
 }
 
 #[tauri::command]
@@ -367,11 +374,13 @@ async fn collection_add(
     subject_id: i64,
     name: String,
     image_url: Option<String>,
+    platform: String,
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<(), CoreError> {
     service
         .add(animesh_core::domain::collection::NewCollectionItem {
             subject_id,
+            platform,
             name,
             image_url,
         })
@@ -381,9 +390,10 @@ async fn collection_add(
 #[tauri::command]
 async fn collection_remove(
     subject_id: i64,
+    platform: String,
     service: tauri::State<'_, Arc<CollectionService>>,
 ) -> Result<(), CoreError> {
-    service.remove(subject_id).await
+    service.remove(subject_id, &platform).await
 }
 
 #[tauri::command]
@@ -492,6 +502,56 @@ async fn ai_chat_request(
     body_json: String,
 ) -> Result<String, CoreError> {
     animesh_core::send_ai_chat_request(&endpoint, &api_key, &body_json).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_get(
+    id: String,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<Option<SubtitleTranslationRecord>, CoreError> {
+    repo.get_by_id(&id).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_list_by_torrent(
+    info_hash: String,
+    file_id: i64,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<Vec<SubtitleTranslationRecord>, CoreError> {
+    repo.list_by_torrent(&info_hash, file_id).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_save(
+    record: SubtitleTranslationRecord,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<(), CoreError> {
+    repo.save(&record).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_delete(
+    id: String,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<bool, CoreError> {
+    repo.delete_by_id(&id).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_delete_by_torrent(
+    info_hash: String,
+    file_id: i64,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<u64, CoreError> {
+    repo.delete_by_torrent(&info_hash, file_id).await
+}
+
+#[tauri::command]
+async fn subtitle_translation_delete_by_info_hash(
+    info_hash: String,
+    repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
+) -> Result<u64, CoreError> {
+    repo.delete_by_info_hash(&info_hash).await
 }
 
 /// 启动时加载或初始化设置。DB 已有记录则读取，否则写入默认值。
@@ -652,6 +712,9 @@ pub fn run() {
                         &db,
                     ),
                 ));
+                let subtitle_translation_repo = Arc::new(
+                    SqliteSubtitleTranslationRepository::new(&db),
+                );
 
                 app.manage(Arc::new(torrent_manager));
                 app.manage(Arc::new(settings_service));
@@ -659,6 +722,7 @@ pub fn run() {
                 app.manage(Arc::new(subtitle_service));
                 app.manage(Arc::new(stream_service));
                 app.manage(Arc::new(collection_service));
+                app.manage(subtitle_translation_repo);
                 app.manage(SearchTracker::default());
                 app.manage(AddMagnetTracker::default());
                 Ok(())
@@ -669,8 +733,8 @@ pub fn run() {
             cancel_search,
             torrent_add_magnet,
             cancel_add_magnet,
-            torrent_get_stream_url,
-            iptv_proxy_base_url,
+            get_stream_port,
+            get_local_ip,
             iptv_resolve_stream,
             torrent_get_files,
             torrent_pause,
@@ -692,7 +756,13 @@ pub fn run() {
             select_directory,
             torrent_get_video_metadata,
             torrent_get_subtitle_vtt,
-            ai_chat_request
+            ai_chat_request,
+            subtitle_translation_get,
+            subtitle_translation_list_by_torrent,
+            subtitle_translation_save,
+            subtitle_translation_delete,
+            subtitle_translation_delete_by_torrent,
+            subtitle_translation_delete_by_info_hash
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

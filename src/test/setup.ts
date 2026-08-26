@@ -155,11 +155,12 @@ if (typeof window !== "undefined") {
 }
 
 // ── 将 console 警告/错误视为测试失败 ──────────────────────────────────────────
-const originalConsoleError = console.error;
-const originalConsoleWarn = console.warn;
 
 // 不需要引发测试失败的模式（可忽略的第三方库警告）
-const IGNORED_PATTERNS: (RegExp | string)[] = [];
+const IGNORED_PATTERNS: (RegExp | string)[] = [
+  // react-router 在测试环境（无 document.startViewTransition）下对 viewTransition 导航的提示，导航本身正常进行
+  "You provided the `viewTransition` option to a router update",
+];
 
 function shouldIgnore(message: string): boolean {
   return IGNORED_PATTERNS.some((pattern) => {
@@ -168,32 +169,32 @@ function shouldIgnore(message: string): boolean {
   });
 }
 
-const activeTestErrors: string[] = [];
+const activeTestErrors = new Set<string>();
 
 console.error = (...args) => {
-  originalConsoleError(...args);
+  // originalConsoleError(...args);
   const message = args
     .map((arg) => (arg instanceof Error ? arg.stack : String(arg)))
     .join(" ");
   if (!shouldIgnore(message)) {
-    activeTestErrors.push(`[console.error] ${message}`);
+    activeTestErrors.add(`[console.error] ${message}`);
   }
 };
 
 console.warn = (...args) => {
-  originalConsoleWarn(...args);
+  // originalConsoleWarn(...args);
   const message = args
     .map((arg) => (arg instanceof Error ? arg.stack : String(arg)))
     .join(" ");
   if (!shouldIgnore(message)) {
-    activeTestErrors.push(`[console.warn] ${message}`);
+    activeTestErrors.add(`[console.warn] ${message}`);
   }
 };
 
 afterEach(() => {
-  if (activeTestErrors.length > 0) {
-    const messages = activeTestErrors.join("\n\n");
-    activeTestErrors.length = 0;
+  if (activeTestErrors.size > 0) {
+    const messages = Array.from(activeTestErrors.values()).join("\n\n");
+    activeTestErrors.clear();
     throw new Error(`测试中检测到 console 错误/警告：\n\n${messages}`);
   }
 });

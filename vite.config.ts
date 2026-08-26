@@ -15,8 +15,6 @@ export default defineConfig(({ mode }) => {
     console.log(mode, process.env);
   }
 
-  const isWeb = mode === "web";
-
   return {
     plugins: [react(), process.env.VITEST !== "true" && tailwindcss()].filter(
       Boolean,
@@ -24,9 +22,6 @@ export default defineConfig(({ mode }) => {
     envPrefix: ["VITE_", "TAURI_ENV_*"],
     resolve: {
       alias: {
-        "@/di/repositories": isWeb
-          ? path.resolve(import.meta.dirname, "./src/di/repositories.web.ts")
-          : path.resolve(import.meta.dirname, "./src/di/repositories.ts"),
         "@": path.resolve(import.meta.dirname, "./src"),
       },
     },
@@ -56,9 +51,13 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: "happy-dom",
       setupFiles: "./src/test/setup.ts",
+      reporters: ["minimal"], // minimal,dot
+      maxWorkers: "50%",
+      silent: "passed-only",
       coverage: {
         provider: "v8",
         reporter: ["text"],
+        skipFull: true, // 输出的text只显示覆盖未达标的输出
         include: ["src/**/*.{ts,tsx}"],
         exclude: [
           "src/main.tsx",
@@ -67,9 +66,12 @@ export default defineConfig(({ mode }) => {
           "**/*.d.ts",
           "src/presentation/components/ui/**",
           "src/presentation/App.tsx",
+          "src/presentation/routes.tsx",
           "src/presentation/components/MpegtsVideo.tsx",
+          "src/presentation/pages/*/index.tsx",
           "src/di/**",
           "src/domain/**",
+          "src/generated/**",
           "src/infrastructure/**",
         ],
         thresholds: {

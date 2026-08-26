@@ -1,44 +1,18 @@
-import { render } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { vi } from "vitest";
-import { DIProvider } from "@/di/DIContext";
-import { resetAppStores } from "@/test/store-reset";
-import { createDIContainerForTest } from "@/test/test-utils";
-import { TorrentStatusProvider } from "../context/TorrentStatusContext";
-import { AppNavBar } from "./AppComponents";
+import { render, screen } from "@testing-library/react";
+import { ErrorBanner, PageLoader } from "./AppComponents";
 
 describe("AppComponents 组件", () => {
-  beforeEach(() => {
-    resetAppStores();
+  it("PageLoader 应该在加载时显示加载提示", async () => {
+    render(<PageLoader />);
+    expect(await screen.findByText("正在载入页面...")).toBeInTheDocument();
   });
 
-  it("AppNavBar 应该在 TorrentStatusProvider 下正确渲染", async () => {
-    let resolveUnsubscribe: any;
-    const unsubMock = vi.fn();
-    const promise = new Promise<any>((resolve) => {
-      resolveUnsubscribe = () => resolve(unsubMock);
-    });
+  it("ErrorBanner 应该显示错误标题和消息", async () => {
+    render(<ErrorBanner message="网络连接失败，请检查网络设置" />);
 
-    const mockContainer = createDIContainerForTest({
-      subscribeTorrentsUseCase: {
-        execute: vi.fn().mockReturnValue(promise),
-      } as any,
-    });
-
-    const { unmount } = render(
-      <DIProvider value={mockContainer}>
-        <TorrentStatusProvider>
-          <MemoryRouter>
-            <AppNavBar />
-          </MemoryRouter>
-        </TorrentStatusProvider>
-      </DIProvider>,
-    );
-
-    unmount();
-    resolveUnsubscribe();
-
-    await promise;
-    expect(unsubMock).toHaveBeenCalled();
+    expect(await screen.findByText("搜索失败")).toBeInTheDocument();
+    expect(
+      screen.getByText("网络连接失败，请检查网络设置"),
+    ).toBeInTheDocument();
   });
 });

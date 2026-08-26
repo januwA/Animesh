@@ -306,9 +306,6 @@ function main() {
 	const totalErrors = deadErrors.length + repoErrors.length;
 
 	if (totalErrors === 0) {
-		console.log(
-			`✨ DI 容器校验通过：${containerKeys.length} 个 key 均被表现层使用，且未包含 Repository。`,
-		);
 		process.exit(0);
 	}
 

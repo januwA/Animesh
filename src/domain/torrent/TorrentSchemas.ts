@@ -1,28 +1,29 @@
 import { z } from "zod";
+import { AnimePlatformSchema } from "../anime/AnimeSchemas";
+import { NonEmptyStringSchema } from "../common/NonEmptyString";
 
 export const SearchResultItemSchema = z.object({
-  title: z.string(),
-  link: z.string(),
+  title: NonEmptyStringSchema,
+  link: NonEmptyStringSchema,
   pub_date: z.string(),
-  magnet: z.string(),
+  magnet: NonEmptyStringSchema,
   description: z.string(),
 });
 
 export const FileDetailsSchema = z.object({
   id: z.number(),
-  name: z.string(),
+  name: NonEmptyStringSchema,
   len: z.number(),
 });
 
 export const AddTorrentResultSchema = z.object({
-  info_hash: z.string(),
-  name: z.string(),
+  info_hash: NonEmptyStringSchema,
   files: z.array(FileDetailsSchema),
 });
 
 export const TorrentStatusInfoSchema = z.object({
-  info_hash: z.string(),
-  name: z.string(),
+  info_hash: NonEmptyStringSchema,
+  name: NonEmptyStringSchema,
   progress_bytes: z.number(),
   total_bytes: z.number(),
   finished: z.boolean(),
@@ -34,7 +35,8 @@ export const TorrentStatusInfoSchema = z.object({
   created_at: z.number().optional(),
   trackers: z.array(z.string()).default([]),
   subject_id: z.number().optional(),
-  subject_name: z.string().optional(),
+  subject_name: NonEmptyStringSchema.optional(),
+  subject_platform: AnimePlatformSchema.optional(),
 });
 
 export const SubtitleTrackInfoSchema = z.object({
@@ -90,8 +92,6 @@ export type AddTorrentResult = z.infer<typeof AddTorrentResultSchema>;
 export type TorrentStatusInfo = z.infer<typeof TorrentStatusInfoSchema>;
 export type SubtitleTrackInfo = z.infer<typeof SubtitleTrackInfoSchema>;
 export type ChapterInfo = z.infer<typeof ChapterInfoSchema>;
-export type VideoTrackInfo = z.infer<typeof VideoTrackInfoSchema>;
-export type AudioTrackInfo = z.infer<typeof AudioTrackInfoSchema>;
 export type VideoInfo = z.infer<typeof VideoInfoSchema>;
 export type VideoMetadata = z.infer<typeof VideoMetadataSchema>;
 

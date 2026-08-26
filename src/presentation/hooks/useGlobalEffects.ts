@@ -1,33 +1,13 @@
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { useDI } from "@/di/DIContext";
-import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 
 export function useGlobalEffects() {
-  const {
-    requestNotificationPermissionUseCase,
-    notifyDownloadCompletionUseCase,
-    setThemeUseCase,
-  } = useDI();
+  const { setThemeUseCase } = useDI();
   const { theme } = useTheme();
-  const { torrents, isLoading } = useTorrentStatus();
 
   // 同步主题到 Tauri 原生窗口标题栏
   useEffect(() => {
-    const syncTheme = async () => {
-      await setThemeUseCase.execute(theme);
-    };
-    syncTheme();
+    setThemeUseCase.execute(theme);
   }, [theme, setThemeUseCase]);
-
-  // 请求系统通知权限
-  useEffect(() => {
-    requestNotificationPermissionUseCase.execute();
-  }, [requestNotificationPermissionUseCase]);
-
-  // 下载完成监听（通过全局 TorrentStatusContext 消费数据，无需独立订阅）
-  useEffect(() => {
-    if (isLoading) return;
-    notifyDownloadCompletionUseCase.execute(torrents);
-  }, [torrents, isLoading, notifyDownloadCompletionUseCase]);
 }

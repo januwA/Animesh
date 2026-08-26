@@ -115,7 +115,11 @@ fn collect_subtitle_tracks<R: Read + Seek>(mkv: &MatroskaFile<R>) -> Vec<Subtitl
     for track in mkv.tracks() {
         if track.track_type() == TrackType::Subtitle {
             let codec = track.codec_id().to_string();
-            if codec == "S_TEXT/UTF8" || codec == "S_TEXT/ASS" || codec == "S_TEXT/SSA" {
+            if codec == "S_TEXT/UTF8"
+                || codec == "S_TEXT/ASS"
+                || codec == "S_TEXT/SSA"
+                || codec == "S_TEXT/WEBVTT"
+            {
                 let language = track.language().unwrap_or("und").to_string();
                 let title = track.name().unwrap_or("").to_string();
                 tracks.push(SubtitleTrackInfo {
@@ -266,7 +270,11 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
         .ok_or("Subtitle track not found")?;
 
     let codec = track.codec_id().to_string();
-    if codec != "S_TEXT/UTF8" && codec != "S_TEXT/ASS" && codec != "S_TEXT/SSA" {
+    if codec != "S_TEXT/UTF8"
+        && codec != "S_TEXT/ASS"
+        && codec != "S_TEXT/SSA"
+        && codec != "S_TEXT/WEBVTT"
+    {
         return Err(CoreError::Message(format!(
             "Unsupported subtitle codec: {}",
             codec
@@ -303,7 +311,11 @@ pub fn extract_subtitle_vtt_from_reader<R: Read + Seek>(
             .map(|(start_ms, end_ms, text)| SubtitleCue {
                 start_ms: *start_ms,
                 end_ms: *end_ms,
-                text: text.trim().to_string(),
+                // S_TEXT/UTF8（SRT）轨道也可能被压制组塞入 ASS override 标签
+                // （如 `{\an8}` 定位信息），需要和 ASS 轨道一样剥离，否则会
+                // 原样透传到最终 VTT 里。strip_ass_tags 对不含 `{...}` 的
+                // 普通文本是安全的空操作。
+                text: strip_ass_tags(text.trim()).trim().to_string(),
             })
             .filter(|cue| !cue.text.is_empty())
             .collect()
@@ -733,7 +745,7 @@ mod tests {
     }
 
     #[test]
-    fn 测试_读取合法MKV_应解析出字幕轨道_媒体信息_与空章节() {
+    fn 测试_读取合法_mkv_应解析出字幕轨道_媒体信息_与空章节() {
         let mkv = build_test_mkv(false);
         let result = extract_video_metadata_from_reader(std::io::Cursor::new(mkv), true);
         assert!(result.is_ok());
@@ -757,7 +769,7 @@ mod tests {
     }
 
     #[test]
-    fn 测试_读取含章节元素的合法MKV_应解析出章节时间与标题() {
+    fn 测试_读取含章节元素的合法_mkv_应解析出章节时间与标题() {
         let mkv = build_test_mkv(true);
         let result = extract_video_metadata_from_reader(std::io::Cursor::new(mkv), true);
         assert!(result.is_ok());
@@ -773,7 +785,40 @@ mod tests {
     }
 
     #[test]
-    fn 测试_date_utc纳秒转Unix秒() {
+    fn 测试_utf8轨道内嵌_ass定位标签_提取_vtt时应被剥离() {
+        // 复现 bug：压制组把 SRT 轨道以 S_TEXT/UTF8 封装进 MKV，
+        // 但字幕文本里仍然带有 ASS override 标签 `{\an8}`。
+        // 之前的代码只在 codec 为 S_TEXT/ASS/SSA 时才调用 strip_ass_tags，
+        // 导致 UTF8 轨道的 `{\an8}` 原样透传到最终 VTT。
+        let mkv = build_test_mkv_utf8_with_an8();
+        let metadata =
+            extract_video_metadata_from_reader(std::io::Cursor::new(mkv.clone()), true).unwrap();
+        assert_eq!(metadata.tracks[0].codec, "S_TEXT/UTF8");
+
+        let vtt = extract_subtitle_vtt_from_reader(std::io::Cursor::new(mkv), 2, true).unwrap();
+        assert!(
+            !vtt.contains("{\\an8}"),
+            "剥离后的 VTT 不应再包含 {{\\an8}} 定位标签，实际输出：\n{vtt}"
+        );
+        assert!(vtt.contains("SHU CLAN MAIDEN"));
+    }
+
+    #[test]
+    fn 测试_读取含_web_vtt字幕轨道的合法_mkv_应列出轨道并提取字幕() {
+        let mkv = build_test_mkv_webvtt();
+        let metadata =
+            extract_video_metadata_from_reader(std::io::Cursor::new(mkv.clone()), true).unwrap();
+        assert_eq!(metadata.tracks.len(), 1);
+        assert_eq!(metadata.tracks[0].id, 2);
+        assert_eq!(metadata.tracks[0].codec, "S_TEXT/WEBVTT");
+
+        let vtt = extract_subtitle_vtt_from_reader(std::io::Cursor::new(mkv), 2, true).unwrap();
+        assert!(vtt.contains("Hello from WebVTT"));
+        assert!(vtt.contains("00:00:00.000 --> 00:00:03.000"));
+    }
+
+    #[test]
+    fn 测试_date_utc纳秒转_unix秒() {
         // 2001-01-01T00:00:00Z 本身
         assert_eq!(date_utc_ns_to_unix_secs(0), 978_307_200);
         // 2001-01-01T00:00:01Z
@@ -877,6 +922,106 @@ mod tests {
         }
 
         let segment = ebml_master(&[0x18, 0x53, 0x80, 0x67], &segment_payload);
+        [ebml, segment].concat()
+    }
+
+    /// 构造带一条 `S_TEXT/WEBVTT` 字幕轨道（track 2）与一帧字幕的合法 MKV。
+    fn build_test_mkv_webvtt() -> Vec<u8> {
+        let ebml = ebml_master(
+            &[0x1A, 0x45, 0xDF, 0xA3],
+            &[
+                ebml_uint(&[0x42, 0x86], 1),
+                ebml_uint(&[0x42, 0xF7], 1),
+                ebml_str(&[0x42, 0x82], "matroska"),
+                ebml_uint(&[0x42, 0x87], 4),
+                ebml_uint(&[0x42, 0x85], 2),
+            ]
+            .concat(),
+        );
+
+        let info = ebml_master(
+            &[0x15, 0x49, 0xA9, 0x66],
+            &[
+                ebml_uint(&[0x2A, 0xD7, 0xB1], 1_000_000),
+                ebml_str(&[0x4D, 0x80], "test"),
+                ebml_str(&[0x57, 0x41], "test"),
+            ]
+            .concat(),
+        );
+
+        let subtitle_track = ebml_master(
+            &[0xAE],
+            &[
+                ebml_uint(&[0xD7], 2),
+                ebml_uint(&[0x73, 0xC5], 2),
+                ebml_uint(&[0x83], 17),
+                ebml_str(&[0x86], "S_TEXT/WEBVTT"),
+                ebml_str(&[0x22, 0xB5, 0x9C], "und"),
+            ]
+            .concat(),
+        );
+        let tracks = ebml_master(&[0x16, 0x54, 0xAE, 0x6B], &subtitle_track);
+
+        // 字幕 SimpleBlock: track=2、相对时间戳 0、flags 0，payload 为 cue 文本
+        let mut simple_block = vec![0x82, 0x00, 0x00, 0x00];
+        simple_block.extend_from_slice(b"Hello from WebVTT");
+        let cluster = ebml_master(
+            &[0x1F, 0x43, 0xB6, 0x75],
+            &[ebml_uint(&[0xE7], 0), ebml_master(&[0xA3], &simple_block)].concat(),
+        );
+
+        let segment = ebml_master(&[0x18, 0x53, 0x80, 0x67], &[info, tracks, cluster].concat());
+        [ebml, segment].concat()
+    }
+
+    /// 构造带一条 `S_TEXT/UTF8` 字幕轨道（track 2）与一帧内嵌
+    /// `{\an8}` ASS 定位标签的合法 MKV，用于复现/验证 UTF8 轨道清洗 bug。
+    fn build_test_mkv_utf8_with_an8() -> Vec<u8> {
+        let ebml = ebml_master(
+            &[0x1A, 0x45, 0xDF, 0xA3],
+            &[
+                ebml_uint(&[0x42, 0x86], 1),
+                ebml_uint(&[0x42, 0xF7], 1),
+                ebml_str(&[0x42, 0x82], "matroska"),
+                ebml_uint(&[0x42, 0x87], 4),
+                ebml_uint(&[0x42, 0x85], 2),
+            ]
+            .concat(),
+        );
+
+        let info = ebml_master(
+            &[0x15, 0x49, 0xA9, 0x66],
+            &[
+                ebml_uint(&[0x2A, 0xD7, 0xB1], 1_000_000),
+                ebml_str(&[0x4D, 0x80], "test"),
+                ebml_str(&[0x57, 0x41], "test"),
+            ]
+            .concat(),
+        );
+
+        let subtitle_track = ebml_master(
+            &[0xAE],
+            &[
+                ebml_uint(&[0xD7], 2),
+                ebml_uint(&[0x73, 0xC5], 2),
+                ebml_uint(&[0x83], 17),
+                ebml_str(&[0x86], "S_TEXT/UTF8"),
+                ebml_str(&[0x22, 0xB5, 0x9C], "eng"),
+            ]
+            .concat(),
+        );
+        let tracks = ebml_master(&[0x16, 0x54, 0xAE, 0x6B], &subtitle_track);
+
+        // 字幕 SimpleBlock: track=2、相对时间戳 0、flags 0，
+        // payload 为带 `{\an8}` 定位标签的纯文本（模拟压制组内嵌到 SRT 轨道的写法）。
+        let mut simple_block = vec![0x82, 0x00, 0x00, 0x00];
+        simple_block.extend_from_slice(b"{\\an8}SHU CLAN MAIDEN - SHU KEIGETSU");
+        let cluster = ebml_master(
+            &[0x1F, 0x43, 0xB6, 0x75],
+            &[ebml_uint(&[0xE7], 0), ebml_master(&[0xA3], &simple_block)].concat(),
+        );
+
+        let segment = ebml_master(&[0x18, 0x53, 0x80, 0x67], &[info, tracks, cluster].concat());
         [ebml, segment].concat()
     }
 }

@@ -1,9 +1,15 @@
+import type { NonEmptyString } from "@/domain/common/NonEmptyString";
+import type { SubtitleTranslationRepository } from "../../domain/subtitle/SubtitleTranslationRepository";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 
 export class DeleteTorrentUseCase {
-  constructor(private torrentRepository: TorrentRepository) {}
+  constructor(
+    private torrentRepository: TorrentRepository,
+    private subtitleTranslationRepository: SubtitleTranslationRepository,
+  ) {}
 
-  execute(infoHash: string, deleteFiles: boolean): Promise<void> {
-    return this.torrentRepository.deleteTorrent(infoHash, deleteFiles);
+  async execute(infoHash: NonEmptyString, deleteFiles: boolean): Promise<void> {
+    await this.subtitleTranslationRepository.deleteByInfoHash(infoHash);
+    await this.torrentRepository.deleteTorrent(infoHash, deleteFiles);
   }
 }
