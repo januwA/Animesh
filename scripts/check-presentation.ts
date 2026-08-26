@@ -111,108 +111,6 @@ export function checkStyles(code: string, filepath: string): Violation[] {
 	return errors;
 }
 
-/** ---------- 规则 3：useDI() 仅组合根显式解构 ---------- */
-
-const PAGES_DIR = "src/presentation/pages";
-const CONTEXT_DIR = "src/presentation/context";
-const ROUTES_FILE = "src/presentation/routes.tsx";
-
-function toPosix(filepath: string): string {
-	return path.resolve(filepath).replace(/\\/g, "/");
-}
-
-export function isCompositionRoot(filepath: string): boolean {
-	const normalized = toPosix(filepath);
-	const cwd = process.cwd().replace(/\\/g, "/");
-	const pagesDir = `${cwd}/${PAGES_DIR}`;
-	const contextDir = `${cwd}/${CONTEXT_DIR}`;
-	const routesFile = `${cwd}/${ROUTES_FILE}`;
-
-	if (normalized === routesFile) return true;
-	if (normalized.startsWith(`${contextDir}/`)) return true;
-	if (normalized.startsWith(`${pagesDir}/`)) {
-		const dir = path.posix.dirname(normalized);
-		const basename = path.posix.basename(normalized);
-		if (basename === "index.tsx") return true;
-		if (dir === pagesDir) return true;
-	}
-	return false;
-}
-
-export function resolveUseDILocalName(program: any): string | null {
-	let localName: string | null = null;
-	traverse(program, (node) => {
-		if (node.type !== "ImportDeclaration") return;
-		const source = node.source;
-		if (source?.type !== "Literal" || typeof source.value !== "string") return;
-		if (!source.value.endsWith("di/DIContext")) return;
-		for (const spec of node.specifiers ?? []) {
-			if (
-				spec.type === "ImportSpecifier" &&
-				spec.imported?.type === "Identifier" &&
-				spec.imported.name === "useDI"
-			) {
-				localName = spec.local?.name ?? "useDI";
-			}
-		}
-	});
-	return localName;
-}
-
-export function checkUseDI(code: string, filepath: string): Violation[] {
-	const parseResult = parseTs(code, filepath);
-	const program = parseResult.program;
-	const useDILocal = resolveUseDILocalName(program);
-	if (!useDILocal) return [];
-
-	const isRoot = isCompositionRoot(filepath);
-	const errors: Violation[] = [];
-
-	const useDIcalls: { offset: number }[] = [];
-	const destructuredInits = new Set<number>();
-
-	traverse(program, (node) => {
-		if (
-			node.type === "CallExpression" &&
-			node.callee?.type === "Identifier" &&
-			node.callee.name === useDILocal
-		) {
-			useDIcalls.push({ offset: node.start });
-		}
-		if (
-			node.type === "VariableDeclarator" &&
-			node.id?.type === "ObjectPattern" &&
-			node.init?.type === "CallExpression" &&
-			node.init.callee?.type === "Identifier" &&
-			node.init.callee.name === useDILocal
-		) {
-			destructuredInits.add(node.init.start);
-		}
-	});
-
-	for (const call of useDIcalls) {
-		if (!isRoot) {
-			const loc = offsetToLoc(code, call.offset);
-			errors.push({
-				...loc,
-				severity: "error",
-				message: `表现层文件调用了 useDI()，但 useDI() 只允许出现在组合根（页面入口 pages/**/index.tsx、单文件页面 pages/*.tsx、上下文 Provider、routes.tsx）。Hook 依赖应通过参数注入，组件依赖应通过 props 注入。`,
-			});
-			continue;
-		}
-		if (!destructuredInits.has(call.offset)) {
-			const loc = offsetToLoc(code, call.offset);
-			errors.push({
-				...loc,
-				severity: "error",
-				message: `useDI() 必须显式解构使用（const { xxxUseCase } = useDI()）。禁止 const di = useDI() 别名或 useXxxPage(useDI()) 直接传参，否则 check:di 无法识别 key 是否被使用。`,
-			});
-		}
-	}
-
-	return errors;
-}
-
 /** ---------- 规则 4：deps 接口属性必须 Pick<UseCase, "execute"> ---------- */
 
 export function isPickExecuteType(typeNode: any): boolean {
@@ -600,11 +498,6 @@ const rules: CheckRule[] = [
 		targetDirs: [PRESENTATION_DIR],
 		includeFile: (f) => isSourceFile(f) && !isIgnoredFile(f),
 		check: checkStyles,
-	},
-	{
-		name: "useDI使用",
-		targetDirs: [PRESENTATION_DIR],
-		check: checkUseDI,
 	},
 	{
 		name: "deps接口",

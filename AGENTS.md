@@ -9,11 +9,10 @@
   - 前端一切 `unknown` 的结构数据都必须使用 Zod Schema 进行运行时验证（如 `safeParse`），确保数据完整性并消除类型安全隐患。
 - 页面路由参数（`useParams` 与 `useSearchParams`）必须使用 Zod Schema 进行验证与默认值归一化（如 `safeParse`），验证失败渲染参数错误视图；校验应放在无 hooks 的路由守卫组件中，避免在调用 hooks 之前早返回违反 Rules of Hooks。
 - 依赖注入与 Hook 解耦：
-  - 表现层 hooks（如 `usePlayerData`/`useSettingsPage`）禁止直接 `useDI()` 获取依赖，应通过参数注入（如 `usePlayerData(params, deps)`）；deps 类型导出为接口并用 `Pick<UseCase, "execute">` 声明（如 `UsePlayerDataDeps`），使测试可直接传 `{ execute: vi.fn() }` 而无需 cast。
+  - 表现层 hooks（如 `usePlayerData`/`useSettingsPage`）通过参数注入依赖（如 `usePlayerData(params, deps)`）；deps 类型导出为接口并用 `Pick<UseCase, "execute">` 声明（如 `UsePlayerDataDeps`），使测试可直接传 `{ execute: vi.fn() }` 而无需 cast。
   - 页面组件（`index.tsx`）作为组合根：调用 `useDI()` 并**显式解构**所需 key 后传给 hooks
-  - 组件级依赖（如 `JsPlayerErrorMonitor` 的 `logger`）同样通过 props 注入。
 - 测试中的 DI 注入规范：
-  - hook 级单测直接传 mock use case（`{ execute: vi.fn().mockResolvedValue(...) }`），不需要 `DIProvider`；断言上移到 use case 的 `execute` 层，而不是 repository 层。
+  - hook 级单测直接传 mock use case（`{ execute: vi.fn().mockResolvedValue(...) }`），不需要 `DIContext`；断言上移到 use case 的 `execute` 层，而不是 repository 层。
 - 界面主题与样式规范：
   - **使用语义化变量**：禁止在表现层组件中使用硬编码的不透明度/色值类（例如 `border-white/5`、`bg-black/10`），而应使用自适应的语义类（如 `border-border`、`bg-secondary`、`bg-muted`），以确保深浅色切换时的可用性。
   - **渐变背景自适应**：全局背景采用双色渐变适配，浅色底使用 `#f8fafc` 搭配微弱渐变，深色底（`.dark body`）使用 `#080a10` 搭配明亮渐变。

@@ -23,14 +23,9 @@ const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
 
 /** 应用外壳组合根：从 DI 容器取全局依赖并注入布局 */
 function MainLayoutRoute() {
-  const { setThemeUseCase, getBangumiRankedSubjectsUseCase } = useDI();
+  const { setThemeUseCase } = useDI();
 
-  return (
-    <MainLayout
-      globalEffectsDeps={{ setThemeUseCase }}
-      wallpaperDeps={{ getBangumiRankedSubjectsUseCase }}
-    />
-  );
+  return <MainLayout globalEffectsDeps={{ setThemeUseCase }} />;
 }
 
 export const routes: RouteObject[] = [

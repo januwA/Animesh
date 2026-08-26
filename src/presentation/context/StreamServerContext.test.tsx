@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
-import { DIProvider } from "@/di/DIContext";
+import { DIContext } from "@/di/DIContext";
 import { StreamServerProvider, useStreamServer } from "./StreamServerContext";
 
 function PortConsumer() {
@@ -17,9 +17,9 @@ function PortConsumer() {
 
 const renderProvider = (container: DIContainer, children = <PortConsumer />) =>
   render(
-    <DIProvider value={container}>
+    <DIContext value={container}>
       <StreamServerProvider>{children}</StreamServerProvider>
-    </DIProvider>,
+    </DIContext>,
   );
 
 describe("StreamServerContext 流媒体服务器上下文", () => {

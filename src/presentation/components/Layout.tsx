@@ -6,7 +6,6 @@ import { useBackgroundWallpaperStore } from "../store/useBackgroundWallpaperStor
 import { PageLoader } from "./AppComponents";
 import { AppNavBar } from "./AppNavBar";
 import { BackButton } from "./BackButton";
-import type { BackgroundWallpaperDeps } from "./BackgroundWallpaper";
 import { BackgroundWallpaper } from "./BackgroundWallpaper";
 import { Card, CardContent } from "./ui/card";
 
@@ -34,13 +33,9 @@ export function NavBarLayout() {
 
 interface MainLayoutProps {
   globalEffectsDeps: UseGlobalEffectsDeps;
-  wallpaperDeps: BackgroundWallpaperDeps;
 }
 
-export function MainLayout({
-  globalEffectsDeps,
-  wallpaperDeps,
-}: MainLayoutProps) {
+export function MainLayout({ globalEffectsDeps }: MainLayoutProps) {
   useGlobalEffects(globalEffectsDeps);
 
   const showWallpaper = useBackgroundWallpaperStore((s) => s.showWallpaper);
@@ -48,7 +43,7 @@ export function MainLayout({
   return (
     <>
       {/* v8 ignore start */}
-      {showWallpaper && <BackgroundWallpaper deps={wallpaperDeps} />}
+      {showWallpaper && <BackgroundWallpaper />}
       {/* v8 ignore stop */}
       <main
         className="container relative z-10 max-w-7xl mx-auto px-4 pb-24 md:pb-24 md:pt-10 flex flex-col min-h-screen"

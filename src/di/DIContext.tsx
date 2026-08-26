@@ -361,15 +361,13 @@ export function createDefaultDIContainer(): DIContainer {
   };
 }
 
-const DIContext = createContext<DIContainer | null>(null);
-
-export const DIProvider = DIContext;
+export const DIContext = createContext<DIContainer | null>(null);
 
 export function useDI(): DIContainer {
   const container = use(DIContext);
   if (!container) {
     throw new Error(
-      "DIContainer was not provided. Make sure to wrap components with <DIProvider>",
+      "DIContainer was not provided. Make sure to wrap components with <DIContext>",
     );
   }
   return container;

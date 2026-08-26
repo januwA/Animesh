@@ -1,18 +1,7 @@
 import { Application, Sprite, Texture, type Ticker } from "pixi.js";
 import { useEffect, useMemo, useRef } from "react";
-import type { GetAnimeRankedSubjectsUseCase } from "@/application/anime/GetAnimeRankedSubjectsUseCase";
+import { useDI } from "@/di/DIContext";
 import { useQuery } from "@/presentation/hooks/useQuery";
-
-export interface BackgroundWallpaperDeps {
-  getBangumiRankedSubjectsUseCase: Pick<
-    GetAnimeRankedSubjectsUseCase,
-    "execute"
-  >;
-}
-
-export interface BackgroundWallpaperProps {
-  deps: BackgroundWallpaperDeps;
-}
 
 const TAU = Math.PI * 2;
 const WALLPAPER_DURATION_MS = 60_000;
@@ -30,8 +19,8 @@ function easeInOut(t: number): number {
 /**
  * 全局背景壁纸：使用 PixiJS (WebGL) 渲染 Ken Burns 交叉淡入淡出。
  */
-export function BackgroundWallpaper({ deps }: BackgroundWallpaperProps) {
-  const { getBangumiRankedSubjectsUseCase } = deps;
+export function BackgroundWallpaper() {
+  const { getBangumiRankedSubjectsUseCase } = useDI();
 
   const { data: subjects } = useQuery(
     (ctx) => getBangumiRankedSubjectsUseCase.execute(ctx),

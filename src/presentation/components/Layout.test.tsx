@@ -7,24 +7,11 @@ const mockDeps = {
   setThemeUseCase: { execute: vi.fn() },
 };
 
-const mockWallpaperDeps = {
-  getBangumiRankedSubjectsUseCase: {
-    execute: vi.fn().mockResolvedValue([]),
-  },
-};
-
 function renderMainLayout(children: React.ReactNode) {
   return render(
     <MemoryRouter initialEntries={["/"]}>
       <Routes>
-        <Route
-          element={
-            <MainLayout
-              globalEffectsDeps={mockDeps}
-              wallpaperDeps={mockWallpaperDeps}
-            />
-          }
-        >
+        <Route element={<MainLayout globalEffectsDeps={mockDeps} />}>
           <Route index element={children} />
         </Route>
       </Routes>

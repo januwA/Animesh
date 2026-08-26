@@ -1,6 +1,6 @@
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BackgroundWallpaperDeps } from "./BackgroundWallpaper";
+import { DIContext } from "@/di/DIContext";
 import { BackgroundWallpaper } from "./BackgroundWallpaper";
 
 vi.mock("pixi.js", () => {
@@ -54,21 +54,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-type ExecuteFn =
-  BackgroundWallpaperDeps["getBangumiRankedSubjectsUseCase"]["execute"];
-
-function makeDeps(executeMock: ExecuteFn) {
+function makeDIContainer(executeMock: (...args: any[]) => any) {
   return {
     getBangumiRankedSubjectsUseCase: { execute: executeMock },
-  };
+  } as any;
+}
+
+function renderWithDI(executeMock: (...args: any[]) => any) {
+  return render(
+    <DIContext value={makeDIContainer(executeMock)}>
+      <BackgroundWallpaper />
+    </DIContext>,
+  );
 }
 
 describe("BackgroundWallpaper 背景壁纸组件", () => {
   it("query 无数据时渲染 null", async () => {
-    const execute = vi.fn().mockResolvedValue(null) as unknown as ExecuteFn;
-    const { container } = render(
-      <BackgroundWallpaper deps={makeDeps(execute)} />,
-    );
+    const execute = vi.fn().mockResolvedValue(null);
+    const { container } = renderWithDI(execute);
 
     await waitFor(() => {
       expect(container.firstChild).toBeNull();
@@ -76,14 +79,8 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
   });
 
   it("query 返回空图片列表时渲染 null", async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValue([
-        { id: 1, name: "", image: "" },
-      ]) as unknown as ExecuteFn;
-    const { container } = render(
-      <BackgroundWallpaper deps={makeDeps(execute)} />,
-    );
+    const execute = vi.fn().mockResolvedValue([{ id: 1, name: "", image: "" }]);
+    const { container } = renderWithDI(execute);
 
     await waitFor(() => {
       expect(container.firstChild).toBeNull();
@@ -94,11 +91,9 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
     const execute = vi.fn().mockResolvedValue([
       { id: 1, name: "A", image: "https://img.example/1.jpg" },
       { id: 2, name: "B", image: "https://img.example/2.jpg" },
-    ]) as unknown as ExecuteFn;
+    ]);
 
-    const { container } = render(
-      <BackgroundWallpaper deps={makeDeps(execute)} />,
-    );
+    const { container } = renderWithDI(execute);
 
     await waitFor(() => {
       const root = container.querySelector('[aria-hidden="true"]');
@@ -114,11 +109,9 @@ describe("BackgroundWallpaper 背景壁纸组件", () => {
       .fn()
       .mockResolvedValue([
         { id: 1, name: "A", image: "https://img.example/1.jpg" },
-      ]) as unknown as ExecuteFn;
+      ]);
 
-    const { container } = render(
-      <BackgroundWallpaper deps={makeDeps(execute)} />,
-    );
+    const { container } = renderWithDI(execute);
 
     await waitFor(() => {
       const root = container.querySelector('[aria-hidden="true"]');

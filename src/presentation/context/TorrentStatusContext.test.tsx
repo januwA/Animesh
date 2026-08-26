@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import type { DIContainer } from "@/di/DIContext";
-import { DIProvider } from "@/di/DIContext";
+import { DIContext } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import {
@@ -55,9 +55,9 @@ const renderProvider = (
   children = <StatusConsumer />,
 ) =>
   render(
-    <DIProvider value={container}>
+    <DIContext value={container}>
       <TorrentStatusProvider>{children}</TorrentStatusProvider>
-    </DIProvider>,
+    </DIContext>,
   );
 
 const mockNotifyDownloadCompletionUseCase = { execute: vi.fn() };
