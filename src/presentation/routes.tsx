@@ -81,20 +81,18 @@ export const routes: RouteObject[] = [
             element: <SidebarLayout />,
             children: [
               {
-                path: "calendar",
-                element: <Calendar />,
+                path: "bangumi",
+                children: [
+                  { path: "", index: true, element: <Calendar /> },
+                  { path: "search", element: <BangumiSearch /> },
+                ],
               },
               {
                 path: "anilist",
-                element: <AnilistCalendar />,
-              },
-              {
-                path: "search",
-                element: <BangumiSearch />,
-              },
-              {
-                path: "anilist/search",
-                element: <AnilistSearch />,
+                children: [
+                  { path: "", index: true, element: <AnilistCalendar /> },
+                  { path: "search", element: <AnilistSearch /> },
+                ],
               },
             ],
           },

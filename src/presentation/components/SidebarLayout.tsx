@@ -30,8 +30,8 @@ function getSidebarItems(pathname: string): SidebarItem[] {
   }
 
   return [
-    { title: "新番日历", url: "/calendar", icon: Calendar },
-    { title: "搜索动画", url: "/search", icon: Search },
+    { title: "新番日历", url: "/bangumi", icon: Calendar },
+    { title: "搜索动画", url: "/bangumi/search", icon: Search },
   ];
 }
 
