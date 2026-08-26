@@ -9,6 +9,9 @@ export class NotifyDownloadCompletionUseCase {
   constructor(private notificationRepository: NotificationRepository) {}
 
   async execute(torrents: TorrentStatusInfo[]): Promise<void> {
+    const granted = await this.notificationRepository.requestPermission();
+    if (!granted) return;
+
     for (const torrent of torrents) {
       if (torrent.finished) {
         if (this.isFirstRun) {

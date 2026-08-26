@@ -4,7 +4,6 @@ import { vi } from "vitest";
 import { DetailLayout, MainLayout, NavBarLayout } from "./Layout";
 
 const mockDeps = {
-  requestNotificationPermissionUseCase: { execute: vi.fn() },
   setThemeUseCase: { execute: vi.fn() },
 };
 

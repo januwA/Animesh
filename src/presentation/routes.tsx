@@ -23,18 +23,11 @@ const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
 
 /** 应用外壳组合根：从 DI 容器取全局依赖并注入布局 */
 function MainLayoutRoute() {
-  const {
-    requestNotificationPermissionUseCase,
-    setThemeUseCase,
-    getBangumiRankedSubjectsUseCase,
-  } = useDI();
+  const { setThemeUseCase, getBangumiRankedSubjectsUseCase } = useDI();
 
   return (
     <MainLayout
-      globalEffectsDeps={{
-        requestNotificationPermissionUseCase,
-        setThemeUseCase,
-      }}
+      globalEffectsDeps={{ setThemeUseCase }}
       wallpaperDeps={{ getBangumiRankedSubjectsUseCase }}
     />
   );

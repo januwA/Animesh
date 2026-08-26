@@ -18,7 +18,6 @@ import { GetIptvChannelsUseCase } from "../application/iptv/GetIptvChannelsUseCa
 import { GetIptvCountriesUseCase } from "../application/iptv/GetIptvCountriesUseCase";
 import { ResolvePlayableStreamUrlUseCase } from "../application/iptv/ResolvePlayableStreamUrlUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
-import { RequestNotificationPermissionUseCase } from "../application/notification/RequestNotificationPermissionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
@@ -77,7 +76,6 @@ export interface DIContainer {
 
   // UseCases
   notifyDownloadCompletionUseCase: NotifyDownloadCompletionUseCase;
-  requestNotificationPermissionUseCase: RequestNotificationPermissionUseCase;
   getCollectionsUseCase: GetCollectionsUseCase;
   addFavoriteUseCase: AddFavoriteUseCase;
   removeFavoriteUseCase: RemoveFavoriteUseCase;
@@ -161,8 +159,6 @@ export function createDefaultDIContainer(): DIContainer {
   const notifyDownloadCompletionUseCase = new NotifyDownloadCompletionUseCase(
     notificationRepository,
   );
-  const requestNotificationPermissionUseCase =
-    new RequestNotificationPermissionUseCase(notificationRepository);
   const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
 
   const aiClient: AiClient = isTauri
@@ -311,7 +307,6 @@ export function createDefaultDIContainer(): DIContainer {
     logger,
 
     notifyDownloadCompletionUseCase,
-    requestNotificationPermissionUseCase,
     searchTorrentsUseCase,
     searchTorrentsWithAiUseCase,
     subscribeTorrentsUseCase,
