@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
 import { DetailLayout, MainLayout, NavBarLayout } from "./components/Layout";
+import { SidebarLayout } from "./components/SidebarLayout";
 import TorrentSearch from "./pages/TorrentSearch";
 
 const AiSubtitleTranslation = lazy(
@@ -52,14 +53,6 @@ export const routes: RouteObject[] = [
             element: <LivePlayer />,
           },
           {
-            path: "search",
-            element: <BangumiSearch />,
-          },
-          {
-            path: "anilist/search",
-            element: <AnilistSearch />,
-          },
-          {
             path: "live",
             element: <Iptv />,
           },
@@ -77,20 +70,33 @@ export const routes: RouteObject[] = [
             element: <TorrentSearch />,
           },
           {
-            path: "calendar",
-            element: <Calendar />,
-          },
-          {
-            path: "anilist",
-            element: <AnilistCalendar />,
-          },
-          {
             path: "collections",
             element: <Collections />,
           },
           {
             path: "downloads",
             element: <Downloads />,
+          },
+          {
+            element: <SidebarLayout />,
+            children: [
+              {
+                path: "calendar",
+                element: <Calendar />,
+              },
+              {
+                path: "anilist",
+                element: <AnilistCalendar />,
+              },
+              {
+                path: "search",
+                element: <BangumiSearch />,
+              },
+              {
+                path: "anilist/search",
+                element: <AnilistSearch />,
+              },
+            ],
           },
         ],
       },
