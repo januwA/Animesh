@@ -7,7 +7,7 @@
   - 组件与 Hook 测试边界：组件使用 hook 时，组件测试应 mock 该 hook，只测组件的渲染逻辑和用户交互行为；hook 的内部逻辑由其自身的单测覆盖，无需在组件测试中重复验证。
     - 示例（`src/presentation/components/Layout.test.tsx` 测 `MainLayout` 时 mock `useGlobalEffects`）：
       ```tsx
-      vi.mock("../hooks/useGlobalEffects", () => ({
+      vi.mock(import("../hooks/useGlobalEffects"), () => ({
         useGlobalEffects: vi.fn(),
       }));
       ```

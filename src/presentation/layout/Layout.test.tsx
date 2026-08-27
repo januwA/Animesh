@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import { DetailLayout, MainLayout, NavBarLayout } from "./Layout";
 
-vi.mock("../hooks/useGlobalEffects", () => ({
+vi.mock(import("../hooks/useGlobalEffects"), () => ({
   useGlobalEffects: vi.fn(),
 }));
 

@@ -7,7 +7,7 @@ import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import SubjectSearch from "./index";
 import { useSubjectSearchPage } from "./useSubjectSearchPage";
 
-vi.mock("./useSubjectSearchPage", () => ({
+vi.mock(import("./useSubjectSearchPage"), () => ({
   useSubjectSearchPage: vi.fn(),
 }));
 

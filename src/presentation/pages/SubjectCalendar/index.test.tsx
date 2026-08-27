@@ -10,11 +10,11 @@ import type {
 import SubjectCalendar from "./index";
 import { useSubjectCalendarPage } from "./useSubjectCalendarPage";
 
-vi.mock("./useSubjectCalendarPage", () => ({
+vi.mock(import("./useSubjectCalendarPage"), () => ({
   useSubjectCalendarPage: vi.fn(),
 }));
 
-vi.mock("@/presentation/components/WeeklyCalendar", () => ({
+vi.mock(import("@/presentation/components/WeeklyCalendar"), () => ({
   WeeklyCalendar: ({ calendar }: { calendar: AnimeCalendarDay[] }) => (
     <div data-testid="weekly-calendar">
       {calendar.map((c) => (

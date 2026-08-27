@@ -8,11 +8,11 @@ import { TorrentStatusContext } from "@/presentation/context/TorrentStatusContex
 import SubjectDetail from "./index";
 import { useSubjectDetail } from "./useSubjectDetail";
 
-vi.mock("./useSubjectDetail", () => ({
+vi.mock(import("./useSubjectDetail"), () => ({
   useSubjectDetail: vi.fn(),
 }));
 
-vi.mock("@/presentation/components/SubjectInfoCard", () => ({
+vi.mock(import("@/presentation/components/SubjectInfoCard"), () => ({
   SubjectInfoCard: ({
     displayName,
     platform,

@@ -10,11 +10,11 @@ import type {
 import NextSeasonAnime from "./index";
 import { useNextSeasonPage } from "./useNextSeasonPage";
 
-vi.mock("./useNextSeasonPage", () => ({
+vi.mock(import("./useNextSeasonPage"), () => ({
   useNextSeasonPage: vi.fn(),
 }));
 
-vi.mock("./MonthCalendar", () => ({
+vi.mock(import("./MonthCalendar"), () => ({
   MonthCalendar: ({ groups }: { groups: NextSeasonData }) => (
     <div data-testid="month-calendar">
       {groups.map((g) => (
