@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
-import { CharacterCard } from "@/presentation/components/CharacterCard";
+import { CharacterCard } from "@/presentation/pages/SubjectDetail/CharacterCard";
 
 const makeCharacter = (
   overrides: Partial<AnimeCharacter> = {},

@@ -4,7 +4,7 @@ import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUse
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
-import { FavoriteButton } from "@/presentation/components/FavoriteButton";
+import { FavoriteButton } from "@/presentation/pages/SubjectDetail/FavoriteButton";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 import { resetAppStores } from "@/test/store-reset";
 

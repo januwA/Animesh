@@ -10,7 +10,7 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
-import { WeeklyCalendar } from "@/presentation/components/WeeklyCalendar";
+import { WeeklyCalendar } from "@/presentation/pages/SubjectCalendar/WeeklyCalendar";
 import { useAnilistCalendarStore } from "@/presentation/store/anilistCalendarStore";
 import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
 import { useSubjectCalendarPage } from "./useSubjectCalendarPage";

@@ -1,5 +1,4 @@
 import type { AnimeEpisode } from "@/domain/anime/AnimeSchemas";
-import { EpisodePaginationBar } from "@/presentation/components/EpisodePaginationBar";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import {
   Empty,
@@ -7,6 +6,7 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
+import { EpisodePaginationBar } from "@/presentation/pages/SubjectDetail/EpisodePaginationBar";
 
 export interface EpisodesSectionProps {
   episodes: AnimeEpisode[];

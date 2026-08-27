@@ -5,8 +5,8 @@ import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavor
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
+import { Button } from "../../components/ui/button";
 import { FavoriteButton } from "./FavoriteButton";
-import { Button } from "./ui/button";
 
 export interface SubjectInfoCardProps {
   subject: AnimeSubject | undefined;

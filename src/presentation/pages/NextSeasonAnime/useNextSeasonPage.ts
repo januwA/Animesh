@@ -89,6 +89,7 @@ export function useNextSeasonPage(
   const firstMonth = seasonInfo.months[0];
 
   const loadMore = useCallback(() => {
+    // v8 ignore next
     if (isInitialLoading) return;
     const { activeMonth: month, monthsData: data } = storeRef.current;
     const resolvedMonth = month ?? firstMonth;

@@ -6,7 +6,7 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
-import { InfiniteScrollTrigger } from "./InfiniteScrollTrigger";
+import { InfiniteScrollTrigger } from "../../components/InfiniteScrollTrigger";
 
 interface SubjectSearchResultsProps {
   items: AnimeSubject[];

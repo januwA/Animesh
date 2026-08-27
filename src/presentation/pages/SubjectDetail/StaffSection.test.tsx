@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
-import { StaffSection } from "@/presentation/components/StaffSection";
 import type { ConsolidatedStaffMember } from "@/presentation/hooks/useSubjectCast";
+import { StaffSection } from "./StaffSection";
 
 const makePerson = (
   overrides: Partial<ConsolidatedStaffMember> = {},

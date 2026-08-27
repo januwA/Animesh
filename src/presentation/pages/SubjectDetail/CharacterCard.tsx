@@ -1,7 +1,7 @@
 import { Tv } from "lucide-react";
 import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
 import { LazyImage } from "@/presentation/components/LazyImage";
-import { Badge } from "./ui/badge";
+import { Badge } from "../../components/ui/badge";
 
 export interface CharacterCardProps {
   character: AnimeCharacter;

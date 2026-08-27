@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
-import { StaffPersonBadge } from "@/presentation/components/StaffPersonBadge";
 import type { ConsolidatedStaffMember } from "@/presentation/hooks/useSubjectCast";
+import { StaffPersonBadge } from "@/presentation/pages/SubjectDetail/StaffPersonBadge";
 
 const makePerson = (
   overrides: Partial<ConsolidatedStaffMember> = {},

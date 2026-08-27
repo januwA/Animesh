@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
-import { CharactersSection } from "@/presentation/components/CharactersSection";
+import { CharactersSection } from "@/presentation/pages/SubjectDetail/CharactersSection";
 
 const makeCharacter = (
   overrides: Partial<AnimeCharacter> = {},

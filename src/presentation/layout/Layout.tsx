@@ -5,7 +5,7 @@ import { PageLoader } from "../components/AppComponents";
 import { BackButton } from "../components/BackButton";
 import { BackgroundWallpaper } from "../components/BackgroundWallpaper";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
-import { useBackgroundWallpaperStore } from "../store/useBackgroundWallpaperStore";
+import { backgroundWallpaperStore } from "../store/backgroundWallpaperStore";
 import { AppNavBar } from "./AppNavBar";
 
 export function DetailLayout() {
@@ -33,7 +33,7 @@ export function NavBarLayout() {
 export function MainLayout() {
   useGlobalEffects();
 
-  const showWallpaper = useBackgroundWallpaperStore((s) => s.showWallpaper);
+  const showWallpaper = backgroundWallpaperStore((s) => s.showWallpaper);
 
   return (
     <>

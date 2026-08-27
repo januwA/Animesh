@@ -4,14 +4,8 @@ import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
-import { CharactersSection } from "@/presentation/components/CharactersSection";
-import { EpisodesSection } from "@/presentation/components/EpisodesSection";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
-import { StaffSection } from "@/presentation/components/StaffSection";
-import { SubjectInfoCard } from "@/presentation/components/SubjectInfoCard";
-import { SubjectResourcesTab } from "@/presentation/components/SubjectResourcesTab";
-import { SummarySection } from "@/presentation/components/SummarySection";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import {
@@ -21,6 +15,12 @@ import {
   TabsTrigger,
 } from "@/presentation/components/ui/tabs";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
+import { CharactersSection } from "@/presentation/pages/SubjectDetail/CharactersSection";
+import { EpisodesSection } from "@/presentation/pages/SubjectDetail/EpisodesSection";
+import { StaffSection } from "@/presentation/pages/SubjectDetail/StaffSection";
+import { SubjectInfoCard } from "@/presentation/pages/SubjectDetail/SubjectInfoCard";
+import { SubjectResourcesTab } from "@/presentation/pages/SubjectDetail/SubjectResourcesTab";
+import { SummarySection } from "@/presentation/pages/SubjectDetail/SummarySection";
 import { useSubjectDetail } from "./useSubjectDetail";
 
 const subjectParamsSchema = z.object({

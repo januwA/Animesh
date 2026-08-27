@@ -69,12 +69,3 @@ export interface AnimeSubjectSearchResult {
 
 export const AnimePlatformSchema = z.enum(["bangumi", "anilist"]);
 export type AnimePlatform = z.infer<typeof AnimePlatformSchema>;
-
-/** 下季度新番 — 按月份分组的条目 */
-export interface NextSeasonMonthGroup {
-  month: number;
-  label: string;
-  items: AnimeCalendarItem[];
-}
-
-export type NextSeasonData = NextSeasonMonthGroup[];
