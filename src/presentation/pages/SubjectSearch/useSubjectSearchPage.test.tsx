@@ -55,7 +55,7 @@ const renderPage = async (
   } = {},
 ) => {
   const deps = options.deps ?? makeDeps();
-  const subjectPath = options.subjectPath ?? ((id) => `/subject/${id}`);
+  const subjectPath = options.subjectPath ?? ((id) => `/bangumi/subject/${id}`);
   const hook = renderHook(
     () =>
       useSubjectSearchPage(
@@ -168,7 +168,7 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
 
     act(() => result.current.results.handleSubjectClick(subject));
 
-    expect(locationRef.current?.pathname).toBe("/subject/1");
+    expect(locationRef.current?.pathname).toBe("/bangumi/subject/1");
   });
 
   it("handleSubjectClick 使用自定义 subjectPath", async () => {

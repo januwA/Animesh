@@ -7,7 +7,7 @@ import TorrentSearch from "./pages/TorrentSearch";
 const AiSubtitleTranslation = lazy(
   () => import("./pages/AiSubtitleTranslation"),
 );
-const Calendar = lazy(() => import("./pages/Calendar"));
+const SubjectCalendar = lazy(() => import("./pages/SubjectCalendar"));
 const Collections = lazy(() => import("./pages/Collections"));
 const Downloads = lazy(() => import("./pages/Downloads"));
 const NextSeasonAnime = lazy(() => import("./pages/NextSeasonAnime"));
@@ -31,7 +31,7 @@ export const routes: RouteObject[] = [
             element: <TorrentDetail />,
           },
           {
-            path: "subject/:subjectId",
+            path: "bangumi/subject/:subjectId",
             element: <SubjectDetail platform="bangumi" />,
           },
           {
@@ -84,7 +84,7 @@ export const routes: RouteObject[] = [
                   {
                     path: "",
                     index: true,
-                    element: <Calendar platform="bangumi" />,
+                    element: <SubjectCalendar platform="bangumi" />,
                   },
                   {
                     path: "search",
@@ -102,7 +102,7 @@ export const routes: RouteObject[] = [
                   {
                     path: "",
                     index: true,
-                    element: <Calendar platform="anilist" />,
+                    element: <SubjectCalendar platform="anilist" />,
                   },
                   {
                     path: "search",

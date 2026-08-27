@@ -20,12 +20,12 @@ const keywordParamSchema = z
 
 const platformConfigs = {
   bangumi: {
-    title: "动漫搜索",
+    title: "Bangumi 搜索",
     description: "搜索 Bangumi 动漫条目",
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.searchBangumiSubjectsUseCase,
     useStore: useBangumiSearchStore,
-    subjectPath: (id: number) => `/subject/${id}`,
+    subjectPath: (id: number) => `/bangumi/subject/${id}`,
   },
   anilist: {
     title: "AniList 搜索",

@@ -7,12 +7,12 @@ import type {
 } from "@/domain/anime/AnimeSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
 
-export interface UseCalendarPageDeps {
+export interface UseSubjectCalendarPageDeps {
   getCalendarUseCase: Pick<GetAnimeCalendarUseCase, "execute">;
 }
 
-export function useCalendarPage(
-  deps: UseCalendarPageDeps,
+export function useSubjectCalendarPage(
+  deps: UseSubjectCalendarPageDeps,
   useCalendarStore: <U>(
     selector: (state: {
       calendar: AnimeCalendarDay[];

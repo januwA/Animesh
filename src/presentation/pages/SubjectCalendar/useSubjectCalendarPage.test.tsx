@@ -4,12 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { AnimeCalendarItem } from "@/domain/anime/AnimeSchemas";
 import { useCalendarStore } from "@/presentation/store/calendarStore";
 import { resetAppStores } from "@/test/store-reset";
-import type { UseCalendarPageDeps } from "./useCalendarPage";
-import { useCalendarPage } from "./useCalendarPage";
+import type { UseSubjectCalendarPageDeps } from "./useSubjectCalendarPage";
+import { useSubjectCalendarPage } from "./useSubjectCalendarPage";
 
 const makeDeps = (
-  overrides: Partial<UseCalendarPageDeps> = {},
-): UseCalendarPageDeps => ({
+  overrides: Partial<UseSubjectCalendarPageDeps> = {},
+): UseSubjectCalendarPageDeps => ({
   getCalendarUseCase: {
     execute: vi.fn().mockResolvedValue([]),
   },
@@ -33,9 +33,10 @@ const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const renderUseCalendarPage = (deps: UseCalendarPageDeps) => {
+const renderUseCalendarPage = (deps: UseSubjectCalendarPageDeps) => {
   return renderHook(
-    () => useCalendarPage(deps, useCalendarStore, (id) => `/subject/${id}`),
+    () =>
+      useSubjectCalendarPage(deps, useCalendarStore, (id) => `/subject/${id}`),
     {
       wrapper: RouterWrapper,
     },

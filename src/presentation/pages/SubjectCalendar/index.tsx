@@ -13,32 +13,30 @@ import {
 import { WeeklyCalendar } from "@/presentation/components/WeeklyCalendar";
 import { useAnilistCalendarStore } from "@/presentation/store/anilistCalendarStore";
 import { useCalendarStore } from "@/presentation/store/calendarStore";
-import { useCalendarPage } from "./useCalendarPage";
+import { useSubjectCalendarPage } from "./useSubjectCalendarPage";
 
 const platformConfigs = {
   bangumi: {
-    title: "新番日历",
-    errorTitle: "获取新番日历失败",
-    emptyTitle: "未找到新番数据",
+    title: "Bangumi 周放送",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getBangumiCalendarUseCase,
     useStore: useCalendarStore,
     subjectPath: (id: number) => `/subject/${id}`,
   },
   anilist: {
     title: "AniList 周放送",
-    errorTitle: "获取 AniList 数据失败",
-    emptyTitle: "未找到放送数据",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getAnilistCalendarUseCase,
     useStore: useAnilistCalendarStore,
     subjectPath: (id: number) => `/anilist/subject/${id}`,
   },
 } as const;
 
-export interface CalendarProps {
+export interface SubjectCalendarProps {
   platform?: AnimePlatform;
 }
 
-export default function Calendar({ platform = "bangumi" }: CalendarProps) {
+export default function SubjectCalendar({
+  platform = "bangumi",
+}: SubjectCalendarProps) {
   const platformResult = AnimePlatformSchema.safeParse(platform);
 
   if (!platformResult.success) {
@@ -47,17 +45,17 @@ export default function Calendar({ platform = "bangumi" }: CalendarProps) {
     );
   }
 
-  return <CalendarView platform={platformResult.data} />;
+  return <SubjectCalendarView platform={platformResult.data} />;
 }
 
-function CalendarView({ platform }: { platform: AnimePlatform }) {
+function SubjectCalendarView({ platform }: { platform: AnimePlatform }) {
   const di = useDI();
   const config = platformConfigs[platform];
   const calendarActiveDay = config.useStore((s) => s.calendarActiveDay);
   const setCalendarActiveDay = config.useStore((s) => s.setCalendarActiveDay);
 
   const { calendar, isLoading, error, refetch, handleAnimeClick } =
-    useCalendarPage(
+    useSubjectCalendarPage(
       { getCalendarUseCase: config.getUseCase(di) },
       config.useStore,
       config.subjectPath,
@@ -72,14 +70,14 @@ function CalendarView({ platform }: { platform: AnimePlatform }) {
         <CalendarSkeleton />
       ) : error ? (
         <ErrorState
-          title={config.errorTitle}
+          title="获取新番日历失败"
           message={error}
           onRetry={refetch}
         />
       ) : calendar.length === 0 ? (
         <Empty>
           <EmptyContent>
-            <EmptyTitle>{config.emptyTitle}</EmptyTitle>
+            <EmptyTitle>未找到新番数据</EmptyTitle>
             <EmptyDescription>请稍后重试</EmptyDescription>
           </EmptyContent>
         </Empty>

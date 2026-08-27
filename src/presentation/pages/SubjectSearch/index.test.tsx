@@ -63,7 +63,7 @@ describe("SubjectSearch 组件", () => {
     renderWithProviders(<SubjectSearch />);
 
     expect(
-      screen.getByRole("heading", { name: "动漫搜索" }),
+      screen.getByRole("heading", { name: "Bangumi 搜索" }),
     ).toBeInTheDocument();
     expect(screen.getByText("搜索 Bangumi 动漫条目")).toBeInTheDocument();
     expect(useSubjectSearchPage).toHaveBeenCalledWith(
