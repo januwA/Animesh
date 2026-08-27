@@ -22,7 +22,7 @@ const platformConfigs = {
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.getBangumiNextSeasonUseCase,
     useStore: useNextSeasonStore,
-    subjectPath: (id: number) => `/subject/${id}`,
+    subjectPath: (id: number) => `/bangumi/subject/${id}`,
   },
   anilist: {
     title: "AniList 下季新番",

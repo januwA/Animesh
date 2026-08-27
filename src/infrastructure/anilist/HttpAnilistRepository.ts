@@ -271,10 +271,7 @@ export class HttpAnilistRepository implements AnimeRepository {
 
   getRankedSubjects(
     _ctx: Context,
-    _year: number,
-    _month: number,
-    _limit?: number,
-    _offset?: number,
+    _params: Parameters<AnimeRepository["getRankedSubjects"]>[1],
   ): Promise<RankedSubjectsPage> {
     notImplemented("getRankedSubjects");
   }

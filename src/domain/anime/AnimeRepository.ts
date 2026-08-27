@@ -20,10 +20,15 @@ export interface AnimeRepository {
   /** 获取指定类型指定年月的按 rank 排序榜单条目（GET /v0/subjects）。 */
   getRankedSubjects(
     ctx: Context,
-    year: number,
-    month: number,
-    limit?: number,
-    offset?: number,
+    params: {
+      year: number;
+      month: number;
+      sort?: "rank" | "date";
+      // 0 为 其他. 1 为 TV. 2 为 OVA. 3 为 Movie. 5 为 WEB
+      cat?: 0 | 1 | 2 | 3 | 5;
+      limit?: number;
+      offset?: number;
+    },
   ): Promise<RankedSubjectsPage>;
   getSubject(ctx: Context, subjectId: NonEmptyString): Promise<AnimeSubject>;
   getEpisodes(

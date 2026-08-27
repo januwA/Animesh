@@ -44,10 +44,7 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   async getRankedSubjects(
     ctx: Context,
-    year: number,
-    month: number,
-    limit?: number,
-    offset?: number,
+    params: Parameters<AnimeRepository["getRankedSubjects"]>[1],
   ): Promise<RankedSubjectsPage> {
     const data = await this.client.getJson<unknown>(
       "https://api.bgm.tv/v0/subjects",
@@ -55,12 +52,7 @@ export class HttpBangumiRepository implements AnimeRepository {
         ctx,
         params: {
           type: "2",
-          cat: "1",
-          sort: "rank",
-          year,
-          month,
-          limit,
-          offset,
+          ...params,
         },
       },
     );
@@ -182,7 +174,10 @@ export class HttpBangumiRepository implements AnimeRepository {
   ): Promise<AnimeSubject[]> {
     const allSubjects: AnimeSubject[] = [];
     for (const month of months) {
-      const { items } = await this.getRankedSubjects(ctx, year, month);
+      const { items } = await this.getRankedSubjects(ctx, {
+        year,
+        month,
+      });
       allSubjects.push(...items);
     }
     return allSubjects;

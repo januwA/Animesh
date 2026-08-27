@@ -69,18 +69,16 @@ describe("GetAnimeRankedSubjectsUseCase 获取榜单条目", () => {
     const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
-    expect(mockRepo.getRankedSubjects).toHaveBeenNthCalledWith(
-      1,
-      Background,
-      2026,
-      8,
-    );
-    expect(mockRepo.getRankedSubjects).toHaveBeenNthCalledWith(
-      2,
-      Background,
-      2026,
-      7,
-    );
+    expect(mockRepo.getRankedSubjects).toHaveBeenNthCalledWith(1, Background, {
+      month: 8,
+      sort: "rank",
+      year: 2026,
+    });
+    expect(mockRepo.getRankedSubjects).toHaveBeenNthCalledWith(2, Background, {
+      month: 7,
+      sort: "rank",
+      year: 2026,
+    });
     expect(mockCache.setRankedSubjects).toHaveBeenCalledWith(Background, [
       ...current,
       ...last,

@@ -41,11 +41,11 @@ export class GetAnimeRankedSubjectsUseCase {
       RANKED_SUBJECT_MONTH_WINDOW,
       new Date(),
     )) {
-      const { items } = await this.animeRepository.getRankedSubjects(
-        ctx,
+      const { items } = await this.animeRepository.getRankedSubjects(ctx, {
         year,
         month,
-      );
+        sort: "rank",
+      });
       subjects.push(...items);
     }
     const top = subjects.slice(0, RANKED_SUBJECT_LIMIT);
