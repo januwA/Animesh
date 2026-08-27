@@ -90,7 +90,7 @@ export function useStream<T>(
     (async () => {
       try {
         const stream = await streamFnRef.current(ctx);
-        if (!active || ctx.err() !== null) {
+        if (!active || ctx.err()) {
           stream.cancel();
           return;
         }
@@ -105,24 +105,24 @@ export function useStream<T>(
             chunk = await reader.read();
           } catch (err: unknown) {
             // v8 ignore next
-            if (!active || ctx.err() !== null) return;
+            if (!active || ctx.err()) return;
             const wrapped = err instanceof Error ? err : new Error(String(err));
             setError(wrapped);
             onErrorRef.current?.(wrapped);
             return;
           }
-          if (chunk.done || !active || ctx.err() !== null) break;
+          if (chunk.done || !active || ctx.err()) break;
           setData(chunk.value);
           onDataRef.current?.(chunk.value);
         }
       } catch (err: unknown) {
         // v8 ignore next
-        if (!active || ctx.err() !== null) return;
+        if (!active || ctx.err()) return;
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);
         onErrorRef.current?.(wrapped);
       } finally {
-        if (active && ctx.err() === null) {
+        if (active) {
           reader?.cancel();
           setStatus("closed");
           onCloseRef.current?.();

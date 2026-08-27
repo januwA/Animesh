@@ -205,26 +205,17 @@ export class HttpAnilistRepository implements AnimeRepository {
     const allSchedules: unknown[] = [];
     let page = 1;
     let hasNextPage = true;
-
-    try {
-      while (hasNextPage) {
-        const pageData = await this.fetchAiringSchedulePage(
-          ctx,
-          startDate,
-          endDate,
-          page,
-        );
-        allSchedules.push(...pageData.airingSchedules);
-        hasNextPage = pageData.hasNextPage;
-        page++;
-      }
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch AniList calendar", { cause: err });
+    while (hasNextPage) {
+      const pageData = await this.fetchAiringSchedulePage(
+        ctx,
+        startDate,
+        endDate,
+        page,
+      );
+      allSchedules.push(...pageData.airingSchedules);
+      hasNextPage = pageData.hasNextPage;
+      page++;
     }
-
     return allSchedules;
   }
 
@@ -266,23 +257,16 @@ export class HttpAnilistRepository implements AnimeRepository {
     query: string,
     variables: Record<string, unknown>,
   ): Promise<unknown> {
-    try {
-      const response = await this.client.request(ANILIST_ENDPOINT, {
-        ctx,
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query, variables }),
-      });
-      return await response.json();
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch AniList data", { cause: err });
-    }
+    const response = await this.client.request(ANILIST_ENDPOINT, {
+      ctx,
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    return await response.json();
   }
 
   getRankedSubjects(
@@ -416,29 +400,21 @@ export class HttpAnilistRepository implements AnimeRepository {
     const items: AnimeSubject[] = [];
     let page = 1;
     let hasNextPage = true;
-    try {
-      while (hasNextPage) {
-        const data = await this.graphqlRequest(ctx, NEXT_SEASON_MEDIA_QUERY, {
-          page,
-          season,
-          seasonYear: year,
+    while (hasNextPage) {
+      const data = await this.graphqlRequest(ctx, NEXT_SEASON_MEDIA_QUERY, {
+        page,
+        season,
+        seasonYear: year,
+      });
+      const result = AnilistNextSeasonResponseSchema.safeParse(data);
+      if (!result.success) {
+        throw new Error("Anilist next season response structure mismatch", {
+          cause: result.error,
         });
-        const result = AnilistNextSeasonResponseSchema.safeParse(data);
-        if (!result.success) {
-          throw new Error("Anilist next season response structure mismatch", {
-            cause: result.error,
-          });
-        }
-        items.push(...result.data.items);
-        hasNextPage = result.data.hasNextPage;
-        page++;
       }
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) throw err;
-      throw new Error(
-        `Failed to fetch Anilist next season for ${season} ${year}`,
-        { cause: err },
-      );
+      items.push(...result.data.items);
+      hasNextPage = result.data.hasNextPage;
+      page++;
     }
     return items;
   }

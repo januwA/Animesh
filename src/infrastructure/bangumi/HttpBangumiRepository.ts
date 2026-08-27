@@ -27,18 +27,12 @@ export class HttpBangumiRepository implements AnimeRepository {
   constructor(private readonly client: HttpClient) {}
 
   async getCalendar(ctx: Context): Promise<AnimeCalendarDay[]> {
-    let data: unknown;
-    try {
-      data = await this.client.getJson<unknown>("https://api.bgm.tv/calendar", {
+    const data = await this.client.getJson<unknown>(
+      "https://api.bgm.tv/calendar",
+      {
         ctx,
-      });
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch calendar", { cause: err });
-    }
-
+      },
+    );
     const result = BangumiCalendarResponseSchema.safeParse(data);
     if (!result.success) {
       throw new Error("Calendar API response structure mismatch", {
@@ -55,29 +49,21 @@ export class HttpBangumiRepository implements AnimeRepository {
     limit?: number,
     offset?: number,
   ): Promise<RankedSubjectsPage> {
-    let data: unknown;
-    try {
-      data = await this.client.getJson<unknown>(
-        "https://api.bgm.tv/v0/subjects",
-        {
-          ctx,
-          params: {
-            type: "2",
-            cat: "1",
-            sort: "rank",
-            year,
-            month,
-            limit,
-            offset,
-          },
+    const data = await this.client.getJson<unknown>(
+      "https://api.bgm.tv/v0/subjects",
+      {
+        ctx,
+        params: {
+          type: "2",
+          cat: "1",
+          sort: "rank",
+          year,
+          month,
+          limit,
+          offset,
         },
-      );
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch ranked subjects", { cause: err });
-    }
+      },
+    );
 
     const result = BangumiRankedSubjectsResponseSchema.safeParse(data);
     if (!result.success) {
@@ -89,18 +75,10 @@ export class HttpBangumiRepository implements AnimeRepository {
   }
 
   async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
-    let data: unknown;
-    try {
-      data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects/${subjectId}`,
-        { ctx },
-      );
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch subject detail", { cause: err });
-    }
+    const data = await this.client.getJson<unknown>(
+      `https://api.bgm.tv/v0/subjects/${subjectId}`,
+      { ctx },
+    );
 
     const result = BangumiSubjectSchema.safeParse(data);
     if (!result.success) {
@@ -117,18 +95,10 @@ export class HttpBangumiRepository implements AnimeRepository {
     offset: number,
     limit: number,
   ): Promise<AnimeEpisodesPage> {
-    let data: unknown;
-    try {
-      data = await this.client.getJson<unknown>(
-        "https://api.bgm.tv/v0/episodes",
-        { ctx, params: { subject_id: subjectId, limit, offset } },
-      );
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch episodes", { cause: err });
-    }
+    const data = await this.client.getJson<unknown>(
+      "https://api.bgm.tv/v0/episodes",
+      { ctx, params: { subject_id: subjectId, limit, offset } },
+    );
 
     const result = BangumiEpisodesResponseSchema.safeParse(data);
     if (!result.success) {
@@ -143,18 +113,10 @@ export class HttpBangumiRepository implements AnimeRepository {
     ctx: Context,
     subjectId: string,
   ): Promise<AnimePerson[]> {
-    let data: unknown;
-    try {
-      data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects/${subjectId}/persons`,
-        { ctx, params: { subject_id: subjectId } },
-      );
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch subject persons", { cause: err });
-    }
+    const data = await this.client.getJson<unknown>(
+      `https://api.bgm.tv/v0/subjects/${subjectId}/persons`,
+      { ctx, params: { subject_id: subjectId } },
+    );
 
     const result = BangumiPersonsResponseSchema.safeParse(data);
     if (!result.success) {
@@ -169,18 +131,10 @@ export class HttpBangumiRepository implements AnimeRepository {
     ctx: Context,
     subjectId: string,
   ): Promise<AnimeCharacter[]> {
-    let data: unknown;
-    try {
-      data = await this.client.getJson<unknown>(
-        `https://api.bgm.tv/v0/subjects/${subjectId}/characters`,
-        { ctx, params: { subject_id: subjectId } },
-      );
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch subject characters", { cause: err });
-    }
+    const data = await this.client.getJson<unknown>(
+      `https://api.bgm.tv/v0/subjects/${subjectId}/characters`,
+      { ctx, params: { subject_id: subjectId } },
+    );
 
     const result = BangumiCharactersResponseSchema.safeParse(data);
     if (!result.success) {
@@ -195,32 +149,23 @@ export class HttpBangumiRepository implements AnimeRepository {
     ctx: Context,
     params: AnimeSubjectSearchParams,
   ): Promise<AnimeSubjectSearchResult> {
-    let raw: unknown;
-    try {
-      const response = await this.client.request(
-        "https://api.bgm.tv/v0/search/subjects",
-        {
-          ctx,
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          params: { limit: params.limit, offset: params.offset },
-          body: JSON.stringify({
-            keyword: params.keyword,
-            filter: { type: [2], nsfw: false },
-          }),
+    const response = await this.client.request(
+      "https://api.bgm.tv/v0/search/subjects",
+      {
+        ctx,
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
         },
-      );
-      raw = await response.json();
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to search subjects", { cause: err });
-    }
-
+        params: { limit: params.limit, offset: params.offset },
+        body: JSON.stringify({
+          keyword: params.keyword,
+          filter: { type: [2], nsfw: false },
+        }),
+      },
+    );
+    const raw = await response.json();
     const result = BangumiSubjectSearchResponseSchema.safeParse(raw);
     if (!result.success) {
       throw new Error("Subject search API response structure mismatch", {
@@ -237,18 +182,8 @@ export class HttpBangumiRepository implements AnimeRepository {
   ): Promise<AnimeSubject[]> {
     const allSubjects: AnimeSubject[] = [];
     for (const month of months) {
-      try {
-        const { items } = await this.getRankedSubjects(ctx, year, month);
-        allSubjects.push(...items);
-      } catch (err: unknown) {
-        if (ctx.err() && err === ctx.err()) {
-          throw err;
-        }
-        throw new Error(
-          `Failed to fetch next season subjects for ${year}-${month}`,
-          { cause: err },
-        );
-      }
+      const { items } = await this.getRankedSubjects(ctx, year, month);
+      allSubjects.push(...items);
     }
     return allSubjects;
   }

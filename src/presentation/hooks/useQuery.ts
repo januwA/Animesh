@@ -1,5 +1,5 @@
 import type { Context } from "ajanuw-context";
-import { Background, WithCancel } from "ajanuw-context";
+import { Background, Canceled, WithCancel } from "ajanuw-context";
 import type { DependencyList } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -70,17 +70,17 @@ export function useQuery<T>(
     (async () => {
       try {
         const result = await queryFnRef.current(ctx);
-        if (!active || ctx.err() !== null) return;
+        if (!active || ctx.err() === Canceled) return;
         setData(result);
         setError(null);
         onSuccessRef.current?.(result);
       } catch (err: unknown) {
-        if (!active || ctx.err() !== null) return;
+        if (!active || ctx.err() === Canceled) return;
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);
         onErrorRef.current?.(wrapped);
       } finally {
-        if (active && ctx.err() === null) {
+        if (active) {
           setLoading(false);
         }
       }

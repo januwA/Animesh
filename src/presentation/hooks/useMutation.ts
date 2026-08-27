@@ -1,5 +1,5 @@
 import type { CancelFunc, Context } from "ajanuw-context";
-import { Background, WithCancel } from "ajanuw-context";
+import { Background, Canceled, WithCancel } from "ajanuw-context";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface UseMutationOptions<T, P> {
@@ -63,7 +63,7 @@ export function useMutation<T, P = void>(
 
     return mutationFnRef.current(ctx, params).then(
       (result) => {
-        if (ctx.err() !== null) return null;
+        if (ctx.err() === Canceled) return null;
         activeCancelRef.current = null;
         setData(result);
         setLoading(false);
@@ -73,7 +73,7 @@ export function useMutation<T, P = void>(
         return result;
       },
       (err: unknown) => {
-        if (ctx.err() !== null) return null;
+        if (ctx.err() === Canceled) return null;
         activeCancelRef.current = null;
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);

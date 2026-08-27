@@ -109,7 +109,7 @@ export class TranslateSubtitleUseCase {
     dto.onProgress(0, total);
 
     for (let i = 0; i < total; i += batchSize) {
-      if (ctx.err() !== null) {
+      if (ctx.err()) {
         throw new Error("字幕翻译已被取消");
       }
 
