@@ -3,9 +3,6 @@ import {
 	checkHooks,
 	checkStyles,
 	checkTauriImports,
-	checkTestDi,
-	isHookTestFile,
-	isPageTestFile,
 } from "./check-presentation";
 
 const ROOT = process.cwd();
@@ -379,43 +376,5 @@ export { useHiddenWide };
 			`${ROOT}/src/presentation/pages/Settings/useSettingsPage.ts`,
 		);
 		expect(errors).toHaveLength(1);
-	});
-});
-
-describe("测试 DI 注入规范", () => {
-	it("useXxx.test.tsx 属于 hook 级单测", () => {
-		expect(isHookTestFile(`${PAGE_DIR}/Settings/useSettingsPage.test.tsx`)).toBe(
-			true,
-		);
-	});
-
-	it("index.test.tsx 属于页面级集成测试", () => {
-		expect(isPageTestFile(`${PAGE_DIR}/Player/index.test.tsx`)).toBe(true);
-	});
-
-	it("单文件页面测试不属于页面级集成测试", () => {
-		expect(isPageTestFile(`${PAGE_DIR}/Calendar.test.tsx`)).toBe(false);
-	});
-
-	it("普通组件测试文件两种分类均不匹配", () => {
-		expect(
-			isHookTestFile(`${ROOT}/src/presentation/components/Button.test.tsx`),
-		).toBe(false);
-		expect(
-			isPageTestFile(`${ROOT}/src/presentation/components/Button.test.tsx`),
-		).toBe(false);
-	});
-
-	const pageTestPath = `${PAGE_DIR}/Player/index.test.tsx`;
-	const options = { siblingUsesUseDI: true };
-
-	it("页面级测试未 import DIProvider 应当报错", () => {
-		const code = `
-const container = {} as unknown as DIContainer;
-render(<PlayerView />);
-`;
-		const errors = checkTestDi(code, pageTestPath, options);
-		expect(errors).toHaveLength(1);
-		expect(errors[0].message).toContain("DIProvider");
 	});
 });

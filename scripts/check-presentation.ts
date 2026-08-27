@@ -312,78 +312,6 @@ export function checkHooks(code: string, filepath: string): Violation[] {
 	return errors;
 }
 
-/** ---------- 规则 6：测试 DI 注入规范 ---------- */
-
-const DIPROVIDER_IMPORT = "DIProvider";
-
-export function isHookTestFile(filepath: string): boolean {
-	const basename = path.posix.basename(filepath.replace(/\\/g, "/"));
-	return /^use.+\.test\.[jt]sx?$/.test(basename);
-}
-
-export function isPageTestFile(filepath: string): boolean {
-	const normalized = filepath.replace(/\\/g, "/");
-	const basename = path.posix.basename(normalized);
-	if (!/^index\.test\.[jt]sx?$/.test(basename)) return false;
-	return normalized.includes(`/src/presentation/pages/`);
-}
-
-export function collectImportNames(program: any): Set<string> {
-	const names = new Set<string>();
-	traverse(program, (node) => {
-		if (node.type !== "ImportDeclaration") return;
-		for (const spec of node.specifiers ?? []) {
-			if (
-				spec.type === "ImportSpecifier" &&
-				spec.imported?.type === "Identifier"
-			) {
-				names.add(spec.imported.name);
-			}
-		}
-	});
-	return names;
-}
-
-export interface TestDiCheckOptions {
-	siblingUsesUseDI: boolean;
-}
-
-function detectSiblingContext(filepath: string): TestDiCheckOptions {
-	const siblingIndex = path.join(path.dirname(filepath), "index.tsx");
-	const siblingUsesUseDI =
-		fs.existsSync(siblingIndex) &&
-		fs.readFileSync(siblingIndex, "utf8").includes("useDI");
-	return { siblingUsesUseDI };
-}
-
-export function checkTestDi(
-	code: string,
-	filepath: string,
-	options: TestDiCheckOptions = detectSiblingContext(filepath),
-): Violation[] {
-	const parseResult = parseTs(code, filepath);
-	const program = parseResult.program;
-	const imports = collectImportNames(program);
-	const errors: Violation[] = [];
-
-	const report = (offset: number, message: string) => {
-		const loc = offsetToLoc(code, offset);
-		errors.push({ ...loc, severity: "error", message });
-	};
-
-	if (isPageTestFile(filepath) && options.siblingUsesUseDI) {
-		if (!imports.has(DIPROVIDER_IMPORT)) {
-			report(
-				0,
-				`页面级集成测试必须渲染组合根，并使用 <DIProvider value={mock as unknown as DIContainer}> 注入最小 mock 容器（需 import DIProvider）。`,
-			);
-		}
-	
-	}
-
-	return errors;
-}
-
 /** ---------- 合并 CLI ---------- */
 
 const rules: CheckRule[] = [
@@ -402,12 +330,6 @@ const rules: CheckRule[] = [
 		name: "hook大小与耦合",
 		targetDirs: [PRESENTATION_DIR],
 		check: checkHooks,
-	},
-	{
-		name: "测试DI注入",
-		targetDirs: [PRESENTATION_DIR],
-		includeFile: (f) => isTestFile(f),
-		check: checkTestDi,
 	},
 ];
 
