@@ -9,8 +9,6 @@ const AiSubtitleTranslation = lazy(
 );
 const AnilistCalendar = lazy(() => import("./pages/AnilistCalendar"));
 const AnilistNextSeason = lazy(() => import("./pages/AnilistNextSeason"));
-const AnilistSubjectDetail = lazy(() => import("./pages/AnilistSubjectDetail"));
-const BangumiSearch = lazy(() => import("./pages/SubjectSearch"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Collections = lazy(() => import("./pages/Collections"));
 const Downloads = lazy(() => import("./pages/Downloads"));
@@ -20,6 +18,7 @@ const LivePlayer = lazy(() => import("./pages/LivePlayer"));
 const Player = lazy(() => import("./pages/Player"));
 const Settings = lazy(() => import("./pages/Settings"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
+const SubjectSearch = lazy(() => import("./pages/SubjectSearch"));
 const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
 
 export const routes: RouteObject[] = [
@@ -35,11 +34,11 @@ export const routes: RouteObject[] = [
           },
           {
             path: "subject/:subjectId",
-            element: <SubjectDetail />,
+            element: <SubjectDetail platform="bangumi" />,
           },
           {
             path: "anilist/subject/:subjectId",
-            element: <AnilistSubjectDetail />,
+            element: <SubjectDetail platform="anilist" />,
           },
           {
             path: "play/:infoHash/:fileId",
@@ -87,7 +86,7 @@ export const routes: RouteObject[] = [
                   { path: "", index: true, element: <Calendar /> },
                   {
                     path: "search",
-                    element: <BangumiSearch platform="bangumi" />,
+                    element: <SubjectSearch platform="bangumi" />,
                   },
                   { path: "next-season", element: <NextSeasonAnime /> },
                 ],
@@ -98,7 +97,7 @@ export const routes: RouteObject[] = [
                   { path: "", index: true, element: <AnilistCalendar /> },
                   {
                     path: "search",
-                    element: <BangumiSearch platform="anilist" />,
+                    element: <SubjectSearch platform="anilist" />,
                   },
                   { path: "next-season", element: <AnilistNextSeason /> },
                 ],

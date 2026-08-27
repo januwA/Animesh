@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
+import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
 import { CharactersSection } from "@/presentation/components/CharactersSection";
 import { EpisodesSection } from "@/presentation/components/EpisodesSection";
 import { ErrorState } from "@/presentation/components/ErrorState";
@@ -34,9 +36,22 @@ const pageParamSchema = z
   .optional()
   .default("1");
 
-export default function SubjectDetail() {
+export interface SubjectDetailProps {
+  platform?: AnimePlatform;
+}
+
+export default function SubjectDetail({
+  platform = "bangumi",
+}: SubjectDetailProps) {
+  const platformResult = AnimePlatformSchema.safeParse(platform);
   const { subjectId = "" } = useParams<{ subjectId: string }>();
   const [searchParams] = useSearchParams();
+
+  if (!platformResult.success) {
+    return (
+      <InvalidParamsView title="无效的平台参数" error={platformResult.error} />
+    );
+  }
 
   const subjectResult = subjectParamsSchema.safeParse({ subjectId });
   const pageResult = pageParamSchema.safeParse(
@@ -59,6 +74,7 @@ export default function SubjectDetail() {
 
   return (
     <SubjectDetailView
+      platform={platformResult.data}
       subjectId={Number(subjectResult.data.subjectId)}
       page={Number(pageResult.data)}
     />
@@ -66,37 +82,37 @@ export default function SubjectDetail() {
 }
 
 function SubjectDetailView({
+  platform,
   subjectId,
   page,
 }: {
+  platform: AnimePlatform;
   subjectId: number;
   page: number;
 }) {
-  const {
-    getBangumiSubjectUseCase,
-    getBangumiEpisodesUseCase,
-    getBangumiPersonsUseCase,
-    getBangumiCharactersUseCase,
-    getFavoriteStatusUseCase,
-    addFavoriteUseCase,
-    removeFavoriteUseCase,
-    openUrlUseCase,
-    setTorrentSubjectUseCase,
-    clearTorrentSubjectUseCase,
-  } = useDI();
+  const di = useDI();
   const { torrents } = useTorrentStatus();
   const [activeTab, setActiveTab] = useState("summary");
 
+  const isAnilist = platform === "anilist";
   const detail = useSubjectDetail(
-    { subjectId, page, platform: "bangumi", torrents, activeTab },
+    { subjectId, page, platform, torrents, activeTab },
     {
-      getSubjectUseCase: getBangumiSubjectUseCase,
-      getEpisodesUseCase: getBangumiEpisodesUseCase,
-      getPersonsUseCase: getBangumiPersonsUseCase,
-      getCharactersUseCase: getBangumiCharactersUseCase,
-      openUrlUseCase,
-      setTorrentSubjectUseCase,
-      clearTorrentSubjectUseCase,
+      getSubjectUseCase: isAnilist
+        ? di.getAnilistSubjectUseCase
+        : di.getBangumiSubjectUseCase,
+      getEpisodesUseCase: isAnilist
+        ? di.getAnilistEpisodesUseCase
+        : di.getBangumiEpisodesUseCase,
+      getPersonsUseCase: isAnilist
+        ? di.getAnilistPersonsUseCase
+        : di.getBangumiPersonsUseCase,
+      getCharactersUseCase: isAnilist
+        ? di.getAnilistCharactersUseCase
+        : di.getBangumiCharactersUseCase,
+      openUrlUseCase: di.openUrlUseCase,
+      setTorrentSubjectUseCase: di.setTorrentSubjectUseCase,
+      clearTorrentSubjectUseCase: di.clearTorrentSubjectUseCase,
     },
   );
 
@@ -104,7 +120,7 @@ function SubjectDetailView({
     return (
       <div className="space-y-4">
         <ErrorState
-          title="获取动漫详情失败"
+          title={isAnilist ? "获取 AniList 动漫详情失败" : "获取动漫详情失败"}
           message={detail.info.subjectQuery.error}
           onRetry={detail.info.subjectQuery.refetch}
         />
@@ -118,13 +134,13 @@ function SubjectDetailView({
       <SubjectInfoCard
         subject={detail.info.subject}
         subjectId={subjectId}
-        platform="bangumi"
+        platform={platform}
         displayName={detail.info.displayName}
         imageUrl={detail.info.imageUrl}
         onOpenUrl={detail.info.handleOpenUrl}
-        getFavoriteStatusUseCase={getFavoriteStatusUseCase}
-        addFavoriteUseCase={addFavoriteUseCase}
-        removeFavoriteUseCase={removeFavoriteUseCase}
+        getFavoriteStatusUseCase={di.getFavoriteStatusUseCase}
+        addFavoriteUseCase={di.addFavoriteUseCase}
+        removeFavoriteUseCase={di.removeFavoriteUseCase}
       />
 
       {/* Episodes List */}
