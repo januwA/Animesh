@@ -1,17 +1,20 @@
 import type { Context } from "ajanuw-context";
-import type { AnimeCache } from "@/domain/anime/AnimeCache";
 import type {
-  AnimeCalendarItem,
-  AnimeSubject,
-  NextSeasonData,
-  NextSeasonMonthGroup,
-} from "@/domain/anime/AnimeSchemas";
-import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
+  AnimeRepository,
+  NextSeasonSubjectsPage,
+  NextSeasonSubjectsParams,
+} from "../../domain/anime/AnimeRepository";
+
+export interface NextSeasonTabItem {
+  month: number;
+  label: string;
+}
 
 export interface NextSeasonInfo {
   year: number;
   season: string;
   months: number[];
+  tabs: NextSeasonTabItem[];
 }
 
 const SEASON_NAMES: Record<string, string> = {
@@ -38,102 +41,43 @@ const MONTH_LABELS: Record<number, string> = {
 
 export function getNextSeasonInfo(now: Date): NextSeasonInfo {
   const month = now.getMonth() + 1;
+  let year = now.getFullYear();
+  let season = SEASON_NAMES.spring;
+  let months = [4, 5, 6];
+
   if (month <= 3) {
-    return {
-      year: now.getFullYear(),
-      season: SEASON_NAMES.spring,
-      months: [4, 5, 6],
-    };
-  }
-  if (month <= 6) {
-    return {
-      year: now.getFullYear(),
-      season: SEASON_NAMES.summer,
-      months: [7, 8, 9],
-    };
-  }
-  if (month <= 9) {
-    return {
-      year: now.getFullYear(),
-      season: SEASON_NAMES.fall,
-      months: [10, 11, 12],
-    };
-  }
-  return {
-    year: now.getFullYear() + 1,
-    season: SEASON_NAMES.winter,
-    months: [1, 2, 3],
-  };
-}
-
-function groupByMonth(
-  subjects: AnimeSubject[],
-  months: number[],
-): NextSeasonMonthGroup[] {
-  const groups = new Map<number, AnimeCalendarItem[]>();
-
-  for (const month of months) {
-    groups.set(month, []);
+    year = now.getFullYear();
+    season = SEASON_NAMES.spring;
+    months = [4, 5, 6];
+  } else if (month <= 6) {
+    year = now.getFullYear();
+    season = SEASON_NAMES.summer;
+    months = [7, 8, 9];
+  } else if (month <= 9) {
+    year = now.getFullYear();
+    season = SEASON_NAMES.fall;
+    months = [10, 11, 12];
+  } else {
+    year = now.getFullYear() + 1;
+    season = SEASON_NAMES.winter;
+    months = [1, 2, 3];
   }
 
-  for (const subject of subjects) {
-    const dateStr = subject.date;
-    if (!dateStr || typeof dateStr !== "string") continue;
-
-    const match = dateStr.match(/^(\d{4})-(\d{2})/);
-    if (!match) continue;
-
-    const subjectMonth = Number(match[2]);
-    const items = groups.get(subjectMonth);
-    if (!items) continue;
-
-    if (!items.some((item) => item.id === subject.id)) {
-      items.push({
-        id: subject.id as number,
-        name: subject.name as string,
-        image: subject.image as string,
-        rating: subject.rating as number,
-      });
-    }
-  }
-
-  return months.map((month) => ({
-    month,
-    label: MONTH_LABELS[month],
-    /* v8 ignore next -- groups 始终包含所有 months 键 */
-    items: groups.get(month) ?? [],
+  const tabs: NextSeasonTabItem[] = months.map((m) => ({
+    month: m,
+    label: MONTH_LABELS[m],
   }));
+
+  return { year, season, months, tabs };
 }
 
 export class GetNextSeasonAnimeUseCase {
-  constructor(
-    private readonly animeRepository: AnimeRepository,
-    private readonly animeCache: AnimeCache,
-  ) {}
+  constructor(private readonly animeRepository: AnimeRepository) {}
 
-  async execute(ctx: Context): Promise<{
-    info: NextSeasonInfo;
-    data: NextSeasonData;
-  }> {
-    const info = getNextSeasonInfo(new Date());
-
-    const cached = await this.animeCache.getNextSeason(
-      ctx,
-      info.year,
-      info.months,
-    );
-    if (cached) {
-      return { info, data: groupByMonth(cached, info.months) };
-    }
-
-    const subjects = await this.animeRepository.getNextSeasonSubjects(
-      ctx,
-      info.year,
-      info.months,
-    );
-
-    await this.animeCache.setNextSeason(ctx, info.year, info.months, subjects);
-
-    return { info, data: groupByMonth(subjects, info.months) };
+  execute(
+    ctx: Context,
+    params: NextSeasonSubjectsParams,
+  ): Promise<NextSeasonSubjectsPage> {
+    return this.animeRepository.getNextSeasonSubjects(ctx, params);
   }
 }

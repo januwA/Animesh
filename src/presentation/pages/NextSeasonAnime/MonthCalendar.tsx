@@ -1,8 +1,8 @@
-import { useMemo } from "react";
-import type {
-  AnimeCalendarItem,
-  NextSeasonMonthGroup,
-} from "@/domain/anime/AnimeSchemas";
+import type { NextSeasonTabItem } from "@/application/anime/GetNextSeasonAnimeUseCase";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { CalendarSkeleton } from "@/presentation/components/CalendarSkeleton";
+import { ErrorState } from "@/presentation/components/ErrorState";
+import { InfiniteScrollTrigger } from "@/presentation/components/InfiniteScrollTrigger";
 import { MediaCard } from "@/presentation/components/MediaCard";
 import {
   Empty,
@@ -11,70 +11,94 @@ import {
 } from "@/presentation/components/ui/empty";
 import { Tabs, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 
-interface MonthCalendarProps {
-  groups: NextSeasonMonthGroup[];
-  activeMonth: number | null;
-  onActiveMonthChange: (month: number | null) => void;
-  onAnimeClick: (item: AnimeCalendarItem) => void;
+export interface MonthCalendarProps {
+  tabs: NextSeasonTabItem[];
+  activeMonth: number;
+  onActiveMonthChange: (month: number) => void;
+  items: AnimeSubject[];
+  isLoading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
+  onAnimeClick: (item: AnimeSubject) => void;
 }
 
 export function MonthCalendar({
-  groups,
+  tabs,
   activeMonth,
   onActiveMonthChange,
+  items,
+  isLoading,
+  error,
+  onRetry,
+  hasMore,
+  loadingMore,
+  onLoadMore,
   onAnimeClick,
 }: MonthCalendarProps) {
-  const active = activeMonth ?? groups[0]?.month;
-
-  const currentItems = useMemo(() => {
-    /* v8 ignore next -- active 始终为 groups 中的有效月份 */
-    return groups.find((g) => g.month === active)?.items ?? [];
-  }, [groups, active]);
-
   return (
-    <section className="w-full">
+    <section className="w-full flex flex-col">
       <div className="sticky-safe-top z-10 bg-background/85 backdrop-blur-md pt-2 pb-2 -mx-4 px-4">
         <Tabs
-          value={String(active)}
+          value={String(activeMonth)}
           onValueChange={(v) => onActiveMonthChange(Number(v))}
         >
           <TabsList className="w-full" variant="line">
-            {groups.map((group) => (
+            {tabs.map((tab) => (
               <TabsTrigger
-                key={group.month}
-                value={String(group.month)}
+                key={tab.month}
+                value={String(tab.month)}
                 className="flex-1 relative text-xs"
               >
-                {group.label}
+                {tab.label}
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
       </div>
 
-      <div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-4"
-        style={{ transform: "translate3d(0, 0, 0)" }}
-      >
-        {currentItems.map((item) => (
-          <MediaCard
-            key={item.id}
-            id={item.id}
-            imageSrc={item.image}
-            title={item.name}
-            rating={item.rating}
-            onClick={() => onAnimeClick(item)}
+      <div className="mt-4">
+        {isLoading ? (
+          <CalendarSkeleton />
+        ) : error ? (
+          <ErrorState
+            title="获取下季新番失败"
+            message={error}
+            onRetry={onRetry}
           />
-        ))}
+        ) : items.length === 0 ? (
+          <Empty>
+            <EmptyContent>
+              <EmptyTitle>暂无数据</EmptyTitle>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+              style={{ transform: "translate3d(0, 0, 0)" }}
+            >
+              {items.map((item) => (
+                <MediaCard
+                  key={item.id}
+                  id={item.id}
+                  imageSrc={item.image}
+                  title={item.name}
+                  rating={item.rating}
+                  onClick={() => onAnimeClick(item)}
+                />
+              ))}
+            </div>
+            <InfiniteScrollTrigger
+              hasMore={hasMore}
+              loading={loadingMore}
+              onLoadMore={onLoadMore}
+            />
+          </div>
+        )}
       </div>
-
-      {currentItems.length === 0 && (
-        <Empty>
-          <EmptyContent>
-            <EmptyTitle>暂无数据</EmptyTitle>
-          </EmptyContent>
-        </Empty>
-      )}
     </section>
   );
 }

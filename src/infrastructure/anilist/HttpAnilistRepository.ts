@@ -1,6 +1,8 @@
 import type { Context } from "ajanuw-context";
 import type {
   AnimeRepository,
+  NextSeasonSubjectsPage,
+  NextSeasonSubjectsParams,
   RankedSubjectsPage,
 } from "@/domain/anime/AnimeRepository";
 import type {
@@ -132,15 +134,14 @@ query ($search: String, $page: Int, $perPage: Int) {
 `;
 
 const NEXT_SEASON_MEDIA_QUERY = `
-query ($page: Int, $season: MediaSeason, $seasonYear: Int) {
-  Page(page: $page, perPage: 50) {
+query ($startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt, $page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
     pageInfo { hasNextPage }
-    media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: FAVOURITES_DESC) {
+    media(type: ANIME, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser, sort: FAVOURITES_DESC) {
       id
       title { romaji english native userPreferred }
       coverImage { large medium color }
       averageScore
-      favourites
       startDate { year month day }
     }
   }
@@ -360,59 +361,24 @@ export class HttpAnilistRepository implements AnimeRepository {
 
   async getNextSeasonSubjects(
     ctx: Context,
-    year: number,
-    months: number[],
-  ): Promise<AnimeSubject[]> {
-    const uniqueSeasons = this.resolveSeasons(months);
-    const allSubjects: AnimeSubject[] = [];
-    for (const season of uniqueSeasons) {
-      allSubjects.push(...(await this.fetchSeasonPages(ctx, season, year)));
-    }
-    return allSubjects;
-  }
+    params: NextSeasonSubjectsParams,
+  ): Promise<NextSeasonSubjectsPage> {
+    const page = Math.floor(params.offset / params.limit) + 1;
+    const startDateGreater = params.year * 10000 + params.month * 100 + 1;
+    const startDateLesser = params.year * 10000 + params.month * 100 + 31;
 
-  private resolveSeasons(months: number[]): string[] {
-    const map: Record<number, string> = {
-      1: "WINTER",
-      2: "WINTER",
-      3: "WINTER",
-      4: "SPRING",
-      5: "SPRING",
-      6: "SPRING",
-      7: "SUMMER",
-      8: "SUMMER",
-      9: "SUMMER",
-      10: "FALL",
-      11: "FALL",
-      12: "FALL",
-    };
-    return [...new Set(months.map((m) => map[m]))];
-  }
-
-  private async fetchSeasonPages(
-    ctx: Context,
-    season: string,
-    year: number,
-  ): Promise<AnimeSubject[]> {
-    const items: AnimeSubject[] = [];
-    let page = 1;
-    let hasNextPage = true;
-    while (hasNextPage) {
-      const data = await this.graphqlRequest(ctx, NEXT_SEASON_MEDIA_QUERY, {
-        page,
-        season,
-        seasonYear: year,
+    const data = await this.graphqlRequest(ctx, NEXT_SEASON_MEDIA_QUERY, {
+      page,
+      perPage: params.limit,
+      startDateGreater,
+      startDateLesser,
+    });
+    const result = AnilistNextSeasonResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Anilist next season response structure mismatch", {
+        cause: result.error,
       });
-      const result = AnilistNextSeasonResponseSchema.safeParse(data);
-      if (!result.success) {
-        throw new Error("Anilist next season response structure mismatch", {
-          cause: result.error,
-        });
-      }
-      items.push(...result.data.items);
-      hasNextPage = result.data.hasNextPage;
-      page++;
     }
-    return items;
+    return result.data;
   }
 }

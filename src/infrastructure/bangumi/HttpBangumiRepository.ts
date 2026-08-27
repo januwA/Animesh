@@ -10,6 +10,8 @@ import type {
 } from "@/domain/anime/AnimeSchemas";
 import type {
   AnimeRepository,
+  NextSeasonSubjectsPage,
+  NextSeasonSubjectsParams,
   RankedSubjectsPage,
 } from "../../domain/anime/AnimeRepository";
 import type { HttpClient } from "../http/HttpClient";
@@ -169,17 +171,31 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   async getNextSeasonSubjects(
     ctx: Context,
-    year: number,
-    months: number[],
-  ): Promise<AnimeSubject[]> {
-    const allSubjects: AnimeSubject[] = [];
-    for (const month of months) {
-      const { items } = await this.getRankedSubjects(ctx, {
-        year,
-        month,
+    params: NextSeasonSubjectsParams,
+  ): Promise<NextSeasonSubjectsPage> {
+    const data = await this.client.getJson<unknown>(
+      "https://api.bgm.tv/v0/subjects",
+      {
+        ctx,
+        params: {
+          type: "2",
+          year: params.year,
+          month: params.month,
+          limit: params.limit,
+          offset: params.offset,
+        },
+      },
+    );
+
+    const result = BangumiRankedSubjectsResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Next season API response structure mismatch", {
+        cause: result.error,
       });
-      allSubjects.push(...items);
     }
-    return allSubjects;
+    return {
+      items: result.data.items,
+      hasNextPage: params.offset + result.data.items.length < result.data.total,
+    };
   }
 }

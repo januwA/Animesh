@@ -1,31 +1,19 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
-import type { NextSeasonData } from "@/domain/anime/AnimeSchemas";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { useNextSeasonStore } from "@/presentation/store/nextSeasonStore";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseNextSeasonPageDeps } from "./useNextSeasonPage";
 import { useNextSeasonPage } from "./useNextSeasonPage";
 
-const mockData: NextSeasonData = [
+const mockItems: AnimeSubject[] = [
   {
-    month: 10,
-    label: "10月",
-    items: [
-      { id: 1, name: "测试动漫", image: "http://example.com/1.jpg", rating: 8 },
-    ],
-  },
-  {
-    month: 11,
-    label: "11月",
-    items: [
-      {
-        id: 2,
-        name: "测试动漫2",
-        image: "http://example.com/2.jpg",
-        rating: 9,
-      },
-    ],
+    id: 1,
+    name: "测试动漫",
+    image: "http://example.com/1.jpg",
+    rating: 8,
+    summary: "",
   },
 ];
 
@@ -34,8 +22,8 @@ const makeDeps = (
 ): UseNextSeasonPageDeps => ({
   getNextSeasonUseCase: {
     execute: vi.fn().mockResolvedValue({
-      info: { year: 2026, season: "秋", months: [10, 11, 12] },
-      data: mockData,
+      items: mockItems,
+      hasNextPage: true,
     }),
   },
   ...overrides,
@@ -72,7 +60,7 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
     resetAppStores();
   });
 
-  it("应该调用 getNextSeasonUseCase.execute 并返回数据", async () => {
+  it("应该调用 getNextSeasonUseCase.execute 并返回当前月份数据", async () => {
     const deps = makeDeps();
     const { result } = renderUseNextSeasonPage(deps);
 
@@ -80,24 +68,125 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.data).toEqual(mockData);
+    expect(result.current.items).toEqual(mockItems);
+    expect(result.current.hasMore).toBe(true);
     expect(result.current.error).toBeNull();
   });
 
-  it("请求失败时应该返回错误信息", async () => {
+  it("请求失败时应该返回错误信息并支持 refetch", async () => {
+    const executeMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("API error"))
+      .mockResolvedValueOnce({ items: mockItems, hasNextPage: true });
+
     const deps = makeDeps({
-      getNextSeasonUseCase: {
-        execute: vi.fn().mockRejectedValue(new Error("API error")),
-      },
+      getNextSeasonUseCase: { execute: executeMock },
     });
 
     const { result } = renderUseNextSeasonPage(deps);
 
     await waitFor(() => {
-      expect(result.current.error).toBeTruthy();
+      expect(result.current.error).toBe("API error");
     });
 
     expect(result.current.isLoading).toBe(false);
+
+    act(() => {
+      result.current.refetch();
+    });
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual(mockItems);
+    });
+    expect(result.current.error).toBeNull();
+  });
+
+  it("切换 Tab 时应该懒加载对应月份数据", async () => {
+    const executeMock = vi.fn().mockImplementation((_ctx, params) => {
+      return Promise.resolve({
+        items: [
+          {
+            id: params.month * 10,
+            name: `${params.month}月新番`,
+            image: "",
+            rating: 8,
+            summary: "",
+          },
+        ],
+        hasNextPage: true,
+      });
+    });
+
+    const deps = makeDeps({
+      getNextSeasonUseCase: { execute: executeMock },
+    });
+
+    const { result } = renderUseNextSeasonPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const secondMonth = result.current.tabs[1].month;
+    expect(executeMock).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.setActiveMonth(secondMonth);
+    });
+
+    await waitFor(() => {
+      expect(result.current.activeMonth).toBe(secondMonth);
+      expect(result.current.items[0]?.name).toBe(`${secondMonth}月新番`);
+    });
+
+    expect(executeMock).toHaveBeenCalledTimes(2);
+
+    // 切换回第一个月不应重新发起请求
+    const firstMonth = result.current.tabs[0].month;
+    act(() => {
+      result.current.setActiveMonth(firstMonth);
+    });
+
+    await waitFor(() => {
+      expect(result.current.activeMonth).toBe(firstMonth);
+      expect(result.current.items[0]?.name).toBe(`${firstMonth}月新番`);
+    });
+
+    expect(executeMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("loadMore 应该加载下一页并追加条目", async () => {
+    const executeMock = vi
+      .fn()
+      .mockResolvedValueOnce({ items: mockItems, hasNextPage: true })
+      .mockResolvedValueOnce({
+        items: [
+          { id: 2, name: "第二页动漫", image: "", rating: 9, summary: "" },
+        ],
+        hasNextPage: false,
+      });
+
+    const deps = makeDeps({
+      getNextSeasonUseCase: { execute: executeMock },
+    });
+
+    const { result } = renderUseNextSeasonPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(1);
+    });
+
+    expect(result.current.hasMore).toBe(true);
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(2);
+    });
+
+    expect(result.current.hasMore).toBe(false);
   });
 
   it("handleAnimeClick 应该导航到 subject 页面并传递名称与封面", async () => {
@@ -114,6 +203,7 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
         name: "测试动漫",
         image: "http://example.com/cover.jpg",
         rating: 8,
+        summary: "",
       });
     });
 
@@ -122,29 +212,5 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
       name: "测试动漫",
       imageUrl: "http://example.com/cover.jpg",
     });
-  });
-
-  it("数据已缓存时应该不重复请求", async () => {
-    const executeMock = vi.fn().mockResolvedValue({
-      info: { year: 2026, season: "秋", months: [10, 11, 12] },
-      data: mockData,
-    });
-    const deps = makeDeps({
-      getNextSeasonUseCase: { execute: executeMock },
-    });
-
-    const { result, rerender } = renderUseNextSeasonPage(deps);
-
-    await waitFor(() => {
-      expect(result.current.data).toEqual(mockData);
-    });
-
-    expect(executeMock).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      rerender();
-    });
-
-    expect(executeMock).toHaveBeenCalledTimes(1);
   });
 });

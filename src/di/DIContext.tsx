@@ -272,7 +272,6 @@ export function createDefaultDIContainer(): DIContainer {
   );
   const getBangumiNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const searchBangumiSubjectsUseCase = new SearchAnimeSubjectsUseCase(
     bangumiRepository,
@@ -282,7 +281,6 @@ export function createDefaultDIContainer(): DIContainer {
   );
   const getAnilistNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
     anilistRepository,
-    anilistCache,
   );
   const iptvCache = new BrowserIptvCache(cacheStore);
   const iptvRepository = new HttpIptvRepository(httpClient);
