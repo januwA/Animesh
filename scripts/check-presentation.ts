@@ -314,7 +314,6 @@ export function checkHooks(code: string, filepath: string): Violation[] {
 
 /** ---------- 规则 6：测试 DI 注入规范 ---------- */
 
-const CREATE_CONTAINER_IMPORT = "createDIContainerForTest";
 const DIPROVIDER_IMPORT = "DIProvider";
 
 export function isHookTestFile(filepath: string): boolean {
@@ -345,23 +344,6 @@ export function collectImportNames(program: any): Set<string> {
 	return names;
 }
 
-export function hasDIContainerCast(program: any): boolean {
-	let found = false;
-	traverse(program, (node) => {
-		if (found) return;
-		if (node.type !== "TSAsExpression") return;
-		const ann = node.typeAnnotation;
-		if (
-			ann?.type === "TSTypeReference" &&
-			ann.typeName?.type === "Identifier" &&
-			ann.typeName.name === "DIContainer"
-		) {
-			found = true;
-		}
-	});
-	return found;
-}
-
 export interface TestDiCheckOptions {
 	siblingUsesUseDI: boolean;
 }
@@ -389,16 +371,6 @@ export function checkTestDi(
 		errors.push({ ...loc, severity: "error", message });
 	};
 
-	if (isHookTestFile(filepath)) {
-		const importOffset = code.indexOf(CREATE_CONTAINER_IMPORT);
-		if (imports.has(CREATE_CONTAINER_IMPORT)) {
-			report(
-				importOffset >= 0 ? importOffset : 0,
-				`hook 级单测不得使用 createDIContainerForTest，hook 的 use case 依赖应通过参数直接注入 mock（{ execute: vi.fn() }），断言上移到 use case 的 execute 层。`,
-			);
-		}
-	}
-
 	if (isPageTestFile(filepath) && options.siblingUsesUseDI) {
 		if (!imports.has(DIPROVIDER_IMPORT)) {
 			report(
@@ -406,19 +378,7 @@ export function checkTestDi(
 				`页面级集成测试必须渲染组合根，并使用 <DIProvider value={mock as unknown as DIContainer}> 注入最小 mock 容器（需 import DIProvider）。`,
 			);
 		}
-		if (!hasDIContainerCast(program)) {
-			report(
-				0,
-				`页面级集成测试的 mock 容器必须通过 as unknown as DIContainer 断言构造，禁止依赖 createDIContainerForTest。`,
-			);
-		}
-		if (imports.has(CREATE_CONTAINER_IMPORT)) {
-			const importOffset = code.indexOf(CREATE_CONTAINER_IMPORT);
-			report(
-				importOffset >= 0 ? importOffset : 0,
-				`页面级集成测试不得使用 createDIContainerForTest，应手写最小 mock 容器并显式列出组合根与所有子组件/Provider 消费的 key（如 TorrentStatusProvider 需要 subscribeTorrentsUseCase）。`,
-			);
-		}
+	
 	}
 
 	return errors;

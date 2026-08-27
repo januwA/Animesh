@@ -406,50 +406,8 @@ describe("测试 DI 注入规范", () => {
 		).toBe(false);
 	});
 
-	it("hook 级单测使用 createDIContainerForTest 应当报错", () => {
-		const code = `
-import { createDIContainerForTest } from "@/test/test-utils";
-import { renderHook } from "@testing-library/react";
-import { useSettingsPage } from "./useSettingsPage";
-`;
-		const errors = checkTestDi(code, `${PAGE_DIR}/Settings/useSettingsPage.test.tsx`);
-		expect(errors).toHaveLength(1);
-		expect(errors[0]).toMatchObject({
-			severity: "error",
-			message: expect.stringContaining("createDIContainerForTest"),
-		});
-	});
-
-	it("hook 级单测直接传 mock deps 且未用 createDIContainerForTest 应当通过", () => {
-		const code = `
-import { renderHook } from "@testing-library/react";
-import { useSettingsPage } from "./useSettingsPage";
-`;
-		const errors = checkTestDi(code, `${PAGE_DIR}/Settings/useSettingsPage.test.tsx`);
-		expect(errors).toHaveLength(0);
-	});
-
 	const pageTestPath = `${PAGE_DIR}/Player/index.test.tsx`;
 	const options = { siblingUsesUseDI: true };
-
-	it("页面级测试使用 DIProvider + as unknown as DIContainer 且未用 createDIContainerForTest 应当通过", () => {
-		const code = `
-import type { DIContainer } from "@/di/DIContext";
-import { DIProvider } from "@/di/DIContext";
-
-const container = {
-  getStreamPortUseCase: { execute: vi.fn() },
-} as unknown as DIContainer;
-
-render(
-  <DIProvider value={container}>
-    <PlayerView />
-  </DIProvider>,
-);
-`;
-		const errors = checkTestDi(code, pageTestPath, options);
-		expect(errors).toHaveLength(0);
-	});
 
 	it("页面级测试未 import DIProvider 应当报错", () => {
 		const code = `
@@ -459,39 +417,5 @@ render(<PlayerView />);
 		const errors = checkTestDi(code, pageTestPath, options);
 		expect(errors).toHaveLength(1);
 		expect(errors[0].message).toContain("DIProvider");
-	});
-
-	it("页面级测试缺少 as unknown as DIContainer 断言应当报错", () => {
-		const code = `
-import { DIProvider } from "@/di/DIContext";
-import { createDIContainerForTest } from "@/test/test-utils";
-
-const container = createDIContainerForTest();
-render(<DIProvider value={container}><PlayerView /></DIProvider>);
-`;
-		const errors = checkTestDi(code, pageTestPath, options);
-		expect(errors.some((e) => e.message.includes("DIContainer"))).toBe(true);
-	});
-
-	it("页面级测试使用 createDIContainerForTest 应当报错", () => {
-		const code = `
-import { DIProvider } from "@/di/DIContext";
-import { createDIContainerForTest } from "@/test/test-utils";
-
-const container = createDIContainerForTest() as unknown as DIContainer;
-render(<DIProvider value={container}><PlayerView /></DIProvider>);
-`;
-		const errors = checkTestDi(code, pageTestPath, options);
-		expect(
-			errors.some((e) => e.message.includes("createDIContainerForTest")),
-		).toBe(true);
-	});
-
-	it("sibling 不是组合根时跳过页面测试检查", () => {
-		const code = `
-import { createDIContainerForTest } from "@/test/test-utils";
-`;
-		const errors = checkTestDi(code, pageTestPath, { siblingUsesUseDI: false });
-		expect(errors).toHaveLength(0);
 	});
 });
