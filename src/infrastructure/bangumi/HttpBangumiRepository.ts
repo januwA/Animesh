@@ -229,4 +229,27 @@ export class HttpBangumiRepository implements AnimeRepository {
     }
     return result.data;
   }
+
+  async getNextSeasonSubjects(
+    ctx: Context,
+    year: number,
+    months: number[],
+  ): Promise<AnimeSubject[]> {
+    const allSubjects: AnimeSubject[] = [];
+    for (const month of months) {
+      try {
+        const { items } = await this.getRankedSubjects(ctx, year, month);
+        allSubjects.push(...items);
+      } catch (err: unknown) {
+        if (ctx.err() && err === ctx.err()) {
+          throw err;
+        }
+        throw new Error(
+          `Failed to fetch next season subjects for ${year}-${month}`,
+          { cause: err },
+        );
+      }
+    }
+    return allSubjects;
+  }
 }

@@ -14,6 +14,7 @@ import {
   AnilistCalendarStoredSchema,
   AnilistCharacterStoredSchema,
   AnilistEpisodesStoredSchema,
+  AnilistNextSeasonStoredSchema,
   AnilistPersonStoredSchema,
   AnilistSubjectStoredSchema,
 } from "./AnilistSchemas";
@@ -123,6 +124,30 @@ export class BrowserAnilistCache implements AnimeCache {
     return this.store.setItem(
       `anilist:characters:${subjectId}`,
       characters,
+      CACHE_TTL,
+    );
+  }
+
+  getNextSeason(
+    _ctx: Context,
+    year: number,
+    months: number[],
+  ): Promise<AnimeSubject[] | null> {
+    return this.store.getItem(
+      `anilist:next-season:${year}:${months.join(",")}`,
+      AnilistNextSeasonStoredSchema,
+    );
+  }
+
+  setNextSeason(
+    _ctx: Context,
+    year: number,
+    months: number[],
+    subjects: AnimeSubject[],
+  ): Promise<void> {
+    return this.store.setItem(
+      `anilist:next-season:${year}:${months.join(",")}`,
+      subjects,
       CACHE_TTL,
     );
   }

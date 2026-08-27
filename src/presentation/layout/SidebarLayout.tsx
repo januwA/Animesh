@@ -1,4 +1,4 @@
-import { Calendar, Search } from "lucide-react";
+import { Calendar, CalendarDays, Search } from "lucide-react";
 import { Suspense } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
@@ -25,12 +25,14 @@ function getSidebarItems(pathname: string): SidebarItem[] {
   if (pathname.startsWith("/anilist")) {
     return [
       { title: "新番日历", url: "/anilist", icon: Calendar },
+      { title: "下季新番", url: "/anilist/next-season", icon: CalendarDays },
       { title: "搜索动画", url: "/anilist/search", icon: Search },
     ];
   }
 
   return [
     { title: "新番日历", url: "/bangumi", icon: Calendar },
+    { title: "下季新番", url: "/bangumi/next-season", icon: CalendarDays },
     { title: "搜索动画", url: "/bangumi/search", icon: Search },
   ];
 }

@@ -17,6 +17,7 @@ import {
   AnilistCalendarResponseSchema,
   AnilistCharactersResponseSchema,
   AnilistEpisodesResponseSchema,
+  AnilistNextSeasonResponseSchema,
   AnilistResponseSchema,
   AnilistSearchResponseSchema,
   AnilistStaffResponseSchema,
@@ -125,6 +126,22 @@ query ($search: String, $page: Int, $perPage: Int) {
       title { romaji english native userPreferred }
       coverImage { large medium color }
       averageScore
+    }
+  }
+}
+`;
+
+const NEXT_SEASON_MEDIA_QUERY = `
+query ($page: Int, $season: MediaSeason, $seasonYear: Int) {
+  Page(page: $page, perPage: 50) {
+    pageInfo { hasNextPage }
+    media(type: ANIME, season: $season, seasonYear: $seasonYear, sort: FAVOURITES_DESC) {
+      id
+      title { romaji english native userPreferred }
+      coverImage { large medium color }
+      averageScore
+      favourites
+      startDate { year month day }
     }
   }
 }
@@ -358,5 +375,71 @@ export class HttpAnilistRepository implements AnimeRepository {
       });
     }
     return result.data;
+  }
+
+  async getNextSeasonSubjects(
+    ctx: Context,
+    year: number,
+    months: number[],
+  ): Promise<AnimeSubject[]> {
+    const uniqueSeasons = this.resolveSeasons(months);
+    const allSubjects: AnimeSubject[] = [];
+    for (const season of uniqueSeasons) {
+      allSubjects.push(...(await this.fetchSeasonPages(ctx, season, year)));
+    }
+    return allSubjects;
+  }
+
+  private resolveSeasons(months: number[]): string[] {
+    const map: Record<number, string> = {
+      1: "WINTER",
+      2: "WINTER",
+      3: "WINTER",
+      4: "SPRING",
+      5: "SPRING",
+      6: "SPRING",
+      7: "SUMMER",
+      8: "SUMMER",
+      9: "SUMMER",
+      10: "FALL",
+      11: "FALL",
+      12: "FALL",
+    };
+    return [...new Set(months.map((m) => map[m]))];
+  }
+
+  private async fetchSeasonPages(
+    ctx: Context,
+    season: string,
+    year: number,
+  ): Promise<AnimeSubject[]> {
+    const items: AnimeSubject[] = [];
+    let page = 1;
+    let hasNextPage = true;
+    try {
+      while (hasNextPage) {
+        const data = await this.graphqlRequest(ctx, NEXT_SEASON_MEDIA_QUERY, {
+          page,
+          season,
+          seasonYear: year,
+        });
+        const result = AnilistNextSeasonResponseSchema.safeParse(data);
+        if (!result.success) {
+          throw new Error("Anilist next season response structure mismatch", {
+            cause: result.error,
+          });
+        }
+        items.push(...result.data.items);
+        hasNextPage = result.data.hasNextPage;
+        page++;
+      }
+    } catch (err: unknown) {
+      if (ctx.err() && err === ctx.err()) throw err;
+      throw new Error(
+        `Failed to fetch Anilist next season for ${season} ${year}`,
+        { cause: err },
+      );
+    }
+    return items;
   }
 }

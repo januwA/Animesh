@@ -58,4 +58,16 @@ export interface AnimeCache {
     subjectId: NonEmptyString,
     characters: AnimeCharacter[],
   ): Promise<void>;
+
+  getNextSeason(
+    ctx: Context,
+    year: number,
+    season: number[],
+  ): Promise<AnimeSubject[] | null>;
+  setNextSeason(
+    ctx: Context,
+    year: number,
+    season: number[],
+    subjects: AnimeSubject[],
+  ): Promise<void>;
 }

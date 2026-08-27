@@ -283,3 +283,7 @@ export const BangumiCharactersStoredSchema = z.array(
 export const BangumiRankedSubjectsStoredSchema = z.array(
   BangumiSubjectStoredSchema,
 );
+
+export const BangumiNextSeasonStoredSchema = z.array(
+  BangumiSubjectStoredSchema,
+);

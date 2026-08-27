@@ -8,12 +8,14 @@ const AiSubtitleTranslation = lazy(
   () => import("./pages/AiSubtitleTranslation"),
 );
 const AnilistCalendar = lazy(() => import("./pages/AnilistCalendar"));
+const AnilistNextSeason = lazy(() => import("./pages/AnilistNextSeason"));
 const AnilistSearch = lazy(() => import("./pages/AnilistSearch"));
 const AnilistSubjectDetail = lazy(() => import("./pages/AnilistSubjectDetail"));
 const BangumiSearch = lazy(() => import("./pages/BangumiSearch"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Collections = lazy(() => import("./pages/Collections"));
 const Downloads = lazy(() => import("./pages/Downloads"));
+const NextSeasonAnime = lazy(() => import("./pages/NextSeasonAnime"));
 const Iptv = lazy(() => import("./pages/Iptv"));
 const LivePlayer = lazy(() => import("./pages/LivePlayer"));
 const Player = lazy(() => import("./pages/Player"));
@@ -85,6 +87,7 @@ export const routes: RouteObject[] = [
                 children: [
                   { path: "", index: true, element: <Calendar /> },
                   { path: "search", element: <BangumiSearch /> },
+                  { path: "next-season", element: <NextSeasonAnime /> },
                 ],
               },
               {
@@ -92,6 +95,7 @@ export const routes: RouteObject[] = [
                 children: [
                   { path: "", index: true, element: <AnilistCalendar /> },
                   { path: "search", element: <AnilistSearch /> },
+                  { path: "next-season", element: <AnilistNextSeason /> },
                 ],
               },
             ],

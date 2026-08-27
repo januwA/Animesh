@@ -13,6 +13,7 @@ import {
   BangumiCalendarStoredSchema,
   BangumiCharactersStoredSchema,
   BangumiEpisodesPageStoredSchema,
+  BangumiNextSeasonStoredSchema,
   BangumiPersonsStoredSchema,
   BangumiRankedSubjectsStoredSchema,
   BangumiSubjectStoredSchema,
@@ -133,6 +134,30 @@ export class BrowserBangumiCache implements AnimeCache {
       `bangumi:characters:${subjectId}`,
       characters,
       this.ttl1MMs,
+    );
+  }
+
+  getNextSeason(
+    _ctx: Context,
+    year: number,
+    months: number[],
+  ): Promise<AnimeSubject[] | null> {
+    return this.store.getItem(
+      `bangumi:next-season:${year}:${months.join(",")}`,
+      BangumiNextSeasonStoredSchema,
+    );
+  }
+
+  setNextSeason(
+    _ctx: Context,
+    year: number,
+    months: number[],
+    subjects: AnimeSubject[],
+  ): Promise<void> {
+    return this.store.setItem(
+      `bangumi:next-season:${year}:${months.join(",")}`,
+      subjects,
+      new Duration({ days: 1 }).inMilliseconds,
     );
   }
 }

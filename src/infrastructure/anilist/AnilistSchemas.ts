@@ -348,3 +348,48 @@ export const AnilistPersonStoredSchema = z.object({
   eps: z.string(),
   image: z.string(),
 });
+
+// ── Next Season → AnimeSubject[] ───────────────────────────────────────────
+
+const AnilistNextSeasonMediaSchema = z.object({
+  id: z.number(),
+  title: AnilistTitleSchema,
+  coverImage: AnilistCoverImageSchema,
+  averageScore: z.number().nullable().optional(),
+  startDate: AnilistStartDateSchema.nullable().optional(),
+});
+
+export const AnilistNextSeasonResponseSchema = z
+  .object({
+    data: z.object({
+      Page: z.object({
+        pageInfo: z.object({ hasNextPage: z.boolean() }),
+        media: z.array(AnilistNextSeasonMediaSchema),
+      }),
+    }),
+  })
+  .transform((dto) => ({
+    hasNextPage: dto.data.Page.pageInfo.hasNextPage,
+    items: dto.data.Page.media.map((m) => {
+      const startDate = m.startDate;
+      const date =
+        startDate?.year && startDate?.month && startDate?.day
+          ? `${startDate.year}-${String(startDate.month).padStart(2, "0")}-${String(startDate.day).padStart(2, "0")}`
+          : null;
+
+      return {
+        id: m.id,
+        name: pickTitle(m.title),
+        summary: "",
+        image: pickCoverImage(m.coverImage),
+        rating: (m.averageScore ?? 0) / 10,
+        date,
+        eps: null as number | null,
+        platform: null as string | null,
+      };
+    }),
+  }));
+
+export const AnilistNextSeasonStoredSchema = z.array(
+  AnilistSubjectStoredSchema,
+);

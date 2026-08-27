@@ -8,6 +8,7 @@ import { GetAnimeEpisodesUseCase } from "../application/anime/GetAnimeEpisodesUs
 import { GetAnimePersonsUseCase } from "../application/anime/GetAnimePersonsUseCase";
 import { GetAnimeRankedSubjectsUseCase } from "../application/anime/GetAnimeRankedSubjectsUseCase";
 import { GetAnimeSubjectUseCase } from "../application/anime/GetAnimeSubjectUseCase";
+import { GetNextSeasonAnimeUseCase } from "../application/anime/GetNextSeasonAnimeUseCase";
 import { SearchAnimeSubjectsUseCase } from "../application/anime/SearchAnimeSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
@@ -115,6 +116,8 @@ export interface DIContainer {
   getBangumiRankedSubjectsUseCase: GetAnimeRankedSubjectsUseCase;
   searchBangumiSubjectsUseCase: SearchAnimeSubjectsUseCase;
   searchAnilistSubjectsUseCase: SearchAnimeSubjectsUseCase;
+  getBangumiNextSeasonUseCase: GetNextSeasonAnimeUseCase;
+  getAnilistNextSeasonUseCase: GetNextSeasonAnimeUseCase;
   getAnilistSubjectUseCase: GetAnimeSubjectUseCase;
   getAnilistEpisodesUseCase: GetAnimeEpisodesUseCase;
   getAnilistPersonsUseCase: GetAnimePersonsUseCase;
@@ -267,11 +270,19 @@ export function createDefaultDIContainer(): DIContainer {
     bangumiRepository,
     bangumiCache,
   );
+  const getBangumiNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
+    bangumiRepository,
+    bangumiCache,
+  );
   const searchBangumiSubjectsUseCase = new SearchAnimeSubjectsUseCase(
     bangumiRepository,
   );
   const searchAnilistSubjectsUseCase = new SearchAnimeSubjectsUseCase(
     anilistRepository,
+  );
+  const getAnilistNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
+    anilistRepository,
+    anilistCache,
   );
   const iptvCache = new BrowserIptvCache(cacheStore);
   const iptvRepository = new HttpIptvRepository(httpClient);
@@ -342,6 +353,8 @@ export function createDefaultDIContainer(): DIContainer {
     getBangumiRankedSubjectsUseCase,
     searchBangumiSubjectsUseCase,
     searchAnilistSubjectsUseCase,
+    getBangumiNextSeasonUseCase,
+    getAnilistNextSeasonUseCase,
     getAnilistSubjectUseCase,
     getAnilistEpisodesUseCase,
     getAnilistPersonsUseCase,

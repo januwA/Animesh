@@ -44,4 +44,10 @@ export interface AnimeRepository {
     ctx: Context,
     params: AnimeSubjectSearchParams,
   ): Promise<AnimeSubjectSearchResult>;
+  /** 获取指定季度的动画条目（Bangumi 按月份查询，AniList 按 season 查询）。 */
+  getNextSeasonSubjects(
+    ctx: Context,
+    year: number,
+    season: number[],
+  ): Promise<AnimeSubject[]>;
 }
