@@ -9,16 +9,15 @@ import {
   Tv,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
-import { cn } from "@/presentation/lib/utils";
-import { Badge } from "./ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+} from "@/presentation/components/ui/dropdown-menu";
+import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
+import { cn } from "@/presentation/lib/utils";
 
 const iconClass =
   "h-5 w-5 md:h-4 md:w-4 transition-transform group-hover/button:scale-110";
@@ -73,12 +72,9 @@ function NavItemLink({ item, isActive, badgeCount = 0 }: NavItemLinkProps) {
       <Icon className={cn(iconClass, showBadge && "animate-bounce")} />
       <span>{item.label}</span>
       {showBadge && (
-        <Badge
-          variant="secondary"
-          className="absolute -top-1 -right-1 md:static md:ml-2 h-4.5 px-1.5 text-[9px] font-extrabold border rounded-full animate-pulse flex items-center justify-center"
-        >
+        <span className="absolute -top-1 -right-1 md:static md:ml-2 h-4.5 px-1.5 text-[9px] font-extrabold border rounded-full animate-pulse flex items-center justify-center">
           {badgeCount}
-        </Badge>
+        </span>
       )}
     </Link>
   );

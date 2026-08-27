@@ -13,7 +13,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/presentation/components/ui/sidebar";
-import { PageLoader } from "./AppComponents";
+import { PageLoader } from "../components/AppComponents";
 
 interface SidebarItem {
   title: string;

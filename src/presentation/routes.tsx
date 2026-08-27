@@ -1,7 +1,7 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
-import { DetailLayout, MainLayout, NavBarLayout } from "./components/Layout";
-import { SidebarLayout } from "./components/SidebarLayout";
+import { DetailLayout, MainLayout, NavBarLayout } from "./layout/Layout";
+import { SidebarLayout } from "./layout/SidebarLayout";
 import TorrentSearch from "./pages/TorrentSearch";
 
 const AiSubtitleTranslation = lazy(

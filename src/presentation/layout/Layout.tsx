@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
+import { Card, CardContent } from "@/presentation/components/ui/card";
+import { PageLoader } from "../components/AppComponents";
+import { BackButton } from "../components/BackButton";
+import { BackgroundWallpaper } from "../components/BackgroundWallpaper";
 import { useGlobalEffects } from "../hooks/useGlobalEffects";
 import { useBackgroundWallpaperStore } from "../store/useBackgroundWallpaperStore";
-import { PageLoader } from "./AppComponents";
 import { AppNavBar } from "./AppNavBar";
-import { BackButton } from "./BackButton";
-import { BackgroundWallpaper } from "./BackgroundWallpaper";
-import { Card, CardContent } from "./ui/card";
 
 export function DetailLayout() {
   return (
