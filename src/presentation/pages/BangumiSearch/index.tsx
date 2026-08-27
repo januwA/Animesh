@@ -6,7 +6,8 @@ import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { SubjectSearchForm } from "@/presentation/components/SubjectSearchForm";
 import { SubjectSearchLoading } from "@/presentation/components/SubjectSearchLoading";
 import { SubjectSearchResults } from "@/presentation/components/SubjectSearchResults";
-import { useBangumiSearchPage } from "./useBangumiSearchPage";
+import { useBangumiSearchStore } from "@/presentation/store/bangumiSearchStore";
+import { useSubjectSearchPage } from "./useSubjectSearchPage";
 
 const keywordParamSchema = z
   .string()
@@ -35,9 +36,12 @@ function BangumiSearchView({
   keywordParam: string | undefined;
 }) {
   const { searchBangumiSubjectsUseCase } = useDI();
-  const page = useBangumiSearchPage(keywordParam, {
-    searchBangumiSubjectsUseCase,
-  });
+  const page = useSubjectSearchPage(
+    keywordParam,
+    { searchSubjectsUseCase: searchBangumiSubjectsUseCase },
+    useBangumiSearchStore,
+    (id) => `/subject/${id}`,
+  );
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">

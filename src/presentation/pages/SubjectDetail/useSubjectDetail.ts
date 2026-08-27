@@ -24,12 +24,11 @@ export interface UseSubjectDetailParams {
   activeTab: string;
 }
 
-/** useSubjectDetail 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectDetailDeps {
-  getBangumiSubjectUseCase: Pick<GetAnimeSubjectUseCase, "execute">;
-  getBangumiEpisodesUseCase: Pick<GetAnimeEpisodesUseCase, "execute">;
-  getBangumiPersonsUseCase: Pick<GetAnimePersonsUseCase, "execute">;
-  getBangumiCharactersUseCase: Pick<GetAnimeCharactersUseCase, "execute">;
+  getSubjectUseCase: Pick<GetAnimeSubjectUseCase, "execute">;
+  getEpisodesUseCase: Pick<GetAnimeEpisodesUseCase, "execute">;
+  getPersonsUseCase: Pick<GetAnimePersonsUseCase, "execute">;
+  getCharactersUseCase: Pick<GetAnimeCharactersUseCase, "execute">;
   openUrlUseCase: Pick<OpenUrlUseCase, "execute">;
   setTorrentSubjectUseCase: Pick<SetTorrentSubjectUseCase, "execute">;
   clearTorrentSubjectUseCase: Pick<ClearTorrentSubjectUseCase, "execute">;
@@ -48,10 +47,10 @@ export function useSubjectDetail(
 ): SubjectDetailResult {
   const { subjectId, page, platform, torrents, activeTab } = params;
   const {
-    getBangumiSubjectUseCase,
-    getBangumiEpisodesUseCase,
-    getBangumiPersonsUseCase,
-    getBangumiCharactersUseCase,
+    getSubjectUseCase,
+    getEpisodesUseCase,
+    getPersonsUseCase,
+    getCharactersUseCase,
     openUrlUseCase,
     setTorrentSubjectUseCase,
     clearTorrentSubjectUseCase,
@@ -59,12 +58,12 @@ export function useSubjectDetail(
 
   const info = useSubjectInfo(
     { subjectId, platform },
-    { getSubjectUseCase: getBangumiSubjectUseCase, openUrlUseCase },
+    { getSubjectUseCase, openUrlUseCase },
   );
 
   const episodes = useSubjectEpisodes(
     { subjectId, page, subject: info.subject },
-    { getAnimeEpisodesUseCase: getBangumiEpisodesUseCase },
+    { getAnimeEpisodesUseCase: getEpisodesUseCase },
   );
 
   const cast = useSubjectCast(
@@ -74,8 +73,8 @@ export function useSubjectDetail(
       enabledPersons: activeTab === "staff",
     },
     {
-      getAnimePersonsUseCase: getBangumiPersonsUseCase,
-      getAnimeCharactersUseCase: getBangumiCharactersUseCase,
+      getAnimePersonsUseCase: getPersonsUseCase,
+      getAnimeCharactersUseCase: getCharactersUseCase,
     },
   );
 

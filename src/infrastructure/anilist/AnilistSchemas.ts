@@ -291,64 +291,6 @@ export const AnilistSearchResponseSchema = z
     total: dto.data.Page.pageInfo.total,
   }));
 
-// ── 存储 Schema（用于缓存回读校验，与领域形状一致，无需 transform）────────
-
-export const AnilistCalendarItemStoredSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  image: z.string(),
-  rating: z.number(),
-});
-
-export const AnilistCalendarDayStoredSchema = z.object({
-  weekday: z.object({ id: z.number() }),
-  items: z.array(AnilistCalendarItemStoredSchema),
-});
-
-export const AnilistCalendarStoredSchema = z.array(
-  AnilistCalendarDayStoredSchema,
-);
-
-export const AnilistSubjectStoredSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  summary: z.string(),
-  image: z.string(),
-  rating: z.number(),
-  date: z.string().nullable().optional(),
-  eps: z.number().nullable().optional(),
-  platform: z.string().nullable().optional(),
-});
-
-export const AnilistEpisodeStoredSchema = z.object({
-  id: z.number(),
-  sort: z.number(),
-  name: z.string(),
-  duration: z.string().nullable().optional(),
-  airdate: z.string().nullable().optional(),
-});
-
-export const AnilistEpisodesStoredSchema = z.object({
-  items: z.array(AnilistEpisodeStoredSchema),
-  total: z.number(),
-});
-
-export const AnilistCharacterStoredSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  relation: z.string(),
-  image: z.string(),
-  actors: z.array(z.object({ name: z.string() })),
-});
-
-export const AnilistPersonStoredSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  relation: z.string(),
-  eps: z.string(),
-  image: z.string(),
-});
-
 // ── Next Season → AnimeSubject[] ───────────────────────────────────────────
 
 const AnilistNextSeasonMediaSchema = z.object({
@@ -389,7 +331,3 @@ export const AnilistNextSeasonResponseSchema = z
       };
     }),
   }));
-
-export const AnilistNextSeasonStoredSchema = z.array(
-  AnilistSubjectStoredSchema,
-);

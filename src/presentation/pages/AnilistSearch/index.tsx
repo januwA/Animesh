@@ -6,7 +6,8 @@ import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { SubjectSearchForm } from "@/presentation/components/SubjectSearchForm";
 import { SubjectSearchLoading } from "@/presentation/components/SubjectSearchLoading";
 import { SubjectSearchResults } from "@/presentation/components/SubjectSearchResults";
-import { useAnilistSearchPage } from "./useAnilistSearchPage";
+import { useAnilistSearchStore } from "@/presentation/store/anilistSearchStore";
+import { useSubjectSearchPage } from "../BangumiSearch/useSubjectSearchPage";
 
 const keywordParamSchema = z
   .string()
@@ -35,9 +36,12 @@ function AnilistSearchView({
   keywordParam: string | undefined;
 }) {
   const { searchAnilistSubjectsUseCase } = useDI();
-  const page = useAnilistSearchPage(keywordParam, {
-    searchAnilistSubjectsUseCase,
-  });
+  const page = useSubjectSearchPage(
+    keywordParam,
+    { searchSubjectsUseCase: searchAnilistSubjectsUseCase },
+    useAnilistSearchStore,
+    (id) => `/anilist/subject/${id}`,
+  );
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">

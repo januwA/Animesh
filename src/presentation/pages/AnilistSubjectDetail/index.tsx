@@ -19,7 +19,7 @@ import {
   TabsTrigger,
 } from "@/presentation/components/ui/tabs";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
-import { useAnilistSubjectDetail } from "./useAnilistSubjectDetail";
+import { useSubjectDetail } from "../SubjectDetail/useSubjectDetail";
 
 const subjectParamsSchema = z.object({
   subjectId: z
@@ -65,13 +65,13 @@ function AnilistSubjectDetailView({ subjectId }: { subjectId: number }) {
   const { torrents } = useTorrentStatus();
   const [activeTab, setActiveTab] = useState("summary");
 
-  const detail = useAnilistSubjectDetail(
+  const detail = useSubjectDetail(
     { subjectId, page: 1, platform: "anilist", torrents, activeTab },
     {
-      getAnilistSubjectUseCase,
-      getAnilistEpisodesUseCase,
-      getAnilistPersonsUseCase,
-      getAnilistCharactersUseCase,
+      getSubjectUseCase: getAnilistSubjectUseCase,
+      getEpisodesUseCase: getAnilistEpisodesUseCase,
+      getPersonsUseCase: getAnilistPersonsUseCase,
+      getCharactersUseCase: getAnilistCharactersUseCase,
       openUrlUseCase,
       setTorrentSubjectUseCase,
       clearTorrentSubjectUseCase,

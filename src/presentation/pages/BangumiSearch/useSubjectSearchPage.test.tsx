@@ -3,9 +3,10 @@ import type { ReactNode, SubmitEvent } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { useBangumiSearchStore } from "@/presentation/store/bangumiSearchStore";
 import { resetAppStores } from "@/test/store-reset";
-import type { UseAnilistSearchPageDeps } from "./useAnilistSearchPage";
-import { useAnilistSearchPage } from "./useAnilistSearchPage";
+import type { UseSubjectSearchPageDeps } from "./useSubjectSearchPage";
+import { useSubjectSearchPage } from "./useSubjectSearchPage";
 
 const locationRef: { current: { pathname: string; search: string } | null } = {
   current: null,
@@ -38,21 +39,33 @@ function makeSubject(overrides: Partial<AnimeSubject> = {}): AnimeSubject {
 }
 
 const makeDeps = (
-  overrides: Partial<UseAnilistSearchPageDeps> = {},
-): UseAnilistSearchPageDeps => ({
-  searchAnilistSubjectsUseCase: {
+  overrides: Partial<UseSubjectSearchPageDeps> = {},
+): UseSubjectSearchPageDeps => ({
+  searchSubjectsUseCase: {
     execute: vi.fn().mockResolvedValue({ items: [], total: 0 }),
   },
   ...overrides,
 });
 
 const renderPage = async (
-  options: { deps?: UseAnilistSearchPageDeps; keyword?: string } = {},
+  options: {
+    deps?: UseSubjectSearchPageDeps;
+    keyword?: string;
+    subjectPath?: (id: number) => string;
+  } = {},
 ) => {
   const deps = options.deps ?? makeDeps();
-  const hook = renderHook(() => useAnilistSearchPage(options.keyword, deps), {
-    wrapper: RouterWrapper,
-  });
+  const subjectPath = options.subjectPath ?? ((id) => `/subject/${id}`);
+  const hook = renderHook(
+    () =>
+      useSubjectSearchPage(
+        options.keyword,
+        deps,
+        useBangumiSearchStore,
+        subjectPath,
+      ),
+    { wrapper: RouterWrapper },
+  );
   await act(async () => {});
   return { result: hook.result, deps, unmount: hook.unmount };
 };
@@ -63,7 +76,7 @@ const searchParams = (keyword: string) => ({
   offset: 0,
 });
 
-describe("useAnilistSearchPage Anilist 搜索 hook", () => {
+describe("useSubjectSearchPage 通用搜索 hook", () => {
   beforeEach(() => {
     resetAppStores();
     vi.clearAllMocks();
@@ -73,7 +86,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
   it("performSearch 调用 useCase.execute 并写入搜索结果", async () => {
     const subject = makeSubject();
     const deps = makeDeps();
-    vi.mocked(deps.searchAnilistSubjectsUseCase.execute).mockResolvedValue({
+    vi.mocked(deps.searchSubjectsUseCase.execute).mockResolvedValue({
       items: [subject],
       total: 1,
     });
@@ -86,7 +99,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
       expect(result.current.status.loading).toBe(false);
     });
 
-    expect(deps.searchAnilistSubjectsUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.searchSubjectsUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       searchParams("间谍过家家"),
     );
@@ -108,7 +121,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
     await waitFor(() => {
       expect(result.current.status.loading).toBe(false);
     });
-    expect(deps.searchAnilistSubjectsUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.searchSubjectsUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       searchParams("间谍过家家"),
     );
@@ -122,7 +135,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
       expect(result.current.status.loading).toBe(false);
     });
 
-    expect(deps.searchAnilistSubjectsUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.searchSubjectsUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       searchParams("柯南"),
     );
@@ -132,7 +145,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
 
   it("搜索失败时清空结果并记录错误", async () => {
     const deps = makeDeps();
-    vi.mocked(deps.searchAnilistSubjectsUseCase.execute).mockRejectedValue(
+    vi.mocked(deps.searchSubjectsUseCase.execute).mockRejectedValue(
       new Error("网络错误"),
     );
 
@@ -155,13 +168,26 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
 
     act(() => result.current.results.handleSubjectClick(subject));
 
+    expect(locationRef.current?.pathname).toBe("/subject/1");
+  });
+
+  it("handleSubjectClick 使用自定义 subjectPath", async () => {
+    const subject = makeSubject();
+    const deps = makeDeps();
+    const { result } = await renderPage({
+      deps,
+      subjectPath: (id) => `/anilist/subject/${id}`,
+    });
+
+    act(() => result.current.results.handleSubjectClick(subject));
+
     expect(locationRef.current?.pathname).toBe("/anilist/subject/1");
   });
 
   it("从详情页返回（重新挂载）后应保留搜索结果", async () => {
     const subject = makeSubject();
     const deps = makeDeps();
-    vi.mocked(deps.searchAnilistSubjectsUseCase.execute).mockResolvedValue({
+    vi.mocked(deps.searchSubjectsUseCase.execute).mockResolvedValue({
       items: [subject],
       total: 1,
     });
@@ -185,7 +211,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
     const subject1 = makeSubject({ id: 1 });
     const subject2 = makeSubject({ id: 2 });
     const deps = makeDeps();
-    vi.mocked(deps.searchAnilistSubjectsUseCase.execute)
+    vi.mocked(deps.searchSubjectsUseCase.execute)
       .mockResolvedValueOnce({ items: [subject1], total: 40 })
       .mockResolvedValueOnce({ items: [subject2], total: 40 });
 
@@ -204,7 +230,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
       expect(result.current.status.loadingMore).toBe(false);
     });
 
-    expect(deps.searchAnilistSubjectsUseCase.execute).toHaveBeenLastCalledWith(
+    expect(deps.searchSubjectsUseCase.execute).toHaveBeenLastCalledWith(
       expect.anything(),
       { keyword: "柯南", limit: 20, offset: 1 },
     );
@@ -214,7 +240,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
   it("已加载全部结果时 hasMore 为 false 且 onLoadMore 不再请求", async () => {
     const subject = makeSubject();
     const deps = makeDeps();
-    vi.mocked(deps.searchAnilistSubjectsUseCase.execute).mockResolvedValue({
+    vi.mocked(deps.searchSubjectsUseCase.execute).mockResolvedValue({
       items: [subject],
       total: 1,
     });
@@ -231,7 +257,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
     await waitFor(() => {
       expect(result.current.status.loadingMore).toBe(false);
     });
-    expect(deps.searchAnilistSubjectsUseCase.execute).toHaveBeenCalledTimes(1);
+    expect(deps.searchSubjectsUseCase.execute).toHaveBeenCalledTimes(1);
   });
 
   it("新搜索会取消进行中的加载更多", async () => {
@@ -241,7 +267,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
     const pendingLoadMore = new Promise((resolve) => {
       resolveLoadMore = resolve;
     });
-    vi.mocked(deps.searchAnilistSubjectsUseCase.execute)
+    vi.mocked(deps.searchSubjectsUseCase.execute)
       .mockResolvedValueOnce({ items: [subject], total: 40 })
       .mockImplementationOnce(() => pendingLoadMore as Promise<never>)
       .mockResolvedValueOnce({ items: [makeSubject({ id: 3 })], total: 40 });
@@ -271,7 +297,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
   it("加载更多进行中离开页面后返回，不应卡在加载中且能继续加载", async () => {
     const subject = makeSubject();
     const deps = makeDeps();
-    vi.mocked(deps.searchAnilistSubjectsUseCase.execute).mockResolvedValue({
+    vi.mocked(deps.searchSubjectsUseCase.execute).mockResolvedValue({
       items: [subject],
       total: 40,
     });
@@ -287,7 +313,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
     const pendingLoadMore = new Promise((resolve) => {
       resolveLoadMore = resolve;
     });
-    vi.mocked(deps.searchAnilistSubjectsUseCase.execute).mockImplementationOnce(
+    vi.mocked(deps.searchSubjectsUseCase.execute).mockImplementationOnce(
       () => pendingLoadMore as Promise<never>,
     );
 
@@ -303,7 +329,7 @@ describe("useAnilistSearchPage Anilist 搜索 hook", () => {
     await waitFor(() => {
       expect(second.result.current.status.loadingMore).toBe(false);
     });
-    expect(deps.searchAnilistSubjectsUseCase.execute).toHaveBeenLastCalledWith(
+    expect(deps.searchSubjectsUseCase.execute).toHaveBeenLastCalledWith(
       expect.anything(),
       { keyword: "柯南", limit: 20, offset: 1 },
     );

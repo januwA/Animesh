@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { NextSeasonData } from "@/domain/anime/AnimeSchemas";
+import { useNextSeasonStore } from "@/presentation/store/nextSeasonStore";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseNextSeasonPageDeps } from "./useNextSeasonPage";
 import { useNextSeasonPage } from "./useNextSeasonPage";
@@ -31,7 +32,7 @@ const mockData: NextSeasonData = [
 const makeDeps = (
   overrides: Partial<UseNextSeasonPageDeps> = {},
 ): UseNextSeasonPageDeps => ({
-  getBangumiNextSeasonUseCase: {
+  getNextSeasonUseCase: {
     execute: vi.fn().mockResolvedValue({
       info: { year: 2026, season: "秋", months: [10, 11, 12] },
       data: mockData,
@@ -58,9 +59,12 @@ const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
 };
 
 const renderUseNextSeasonPage = (deps: UseNextSeasonPageDeps) => {
-  return renderHook(() => useNextSeasonPage(deps), {
-    wrapper: RouterWrapper,
-  });
+  return renderHook(
+    () => useNextSeasonPage(deps, useNextSeasonStore, (id) => `/subject/${id}`),
+    {
+      wrapper: RouterWrapper,
+    },
+  );
 };
 
 describe("useNextSeasonPage 下季新番页面 hook", () => {
@@ -68,7 +72,7 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
     resetAppStores();
   });
 
-  it("应该调用 getBangumiNextSeasonUseCase.execute 并返回数据", async () => {
+  it("应该调用 getNextSeasonUseCase.execute 并返回数据", async () => {
     const deps = makeDeps();
     const { result } = renderUseNextSeasonPage(deps);
 
@@ -82,7 +86,7 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
 
   it("请求失败时应该返回错误信息", async () => {
     const deps = makeDeps({
-      getBangumiNextSeasonUseCase: {
+      getNextSeasonUseCase: {
         execute: vi.fn().mockRejectedValue(new Error("API error")),
       },
     });
@@ -126,7 +130,7 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
       data: mockData,
     });
     const deps = makeDeps({
-      getBangumiNextSeasonUseCase: { execute: executeMock },
+      getNextSeasonUseCase: { execute: executeMock },
     });
 
     const { result, rerender } = renderUseNextSeasonPage(deps);

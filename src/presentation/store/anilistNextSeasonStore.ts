@@ -1,24 +1,7 @@
-import { create } from "zustand";
 import type { NextSeasonData } from "@/domain/anime/AnimeSchemas";
+import { createAnimeStore } from "./createAnimeStore";
 
-interface AnilistNextSeasonStoreState {
-  data: NextSeasonData;
-  activeMonth: number | null;
-  setData: (val: NextSeasonData) => void;
-  setActiveMonth: (val: number | null) => void;
-  reset: () => void;
-}
-
-const initialState = {
+export const useAnilistNextSeasonStore = createAnimeStore({
   data: [] as NextSeasonData,
   activeMonth: null as number | null,
-};
-
-export const useAnilistNextSeasonStore = create<AnilistNextSeasonStoreState>()(
-  (set) => ({
-    ...initialState,
-    setData: (val) => set({ data: val }),
-    setActiveMonth: (val) => set({ activeMonth: val }),
-    reset: () => set(initialState),
-  }),
-);
+});

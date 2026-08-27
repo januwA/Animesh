@@ -90,10 +90,10 @@ function SubjectDetailView({
   const detail = useSubjectDetail(
     { subjectId, page, platform: "bangumi", torrents, activeTab },
     {
-      getBangumiSubjectUseCase,
-      getBangumiEpisodesUseCase,
-      getBangumiPersonsUseCase,
-      getBangumiCharactersUseCase,
+      getSubjectUseCase: getBangumiSubjectUseCase,
+      getEpisodesUseCase: getBangumiEpisodesUseCase,
+      getPersonsUseCase: getBangumiPersonsUseCase,
+      getCharactersUseCase: getBangumiCharactersUseCase,
       openUrlUseCase,
       setTorrentSubjectUseCase,
       clearTorrentSubjectUseCase,

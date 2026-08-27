@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
+  AnimeCalendarStoredSchema,
+  AnimeCharactersStoredSchema,
+  AnimeEpisodesPageStoredSchema,
+  AnimePersonsStoredSchema,
+  AnimeRankedSubjectsStoredSchema,
+  AnimeSubjectStoredSchema,
+} from "@/infrastructure/animeStoredSchemas";
+import {
   BangumiCalendarResponseSchema,
-  BangumiCalendarStoredSchema,
   BangumiCharactersResponseSchema,
-  BangumiCharactersStoredSchema,
-  BangumiEpisodesPageStoredSchema,
   BangumiEpisodesResponseSchema,
   BangumiPersonsResponseSchema,
-  BangumiPersonsStoredSchema,
   BangumiRankedSubjectsResponseSchema,
-  BangumiRankedSubjectsStoredSchema,
   BangumiSubjectSchema,
   BangumiSubjectSearchResponseSchema,
-  BangumiSubjectStoredSchema,
 } from "./BangumiSchemas";
 
 const weekday = { en: "Monday", cn: "星期一", ja: "月曜日", id: 1 };
@@ -144,14 +146,14 @@ describe("Bangumi 条目搜索 Schema", () => {
 describe("Bangumi 数据缓存 Schema 回读校验", () => {
   it("日历数据：响应 Schema 解析后再用存储 Schema 回读应成功", () => {
     const domain = BangumiCalendarResponseSchema.parse(rawCalendar);
-    const readBack = BangumiCalendarStoredSchema.safeParse(domain);
+    const readBack = AnimeCalendarStoredSchema.safeParse(domain);
     expect(readBack.success).toBe(true);
     expect(readBack.data).toEqual(domain);
   });
 
   it("条目数据：响应 Schema 解析后再用存储 Schema 回读应成功", () => {
     const domain = BangumiSubjectSchema.parse(rawSubject);
-    const readBack = BangumiSubjectStoredSchema.safeParse(domain);
+    const readBack = AnimeSubjectStoredSchema.safeParse(domain);
     expect(readBack.success).toBe(true);
     expect(readBack.data).toEqual(domain);
   });
@@ -165,21 +167,21 @@ describe("Bangumi 数据缓存 Schema 回读校验", () => {
     };
     const page = BangumiEpisodesResponseSchema.parse(rawPage);
     const domain = { items: page.data, total: page.total };
-    const readBack = BangumiEpisodesPageStoredSchema.safeParse(domain);
+    const readBack = AnimeEpisodesPageStoredSchema.safeParse(domain);
     expect(readBack.success).toBe(true);
     expect(readBack.data).toEqual(domain);
   });
 
   it("制作人员数据：响应 Schema 解析后再用存储 Schema 回读应成功", () => {
     const domain = BangumiPersonsResponseSchema.parse([rawPerson]);
-    const readBack = BangumiPersonsStoredSchema.safeParse(domain);
+    const readBack = AnimePersonsStoredSchema.safeParse(domain);
     expect(readBack.success).toBe(true);
     expect(readBack.data).toEqual(domain);
   });
 
   it("角色数据：响应 Schema 解析后再用存储 Schema 回读应成功", () => {
     const domain = BangumiCharactersResponseSchema.parse([rawCharacter]);
-    const readBack = BangumiCharactersStoredSchema.safeParse(domain);
+    const readBack = AnimeCharactersStoredSchema.safeParse(domain);
     expect(readBack.success).toBe(true);
     expect(readBack.data).toEqual(domain);
   });
@@ -213,7 +215,7 @@ describe("Bangumi 数据缓存 Schema 回读校验", () => {
       total: 1,
     });
 
-    const readBack = BangumiRankedSubjectsStoredSchema.safeParse(page.items);
+    const readBack = AnimeRankedSubjectsStoredSchema.safeParse(page.items);
     expect(readBack.success).toBe(true);
     expect(readBack.data).toEqual(page.items);
   });

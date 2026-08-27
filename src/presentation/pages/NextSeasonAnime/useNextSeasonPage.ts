@@ -1,27 +1,38 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import type { GetNextSeasonAnimeUseCase } from "@/application/anime/GetNextSeasonAnimeUseCase";
-import type { AnimeCalendarItem } from "@/domain/anime/AnimeSchemas";
+import type {
+  AnimeCalendarItem,
+  NextSeasonData,
+} from "@/domain/anime/AnimeSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { useNextSeasonStore } from "../../store/nextSeasonStore";
 
 export interface UseNextSeasonPageDeps {
-  getBangumiNextSeasonUseCase: Pick<GetNextSeasonAnimeUseCase, "execute">;
+  getNextSeasonUseCase: Pick<GetNextSeasonAnimeUseCase, "execute">;
 }
 
-export function useNextSeasonPage(deps: UseNextSeasonPageDeps) {
-  const { getBangumiNextSeasonUseCase } = deps;
+export function useNextSeasonPage(
+  deps: UseNextSeasonPageDeps,
+  useDataStore: <U>(
+    selector: (state: {
+      data: NextSeasonData;
+      setData: (val: NextSeasonData) => void;
+    }) => U,
+  ) => U,
+  subjectPath: (id: number) => string,
+) {
+  const { getNextSeasonUseCase } = deps;
   const navigate = useNavigate();
-  const data = useNextSeasonStore((s) => s.data);
-  const setData = useNextSeasonStore((s) => s.setData);
+  const data = useDataStore((s) => s.data);
+  const setData = useDataStore((s) => s.setData);
 
   const {
     loading: isLoading,
     error,
     refetch,
   } = useQuery(
-    (ctx) => getBangumiNextSeasonUseCase.execute(ctx),
-    [getBangumiNextSeasonUseCase, data.length, setData],
+    (ctx) => getNextSeasonUseCase.execute(ctx),
+    [getNextSeasonUseCase, data.length, setData],
     {
       enabled: data.length === 0,
       onSuccess: (result) => {
@@ -32,7 +43,7 @@ export function useNextSeasonPage(deps: UseNextSeasonPageDeps) {
 
   const handleAnimeClick = useCallback(
     (item: AnimeCalendarItem) => {
-      navigate(`/subject/${item.id}`, {
+      navigate(subjectPath(item.id), {
         viewTransition: true,
         state: {
           name: item.name,
@@ -40,7 +51,7 @@ export function useNextSeasonPage(deps: UseNextSeasonPageDeps) {
         },
       });
     },
-    [navigate],
+    [navigate, subjectPath],
   );
 
   return {

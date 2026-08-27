@@ -9,7 +9,7 @@ import {
 } from "@/presentation/components/ui/empty";
 import { WeeklyCalendar } from "@/presentation/components/WeeklyCalendar";
 import { useAnilistCalendarStore } from "../../store/anilistCalendarStore";
-import { useAnilistCalendarPage } from "./useAnilistCalendarPage";
+import { useCalendarPage } from "../Calendar/useCalendarPage";
 
 export default function AnilistCalendar() {
   const { getAnilistCalendarUseCase } = useDI();
@@ -19,7 +19,11 @@ export default function AnilistCalendar() {
   );
 
   const { calendar, isLoading, error, refetch, handleAnimeClick } =
-    useAnilistCalendarPage({ getAnilistCalendarUseCase });
+    useCalendarPage(
+      { getCalendarUseCase: getAnilistCalendarUseCase },
+      useAnilistCalendarStore,
+      (id) => `/anilist/subject/${id}`,
+    );
 
   return (
     <div className="w-full flex flex-col gap-4">

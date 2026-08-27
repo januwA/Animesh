@@ -9,7 +9,7 @@ import {
 } from "@/presentation/components/ui/empty";
 import { useAnilistNextSeasonStore } from "../../store/anilistNextSeasonStore";
 import { MonthCalendar } from "../NextSeasonAnime/MonthCalendar";
-import { useAnilistNextSeasonPage } from "./useAnilistNextSeasonPage";
+import { useNextSeasonPage } from "../NextSeasonAnime/useNextSeasonPage";
 
 export default function AnilistNextSeason() {
   const { getAnilistNextSeasonUseCase } = useDI();
@@ -17,7 +17,11 @@ export default function AnilistNextSeason() {
   const setActiveMonth = useAnilistNextSeasonStore((s) => s.setActiveMonth);
 
   const { data, isLoading, error, refetch, handleAnimeClick } =
-    useAnilistNextSeasonPage({ getAnilistNextSeasonUseCase });
+    useNextSeasonPage(
+      { getNextSeasonUseCase: getAnilistNextSeasonUseCase },
+      useAnilistNextSeasonStore,
+      (id) => `/anilist/subject/${id}`,
+    );
 
   return (
     <div className="w-full flex flex-col gap-4">

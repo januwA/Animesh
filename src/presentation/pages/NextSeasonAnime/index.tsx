@@ -17,7 +17,11 @@ export default function NextSeasonAnime() {
   const setActiveMonth = useNextSeasonStore((s) => s.setActiveMonth);
 
   const { data, isLoading, error, refetch, handleAnimeClick } =
-    useNextSeasonPage({ getBangumiNextSeasonUseCase });
+    useNextSeasonPage(
+      { getNextSeasonUseCase: getBangumiNextSeasonUseCase },
+      useNextSeasonStore,
+      (id) => `/subject/${id}`,
+    );
 
   return (
     <div className="w-full flex flex-col gap-4">

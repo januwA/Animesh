@@ -92,17 +92,17 @@ const makeTorrent = (
 const makeDeps = (
   overrides: Partial<UseSubjectDetailDeps> = {},
 ): UseSubjectDetailDeps => ({
-  getBangumiSubjectUseCase: {
+  getSubjectUseCase: {
     execute: vi.fn().mockResolvedValue(makeSubject()),
   },
-  getBangumiEpisodesUseCase: {
+  getEpisodesUseCase: {
     execute: vi.fn().mockResolvedValue({
       items: [makeEpisode(2), makeEpisode(1)],
       total: 2,
     }),
   },
-  getBangumiPersonsUseCase: { execute: vi.fn().mockResolvedValue([]) },
-  getBangumiCharactersUseCase: { execute: vi.fn().mockResolvedValue([]) },
+  getPersonsUseCase: { execute: vi.fn().mockResolvedValue([]) },
+  getCharactersUseCase: { execute: vi.fn().mockResolvedValue([]) },
   openUrlUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
   setTorrentSubjectUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
   clearTorrentSubjectUseCase: { execute: vi.fn().mockResolvedValue(undefined) },
@@ -129,10 +129,10 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("应该加载动漫详情、剧集、角色与制作人员数据", async () => {
     const deps = makeDeps({
-      getBangumiPersonsUseCase: {
+      getPersonsUseCase: {
         execute: vi.fn().mockResolvedValue([makePerson()]),
       },
-      getBangumiCharactersUseCase: {
+      getCharactersUseCase: {
         execute: vi.fn().mockResolvedValue([makeCharacter()]),
       },
     });
@@ -153,7 +153,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     expect(result.current.episodes.episodes).toHaveLength(2);
     expect(result.current.episodes.episodes[0].sort).toBe(1);
     expect(result.current.cast.characters).toHaveLength(1);
-    expect(deps.getBangumiSubjectUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.getSubjectUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       NonEmptyStringSchema.parse("123"),
     );
@@ -161,7 +161,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("剧集应该按 sort 升序排列，并计算总页数", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,
@@ -184,7 +184,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
     });
     expect(result.current.episodes.totalEpisodes).toBe(103);
     expect(result.current.episodes.totalPages).toBe(3);
-    expect(deps.getBangumiEpisodesUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.getEpisodesUseCase.execute).toHaveBeenCalledWith(
       expect.anything(),
       { subjectId: NonEmptyStringSchema.parse("123"), offset: 0, limit: 50 },
     );
@@ -211,7 +211,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("应该按角色分组制作人员并正确去重", async () => {
     const deps = makeDeps({
-      getBangumiPersonsUseCase: {
+      getPersonsUseCase: {
         execute: vi
           .fn()
           .mockResolvedValue([
@@ -289,7 +289,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("changePage 应该更新 URL 的 page 参数并限制范围", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,
@@ -318,7 +318,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("jumpToEpisode 应该切换到对应页码", async () => {
     const deps = makeDeps({
-      getBangumiEpisodesUseCase: {
+      getEpisodesUseCase: {
         execute: vi.fn().mockResolvedValue({
           items: Array.from({ length: 103 }, (_, i) => makeEpisode(i + 1)),
           total: 103,
@@ -496,7 +496,7 @@ describe("useSubjectDetail 条目详情 hook", () => {
 
   it("动漫详情接口失败时应该暴露错误", async () => {
     const deps = makeDeps({
-      getBangumiSubjectUseCase: {
+      getSubjectUseCase: {
         execute: vi.fn().mockRejectedValue(new Error("Subject API Error")),
       },
     });

@@ -8,41 +8,55 @@ import type {
 } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { useMutation } from "@/presentation/hooks/useMutation";
-import { useAnilistSearchStore } from "@/presentation/store/anilistSearchStore";
 
 const SEARCH_LIMIT = 20;
 
-/** useAnilistSearchPage 的依赖，由调用方（页面组合根）注入 */
-export interface UseAnilistSearchPageDeps {
-  searchAnilistSubjectsUseCase: Pick<SearchAnimeSubjectsUseCase, "execute">;
+interface SearchStoreState {
+  keyword: string;
+  searchedKeyword: string;
+  results: AnimeSubject[];
+  total: number;
+  hasSearched: boolean;
+  setKeyword: (val: string) => void;
+  setSearchedKeyword: (val: string) => void;
+  setResults: (val: AnimeSubject[]) => void;
+  appendResults: (val: AnimeSubject[]) => void;
+  setTotal: (val: number) => void;
+  setHasSearched: (val: boolean) => void;
 }
 
-export function useAnilistSearchPage(
+export interface UseSubjectSearchPageDeps {
+  searchSubjectsUseCase: Pick<SearchAnimeSubjectsUseCase, "execute">;
+}
+
+export function useSubjectSearchPage(
   keywordParam: string | undefined,
-  deps: UseAnilistSearchPageDeps,
+  deps: UseSubjectSearchPageDeps,
+  useSearchStore: <U>(selector: (state: SearchStoreState) => U) => U,
+  subjectPath: (id: number) => string,
 ) {
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
-  const { searchAnilistSubjectsUseCase } = deps;
+  const { searchSubjectsUseCase } = deps;
 
-  const keyword = useAnilistSearchStore((s) => s.keyword);
-  const setKeyword = useAnilistSearchStore((s) => s.setKeyword);
-  const results = useAnilistSearchStore((s) => s.results);
-  const setResults = useAnilistSearchStore((s) => s.setResults);
-  const appendResults = useAnilistSearchStore((s) => s.appendResults);
-  const total = useAnilistSearchStore((s) => s.total);
-  const setTotal = useAnilistSearchStore((s) => s.setTotal);
-  const hasSearched = useAnilistSearchStore((s) => s.hasSearched);
-  const setHasSearched = useAnilistSearchStore((s) => s.setHasSearched);
-  const searchedKeyword = useAnilistSearchStore((s) => s.searchedKeyword);
-  const setSearchedKeyword = useAnilistSearchStore((s) => s.setSearchedKeyword);
+  const keyword = useSearchStore((s) => s.keyword);
+  const setKeyword = useSearchStore((s) => s.setKeyword);
+  const results = useSearchStore((s) => s.results);
+  const setResults = useSearchStore((s) => s.setResults);
+  const appendResults = useSearchStore((s) => s.appendResults);
+  const total = useSearchStore((s) => s.total);
+  const setTotal = useSearchStore((s) => s.setTotal);
+  const hasSearched = useSearchStore((s) => s.hasSearched);
+  const setHasSearched = useSearchStore((s) => s.setHasSearched);
+  const searchedKeyword = useSearchStore((s) => s.searchedKeyword);
+  const setSearchedKeyword = useSearchStore((s) => s.setSearchedKeyword);
 
   const searchMutation = useMutation<
     AnimeSubjectSearchResult,
     { queryText: string }
   >(
     (ctx, { queryText }) =>
-      searchAnilistSubjectsUseCase.execute(ctx, {
+      searchSubjectsUseCase.execute(ctx, {
         keyword: NonEmptyStringSchema.parse(queryText),
         limit: SEARCH_LIMIT,
         offset: 0,
@@ -64,7 +78,7 @@ export function useAnilistSearchPage(
     { queryText: string; offset: number }
   >(
     (ctx, { queryText, offset }) =>
-      searchAnilistSubjectsUseCase
+      searchSubjectsUseCase
         .execute(ctx, {
           keyword: NonEmptyStringSchema.parse(queryText),
           limit: SEARCH_LIMIT,
@@ -126,12 +140,12 @@ export function useAnilistSearchPage(
 
   const handleSubjectClick = useCallback(
     (item: AnimeSubject) => {
-      navigate(`/anilist/subject/${item.id}`, {
+      navigate(subjectPath(item.id), {
         viewTransition: true,
         state: { name: item.name, imageUrl: item.image },
       });
     },
-    [navigate],
+    [navigate, subjectPath],
   );
 
   return {

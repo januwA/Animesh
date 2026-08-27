@@ -2,16 +2,16 @@ import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { z } from "zod";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 import {
-  BangumiCalendarStoredSchema,
-  BangumiCharactersStoredSchema,
-  BangumiEpisodesPageStoredSchema,
-  BangumiPersonsStoredSchema,
-  BangumiRankedSubjectsStoredSchema,
-  BangumiSubjectSchema,
-  BangumiSubjectStoredSchema,
-} from "./BangumiSchemas";
+  AnimeCalendarStoredSchema,
+  AnimeCharactersStoredSchema,
+  AnimeEpisodesPageStoredSchema,
+  AnimePersonsStoredSchema,
+  AnimeRankedSubjectsStoredSchema,
+  AnimeSubjectStoredSchema,
+} from "@/infrastructure/animeStoredSchemas";
+import type { CacheStore } from "@/infrastructure/storage/CacheStore";
+import { BangumiSubjectSchema } from "./BangumiSchemas";
 import { BrowserBangumiCache } from "./BrowserBangumiCache";
 
 const images = {
@@ -84,7 +84,7 @@ describe("BrowserBangumiCache 缓存读取", () => {
 
     expect(store.getItem).toHaveBeenCalledWith(
       "bangumi:calendar",
-      BangumiCalendarStoredSchema,
+      AnimeCalendarStoredSchema,
     );
   });
 
@@ -97,7 +97,7 @@ describe("BrowserBangumiCache 缓存读取", () => {
 
     expect(store.getItem).toHaveBeenCalledWith(
       `bangumi:subject:${id}`,
-      BangumiSubjectStoredSchema,
+      AnimeSubjectStoredSchema,
     );
   });
 
@@ -110,7 +110,7 @@ describe("BrowserBangumiCache 缓存读取", () => {
 
     expect(store.getItem).toHaveBeenCalledWith(
       `bangumi:episodes:${id}:0:20`,
-      BangumiEpisodesPageStoredSchema,
+      AnimeEpisodesPageStoredSchema,
     );
   });
 
@@ -123,7 +123,7 @@ describe("BrowserBangumiCache 缓存读取", () => {
 
     expect(store.getItem).toHaveBeenCalledWith(
       `bangumi:persons:${id}`,
-      BangumiPersonsStoredSchema,
+      AnimePersonsStoredSchema,
     );
   });
 
@@ -136,7 +136,7 @@ describe("BrowserBangumiCache 缓存读取", () => {
 
     expect(store.getItem).toHaveBeenCalledWith(
       `bangumi:characters:${id}`,
-      BangumiCharactersStoredSchema,
+      AnimeCharactersStoredSchema,
     );
   });
 
@@ -148,7 +148,7 @@ describe("BrowserBangumiCache 缓存读取", () => {
 
     expect(store.getItem).toHaveBeenCalledWith(
       "bangumi:ranked-subjects",
-      BangumiRankedSubjectsStoredSchema,
+      AnimeRankedSubjectsStoredSchema,
     );
   });
 

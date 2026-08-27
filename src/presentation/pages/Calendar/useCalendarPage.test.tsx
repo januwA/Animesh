@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { AnimeCalendarItem } from "@/domain/anime/AnimeSchemas";
+import { useCalendarStore } from "@/presentation/store/calendarStore";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseCalendarPageDeps } from "./useCalendarPage";
 import { useCalendarPage } from "./useCalendarPage";
@@ -9,7 +10,7 @@ import { useCalendarPage } from "./useCalendarPage";
 const makeDeps = (
   overrides: Partial<UseCalendarPageDeps> = {},
 ): UseCalendarPageDeps => ({
-  getBangumiCalendarUseCase: {
+  getCalendarUseCase: {
     execute: vi.fn().mockResolvedValue([]),
   },
   ...overrides,
@@ -33,9 +34,12 @@ const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
 };
 
 const renderUseCalendarPage = (deps: UseCalendarPageDeps) => {
-  return renderHook(() => useCalendarPage(deps), {
-    wrapper: RouterWrapper,
-  });
+  return renderHook(
+    () => useCalendarPage(deps, useCalendarStore, (id) => `/subject/${id}`),
+    {
+      wrapper: RouterWrapper,
+    },
+  );
 };
 
 describe("useCalendarPage 日历页面 hook", () => {
@@ -43,7 +47,7 @@ describe("useCalendarPage 日历页面 hook", () => {
     resetAppStores();
   });
 
-  it("应该调用 getBangumiCalendarUseCase.execute 并返回日历数据", async () => {
+  it("应该调用 getCalendarUseCase.execute 并返回日历数据", async () => {
     const mockCalendar = [
       {
         weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
@@ -51,7 +55,7 @@ describe("useCalendarPage 日历页面 hook", () => {
       },
     ];
     const deps = makeDeps({
-      getBangumiCalendarUseCase: {
+      getCalendarUseCase: {
         execute: vi.fn().mockResolvedValue(mockCalendar),
       },
     });
@@ -68,7 +72,7 @@ describe("useCalendarPage 日历页面 hook", () => {
 
   it("请求失败时应该返回错误信息", async () => {
     const deps = makeDeps({
-      getBangumiCalendarUseCase: {
+      getCalendarUseCase: {
         execute: vi.fn().mockRejectedValue(new Error("API error")),
       },
     });
@@ -145,7 +149,7 @@ describe("useCalendarPage 日历页面 hook", () => {
     ];
     const executeMock = vi.fn().mockResolvedValue(mockCalendar);
     const deps = makeDeps({
-      getBangumiCalendarUseCase: { execute: executeMock },
+      getCalendarUseCase: { execute: executeMock },
     });
 
     const { result, rerender } = renderUseCalendarPage(deps);

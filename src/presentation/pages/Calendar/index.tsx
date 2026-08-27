@@ -17,7 +17,11 @@ export default function Calendar() {
   const setCalendarActiveDay = useCalendarStore((s) => s.setCalendarActiveDay);
 
   const { calendar, isLoading, error, refetch, handleAnimeClick } =
-    useCalendarPage({ getBangumiCalendarUseCase });
+    useCalendarPage(
+      { getCalendarUseCase: getBangumiCalendarUseCase },
+      useCalendarStore,
+      (id) => `/subject/${id}`,
+    );
 
   return (
     <div className="w-full flex flex-col gap-4">

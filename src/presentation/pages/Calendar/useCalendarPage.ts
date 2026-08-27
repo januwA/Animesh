@@ -1,16 +1,27 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import type { GetAnimeCalendarUseCase } from "@/application/anime/GetAnimeCalendarUseCase";
-import type { AnimeCalendarItem } from "@/domain/anime/AnimeSchemas";
+import type {
+  AnimeCalendarDay,
+  AnimeCalendarItem,
+} from "@/domain/anime/AnimeSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import { useCalendarStore } from "../../store/calendarStore";
 
 export interface UseCalendarPageDeps {
-  getBangumiCalendarUseCase: Pick<GetAnimeCalendarUseCase, "execute">;
+  getCalendarUseCase: Pick<GetAnimeCalendarUseCase, "execute">;
 }
 
-export function useCalendarPage(deps: UseCalendarPageDeps) {
-  const { getBangumiCalendarUseCase } = deps;
+export function useCalendarPage(
+  deps: UseCalendarPageDeps,
+  useCalendarStore: <U>(
+    selector: (state: {
+      calendar: AnimeCalendarDay[];
+      setCalendar: (val: AnimeCalendarDay[]) => void;
+    }) => U,
+  ) => U,
+  subjectPath: (id: number) => string,
+) {
+  const { getCalendarUseCase } = deps;
   const navigate = useNavigate();
   const calendar = useCalendarStore((s) => s.calendar);
   const setCalendar = useCalendarStore((s) => s.setCalendar);
@@ -20,8 +31,8 @@ export function useCalendarPage(deps: UseCalendarPageDeps) {
     error,
     refetch,
   } = useQuery(
-    (ctx) => getBangumiCalendarUseCase.execute(ctx),
-    [getBangumiCalendarUseCase, calendar.length, setCalendar],
+    (ctx) => getCalendarUseCase.execute(ctx),
+    [getCalendarUseCase, calendar.length, setCalendar],
     {
       enabled: calendar.length === 0,
       onSuccess: (data) => {
@@ -32,7 +43,7 @@ export function useCalendarPage(deps: UseCalendarPageDeps) {
 
   const handleAnimeClick = useCallback(
     (item: AnimeCalendarItem) => {
-      navigate(`/subject/${item.id}`, {
+      navigate(subjectPath(item.id), {
         viewTransition: true,
         state: {
           name: item.name,
@@ -40,7 +51,7 @@ export function useCalendarPage(deps: UseCalendarPageDeps) {
         },
       });
     },
-    [navigate],
+    [navigate, subjectPath],
   );
 
   return {
