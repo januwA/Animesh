@@ -120,7 +120,7 @@ function SubjectDetailView({
     return (
       <div className="space-y-4">
         <ErrorState
-          title={isAnilist ? "获取 AniList 动漫详情失败" : "获取动漫详情失败"}
+          title={"获取动漫详情失败"}
           message={detail.info.subjectQuery.error}
           onRetry={detail.info.subjectQuery.refetch}
         />

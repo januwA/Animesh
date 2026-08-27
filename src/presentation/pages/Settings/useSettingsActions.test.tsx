@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
-import { useCalendarStore } from "@/presentation/store/calendarStore";
+import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
 import { useIptvStore } from "@/presentation/store/iptvStore";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseSettingsActionsDeps } from "./useSettingsActions";
@@ -216,7 +216,7 @@ describe("useSettingsActions 设置动作 hook", () => {
 
     await waitFor(() => expect(result.current.confirmClearOpen).toBe(false));
 
-    expect(useCalendarStore.getState().calendar).toEqual([]);
+    expect(useBangumiCalendarStore.getState().calendar).toEqual([]);
     expect(useIptvStore.getState().iptvCountries).toEqual([]);
     expect(useIptvStore.getState().iptvChannels).toEqual([]);
     expect(toast.success).toHaveBeenCalledWith("缓存已清理");

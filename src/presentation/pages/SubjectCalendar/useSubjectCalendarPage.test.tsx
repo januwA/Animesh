@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { AnimeCalendarItem } from "@/domain/anime/AnimeSchemas";
-import { useCalendarStore } from "@/presentation/store/calendarStore";
+import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseSubjectCalendarPageDeps } from "./useSubjectCalendarPage";
 import { useSubjectCalendarPage } from "./useSubjectCalendarPage";
@@ -36,7 +36,11 @@ const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
 const renderUseCalendarPage = (deps: UseSubjectCalendarPageDeps) => {
   return renderHook(
     () =>
-      useSubjectCalendarPage(deps, useCalendarStore, (id) => `/subject/${id}`),
+      useSubjectCalendarPage(
+        deps,
+        useBangumiCalendarStore,
+        (id) => `/subject/${id}`,
+      ),
     {
       wrapper: RouterWrapper,
     },

@@ -1,8 +1,8 @@
 import { useAnilistCalendarStore } from "@/presentation/store/anilistCalendarStore";
 import { useAnilistNextSeasonStore } from "@/presentation/store/anilistNextSeasonStore";
 import { useAnilistSearchStore } from "@/presentation/store/anilistSearchStore";
+import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
 import { useBangumiSearchStore } from "@/presentation/store/bangumiSearchStore";
-import { useCalendarStore } from "@/presentation/store/calendarStore";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 import { useIptvStore } from "@/presentation/store/iptvStore";
 import { useNextSeasonStore } from "@/presentation/store/nextSeasonStore";
@@ -14,7 +14,7 @@ export function resetAppStores(): void {
   useAnilistNextSeasonStore.getState().reset();
   useAnilistSearchStore.getState().reset();
   useBangumiSearchStore.getState().reset();
-  useCalendarStore.getState().reset();
+  useBangumiCalendarStore.getState().reset();
   useCollectionsStore.getState().reset();
   useIptvStore.getState().reset();
   useNextSeasonStore.getState().reset();

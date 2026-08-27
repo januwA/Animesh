@@ -12,15 +12,15 @@ import {
 } from "@/presentation/components/ui/empty";
 import { WeeklyCalendar } from "@/presentation/components/WeeklyCalendar";
 import { useAnilistCalendarStore } from "@/presentation/store/anilistCalendarStore";
-import { useCalendarStore } from "@/presentation/store/calendarStore";
+import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
 import { useSubjectCalendarPage } from "./useSubjectCalendarPage";
 
 const platformConfigs = {
   bangumi: {
     title: "Bangumi 周放送",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getBangumiCalendarUseCase,
-    useStore: useCalendarStore,
-    subjectPath: (id: number) => `/subject/${id}`,
+    useStore: useBangumiCalendarStore,
+    subjectPath: (id: number) => `/bangumi/subject/${id}`,
   },
   anilist: {
     title: "AniList 周放送",

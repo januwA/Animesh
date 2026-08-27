@@ -7,7 +7,7 @@ import type { VerifyAiConnectionUseCase } from "@/application/settings/VerifyAiC
 import type { CheckUpdateUseCase } from "@/application/update/CheckUpdateUseCase";
 import type { AiConfig, Settings } from "@/domain/settings/SettingsSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
-import { useCalendarStore } from "@/presentation/store/calendarStore";
+import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
 import { useIptvStore } from "@/presentation/store/iptvStore";
 import { formatError } from "@/utils";
 
@@ -36,7 +36,7 @@ export function useSettingsActions(
     verifyAiConnectionUseCase,
     clearCacheUseCase,
   } = deps;
-  const setCalendar = useCalendarStore((s) => s.setCalendar);
+  const setCalendar = useBangumiCalendarStore((s) => s.setCalendar);
   const setIptvCountries = useIptvStore((s) => s.setIptvCountries);
   const setIptvChannels = useIptvStore((s) => s.setIptvChannels);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
