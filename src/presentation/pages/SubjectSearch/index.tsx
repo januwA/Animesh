@@ -1,11 +1,14 @@
 import { useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
+import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { SubjectSearchForm } from "@/presentation/components/SubjectSearchForm";
 import { SubjectSearchLoading } from "@/presentation/components/SubjectSearchLoading";
 import { SubjectSearchResults } from "@/presentation/components/SubjectSearchResults";
+import { useAnilistSearchStore } from "@/presentation/store/anilistSearchStore";
 import { useBangumiSearchStore } from "@/presentation/store/bangumiSearchStore";
 import { useSubjectSearchPage } from "./useSubjectSearchPage";
 
@@ -15,11 +18,43 @@ const keywordParamSchema = z
   .min(1, "搜索关键词不能为空")
   .optional();
 
-export default function BangumiSearch() {
+const platformConfigs = {
+  bangumi: {
+    title: "动漫搜索",
+    description: "搜索 Bangumi 动漫条目",
+    getUseCase: (di: ReturnType<typeof useDI>) =>
+      di.searchBangumiSubjectsUseCase,
+    useStore: useBangumiSearchStore,
+    subjectPath: (id: number) => `/subject/${id}`,
+  },
+  anilist: {
+    title: "AniList 搜索",
+    description: "搜索 AniList 动漫条目",
+    getUseCase: (di: ReturnType<typeof useDI>) =>
+      di.searchAnilistSubjectsUseCase,
+    useStore: useAnilistSearchStore,
+    subjectPath: (id: number) => `/anilist/subject/${id}`,
+  },
+} as const;
+
+export interface SubjectSearchProps {
+  platform?: AnimePlatform;
+}
+
+export default function SubjectSearch({
+  platform = "bangumi",
+}: SubjectSearchProps) {
+  const platformResult = AnimePlatformSchema.safeParse(platform);
   const [searchParams] = useSearchParams();
   const keywordResult = keywordParamSchema.safeParse(
     searchParams.get("keyword") ?? undefined,
   );
+
+  if (!platformResult.success) {
+    return (
+      <InvalidParamsView title="无效的平台参数" error={platformResult.error} />
+    );
+  }
 
   if (!keywordResult.success) {
     return (
@@ -27,27 +62,35 @@ export default function BangumiSearch() {
     );
   }
 
-  return <BangumiSearchView keywordParam={keywordResult.data} />;
+  return (
+    <SubjectSearchView
+      platform={platformResult.data}
+      keywordParam={keywordResult.data}
+    />
+  );
 }
 
-function BangumiSearchView({
+function SubjectSearchView({
+  platform,
   keywordParam,
 }: {
+  platform: AnimePlatform;
   keywordParam: string | undefined;
 }) {
-  const { searchBangumiSubjectsUseCase } = useDI();
+  const di = useDI();
+  const config = platformConfigs[platform];
   const page = useSubjectSearchPage(
     keywordParam,
-    { searchSubjectsUseCase: searchBangumiSubjectsUseCase },
-    useBangumiSearchStore,
-    (id) => `/subject/${id}`,
+    { searchSubjectsUseCase: config.getUseCase(di) },
+    config.useStore,
+    config.subjectPath,
   );
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">动漫搜索</h1>
-        <p className="text-sm text-muted-foreground">搜索 Bangumi 动漫条目</p>
+        <h1 className="text-xl font-semibold">{config.title}</h1>
+        <p className="text-sm text-muted-foreground">{config.description}</p>
       </div>
 
       <SubjectSearchForm
