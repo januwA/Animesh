@@ -75,6 +75,7 @@ export default defineConfig(({ mode }) => {
           "src/infrastructure/**",
         ],
         thresholds: {
+          perFile: true, // 要求每个文件单独满足下面的阈值,而不是汇总
           lines: 100,
           functions: 100,
           branches: 100,

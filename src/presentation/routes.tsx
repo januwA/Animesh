@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { DetailLayout, MainLayout, NavBarLayout } from "./layout/Layout";
 import { SidebarLayout } from "./layout/SidebarLayout";
 import TorrentSearch from "./pages/TorrentSearch";
@@ -23,6 +24,10 @@ export const routes: RouteObject[] = [
   {
     element: <MainLayout />,
     children: [
+      {
+        index: true,
+        element: <Navigate to="/torrent_search" replace />,
+      },
       {
         element: <DetailLayout />,
         children: [
@@ -64,7 +69,7 @@ export const routes: RouteObject[] = [
         element: <NavBarLayout />,
         children: [
           {
-            path: "",
+            path: "torrent_search",
             element: <TorrentSearch />,
           },
           {

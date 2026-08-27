@@ -61,7 +61,7 @@ export function MonthCalendar({
 
       <div className="mt-4">
         {isLoading ? (
-          <CalendarSkeleton />
+          <CalendarSkeleton showWeekDay={false} />
         ) : error ? (
           <ErrorState
             title="获取下季新番失败"

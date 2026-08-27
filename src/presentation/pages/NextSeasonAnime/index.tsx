@@ -2,21 +2,21 @@ import { useDI } from "@/di/DIContext";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
-import { useAnilistNextSeasonStore } from "@/presentation/store/anilistNextSeasonStore";
-import { useNextSeasonStore } from "@/presentation/store/nextSeasonStore";
+import {
+  useAnilistNextSeasonStore,
+  useBangumiNextSeasonStore,
+} from "@/presentation/store/nextSeasonStore";
 import { MonthCalendar } from "./MonthCalendar";
 import { useNextSeasonPage } from "./useNextSeasonPage";
 
 const platformConfigs = {
   bangumi: {
-    title: "下季新番",
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.getBangumiNextSeasonUseCase,
-    useStore: useNextSeasonStore,
+    useStore: useBangumiNextSeasonStore,
     subjectPath: (id: number) => `/bangumi/subject/${id}`,
   },
   anilist: {
-    title: "AniList 下季新番",
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.getAnilistNextSeasonUseCase,
     useStore: useAnilistNextSeasonStore,
@@ -54,9 +54,6 @@ function NextSeasonAnimeView({ platform }: { platform: AnimePlatform }) {
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <div className="mb-2">
-        <h1 className="text-xl font-semibold">{config.title}</h1>
-      </div>
       <MonthCalendar
         tabs={page.tabs}
         activeMonth={page.activeMonth}

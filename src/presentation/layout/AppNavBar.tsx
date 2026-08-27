@@ -39,7 +39,7 @@ interface NavItem {
 }
 
 const primaryItems: NavItem[] = [
-  { path: "/", label: "搜索", icon: Search },
+  { path: "/torrent_search", label: "搜索", icon: Search },
   { path: "/bangumi", label: "Bangumi", icon: Calendar },
   { path: "/anilist", label: "AniList", icon: CalendarDays },
   { path: "/collections", label: "收藏", icon: Heart },
@@ -102,7 +102,7 @@ export function AppNavBar() {
         <NavItemLink
           key={item.path}
           item={item}
-          isActive={location.pathname === item.path}
+          isActive={location.pathname.startsWith(item.path)}
           badgeCount={item.path === "/downloads" ? activeCount : 0}
         />
       ))}

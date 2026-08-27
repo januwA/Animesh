@@ -5,6 +5,7 @@ import type {
   NextSeasonTabItem,
 } from "@/application/anime/GetNextSeasonAnimeUseCase";
 import { getNextSeasonInfo } from "@/application/anime/GetNextSeasonAnimeUseCase";
+import type { NextSeasonSubjectsPage } from "@/domain/anime/AnimeRepository";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -42,14 +43,15 @@ export function useNextSeasonPage(
     error: queryError,
     refetch,
   } = useQuery(
-    (ctx) =>
-      getNextSeasonUseCase.execute(ctx, {
+    (ctx) => {
+      return getNextSeasonUseCase.execute(ctx, {
         year: seasonInfo.year,
         month: activeMonth,
         limit: PAGE_LIMIT,
         offset: 0,
-      }),
-    [getNextSeasonUseCase, seasonInfo.year, activeMonth, setMonthData],
+      });
+    },
+    [seasonInfo.year, activeMonth],
     {
       enabled: !isInitialized,
       onSuccess: (page) => {
@@ -63,7 +65,7 @@ export function useNextSeasonPage(
   );
 
   const loadMoreMutation = useMutation<
-    { items: AnimeSubject[]; hasNextPage: boolean },
+    NextSeasonSubjectsPage,
     { year: number; month: number; offset: number }
   >(
     (ctx, { year, month, offset }) =>
@@ -87,23 +89,17 @@ export function useNextSeasonPage(
   const firstMonth = seasonInfo.months[0];
 
   const loadMore = useCallback(() => {
-    if (loadMoreMutation.loading || isInitialLoading) return;
+    if (isInitialLoading) return;
     const { activeMonth: month, monthsData: data } = storeRef.current;
     const resolvedMonth = month ?? firstMonth;
     const monthData = data[resolvedMonth];
-    if (!monthData?.hasNextPage) return;
+    if (!monthData?.hasNextPage || monthData.exhausted) return;
     loadMoreMutation.execute({
       year: seasonInfo.year,
       month: resolvedMonth,
       offset: monthData.items.length,
     });
-  }, [
-    loadMoreMutation.loading,
-    isInitialLoading,
-    loadMoreMutation.execute,
-    seasonInfo.year,
-    firstMonth,
-  ]);
+  }, [isInitialLoading, loadMoreMutation.execute, seasonInfo.year, firstMonth]);
 
   const handleActiveMonthChange = useCallback(
     (month: number) => {

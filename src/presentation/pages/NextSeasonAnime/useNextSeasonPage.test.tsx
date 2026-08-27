@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
-import { useNextSeasonStore } from "@/presentation/store/nextSeasonStore";
+import { createNextSeasonStore } from "@/presentation/store/nextSeasonStore";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseNextSeasonPageDeps } from "./useNextSeasonPage";
 import { useNextSeasonPage } from "./useNextSeasonPage";
@@ -47,8 +47,9 @@ const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
 };
 
 const renderUseNextSeasonPage = (deps: UseNextSeasonPageDeps) => {
+  const store = createNextSeasonStore();
   return renderHook(
-    () => useNextSeasonPage(deps, useNextSeasonStore, (id) => `/subject/${id}`),
+    () => useNextSeasonPage(deps, store, (id) => `/subject/${id}`),
     {
       wrapper: RouterWrapper,
     },
@@ -212,5 +213,110 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
       name: "测试动漫",
       imageUrl: "http://example.com/cover.jpg",
     });
+  });
+
+  it("月份 A 加载更多进行中切换到月份 B，月份 B 的 loadMore 不应被阻塞", async () => {
+    let resolveMonthALoadMore: (v: {
+      items: AnimeSubject[];
+      hasNextPage: boolean;
+    }) => void;
+
+    const executeMock = vi.fn().mockImplementation((_ctx, params) => {
+      if (params.offset === 0) {
+        return Promise.resolve({ items: mockItems, hasNextPage: true });
+      }
+      return new Promise((resolve) => {
+        resolveMonthALoadMore = resolve;
+      });
+    });
+
+    const deps = makeDeps({
+      getNextSeasonUseCase: { execute: executeMock },
+    });
+
+    const { result } = renderUseNextSeasonPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.items).toEqual(mockItems);
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    expect(executeMock).toHaveBeenCalledTimes(2);
+
+    const secondMonth = result.current.tabs[1].month;
+    act(() => {
+      result.current.setActiveMonth(secondMonth);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.activeMonth).toBe(secondMonth);
+    });
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    expect(executeMock).toHaveBeenCalledTimes(4);
+    expect(executeMock).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ month: secondMonth, offset: 1 }),
+    );
+
+    await act(async () => {
+      resolveMonthALoadMore!({ items: [], hasNextPage: false });
+    });
+  });
+
+  it("exhausted 的月份不应再触发 loadMore", async () => {
+    let resolveLoadMore: (v: {
+      items: AnimeSubject[];
+      hasNextPage: boolean;
+    }) => void;
+
+    const executeMock = vi.fn().mockImplementation((_ctx, params) => {
+      if (params.offset === 0) {
+        return Promise.resolve({ items: mockItems, hasNextPage: true });
+      }
+      return new Promise((resolve) => {
+        resolveLoadMore = resolve;
+      });
+    });
+
+    const deps = makeDeps({
+      getNextSeasonUseCase: { execute: executeMock },
+    });
+
+    const { result } = renderUseNextSeasonPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.hasMore).toBe(true);
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await act(async () => {
+      resolveLoadMore!({ items: [], hasNextPage: false });
+    });
+
+    await waitFor(() => {
+      expect(result.current.hasMore).toBe(false);
+    });
+
+    const callCount = executeMock.mock.calls.length;
+    act(() => {
+      result.current.loadMore();
+    });
+
+    expect(executeMock.mock.calls.length).toBe(callCount);
   });
 });

@@ -26,38 +26,43 @@ const initialState = {
   monthsData: {} as Record<number, NextSeasonMonthData>,
 };
 
-export const useNextSeasonStore = create<NextSeasonStoreState>()((set) => ({
-  ...initialState,
-  setActiveMonth: (month) => set({ activeMonth: month }),
-  setMonthData: (month, data) =>
-    set((state) => ({
-      monthsData: {
-        ...state.monthsData,
-        [month]: data,
-      },
-    })),
-  appendMonthItems: (month, newItems, hasNextPage) =>
-    set((state) => {
-      const current = state.monthsData[month] ?? {
-        items: [],
-        hasNextPage: true,
-        exhausted: false,
-      };
-      // 按 id 去重，避免 AniList 分页重复返回同一条目
-      const existingIds = new Set(current.items.map((it) => it.id));
-      const uniqueNew = newItems.filter((it) => !existingIds.has(it.id));
-      return {
+export function createNextSeasonStore() {
+  return create<NextSeasonStoreState>()((set) => ({
+    ...initialState,
+    setActiveMonth: (month) => set({ activeMonth: month }),
+    setMonthData: (month, data) =>
+      set((state) => ({
         monthsData: {
           ...state.monthsData,
-          [month]: {
-            ...current,
-            items: [...current.items, ...uniqueNew],
-            hasNextPage,
-            // 当本页返回空数组时，说明后端已无更多数据
-            exhausted: current.exhausted || newItems.length === 0,
-          },
+          [month]: data,
         },
-      };
-    }),
-  reset: () => set(initialState),
-}));
+      })),
+    appendMonthItems: (month, newItems, hasNextPage) =>
+      set((state) => {
+        const current = state.monthsData[month] ?? {
+          items: [],
+          hasNextPage: true,
+          exhausted: false,
+        };
+        // 按 id 去重，避免 AniList 分页重复返回同一条目
+        const existingIds = new Set(current.items.map((it) => it.id));
+        const uniqueNew = newItems.filter((it) => !existingIds.has(it.id));
+        return {
+          monthsData: {
+            ...state.monthsData,
+            [month]: {
+              ...current,
+              items: [...current.items, ...uniqueNew],
+              hasNextPage,
+              // 当本页返回空数组时，说明后端已无更多数据
+              exhausted: current.exhausted || newItems.length === 0,
+            },
+          },
+        };
+      }),
+    reset: () => set(initialState),
+  }));
+}
+
+export const useBangumiNextSeasonStore = createNextSeasonStore();
+export const useAnilistNextSeasonStore = createNextSeasonStore();
