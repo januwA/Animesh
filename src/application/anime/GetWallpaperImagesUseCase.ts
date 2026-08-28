@@ -24,7 +24,7 @@ export function recentMonthWindows(
   return windows;
 }
 
-export class GetAnimeRankedSubjectsUseCase {
+export class GetWallpaperImagesUseCase {
   constructor(
     private readonly animeRepository: AnimeRepository,
     private readonly animeCache: AnimeCache,

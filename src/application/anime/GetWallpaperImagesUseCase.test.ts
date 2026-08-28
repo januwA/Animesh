@@ -4,10 +4,10 @@ import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import type { AnimeCache } from "../../domain/anime/AnimeCache";
 import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
 import {
-  GetAnimeRankedSubjectsUseCase,
+  GetWallpaperImagesUseCase,
   RANKED_SUBJECT_LIMIT,
   recentMonthWindows,
-} from "./GetAnimeRankedSubjectsUseCase";
+} from "./GetWallpaperImagesUseCase";
 
 const rankedSubject: AnimeSubject = {
   id: 326,
@@ -24,7 +24,7 @@ function paged(
   return { items, total: total ?? items.length };
 }
 
-describe("GetAnimeRankedSubjectsUseCase 获取榜单条目", () => {
+describe("GetWallpaperImagesUseCase 获取壁纸图片", () => {
   const mockRepo = {
     getRankedSubjects: vi.fn(),
   } as unknown as AnimeRepository;
@@ -49,7 +49,7 @@ describe("GetAnimeRankedSubjectsUseCase 获取榜单条目", () => {
       rankedSubject,
     ]);
 
-    const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
+    const useCase = new GetWallpaperImagesUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
     expect(mockCache.getRankedSubjects).toHaveBeenCalledWith(Background);
@@ -66,7 +66,7 @@ describe("GetAnimeRankedSubjectsUseCase 获取榜单条目", () => {
       .mockResolvedValueOnce(paged(current))
       .mockResolvedValueOnce(paged(last));
 
-    const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
+    const useCase = new GetWallpaperImagesUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
     expect(mockRepo.getRankedSubjects).toHaveBeenNthCalledWith(1, Background, {
@@ -97,7 +97,7 @@ describe("GetAnimeRankedSubjectsUseCase 获取榜单条目", () => {
       .mockResolvedValueOnce(paged(items.slice(0, RANKED_SUBJECT_LIMIT)))
       .mockResolvedValueOnce(paged(items.slice(RANKED_SUBJECT_LIMIT)));
 
-    const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
+    const useCase = new GetWallpaperImagesUseCase(mockRepo, mockCache);
     const results = await useCase.execute(Background);
 
     expect(results).toHaveLength(RANKED_SUBJECT_LIMIT);
@@ -109,7 +109,7 @@ describe("GetAnimeRankedSubjectsUseCase 获取榜单条目", () => {
       .mockResolvedValueOnce(paged([rankedSubject]))
       .mockRejectedValueOnce(new Error("network error"));
 
-    const useCase = new GetAnimeRankedSubjectsUseCase(mockRepo, mockCache);
+    const useCase = new GetWallpaperImagesUseCase(mockRepo, mockCache);
     const promise = useCase.execute(Background);
 
     await expect(promise).rejects.toThrow("network error");

@@ -6,9 +6,9 @@ import { GetAnimeCalendarUseCase } from "../application/anime/GetAnimeCalendarUs
 import { GetAnimeCharactersUseCase } from "../application/anime/GetAnimeCharactersUseCase";
 import { GetAnimeEpisodesUseCase } from "../application/anime/GetAnimeEpisodesUseCase";
 import { GetAnimePersonsUseCase } from "../application/anime/GetAnimePersonsUseCase";
-import { GetAnimeRankedSubjectsUseCase } from "../application/anime/GetAnimeRankedSubjectsUseCase";
 import { GetAnimeSubjectUseCase } from "../application/anime/GetAnimeSubjectUseCase";
 import { GetNextSeasonAnimeUseCase } from "../application/anime/GetNextSeasonAnimeUseCase";
+import { GetWallpaperImagesUseCase } from "../application/anime/GetWallpaperImagesUseCase";
 import { SearchAnimeSubjectsUseCase } from "../application/anime/SearchAnimeSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
@@ -113,7 +113,7 @@ export interface DIContainer {
   getBangumiEpisodesUseCase: GetAnimeEpisodesUseCase;
   getBangumiPersonsUseCase: GetAnimePersonsUseCase;
   getBangumiCharactersUseCase: GetAnimeCharactersUseCase;
-  getBangumiRankedSubjectsUseCase: GetAnimeRankedSubjectsUseCase;
+  getWallpaperImagesUseCase: GetWallpaperImagesUseCase;
   searchBangumiSubjectsUseCase: SearchAnimeSubjectsUseCase;
   searchAnilistSubjectsUseCase: SearchAnimeSubjectsUseCase;
   getBangumiNextSeasonUseCase: GetNextSeasonAnimeUseCase;
@@ -266,7 +266,7 @@ export function createDefaultDIContainer(): DIContainer {
     bangumiRepository,
     bangumiCache,
   );
-  const getBangumiRankedSubjectsUseCase = new GetAnimeRankedSubjectsUseCase(
+  const getWallpaperImagesUseCase = new GetWallpaperImagesUseCase(
     bangumiRepository,
     bangumiCache,
   );
@@ -348,7 +348,7 @@ export function createDefaultDIContainer(): DIContainer {
     getBangumiEpisodesUseCase,
     getBangumiPersonsUseCase,
     getBangumiCharactersUseCase,
-    getBangumiRankedSubjectsUseCase,
+    getWallpaperImagesUseCase,
     searchBangumiSubjectsUseCase,
     searchAnilistSubjectsUseCase,
     getBangumiNextSeasonUseCase,
