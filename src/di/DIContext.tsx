@@ -20,10 +20,20 @@ import { GetIptvCountriesUseCase } from "../application/iptv/GetIptvCountriesUse
 import { ResolvePlayableStreamUrlUseCase } from "../application/iptv/ResolvePlayableStreamUrlUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
+import { GetAiConfigsUseCase } from "../application/settings/GetAiConfigsUseCase";
+import { GetDownloadDirUseCase } from "../application/settings/GetDownloadDirUseCase";
+import { GetProxyUseCase } from "../application/settings/GetProxyUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
+import { GetSpeedLimitsUseCase } from "../application/settings/GetSpeedLimitsUseCase";
+import { GetTranslationConfigUseCase } from "../application/settings/GetTranslationConfigUseCase";
 import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
+import { SetAiConfigsUseCase } from "../application/settings/SetAiConfigsUseCase";
+import { SetDownloadDirUseCase } from "../application/settings/SetDownloadDirUseCase";
+import { SetProxyUseCase } from "../application/settings/SetProxyUseCase";
+import { SetSpeedLimitsUseCase } from "../application/settings/SetSpeedLimitsUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
+import { SetTranslationConfigUseCase } from "../application/settings/SetTranslationConfigUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { DeleteSubtitleTranslationUseCase } from "../application/subtitle/DeleteSubtitleTranslationUseCase";
 import { GetSubtitleTranslationByIdUseCase } from "../application/subtitle/GetSubtitleTranslationByIdUseCase";
@@ -104,6 +114,16 @@ export interface DIContainer {
   selectDirectoryUseCase: SelectDirectoryUseCase;
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
+  getDownloadDirUseCase: GetDownloadDirUseCase;
+  setDownloadDirUseCase: SetDownloadDirUseCase;
+  getSpeedLimitsUseCase: GetSpeedLimitsUseCase;
+  setSpeedLimitsUseCase: SetSpeedLimitsUseCase;
+  getProxyUseCase: GetProxyUseCase;
+  setProxyUseCase: SetProxyUseCase;
+  getAiConfigsUseCase: GetAiConfigsUseCase;
+  setAiConfigsUseCase: SetAiConfigsUseCase;
+  getTranslationConfigUseCase: GetTranslationConfigUseCase;
+  setTranslationConfigUseCase: SetTranslationConfigUseCase;
   clearCacheUseCase: ClearCacheUseCase;
   translateSubtitleUseCase: TranslateSubtitleUseCase;
   getSubtitleTranslationsUseCase: GetSubtitleTranslationsUseCase;
@@ -183,12 +203,6 @@ export function createDefaultDIContainer(): DIContainer {
     translationCache,
   );
 
-  const searchTorrentsWithAiUseCase = new SearchTorrentsWithAiUseCase(
-    torrentRepository,
-    settingsRepository,
-    aiClient,
-    logger.withCategory("SearchTorrentsWithAiUseCase"),
-  );
   const subscribeTorrentsUseCase = new SubscribeTorrentsUseCase(
     torrentRepository,
   );
@@ -220,6 +234,26 @@ export function createDefaultDIContainer(): DIContainer {
   const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
+  const getDownloadDirUseCase = new GetDownloadDirUseCase(settingsRepository);
+  const setDownloadDirUseCase = new SetDownloadDirUseCase(settingsRepository);
+  const getSpeedLimitsUseCase = new GetSpeedLimitsUseCase(settingsRepository);
+  const setSpeedLimitsUseCase = new SetSpeedLimitsUseCase(settingsRepository);
+  const getProxyUseCase = new GetProxyUseCase(settingsRepository);
+  const setProxyUseCase = new SetProxyUseCase(settingsRepository);
+  const getAiConfigsUseCase = new GetAiConfigsUseCase(settingsRepository);
+  const setAiConfigsUseCase = new SetAiConfigsUseCase(settingsRepository);
+  const getTranslationConfigUseCase = new GetTranslationConfigUseCase(
+    settingsRepository,
+  );
+  const setTranslationConfigUseCase = new SetTranslationConfigUseCase(
+    settingsRepository,
+  );
+  const searchTorrentsWithAiUseCase = new SearchTorrentsWithAiUseCase(
+    torrentRepository,
+    getAiConfigsUseCase,
+    aiClient,
+    logger.withCategory("SearchTorrentsWithAiUseCase"),
+  );
   const clearCacheUseCase = new ClearCacheUseCase(cacheStore);
   const translateSubtitleUseCase = new TranslateSubtitleUseCase(
     aiClient,
@@ -350,6 +384,16 @@ export function createDefaultDIContainer(): DIContainer {
     selectDirectoryUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,
+    getDownloadDirUseCase,
+    setDownloadDirUseCase,
+    getSpeedLimitsUseCase,
+    setSpeedLimitsUseCase,
+    getProxyUseCase,
+    setProxyUseCase,
+    getAiConfigsUseCase,
+    setAiConfigsUseCase,
+    getTranslationConfigUseCase,
+    setTranslationConfigUseCase,
     clearCacheUseCase,
     translateSubtitleUseCase,
     getSubtitleTranslationsUseCase,

@@ -4,19 +4,26 @@ import {
   type NonEmptyString,
   NonEmptyStringSchema,
 } from "@/domain/common/NonEmptyString";
+import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import type { Logger } from "../../domain/logger/logger";
-import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import { FetchAiClient } from "../../infrastructure/ai/FetchAiClient";
 import { FetchHttpClient } from "../../infrastructure/http/HttpClient";
+import type { GetAiConfigsUseCase } from "../settings/GetAiConfigsUseCase";
 import { SearchTorrentsWithAiUseCase } from "./SearchTorrentsWithAiUseCase";
 
 describe("SearchTorrentsWithAiUseCase 测试", () => {
   let mockTorrentRepo: TorrentRepository;
-  let mockSettingsRepo: SettingsRepository;
+  let mockGetAiConfigsUseCase: GetAiConfigsUseCase;
   let mockLogger: Logger;
   let ctx: typeof Background;
+
+  function mockAiConfigs(configs: AiConfig[]) {
+    vi.mocked(mockGetAiConfigsUseCase.execute).mockResolvedValueOnce({
+      aiConfigs: configs,
+    });
+  }
 
   const mockTorrents: SearchResultItem[] = [
     {
@@ -49,9 +56,9 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       search: vi.fn(),
     } as unknown as TorrentRepository;
 
-    mockSettingsRepo = {
-      getSettings: vi.fn(),
-    } as unknown as SettingsRepository;
+    mockGetAiConfigsUseCase = {
+      execute: vi.fn(),
+    } as unknown as GetAiConfigsUseCase;
 
     mockLogger = {
       debug: vi.fn(),
@@ -70,23 +77,14 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当 AI 未开启时，应该直接调用 repository 搜索并返回原结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
-      },
+    vi.mocked(mockGetAiConfigsUseCase.execute).mockResolvedValueOnce({
+      aiConfigs: [],
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -106,27 +104,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当 AI 开启时，应该进行搜索并调用大模型进行过滤、评分和排序", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
     const mockResponseJson = [
@@ -152,7 +139,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -192,27 +179,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当大模型接口异常或返回无法解析时，应该优雅退化返回无打分的原搜索结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
     const mockFetch = vi.fn().mockResolvedValueOnce({
@@ -223,7 +199,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -237,27 +213,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("应该支持大模型通过 Tool Calling 多次调用搜索引擎工具，并在无结果时自动切换搜索引擎", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
 
     // 模拟 TorrentRepository 的多次调用：
     // 1. 初始检索 dmhy 返回空列表
@@ -358,7 +323,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -389,27 +354,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当大模型返回的工具参数格式不正确时，应该忽略并继续流程", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
     const response1Obj = {
@@ -460,7 +414,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -478,27 +432,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当大模型返回的评分内容不是有效的 JSON 数组时，应该返回未评分的原始结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
     const mockResponseObj = {
@@ -519,7 +462,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -536,27 +479,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当部分种子没有获得大模型的评分时，应该保留未评分状态并放在排序末尾", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
     const mockResponseJson = [{ index: 1, score: 95, reason: "评分 index: 1" }];
@@ -579,7 +511,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -596,13 +528,13 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
   it("当发生一般异常错误时，应该捕获错误并返回原始搜索结果", async () => {
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
-    vi.mocked(mockSettingsRepo.getSettings).mockRejectedValueOnce(
+    vi.mocked(mockGetAiConfigsUseCase.execute).mockRejectedValueOnce(
       new Error("Database error"),
     );
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -621,13 +553,13 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
   it("当发生 Failed to fetch 类型错误时，应该捕获并打印特定错误日志且返回原始搜索结果", async () => {
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
-    vi.mocked(mockSettingsRepo.getSettings).mockRejectedValueOnce(
+    vi.mocked(mockGetAiConfigsUseCase.execute).mockRejectedValueOnce(
       new TypeError("Failed to fetch"),
     );
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -647,27 +579,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当 AI 决策达到最大迭代次数且没有输出评分文本时，应该触发单轮兜底打分评估并成功返回评分结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
     const responseToolObj = {
@@ -734,7 +655,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -755,27 +676,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当 AI 决策达到最大迭代次数且兜底打分请求失败时，应该降级返回无评分结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
     const responseToolObj = {
@@ -825,7 +735,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -844,27 +754,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当 AI 决策达到最大迭代次数且兜底打分返回空内容时，应该直接返回无评分的原始结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
     const responseToolObj = {
@@ -929,7 +828,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -947,27 +846,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当大模型响应无返回 Choices 消息时，应该退出 ReAct 循环并优雅返回原始结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
     const mockResponseObj = {
@@ -982,7 +870,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -999,27 +887,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当 AI 决定结束搜索决策过程但返回空内容时，应该直接返回无评分的原始结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
     const mockResponseObj = {
@@ -1041,7 +918,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -1055,27 +932,16 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当大模型决定调用非 search_torrents 的其他工具时，应该忽略并继续流程", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
     const response1Obj = {
@@ -1126,7 +992,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -1140,35 +1006,24 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当指定了 aiAlias 时，应该匹配对应的别名配置进行 AI 搜索和过滤", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Default"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.example.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-        {
-          alias: NonEmptyStringSchema.parse("Custom"),
-          api_endpoint: NonEmptyStringSchema.parse(
-            "https://api.custom.com/v1/chat/completions",
-          ),
-          api_key: NonEmptyStringSchema.parse("custom-key"),
-          ai_model: NonEmptyStringSchema.parse("custom-model"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+      {
+        alias: NonEmptyStringSchema.parse("Custom"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.custom.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("custom-key"),
+        ai_model: NonEmptyStringSchema.parse("custom-model"),
+      },
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
     const mockResponseJson = [{ index: 0, score: 95, reason: "符合 1080p" }];
@@ -1191,7 +1046,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );
@@ -1213,30 +1068,19 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
   });
 
   it("当 AI 开启但配置信息不完整时，应该无缝退化为返回传统搜索结果", async () => {
-    vi.mocked(mockSettingsRepo.getSettings).mockResolvedValueOnce({
-      download_dir: NonEmptyStringSchema.parse("/mock"),
-      ai_configs: [
-        {
-          alias: NonEmptyStringSchema.parse("Incomplete"),
-          api_endpoint: "" as unknown as NonEmptyString,
-          api_key: NonEmptyStringSchema.parse("test-key"),
-          ai_model: NonEmptyStringSchema.parse("gpt-4o"),
-        },
-      ],
-      proxy: null,
-      max_download_speed: null,
-      max_upload_speed: null,
-      translation: {
-        target_lang: "zh-CN",
-        provider: "google" as const,
-        ai_config_alias: null,
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Incomplete"),
+        api_endpoint: "" as unknown as NonEmptyString,
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
       },
-    });
+    ]);
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
     const useCase = new SearchTorrentsWithAiUseCase(
       mockTorrentRepo,
-      mockSettingsRepo,
+      mockGetAiConfigsUseCase,
       new FetchAiClient(new FetchHttpClient()),
       mockLogger,
     );

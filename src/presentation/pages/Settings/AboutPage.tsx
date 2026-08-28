@@ -1,5 +1,6 @@
 import { Info, Loader2, RefreshCw } from "lucide-react";
-import type { UpdateCheckResult } from "@/domain/update/UpdateInfo";
+import { useDI } from "@/di/DIContext";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { Button } from "@/presentation/components/ui/button";
 import {
   Card,
@@ -7,22 +8,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
+import { useQuery } from "@/presentation/hooks/useQuery";
+import { useSettingsLoader } from "./SettingsContext";
 
-export interface UpdateCheckSectionProps {
-  currentVersion: string;
-  checkingUpdate: boolean;
-  updateResult: UpdateCheckResult | null;
-  onCheckUpdate: () => void;
-  onOpenGithub: () => void;
-}
+export default function AboutPage() {
+  const { currentVersion } = useSettingsLoader();
+  const { checkUpdateUseCase, openUpdateUrlUseCase } = useDI();
 
-export function UpdateCheckSection({
-  currentVersion,
-  checkingUpdate,
-  updateResult,
-  onCheckUpdate,
-  onOpenGithub,
-}: UpdateCheckSectionProps) {
+  const {
+    refetch: checkUpdate,
+    loading: checkingUpdate,
+    data: updateResult,
+  } = useQuery(() => checkUpdateUseCase.execute(), [checkUpdateUseCase]);
+
+  const handleOpenGithub = async () => {
+    if (!updateResult?.htmlUrl) return;
+    await openUpdateUrlUseCase.execute(
+      NonEmptyStringSchema.parse(updateResult.htmlUrl),
+    );
+  };
+
   return (
     <Card className="ani-card">
       <CardHeader className="p-5">
@@ -42,10 +47,8 @@ export function UpdateCheckSection({
           <div className="flex gap-2">
             <Button
               type="button"
-              variant="outline"
               disabled={checkingUpdate}
-              onClick={onCheckUpdate}
-              className="text-xs h-8.5 font-medium border-border bg-secondary/50 text-foreground hover:bg-secondary"
+              onClick={checkUpdate}
             >
               {checkingUpdate ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
@@ -78,7 +81,7 @@ export function UpdateCheckSection({
                 <div className="flex gap-2 pt-1">
                   <Button
                     type="button"
-                    onClick={onOpenGithub}
+                    onClick={handleOpenGithub}
                     className="text-xs h-8 font-medium px-3 bg-primary text-primary-foreground"
                   >
                     前往 GitHub 下载

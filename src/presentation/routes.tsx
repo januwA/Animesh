@@ -15,10 +15,20 @@ const NextSeasonAnime = lazy(() => import("./pages/NextSeasonAnime"));
 const Iptv = lazy(() => import("./pages/Iptv"));
 const LivePlayer = lazy(() => import("./pages/LivePlayer"));
 const Player = lazy(() => import("./pages/Player"));
-const Settings = lazy(() => import("./pages/Settings"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
 const SubjectSearch = lazy(() => import("./pages/SubjectSearch"));
 const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
+
+const SettingsSidebarLayout = lazy(
+  () => import("./pages/Settings/SettingsSidebarLayout"),
+);
+const StoragePage = lazy(() => import("./pages/Settings/StoragePage"));
+const NetworkPage = lazy(() => import("./pages/Settings/NetworkPage"));
+const AiModelsPage = lazy(() => import("./pages/Settings/AiModelsPage"));
+const TranslationPage = lazy(() => import("./pages/Settings/TranslationPage"));
+const CachePage = lazy(() => import("./pages/Settings/CachePage"));
+const AppearancePage = lazy(() => import("./pages/Settings/AppearancePage"));
+const AboutPage = lazy(() => import("./pages/Settings/AboutPage"));
 
 export const routes: RouteObject[] = [
   {
@@ -55,16 +65,9 @@ export const routes: RouteObject[] = [
             path: "live/play",
             element: <LivePlayer />,
           },
-          {
-            path: "live",
-            element: <Iptv />,
-          },
-          {
-            path: "settings",
-            element: <Settings />,
-          },
         ],
       },
+
       {
         element: <NavBarLayout />,
         children: [
@@ -120,6 +123,24 @@ export const routes: RouteObject[] = [
                 ],
               },
             ],
+          },
+          {
+            path: "settings",
+            element: <SettingsSidebarLayout />,
+            children: [
+              { index: true, element: <Navigate to="appearance" replace /> },
+              { path: "storage", element: <StoragePage /> },
+              { path: "network", element: <NetworkPage /> },
+              { path: "ai-models", element: <AiModelsPage /> },
+              { path: "translation", element: <TranslationPage /> },
+              { path: "cache", element: <CachePage /> },
+              { path: "appearance", element: <AppearancePage /> },
+              { path: "about", element: <AboutPage /> },
+            ],
+          },
+          {
+            path: "live",
+            element: <Iptv />,
           },
         ],
       },

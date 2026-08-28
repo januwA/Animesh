@@ -9,13 +9,6 @@ import {
   Tv,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/presentation/components/ui/dropdown-menu";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { cn } from "@/presentation/lib/utils";
 
@@ -44,11 +37,8 @@ const primaryItems: NavItem[] = [
   { path: "/anilist", label: "AniList", icon: CalendarDays },
   { path: "/collections", label: "收藏", icon: Heart },
   { path: "/downloads", label: "下载", icon: Download },
-];
-
-const moreItems: NavItem[] = [
-  { path: "/live", label: "直播", icon: Tv },
   { path: "/settings", label: "设置", icon: SettingsIcon },
+  { path: "/live", label: "直播", icon: Tv },
 ];
 
 interface NavItemLinkProps {
@@ -85,9 +75,6 @@ export function AppNavBar() {
   const location = useLocation();
   const { torrents } = useTorrentStatus();
   const activeCount = torrents.filter((t) => !t.finished && !t.paused).length;
-  const isMoreActive = moreItems.some(
-    (item) => location.pathname === item.path,
-  );
 
   return (
     <nav
@@ -106,47 +93,6 @@ export function AppNavBar() {
           badgeCount={item.path === "/downloads" ? activeCount : 0}
         />
       ))}
-
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label="更多"
-            className={cn(
-              navItemBaseClass,
-              navItemStateClass(isMoreActive),
-              "cursor-pointer",
-            )}
-          >
-            {isMoreActive && (
-              <span className="absolute inset-0 bg-primary/10 rounded-xl blur-xs -z-10 md:hidden animate-fade-in" />
-            )}
-            <span>更多</span>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="center" side="top" sideOffset={10}>
-          <DropdownMenuGroup>
-            {moreItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return (
-                <DropdownMenuItem key={item.path} asChild>
-                  <Link
-                    to={item.path}
-                    className={cn(
-                      "gap-2 cursor-pointer",
-                      isActive && "bg-accent text-accent-foreground",
-                    )}
-                  >
-                    <Icon />
-                    {item.label}
-                  </Link>
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </nav>
   );
 }

@@ -5,7 +5,6 @@ import {
 } from "@/domain/common/NonEmptyString";
 import type { AiClient } from "../../domain/ai/AiClient";
 import type { Logger } from "../../domain/logger/logger";
-import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import {
   TORRENT_SEARCH_ENGINES,
   type TorrentSearchEngine,
@@ -15,6 +14,7 @@ import type {
   AiSearchResultItem,
   SearchResultItem,
 } from "../../domain/torrent/TorrentSchemas";
+import type { GetAiConfigsUseCase } from "../settings/GetAiConfigsUseCase";
 
 export interface ChatCompletionToolCall {
   id: string;
@@ -51,7 +51,7 @@ export interface ChatCompletionResponse {
 export class SearchTorrentsWithAiUseCase {
   constructor(
     private torrentRepository: TorrentRepository,
-    private settingsRepository: SettingsRepository,
+    private getAiConfigsUseCase: GetAiConfigsUseCase,
     private aiClient: AiClient,
     private logger: Logger,
   ) {}
@@ -94,11 +94,11 @@ export class SearchTorrentsWithAiUseCase {
     apiKey: NonEmptyString;
     model: NonEmptyString;
   } | null> {
-    const settings = await this.settingsRepository.getSettings();
+    const { aiConfigs } = await this.getAiConfigsUseCase.execute();
 
     // If configs exist, look up by alias or use the first one
-    if (settings?.ai_configs && settings.ai_configs.length > 0) {
-      const config = settings.ai_configs.find((c) => c.alias === aiAlias);
+    if (aiConfigs.length > 0) {
+      const config = aiConfigs.find((c) => c.alias === aiAlias);
       if (config?.api_endpoint && config.api_key) {
         return {
           endpoint: config.api_endpoint,

@@ -1,4 +1,5 @@
 import { Check, Palette } from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   Card,
   CardContent,
@@ -12,27 +13,21 @@ import {
 } from "@/presentation/components/ui/toggle-group";
 import {
   ACCENT_PRESETS,
-  type AccentId,
+  useAccentTheme,
 } from "@/presentation/hooks/useAccentTheme";
 import { cn } from "@/presentation/lib/utils";
+import { backgroundWallpaperStore } from "@/presentation/store/backgroundWallpaperStore";
 
-export interface AppearanceSectionProps {
-  theme: string;
-  onThemeChange: (theme: string) => void;
-  accent: AccentId;
-  onAccentChange: (accent: AccentId) => void;
-  showWallpaper: boolean;
-  onShowWallpaperChange: (show: boolean) => void;
-}
+export default function AppearancePage() {
+  const { theme, setTheme } = useTheme();
+  const { accent, setAccent } = useAccentTheme();
+  const showWallpaper = backgroundWallpaperStore(
+    (state) => state.showWallpaper,
+  );
+  const setShowWallpaper = backgroundWallpaperStore(
+    (state) => state.setShowWallpaper,
+  );
 
-export function AppearanceSection({
-  theme,
-  onThemeChange,
-  accent,
-  onAccentChange,
-  showWallpaper,
-  onShowWallpaperChange,
-}: AppearanceSectionProps) {
   return (
     <Card className="ani-card">
       <CardHeader className="p-5">
@@ -48,8 +43,8 @@ export function AppearanceSection({
           </span>
           <ToggleGroup
             type="single"
-            value={theme}
-            onValueChange={(v) => v && onThemeChange(v)}
+            value={theme ?? ""}
+            onValueChange={(v) => v && setTheme(v)}
             size="sm"
             variant="outline"
           >
@@ -71,7 +66,7 @@ export function AppearanceSection({
                   aria-label={preset.label}
                   aria-pressed={selected}
                   title={preset.label}
-                  onClick={() => onAccentChange(preset.id)}
+                  onClick={() => setAccent(preset.id)}
                   className={cn(
                     "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-border transition-transform",
                     selected
@@ -94,7 +89,7 @@ export function AppearanceSection({
           <Switch
             aria-label="显示背景壁纸"
             checked={showWallpaper}
-            onCheckedChange={onShowWallpaperChange}
+            onCheckedChange={setShowWallpaper}
           />
         </div>
       </CardContent>
