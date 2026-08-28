@@ -23,5 +23,18 @@ describe("VersionComparer 单元测试", () => {
 
   it("应该容忍非数字版本段的字符串比较", () => {
     expect(compareVersions("1.0.0-alpha", "1.0.0-beta")).toBe(-1);
+    expect(compareVersions("1.0.0-beta", "1.0.0-alpha")).toBe(1);
+    expect(compareVersions("1.0.0-alpha", "1.0.0-alpha")).toBe(0);
+  });
+
+  it("应该在正式发布版本段为非数字时使用字符串比较", () => {
+    expect(compareVersions("1.0.alpha", "1.0.beta")).toBe(-1);
+    expect(compareVersions("1.0.z", "1.0.a")).toBe(1);
+    expect(compareVersions("1.0.alpha", "1.0.alpha")).toBe(0);
+  });
+
+  it("应该正确处理预发布版本与正式版本的优先级", () => {
+    expect(compareVersions("1.0.0-alpha", "1.0.0")).toBe(-1);
+    expect(compareVersions("1.0.0", "1.0.0-alpha")).toBe(1);
   });
 });

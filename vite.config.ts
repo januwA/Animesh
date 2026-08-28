@@ -70,7 +70,6 @@ export default defineConfig(({ mode }) => {
           "src/presentation/components/MpegtsVideo.tsx",
           "src/presentation/pages/*/index.tsx",
           "src/di/**",
-          "src/domain/**",
           "src/generated/**",
           "src/infrastructure/**",
         ],
