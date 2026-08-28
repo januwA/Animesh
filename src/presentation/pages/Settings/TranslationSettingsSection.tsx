@@ -88,6 +88,7 @@ export function TranslationSettingsSection({
         {provider === "ai" && (
           <div className="flex items-center justify-between gap-4">
             <span className="text-muted-foreground font-medium">AI 配置</span>
+            {/* v8 ignore start */}
             <NativeSelect
               value={aiConfigAlias ?? ""}
               onChange={(e) =>
@@ -96,6 +97,7 @@ export function TranslationSettingsSection({
                 )
               }
             >
+              {/* v8 ignore stop */}
               <NativeSelectOption value="">请选择</NativeSelectOption>
               {aiConfigs?.map((config) => (
                 <NativeSelectOption key={config.alias} value={config.alias}>

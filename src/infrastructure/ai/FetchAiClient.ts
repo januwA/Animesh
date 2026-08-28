@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import type { AiClient } from "../../domain/ai/AiClient";
 import type { HttpClient } from "../http/HttpClient";
 
@@ -9,6 +10,7 @@ export class FetchAiClient implements AiClient {
   constructor(private readonly httpClient: HttpClient) {}
 
   async post(
+    ctx: Context,
     endpoint: string,
     apiKey: string,
     payload: unknown,
@@ -16,6 +18,7 @@ export class FetchAiClient implements AiClient {
     const response = await this.httpClient.request(
       `${baseUrl}/ai/chat-request`,
       {
+        ctx,
         method: "POST",
         headers: {
           "Content-Type": "application/json",

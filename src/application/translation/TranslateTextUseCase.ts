@@ -54,9 +54,7 @@ export class TranslateTextUseCase {
   ): Promise<string> {
     const service = this.selectService(dto.provider);
 
-    if (ctx.err()) throw new Error("翻译已被取消");
-
-    return service.translate(text, dto.sourceLang, dto.targetLang, {
+    return service.translate(ctx, text, dto.sourceLang, dto.targetLang, {
       aiConfig: dto.aiConfig,
     });
   }

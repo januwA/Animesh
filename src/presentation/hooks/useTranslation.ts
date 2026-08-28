@@ -74,13 +74,14 @@ export function useTranslation(
 
       // 获取 AI 配置（如果使用 AI 翻译）
       let aiConfig: AiConfig | undefined;
-      if (provider === "ai" && translationConfig.ai_config_alias) {
-        const aiConfigs = settings.ai_configs;
-        if (aiConfigs) {
-          aiConfig = aiConfigs.find(
-            (c) => c.alias === translationConfig.ai_config_alias,
-          );
-        }
+      if (
+        provider === "ai" &&
+        translationConfig.ai_config_alias &&
+        settings.ai_configs
+      ) {
+        aiConfig = settings.ai_configs.find(
+          (c) => c.alias === translationConfig.ai_config_alias,
+        );
       }
 
       // 使用 Context 实现取消

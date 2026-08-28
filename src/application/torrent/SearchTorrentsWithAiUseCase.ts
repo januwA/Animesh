@@ -139,6 +139,7 @@ export class SearchTorrentsWithAiUseCase {
 
     if (!content && currentTorrents.length > 0) {
       content = await this.fallbackEvaluate(
+        ctx,
         endpoint,
         apiKey,
         model,
@@ -182,6 +183,7 @@ export class SearchTorrentsWithAiUseCase {
     shouldBreak: boolean;
   }> {
     const data = await this.fetchAiResponse(
+      ctx,
       endpoint,
       apiKey,
       model,
@@ -267,6 +269,7 @@ export class SearchTorrentsWithAiUseCase {
   }
 
   private async fetchAiResponse(
+    ctx: Context,
     endpoint: NonEmptyString,
     apiKey: NonEmptyString,
     model: NonEmptyString,
@@ -274,7 +277,7 @@ export class SearchTorrentsWithAiUseCase {
     tools: ChatCompletionTool[],
   ): Promise<ChatCompletionResponse | null> {
     try {
-      const res = await this.aiClient.post(endpoint, apiKey, {
+      const res = await this.aiClient.post(ctx, endpoint, apiKey, {
         model,
         messages,
         tools,
@@ -411,6 +414,7 @@ export class SearchTorrentsWithAiUseCase {
   }
 
   private async fallbackEvaluate(
+    ctx: Context,
     endpoint: NonEmptyString,
     apiKey: NonEmptyString,
     model: NonEmptyString,
@@ -423,7 +427,7 @@ export class SearchTorrentsWithAiUseCase {
     const evalPrompt = this.buildEvalPrompt(keyword, torrents);
 
     try {
-      const data = (await this.aiClient.post(endpoint, apiKey, {
+      const data = (await this.aiClient.post(ctx, endpoint, apiKey, {
         model,
         messages: [
           {

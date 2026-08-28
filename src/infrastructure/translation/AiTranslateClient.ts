@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import type { AiClient } from "@/domain/ai/AiClient";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import { AiConfigSchema } from "@/domain/settings/SettingsSchemas";
@@ -11,6 +12,7 @@ export class AiTranslateClient implements TranslationService {
   constructor(private readonly aiClient: AiClient) {}
 
   async translate(
+    ctx: Context,
     text: string,
     sourceLang: string,
     targetLang: string,
@@ -38,6 +40,7 @@ export class AiTranslateClient implements TranslationService {
     };
 
     const res = await this.aiClient.post(
+      ctx,
       aiConfig.api_endpoint,
       aiConfig.api_key,
       payload,

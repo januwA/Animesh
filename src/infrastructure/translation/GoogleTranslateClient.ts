@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import type { TranslationService } from "@/domain/translation/TranslationService";
 
 /**
@@ -11,10 +12,14 @@ export class GoogleTranslateClient implements TranslationService {
     "https://translate.googleapis.com/translate_a/single";
 
   async translate(
+    ctx: Context,
     text: string,
     sourceLang: string,
     targetLang: string,
   ): Promise<string> {
+    const controller = new AbortController();
+    ctx.done().then(() => controller.abort());
+
     const params = new URLSearchParams({
       client: "gtx",
       sl: sourceLang,
@@ -24,7 +29,7 @@ export class GoogleTranslateClient implements TranslationService {
     });
 
     const url = `${GoogleTranslateClient.ENDPOINT}?${params.toString()}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: controller.signal });
 
     if (!response.ok) {
       throw new Error(

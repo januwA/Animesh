@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import type { AiConfig } from "../settings/SettingsSchemas";
 
 /**
@@ -7,6 +8,7 @@ import type { AiConfig } from "../settings/SettingsSchemas";
 export interface TranslationService {
   /**
    * 将文本翻译为目标语言
+   * @param ctx 可取消的上下文
    * @param text 待翻译的文本（调用方保证非空）
    * @param sourceLang 源语言代码（如 "auto"、"en"、"ja"）
    * @param targetLang 目标语言代码（如 "zh-CN"）
@@ -14,6 +16,7 @@ export interface TranslationService {
    * @returns 翻译后的文本
    */
   translate(
+    ctx: Context,
     text: string,
     sourceLang: string,
     targetLang: string,

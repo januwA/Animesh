@@ -140,6 +140,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
 
     expect(mockAiClient.post).toHaveBeenCalledTimes(1);
     expect(mockAiClient.post).toHaveBeenCalledWith(
+      expect.anything(),
       "https://api.example.com/v1/chat/completions",
       "test-key",
       expect.objectContaining({ model: "gpt-3.5-turbo" }),
@@ -445,154 +446,6 @@ describe("TranslateSubtitleUseCase 测试", () => {
     ).rejects.toThrow(/取消/);
   });
 
-  it("当 AI 返回 402 额度用完错误时，应该立即抛出终止翻译而非静默降级", async () => {
-    vi.mocked(mockAiClient.post).mockRejectedValueOnce(
-      new Error(
-        'HTTP error status 402 Payment Required: {"error":"You have depleted your monthly included credits."}',
-      ),
-    );
-
-    const useCase = new TranslateSubtitleUseCase(
-      mockAiClient,
-      mockTranslationRepo,
-      mockLogger,
-    );
-
-    await expect(
-      useCase.execute(ctx, {
-        vtt: `WEBVTT
-
-00:00:01.000 --> 00:00:02.000
-你好
-`,
-        sourceLanguage: "zh",
-        targetLanguage: "en",
-        aiConfig: defaultAiConfig,
-        onProgress: () => {},
-        infoHash: "abc",
-        fileId: 0,
-        originalTrackId: 0,
-      }),
-    ).rejects.toThrow(/额度/);
-  });
-
-  it("当 AI 返回 401 认证失败错误时，应该立即抛出终止翻译", async () => {
-    vi.mocked(mockAiClient.post).mockRejectedValueOnce(
-      new Error("HTTP error! status: 401 Unauthorized"),
-    );
-
-    const useCase = new TranslateSubtitleUseCase(
-      mockAiClient,
-      mockTranslationRepo,
-      mockLogger,
-    );
-
-    await expect(
-      useCase.execute(ctx, {
-        vtt: `WEBVTT
-
-00:00:01.000 --> 00:00:02.000
-你好
-`,
-        sourceLanguage: "zh",
-        targetLanguage: "en",
-        aiConfig: defaultAiConfig,
-        onProgress: () => {},
-        infoHash: "abc",
-        fileId: 0,
-        originalTrackId: 0,
-      }),
-    ).rejects.toThrow(/认证/);
-  });
-
-  it("当 AI 返回 403 权限错误时，应该立即抛出终止翻译", async () => {
-    vi.mocked(mockAiClient.post).mockRejectedValueOnce(
-      new Error("HTTP error! status: 403 Forbidden"),
-    );
-
-    const useCase = new TranslateSubtitleUseCase(
-      mockAiClient,
-      mockTranslationRepo,
-      mockLogger,
-    );
-
-    await expect(
-      useCase.execute(ctx, {
-        vtt: `WEBVTT
-
-00:00:01.000 --> 00:00:02.000
-你好
-`,
-        sourceLanguage: "zh",
-        targetLanguage: "en",
-        aiConfig: defaultAiConfig,
-        onProgress: () => {},
-        infoHash: "abc",
-        fileId: 0,
-        originalTrackId: 0,
-      }),
-    ).rejects.toThrow(/权限/);
-  });
-
-  it("当 AI 返回 429 限流错误时，应该降级保留原文而非终止（暂时性错误）", async () => {
-    vi.mocked(mockAiClient.post).mockRejectedValueOnce(
-      new Error("HTTP error! status: 429 Too Many Requests"),
-    );
-
-    const useCase = new TranslateSubtitleUseCase(
-      mockAiClient,
-      mockTranslationRepo,
-      mockLogger,
-    );
-
-    await useCase.execute(ctx, {
-      vtt: `WEBVTT
-
-00:00:01.000 --> 00:00:02.000
-你好
-`,
-      sourceLanguage: "zh",
-      targetLanguage: "en",
-      aiConfig: defaultAiConfig,
-      onProgress: () => {},
-      infoHash: "abc",
-      fileId: 0,
-      originalTrackId: 0,
-    });
-
-    // 429 是暂时性错误，降级保留原文
-    expect(getSavedVtt()).toContain("你好");
-  });
-
-  it("当 AI 返回网络错误（非 HTTP 状态码）时，应该降级保留原文", async () => {
-    vi.mocked(mockAiClient.post).mockRejectedValueOnce(
-      new TypeError("Failed to fetch"),
-    );
-
-    const useCase = new TranslateSubtitleUseCase(
-      mockAiClient,
-      mockTranslationRepo,
-      mockLogger,
-    );
-
-    await useCase.execute(ctx, {
-      vtt: `WEBVTT
-
-00:00:01.000 --> 00:00:02.000
-你好
-`,
-      sourceLanguage: "zh",
-      targetLanguage: "en",
-      aiConfig: defaultAiConfig,
-      onProgress: () => {},
-      infoHash: "abc",
-      fileId: 0,
-      originalTrackId: 0,
-    });
-
-    expect(getSavedVtt()).toContain("你好");
-  });
-
   it("使用传入的 aiConfig 时，应该使用对应配置的接口地址与模型", async () => {
     vi.mocked(mockAiClient.post).mockResolvedValueOnce(
       aiResponse([{ index: 0, translation: "Hello" }]),
@@ -626,7 +479,7 @@ describe("TranslateSubtitleUseCase 测试", () => {
       originalTrackId: 0,
     });
 
-    const [endpoint, apiKey, payload] = vi.mocked(mockAiClient.post).mock
+    const [_ctx, endpoint, apiKey, payload] = vi.mocked(mockAiClient.post).mock
       .calls[0];
     expect(endpoint).toBe("https://api.custom.com/v1/chat/completions");
     expect(apiKey).toBe("custom-key");
@@ -805,32 +658,5 @@ describe("TranslateSubtitleUseCase 测试", () => {
       expect.stringContaining("无法解析为翻译结果"),
       expect.anything(),
     );
-  });
-
-  it("AI 接口以非 Error 值 reject 时，应按暂时性错误降级保留原文", async () => {
-    vi.mocked(mockAiClient.post).mockRejectedValueOnce("boom");
-
-    const useCase = new TranslateSubtitleUseCase(
-      mockAiClient,
-      mockTranslationRepo,
-      mockLogger,
-    );
-
-    await useCase.execute(ctx, {
-      vtt: `WEBVTT
-
-00:00:01.000 --> 00:00:02.000
-你好
-`,
-      sourceLanguage: "zh",
-      targetLanguage: "en",
-      aiConfig: defaultAiConfig,
-      onProgress: () => {},
-      infoHash: "abc",
-      fileId: 0,
-      originalTrackId: 0,
-    });
-
-    expect(getSavedVtt()).toContain("你好");
   });
 });

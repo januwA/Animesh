@@ -1,4 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { Context } from "ajanuw-context";
+import { Canceled } from "ajanuw-context";
 import { commands } from "@/generated/tauri-commands";
 import type { AiClient } from "../../domain/ai/AiClient";
 
@@ -8,10 +10,13 @@ import type { AiClient } from "../../domain/ai/AiClient";
  */
 export class TauriAiClient implements AiClient {
   async post(
+    ctx: Context,
     endpoint: string,
     apiKey: string,
     payload: unknown,
   ): Promise<unknown> {
+    if (ctx.err() === Canceled) throw new Error("AI 请求已被取消");
+
     const responseText = await invoke<string>(commands.ai_chat_request, {
       endpoint,
       apiKey,

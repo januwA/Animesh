@@ -7,11 +7,12 @@ import type { TranslationService } from "@/domain/translation/TranslationService
 import { TranslateTextUseCase } from "./TranslateTextUseCase";
 
 function createMockTranslationService(
-  translateFn?: (text: string) => Promise<string>,
+  translateFn?: (ctx: Context, text: string) => Promise<string>,
 ): TranslationService {
   return {
     translate: vi.fn(
-      translateFn ?? (async (text: string) => `translated:${text}`),
+      translateFn ??
+        (async (_ctx: Context, text: string) => `translated:${text}`),
     ),
   };
 }
@@ -82,9 +83,13 @@ describe("TranslateTextUseCase", () => {
     });
 
     expect(result).toBe("translated:hello");
-    expect(google.translate).toHaveBeenCalledWith("hello", "auto", "zh-CN", {
-      aiConfig: undefined,
-    });
+    expect(google.translate).toHaveBeenCalledWith(
+      expect.anything(),
+      "hello",
+      "auto",
+      "zh-CN",
+      { aiConfig: undefined },
+    );
     expect(ai.translate).not.toHaveBeenCalled();
   });
 
@@ -110,9 +115,13 @@ describe("TranslateTextUseCase", () => {
     });
 
     expect(result).toBe("translated:hello");
-    expect(ai.translate).toHaveBeenCalledWith("hello", "en", "zh-CN", {
-      aiConfig,
-    });
+    expect(ai.translate).toHaveBeenCalledWith(
+      expect.anything(),
+      "hello",
+      "en",
+      "zh-CN",
+      { aiConfig },
+    );
     expect(google.translate).not.toHaveBeenCalled();
   });
 
