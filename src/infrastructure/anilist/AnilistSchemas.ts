@@ -291,6 +291,35 @@ export const AnilistSearchResponseSchema = z
     total: dto.data.Page.pageInfo.total,
   }));
 
+// ── Ranked Subjects → RankedSubjectsPage ───────────────────────────────────
+
+const AnilistRankedMediaSchema = z.object({
+  id: z.number(),
+  title: AnilistTitleSchema,
+  coverImage: AnilistCoverImageSchema,
+  averageScore: z.number().nullable().optional(),
+});
+
+export const AnilistRankedResponseSchema = z
+  .object({
+    data: z.object({
+      Page: z.object({
+        pageInfo: z.object({ total: z.number() }),
+        media: z.array(AnilistRankedMediaSchema),
+      }),
+    }),
+  })
+  .transform((dto) => ({
+    items: dto.data.Page.media.map((m) => ({
+      id: m.id,
+      name: pickTitle(m.title),
+      summary: "",
+      image: pickCoverImage(m.coverImage),
+      rating: (m.averageScore ?? 0) / 10,
+    })),
+    total: dto.data.Page.pageInfo.total,
+  }));
+
 // ── Next Season → AnimeSubject[] ───────────────────────────────────────────
 
 const AnilistNextSeasonMediaSchema = z.object({

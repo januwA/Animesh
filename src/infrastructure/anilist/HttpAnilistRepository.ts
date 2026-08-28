@@ -20,6 +20,7 @@ import {
   AnilistCharactersResponseSchema,
   AnilistEpisodesResponseSchema,
   AnilistNextSeasonResponseSchema,
+  AnilistRankedResponseSchema,
   AnilistResponseSchema,
   AnilistSearchResponseSchema,
   AnilistStaffResponseSchema,
@@ -148,6 +149,20 @@ query ($startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt, $page: I
 }
 `;
 
+const RANKED_MEDIA_QUERY = `
+query ($startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt, $page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo { total }
+    media(type: ANIME, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser, sort: SCORE_DESC) {
+      id
+      title { romaji english native userPreferred }
+      coverImage { large medium color }
+      averageScore
+    }
+  }
+}
+`;
+
 function getWeekRange(): { startDate: number; endDate: number } {
   const now = new Date();
   const day = now.getDay();
@@ -165,10 +180,6 @@ function getWeekRange(): { startDate: number; endDate: number } {
     startDate: Math.floor(monday.getTime() / 1000),
     endDate: Math.floor(sunday.getTime() / 1000),
   };
-}
-
-function notImplemented(method: string): never {
-  throw new Error(`AnilistRepository.${method} is not implemented`);
 }
 
 export class HttpAnilistRepository implements AnimeRepository {
@@ -270,11 +281,27 @@ export class HttpAnilistRepository implements AnimeRepository {
     return await response.json();
   }
 
-  getRankedSubjects(
-    _ctx: Context,
-    _params: Parameters<AnimeRepository["getRankedSubjects"]>[1],
+  async getRankedSubjects(
+    ctx: Context,
+    params: Parameters<AnimeRepository["getRankedSubjects"]>[1],
   ): Promise<RankedSubjectsPage> {
-    notImplemented("getRankedSubjects");
+    const startDateGreater = params.year * 10000 + params.month * 100 + 1;
+    const startDateLesser = params.year * 10000 + params.month * 100 + 31;
+
+    const data = await this.graphqlRequest(ctx, RANKED_MEDIA_QUERY, {
+      startDateGreater,
+      startDateLesser,
+      page: 1,
+      perPage: 20,
+    });
+
+    const result = AnilistRankedResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Anilist ranked response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 
   async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
