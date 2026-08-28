@@ -41,11 +41,7 @@ export function useTranslation(
   text: string,
   options: UseTranslationOptions = {},
 ): UseTranslationResult {
-  const {
-    getSettingsUseCase,
-    translateTextUseCase,
-    getSettingsUseCase: _getSettings,
-  } = useDI();
+  const { getSettingsUseCase, translateTextUseCase } = useDI();
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);

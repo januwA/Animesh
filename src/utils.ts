@@ -91,3 +91,13 @@ export function formatError(err: unknown): string {
   }
   return String(err);
 }
+
+/** FNV-1a 32-bit 哈希，返回 8 位十六进制字符串 */
+export function fnv1a32(str: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = (hash * 0x01000193) | 0;
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}

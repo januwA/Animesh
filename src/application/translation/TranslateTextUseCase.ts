@@ -5,6 +5,7 @@ import type {
 } from "@/domain/settings/SettingsSchemas";
 import type { TranslationCache } from "@/domain/translation/TranslationCache";
 import type { TranslationService } from "@/domain/translation/TranslationService";
+import { fnv1a32 } from "@/utils";
 
 export interface TranslateTextDto {
   text: string;
@@ -73,8 +74,6 @@ export class TranslateTextUseCase {
     sourceLang: string,
     targetLang: string,
   ): string {
-    // 使用简单的字符串拼接作为缓存键
-    // 因为 text 可能很长，这里用轻量级的方式
-    return `${sourceLang}:${targetLang}:${text}`;
+    return fnv1a32(`${sourceLang}:${targetLang}:${text}`);
   }
 }

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TranslationCache } from "@/domain/translation/TranslationCache";
 import type { TranslationService } from "@/domain/translation/TranslationService";
+import { fnv1a32 } from "@/utils";
 import { TranslateTextUseCase } from "./TranslateTextUseCase";
 
 function createMockTranslationService(
@@ -55,7 +56,9 @@ describe("TranslateTextUseCase", () => {
   it("缓存命中时应直接返回缓存结果，不调用翻译服务", async () => {
     const google = createMockTranslationService();
     const ai = createMockTranslationService();
-    const cache = createMockCache(new Map([["auto:zh-CN:hello", "你好"]]));
+    const cache = createMockCache(
+      new Map([[fnv1a32("auto:zh-CN:hello"), "你好"]]),
+    );
     const useCase = new TranslateTextUseCase(google, ai, cache);
 
     const result = await useCase.execute(createCtx(), {
@@ -139,7 +142,7 @@ describe("TranslateTextUseCase", () => {
     });
 
     expect(cache.set).toHaveBeenCalledWith(
-      "auto:zh-CN:hello",
+      fnv1a32("auto:zh-CN:hello"),
       "translated:hello",
     );
   });
