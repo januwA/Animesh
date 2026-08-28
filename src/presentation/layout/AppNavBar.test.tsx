@@ -1,5 +1,4 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
@@ -52,7 +51,7 @@ describe("AppNavBar 组件", () => {
     vi.clearAllMocks();
   });
 
-  it("应该渲染 5 个主导航项与更多按钮，更多菜单项默认隐藏", () => {
+  it("应该渲染 7 个主导航项", () => {
     renderNavBar();
 
     expect(screen.getByRole("link", { name: "搜索" })).toBeInTheDocument();
@@ -60,10 +59,8 @@ describe("AppNavBar 组件", () => {
     expect(screen.getByRole("link", { name: "AniList" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "收藏" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "下载" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "更多" })).toBeInTheDocument();
-
-    expect(screen.queryByText("直播")).not.toBeInTheDocument();
-    expect(screen.queryByText("设置")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "设置" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "直播" })).toBeInTheDocument();
   });
 
   it("应该只统计未完成且未暂停的任务，并在下载导航项上显示数量角标", () => {
@@ -101,30 +98,19 @@ describe("AppNavBar 组件", () => {
     expect(screen.queryByText("0")).not.toBeInTheDocument();
   });
 
-  it("点击更多按钮应展开菜单，显示直播、设置", async () => {
-    const user = userEvent.setup();
-
-    renderNavBar();
-
-    await user.click(screen.getByRole("button", { name: "更多" }));
-
-    expect(screen.getByRole("menuitem", { name: "直播" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "设置" })).toBeInTheDocument();
-  });
-
-  it("路由命中更多菜单项时，更多按钮应呈现高亮态", () => {
+  it("路由命中直播时，直播导航项应呈现高亮态", () => {
     renderNavBar("/live");
 
-    const moreButton = screen.getByRole("button", { name: "更多" });
+    const liveLink = screen.getByRole("link", { name: "直播" });
 
-    expect(moreButton.className).toContain("bg-primary/10");
+    expect(liveLink.className).toContain("bg-primary/10");
   });
 
-  it("路由未命中更多菜单项时，更多按钮不应该呈现高亮态", () => {
+  it("路由未命中直播时，直播导航项不应该呈现高亮态", () => {
     renderNavBar("/");
 
-    const moreButton = screen.getByRole("button", { name: "更多" });
+    const liveLink = screen.getByRole("link", { name: "直播" });
 
-    expect(moreButton.className).not.toContain("bg-primary/10");
+    expect(liveLink.className).not.toContain("bg-primary/10");
   });
 });

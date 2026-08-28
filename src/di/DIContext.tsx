@@ -26,7 +26,6 @@ import { GetProxyUseCase } from "../application/settings/GetProxyUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { GetSpeedLimitsUseCase } from "../application/settings/GetSpeedLimitsUseCase";
 import { GetTranslationConfigUseCase } from "../application/settings/GetTranslationConfigUseCase";
-import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
 import { SetAiConfigsUseCase } from "../application/settings/SetAiConfigsUseCase";
 import { SetDownloadDirUseCase } from "../application/settings/SetDownloadDirUseCase";
@@ -110,7 +109,6 @@ export interface DIContainer {
   getVideoMetadataUseCase: GetVideoMetadataUseCase;
 
   getSettingsUseCase: GetSettingsUseCase;
-  saveSettingsUseCase: SaveSettingsUseCase;
   selectDirectoryUseCase: SelectDirectoryUseCase;
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
@@ -230,7 +228,6 @@ export function createDefaultDIContainer(): DIContainer {
   );
 
   const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
-  const saveSettingsUseCase = new SaveSettingsUseCase(settingsRepository);
   const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
@@ -380,7 +377,6 @@ export function createDefaultDIContainer(): DIContainer {
     getVideoMetadataUseCase,
 
     getSettingsUseCase,
-    saveSettingsUseCase,
     selectDirectoryUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,

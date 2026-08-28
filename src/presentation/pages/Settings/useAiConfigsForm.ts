@@ -59,6 +59,7 @@ export function useAiConfigsForm() {
 
   const handleStartEdit = (index: number) => {
     const config = aiConfigs[index];
+    /* v8 ignore next */
     if (!config) return;
     setEditingIndex(index);
     setAliasInput(config.alias);

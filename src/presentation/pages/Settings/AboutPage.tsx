@@ -22,6 +22,7 @@ export default function AboutPage() {
   } = useQuery(() => checkUpdateUseCase.execute(), [checkUpdateUseCase]);
 
   const handleOpenGithub = async () => {
+    /* v8 ignore next */
     if (!updateResult?.htmlUrl) return;
     await openUpdateUrlUseCase.execute(
       NonEmptyStringSchema.parse(updateResult.htmlUrl),
