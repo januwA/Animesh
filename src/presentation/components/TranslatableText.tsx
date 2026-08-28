@@ -51,24 +51,14 @@ export function TranslatableText({
         )}
       >
         {loading ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            disabled
-            className="text-muted-foreground"
-          >
+          <Button variant="ghost" size="xs" disabled>
             <Loader2 className="size-3 animate-spin" />
-            <span>翻译中...</span>
+            翻译中...
           </Button>
         ) : isTranslated ? (
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={toggle}
-            className="text-muted-foreground hover:text-foreground"
-          >
+          <Button variant="ghost" size="xs" onClick={toggle}>
             <Languages className="size-3" />
-            <span>{showingOriginal ? "查看翻译" : "查看原文"}</span>
+            {showingOriginal ? "查看翻译" : "查看原文"}
           </Button>
         ) : (
           <Button
@@ -76,10 +66,9 @@ export function TranslatableText({
             size="xs"
             onClick={translate}
             disabled={text.trim() === ""}
-            className="text-muted-foreground hover:text-foreground"
           >
             <Languages className="size-3" />
-            <span>翻译</span>
+            翻译
           </Button>
         )}
 

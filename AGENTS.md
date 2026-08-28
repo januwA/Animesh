@@ -11,6 +11,12 @@
         useGlobalEffects: vi.fn(),
       }));
       ```
+    - 组件依赖的子组件内部有深层 hook/DI 依赖链时，若测试不关心该子组件行为，直接 mock 子组件隔离依赖，不要为了提供 DI 而 mock 整个容器：
+      ```tsx
+      vi.mock(import("@/presentation/components/TranslatableText"), () => ({
+        TranslatableText: vi.fn(({ text }) => <span>{text}</span>),
+      }));
+      ```
   - 所有自定义 React Context 应同时导出 ContextType（类型）和 Context（值），供测试通过 `<XxxContext value={mock}>` 直接注入桩数据（React 19+ 语法），无需创建 Provider 包裹层。
     - 参考实现：`src/presentation/context/TorrentStatusContext.tsx`
       ```tsx

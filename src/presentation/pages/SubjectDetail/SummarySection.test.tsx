@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { SummarySection } from "@/presentation/pages/SubjectDetail/SummarySection";
+
+vi.mock(import("@/presentation/components/TranslatableText"), () => ({
+  TranslatableText: vi.fn(({ text }) => <span>{text}</span>),
+}));
 
 const makeSubject = (overrides: Partial<AnimeSubject> = {}): AnimeSubject => ({
   id: 123,

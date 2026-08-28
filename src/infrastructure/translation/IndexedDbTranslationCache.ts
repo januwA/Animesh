@@ -1,9 +1,10 @@
+import { Duration } from "ajanuw-duration";
 import { z } from "zod";
 import type { TranslationCache } from "@/domain/translation/TranslationCache";
 import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 
 const TRANSLATION_CACHE_PREFIX = "translation";
-const TRANSLATION_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 天
+const TRANSLATION_CACHE_TTL_MS = new Duration({ days: 7 }).inMilliseconds;
 
 /**
  * 基于 IndexedDB 的翻译缓存实现。

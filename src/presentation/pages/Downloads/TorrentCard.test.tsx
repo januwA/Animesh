@@ -5,6 +5,10 @@ import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentCardProps } from "./TorrentCard";
 import { TorrentCard } from "./TorrentCard";
 
+vi.mock(import("@/presentation/components/TranslatableText"), () => ({
+  TranslatableText: vi.fn(({ text }) => <span>{text}</span>),
+}));
+
 const makeStatus = (
   overrides: Partial<TorrentStatusInfo> = {},
 ): TorrentStatusInfo => ({

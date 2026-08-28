@@ -1,8 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { GroupPanel } from "./GroupPanel";
+
+vi.mock(import("@/presentation/components/TranslatableText"), () => ({
+  TranslatableText: vi.fn(({ text }) => <span>{text}</span>),
+}));
 
 const makeStatus = (): TorrentStatusInfo => ({
   info_hash: NonEmptyStringSchema.parse("hash123"),
