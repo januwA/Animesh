@@ -1,4 +1,4 @@
-import { Languages, Loader2, RotateCcw } from "lucide-react";
+import { Languages, Loader2 } from "lucide-react";
 import type { TranslationProvider } from "@/domain/settings/SettingsSchemas";
 import { Button } from "@/presentation/components/ui/button";
 import { useTranslation } from "@/presentation/hooks/useTranslation";
@@ -46,7 +46,7 @@ export function TranslatableText({
     <div className="relative">
       <div
         className={cn(
-          "flex items-center gap-1 border-b border-border/50 pb-1 mb-1",
+          "flex items-center gap-1 border-b border-border/50",
           toolbarClassName,
         )}
       >
@@ -67,7 +67,7 @@ export function TranslatableText({
             onClick={toggle}
             className="text-muted-foreground hover:text-foreground"
           >
-            <RotateCcw className="size-3" />
+            <Languages className="size-3" />
             <span>{showingOriginal ? "查看翻译" : "查看原文"}</span>
           </Button>
         ) : (

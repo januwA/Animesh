@@ -1,6 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
+import { TranslatableText } from "@/presentation/components/TranslatableText";
 import { Badge } from "@/presentation/components/ui/badge";
 import {
   Collapsible,
@@ -35,9 +36,11 @@ export function GroupPanel({
               type="button"
               className="group flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 rounded-lg py-1 text-left outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              <span className="min-w-0 truncate text-sm font-semibold text-foreground">
-                {title}
-              </span>
+              <TranslatableText
+                text={title}
+                as="span"
+                className="min-w-0 truncate text-sm font-semibold text-foreground"
+              />
               <span className="flex shrink-0 items-center gap-2">
                 <Badge variant="secondary">{total}</Badge>
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300 group-data-[state=open]:rotate-180" />

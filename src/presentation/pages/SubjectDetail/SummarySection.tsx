@@ -1,4 +1,5 @@
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { TranslatableText } from "@/presentation/components/TranslatableText";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 
@@ -28,9 +29,11 @@ export function SummarySection({ subject }: SummarySectionProps) {
         <h2 className="text-sm font-semibold text-muted-foreground">
           剧情简介
         </h2>
-        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-          {subject.summary}
-        </p>
+        <TranslatableText
+          text={subject.summary}
+          as="p"
+          className="text-sm text-foreground leading-relaxed whitespace-pre-wrap"
+        />
       </CardContent>
     </Card>
   );
