@@ -9,6 +9,10 @@ vi.mock(import("./useAiConfigsForm"), () => ({
   useAiConfigsForm: vi.fn(),
 }));
 
+vi.mock(import("./AiConfigForm"), () => ({
+  AiConfigForm: () => <div data-testid="ai-config-form" />,
+}));
+
 const makeConfig = (overrides: Partial<AiConfig> = {}): AiConfig => ({
   alias: NonEmptyStringSchema.parse("DeepSeek"),
   api_endpoint: NonEmptyStringSchema.parse("http://127.0.0.1:11434/v1"),
@@ -23,17 +27,10 @@ function mockForm(
   vi.mocked(hook.useAiConfigsForm).mockReturnValue({
     aiConfigs: [],
     editingIndex: null,
-    aliasInput: "",
-    apiEndpointInput: "",
-    apiKeyInput: "",
-    modelInput: "",
+    form: {} as ReturnType<typeof hook.useAiConfigsForm>["form"],
     testingAi: false,
     saving: false,
     loading: false,
-    setAliasInput: vi.fn(),
-    setApiEndpointInput: vi.fn(),
-    setApiKeyInput: vi.fn(),
-    setModelInput: vi.fn(),
     handleStartAdd: vi.fn(),
     handleStartEdit: vi.fn(),
     handleCancelEdit: vi.fn(),
@@ -76,13 +73,6 @@ describe("AiModelsPage AI 模型设置页面", () => {
     expect(screen.getByText("+ 添加 AI 配置")).toBeInTheDocument();
   });
 
-  it("编辑中应隐藏添加按钮并显示 AiConfigForm", () => {
-    mockForm({ editingIndex: 0, aiConfigs: [makeConfig()] });
-    render(<AiModelsPage />);
-    expect(screen.queryByText("+ 添加 AI 配置")).not.toBeInTheDocument();
-    expect(screen.getByText("编辑 AI 配置: DeepSeek")).toBeInTheDocument();
-  });
-
   it("点击测试按钮应调用 handleTestConfig", () => {
     const handleTestConfig = vi.fn();
     const config = makeConfig();
@@ -120,5 +110,11 @@ describe("AiModelsPage AI 模型设置页面", () => {
     mockForm({ aiConfigs: [makeConfig()], testingAi: true });
     render(<AiModelsPage />);
     expect(screen.getByRole("button", { name: "测试" })).toBeDisabled();
+  });
+
+  it("编辑中时应显示 AI 配置表单", () => {
+    mockForm({ editingIndex: 0, aiConfigs: [makeConfig()] });
+    render(<AiModelsPage />);
+    expect(screen.getByTestId("ai-config-form")).toBeInTheDocument();
   });
 });

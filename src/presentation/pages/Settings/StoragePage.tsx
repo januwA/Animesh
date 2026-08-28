@@ -1,7 +1,12 @@
-import { Folder, Gauge, Info, Lightbulb, Save } from "lucide-react";
-import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Folder, Save } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
+import {
+  type StorageForm,
+  StorageFormSchema,
+} from "@/domain/settings/SettingsSchemas";
 import { Button } from "@/presentation/components/ui/button";
 import {
   Card,
@@ -10,7 +15,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
-import { Input } from "@/presentation/components/ui/input";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSeparator,
+} from "@/presentation/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
+} from "@/presentation/components/ui/input-group";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 
@@ -27,9 +46,18 @@ export default function StoragePage() {
     import.meta.env.TAURI_ENV_PLATFORM,
   );
 
-  const [downloadDir, setDownloadDir] = useState("");
-  const [maxDownloadSpeed, setMaxDownloadSpeed] = useState(0);
-  const [maxUploadSpeed, setMaxUploadSpeed] = useState(0);
+  const form = useForm<StorageForm>({
+    resolver: zodResolver(StorageFormSchema),
+    defaultValues: { downloadDir: "", maxDownloadSpeed: 0, maxUploadSpeed: 0 },
+  });
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    formState: { errors },
+  } = form;
 
   const { loading } = useQuery(
     async () => {
@@ -42,18 +70,23 @@ export default function StoragePage() {
     [getDownloadDirUseCase, getSpeedLimitsUseCase],
     {
       onSuccess: ({ dirResult, speedResult }) => {
-        setDownloadDir(dirResult.downloadDir);
-        setMaxDownloadSpeed(speedResult.maxDownloadSpeed);
-        setMaxUploadSpeed(speedResult.maxUploadSpeed);
+        reset({
+          downloadDir: dirResult.downloadDir,
+          maxDownloadSpeed: speedResult.maxDownloadSpeed,
+          maxUploadSpeed: speedResult.maxUploadSpeed,
+        });
       },
     },
   );
 
   const { execute: save, loading: saving } = useMutation(
-    async (_ctx) => {
+    async (_ctx, data: StorageForm) => {
       await Promise.all([
-        setDownloadDirUseCase.execute(downloadDir),
-        setSpeedLimitsUseCase.execute(maxDownloadSpeed, maxUploadSpeed),
+        setDownloadDirUseCase.execute(data.downloadDir),
+        setSpeedLimitsUseCase.execute(
+          data.maxDownloadSpeed,
+          data.maxUploadSpeed,
+        ),
       ]);
     },
     {
@@ -67,7 +100,7 @@ export default function StoragePage() {
   const handleSelectDir = async () => {
     const result = await selectDirectoryUseCase.execute();
     if (result) {
-      setDownloadDir(result);
+      setValue("downloadDir", result);
     }
   };
 
@@ -82,12 +115,7 @@ export default function StoragePage() {
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        save();
-      }}
-    >
+    <form onSubmit={handleSubmit((data) => save(data))}>
       <Card className="ani-card">
         <CardHeader className="p-5">
           <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
@@ -100,111 +128,99 @@ export default function StoragePage() {
             </Button>
           </CardAction>
         </CardHeader>
-        <CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="download-dir-input"
-              className="text-muted-foreground font-medium"
-            >
-              默认下载及播放缓存目录
-            </label>
-            <div className="flex gap-2">
-              <Input
-                id="download-dir-input"
-                value={downloadDir}
-                disabled={isMobile}
-                onChange={(e) => setDownloadDir(e.target.value)}
-                placeholder={
-                  isMobile
-                    ? "应用沙盒内部路径"
-                    : "选择或输入下载路径，例如 D:\\AnimeshDownloads"
-                }
-                className="flex-1"
-              />
-              {!isMobile && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleSelectDir}
-                  className="gap-1.5"
-                >
-                  <Folder className="h-4 w-4" />
-                  选择目录
-                </Button>
-              )}
-            </div>
-            <p className="text-muted-foreground/70 leading-relaxed mt-1 flex flex-col gap-1.5">
-              {isMobile ? (
-                <span className="flex items-center gap-1">
-                  <Info className="h-3.5 w-3.5 text-primary shrink-0" />
-                  移动端已自动选用应用沙盒内部路径，无需且不支持手动更改。
-                </span>
-              ) : (
-                <span className="flex items-start gap-1">
-                  <Lightbulb className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
-                  <span>
-                    提示：边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区。
-                  </span>
-                </span>
-              )}
-            </p>
-          </div>
+        <CardContent className="px-5 pb-6 text-xs">
+          <FieldGroup>
+            {!isMobile && (
+              <>
+                <Field data-invalid={!!errors.downloadDir}>
+                  <FieldLabel htmlFor="download-dir-input">
+                    默认下载及播放缓存目录
+                  </FieldLabel>
+                  <InputGroup>
+                    <InputGroupInput
+                      id="download-dir-input"
+                      {...register("downloadDir")}
+                      aria-invalid={!!errors.downloadDir}
+                      placeholder={
+                        "选择或输入下载路径，例如 D:\\AnimeshDownloads"
+                      }
+                    />
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        variant="secondary"
+                        onClick={handleSelectDir}
+                      >
+                        <Folder />
+                        选择目录
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
+                  {errors.downloadDir && (
+                    <FieldError>{errors.downloadDir.message}</FieldError>
+                  )}
+                  <FieldDescription>
+                    边下边播的缓存与下载的完整文件均保存在该路径下。建议选择剩余空间较大的磁盘分区
+                  </FieldDescription>
+                </Field>
 
-          <div className="flex flex-col gap-2 pt-3 border-t border-border">
-            <label
-              htmlFor="max-download-speed-input"
-              className="text-muted-foreground font-medium flex items-center gap-1.5"
-            >
-              <Gauge className="h-3.5 w-3.5 text-primary" />
-              后台下载速度限制
-            </label>
-            <div className="flex gap-2 items-center">
-              <Input
-                id="max-download-speed-input"
-                type="number"
-                min={0}
-                value={maxDownloadSpeed}
-                onChange={(e) => setMaxDownloadSpeed(Number(e.target.value))}
-                placeholder="0"
-                className="sm:w-28"
-              />
-              <span className="text-xs text-muted-foreground font-medium">
-                KB/s
-              </span>
-            </div>
-            <p className="text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
-              <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-              <span>限制 BT 后台下载的速率。设为 0 表示不限速。</span>
-            </p>
-          </div>
+                <FieldSeparator />
+              </>
+            )}
 
-          <div className="flex flex-col gap-2 pt-3 border-t border-border">
-            <label
-              htmlFor="max-upload-speed-input"
-              className="text-muted-foreground font-medium flex items-center gap-1.5"
-            >
-              <Gauge className="h-3.5 w-3.5 text-primary" />
-              后台上传速度限制
-            </label>
-            <div className="flex gap-2 items-center">
-              <Input
-                id="max-upload-speed-input"
-                type="number"
-                min={0}
-                value={maxUploadSpeed}
-                onChange={(e) => setMaxUploadSpeed(Number(e.target.value))}
-                placeholder="0"
-                className="sm:w-28"
-              />
-              <span className="text-xs text-muted-foreground font-medium">
-                KB/s
-              </span>
-            </div>
-            <p className="text-muted-foreground/70 leading-relaxed mt-1 flex items-start gap-1">
-              <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-              <span>限制 BT 后台做种上传的速率。设为 0 表示不限速。</span>
-            </p>
-          </div>
+            <Field data-invalid={!!errors.maxDownloadSpeed}>
+              <FieldLabel htmlFor="max-download-speed-input">
+                后台下载速度限制
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id="max-download-speed-input"
+                  type="number"
+                  min={0}
+                  {...register("maxDownloadSpeed", { valueAsNumber: true })}
+                  aria-invalid={!!errors.maxDownloadSpeed}
+                  placeholder="0"
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupText>KB/s</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
+              {/* v8 ignore start -- 与 downloadDir 错误显示模式相同，jsdom 无法对 number input 设置负值触发验证 */}
+              {errors.maxDownloadSpeed && (
+                <FieldError>{errors.maxDownloadSpeed.message}</FieldError>
+              )}
+              <FieldDescription>
+                限制 BT 后台下载的速率。设为 0 表示不限速
+              </FieldDescription>
+            </Field>
+
+            <FieldSeparator />
+
+            <Field data-invalid={!!errors.maxUploadSpeed}>
+              <FieldLabel htmlFor="max-upload-speed-input">
+                后台上传速度限制
+              </FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id="max-upload-speed-input"
+                  type="number"
+                  min={0}
+                  {...register("maxUploadSpeed", { valueAsNumber: true })}
+                  aria-invalid={!!errors.maxUploadSpeed}
+                  placeholder="0"
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupText>KB/s</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
+              {errors.maxUploadSpeed && (
+                <FieldError>{errors.maxUploadSpeed.message}</FieldError>
+              )}
+              {/* v8 ignore stop */}
+              <FieldDescription>
+                限制 BT 后台做种上传的速率。设为 0 表示不限速
+              </FieldDescription>
+            </Field>
+          </FieldGroup>
         </CardContent>
       </Card>
     </form>

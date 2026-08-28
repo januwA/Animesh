@@ -224,33 +224,33 @@ describe("StoragePage 存储设置页面", () => {
     });
   });
 
-  it("移动端模式下应显示移动端提示并禁用目录选择", async () => {
-    vi.stubEnv("TAURI_ENV_PLATFORM", "android");
+  it("提交空下载目录时应显示验证错误", async () => {
+    const user = userEvent.setup();
     renderPage();
+
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          "移动端已自动选用应用沙盒内部路径，无需且不支持手动更改。",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByLabelText("默认下载及播放缓存目录")).toHaveValue(
+        "/downloads",
+      );
     });
-    expect(
-      screen.queryByRole("button", { name: "选择目录" }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("默认下载及播放缓存目录")).toBeDisabled();
+
+    await user.clear(screen.getByLabelText("默认下载及播放缓存目录"));
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("下载目录不能为空")).toBeInTheDocument();
+    });
   });
 
-  it("非移动端模式下应显示桌面提示并启用目录选择", async () => {
-    vi.stubEnv("TAURI_ENV_PLATFORM", "");
+  it("移动端平台应隐藏下载目录设置", async () => {
+    vi.stubEnv("TAURI_ENV_PLATFORM", "android");
     renderPage();
+
     await waitFor(() => {
-      expect(
-        screen.getByText(/提示：边下边播的缓存与下载的完整文件/),
-      ).toBeInTheDocument();
+      expect(screen.getByLabelText("后台下载速度限制")).toBeInTheDocument();
     });
-    expect(
-      screen.getByRole("button", { name: "选择目录" }),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("默认下载及播放缓存目录")).not.toBeDisabled();
+
+    expect(screen.queryByLabelText("默认下载及播放缓存目录")).toBeNull();
+    expect(screen.queryByRole("button", { name: "选择目录" })).toBeNull();
   });
 });

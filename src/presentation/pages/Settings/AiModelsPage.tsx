@@ -106,18 +106,11 @@ export default function AiModelsPage() {
 
         {form.editingIndex !== null && (
           <AiConfigForm
+            form={form.form}
             editingIndex={form.editingIndex}
             aiConfigs={form.aiConfigs}
-            aliasInput={form.aliasInput}
-            apiEndpointInput={form.apiEndpointInput}
-            apiKeyInput={form.apiKeyInput}
-            modelInput={form.modelInput}
             testingAi={form.testingAi}
-            onAliasInputChange={form.setAliasInput}
-            onApiEndpointInputChange={form.setApiEndpointInput}
-            onApiKeyInputChange={form.setApiKeyInput}
-            onModelInputChange={form.setModelInput}
-            onTestConnection={form.handleCancelEdit}
+            onTestConnection={form.handleTestCurrentConnection}
             onCancel={form.handleCancelEdit}
             onSave={form.handleSaveConfig}
           />

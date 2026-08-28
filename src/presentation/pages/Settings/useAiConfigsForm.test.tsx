@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { type DIContainer, DIContext } from "@/di/DIContext";
-import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
+import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import { useAiConfigsForm } from "./useAiConfigsForm";
 
 function makeDI(overrides?: Partial<DIContainer>): DIContainer {
@@ -24,20 +24,22 @@ function createWrapper(mockDI: DIContainer) {
   };
 }
 
+const makeConfig = (overrides?: Record<string, string>): AiConfig =>
+  ({
+    alias: "DeepSeek",
+    api_endpoint: "http://test",
+    api_key: "sk-1",
+    ai_model: "deepseek",
+    ...overrides,
+  }) as AiConfig;
+
 describe("useAiConfigsForm AI 配置表单 hook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("应加载 AI 配置列表", async () => {
-    const configs = [
-      {
-        alias: "DeepSeek",
-        api_endpoint: "http://test",
-        api_key: "sk-1",
-        ai_model: "deepseek",
-      },
-    ];
+    const configs = [makeConfig()];
     const mockDI = makeDI({
       getAiConfigsUseCase: {
         execute: vi.fn().mockResolvedValue({ aiConfigs: configs }),
@@ -54,7 +56,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     expect(result.current.aiConfigs).toEqual(configs);
   });
 
-  it("handleStartAdd 应进入添加模式", async () => {
+  it("handleStartAdd 应进入添加模式并清空表单", async () => {
     const mockDI = makeDI();
     const { result } = renderHook(() => useAiConfigsForm(), {
       wrapper: createWrapper(mockDI),
@@ -67,19 +69,16 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     act(() => result.current.handleStartAdd());
 
     expect(result.current.editingIndex).toBe(-1);
-    expect(result.current.aliasInput).toBe("");
-    expect(result.current.apiEndpointInput).toBe("");
-    expect(result.current.apiKeyInput).toBe("");
-    expect(result.current.modelInput).toBe("");
+    expect(result.current.form.getValues()).toEqual({
+      alias: "",
+      api_endpoint: "",
+      api_key: "",
+      ai_model: "",
+    });
   });
 
   it("handleStartEdit 应进入编辑模式并预填值", async () => {
-    const config = {
-      alias: "DeepSeek",
-      api_endpoint: "http://test",
-      api_key: "sk-1",
-      ai_model: "deepseek",
-    };
+    const config = makeConfig();
     const mockDI = makeDI({
       getAiConfigsUseCase: {
         execute: vi.fn().mockResolvedValue({ aiConfigs: [config] }),
@@ -96,10 +95,12 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     act(() => result.current.handleStartEdit(0));
 
     expect(result.current.editingIndex).toBe(0);
-    expect(result.current.aliasInput).toBe("DeepSeek");
-    expect(result.current.apiEndpointInput).toBe("http://test");
-    expect(result.current.apiKeyInput).toBe("sk-1");
-    expect(result.current.modelInput).toBe("deepseek");
+    expect(result.current.form.getValues()).toEqual({
+      alias: "DeepSeek",
+      api_endpoint: "http://test",
+      api_key: "sk-1",
+      ai_model: "deepseek",
+    });
   });
 
   it("handleCancelEdit 应退出编辑模式", async () => {
@@ -119,12 +120,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
   });
 
   it("handleDeleteConfig 应删除配置并保存", async () => {
-    const config = {
-      alias: "DeepSeek",
-      api_endpoint: "http://test",
-      api_key: "sk-1",
-      ai_model: "deepseek",
-    };
+    const config = makeConfig();
     const saveExecute = vi.fn().mockResolvedValue(undefined);
     const mockDI = makeDI({
       getAiConfigsUseCase: {
@@ -149,12 +145,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
   });
 
   it("删除当前编辑的配置应退出编辑模式", async () => {
-    const config = {
-      alias: "DeepSeek",
-      api_endpoint: "http://test",
-      api_key: "sk-1",
-      ai_model: "deepseek",
-    };
+    const config = makeConfig();
     const mockDI = makeDI({
       getAiConfigsUseCase: {
         execute: vi.fn().mockResolvedValue({ aiConfigs: [config] }),
@@ -178,8 +169,18 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
 
   it("删除编辑中之前的配置应调整 editingIndex", async () => {
     const configs = [
-      { alias: "A", api_endpoint: "http://a", api_key: "sk-a", ai_model: "a" },
-      { alias: "B", api_endpoint: "http://b", api_key: "sk-b", ai_model: "b" },
+      makeConfig({
+        alias: "A",
+        api_endpoint: "http://a",
+        api_key: "sk-a",
+        ai_model: "a",
+      }),
+      makeConfig({
+        alias: "B",
+        api_endpoint: "http://b",
+        api_key: "sk-b",
+        ai_model: "b",
+      }),
     ];
     const mockDI = makeDI({
       getAiConfigsUseCase: {
@@ -202,7 +203,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     expect(result.current.editingIndex).toBe(0);
   });
 
-  it("handleSaveConfig 别名为空时应提示警告", async () => {
+  it("handleSaveConfig 别名为空时应触发验证错误", async () => {
     const mockDI = makeDI();
     const { result } = renderHook(() => useAiConfigsForm(), {
       wrapper: createWrapper(mockDI),
@@ -213,12 +214,12 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.handleSaveConfig());
 
-    expect(toast.warning).toHaveBeenCalledWith("请输入别名");
+    const valid = await result.current.form.trigger();
+    expect(valid).toBe(false);
   });
 
-  it("handleSaveConfig 接口地址为空时应提示警告", async () => {
+  it("handleSaveConfig 接口地址为空时应触发验证错误", async () => {
     const mockDI = makeDI();
     const { result } = renderHook(() => useAiConfigsForm(), {
       wrapper: createWrapper(mockDI),
@@ -229,13 +230,13 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("test"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.form.setValue("alias", "test"));
 
-    expect(toast.warning).toHaveBeenCalledWith("请输入接口地址");
+    const valid = await result.current.form.trigger();
+    expect(valid).toBe(false);
   });
 
-  it("handleSaveConfig API 密钥为空时应提示警告", async () => {
+  it("handleSaveConfig API 密钥为空时应触发验证错误", async () => {
     const mockDI = makeDI();
     const { result } = renderHook(() => useAiConfigsForm(), {
       wrapper: createWrapper(mockDI),
@@ -246,24 +247,21 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("test"));
-    act(() => result.current.setApiEndpointInput("http://test"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.form.setValue("alias", "test"));
+    act(() => result.current.form.setValue("api_endpoint", "http://test"));
 
-    expect(toast.warning).toHaveBeenCalledWith("请输入 API 密钥");
+    const valid = await result.current.form.trigger();
+    expect(valid).toBe(false);
   });
 
-  it("handleSaveConfig 别名重复时应提示警告", async () => {
-    const config = {
-      alias: "DeepSeek",
-      api_endpoint: "http://test",
-      api_key: "sk-1",
-      ai_model: "deepseek",
-    };
+  it("handleSaveConfig 别名重复时不应保存", async () => {
+    const config = makeConfig();
+    const saveExecute = vi.fn().mockResolvedValue(undefined);
     const mockDI = makeDI({
       getAiConfigsUseCase: {
         execute: vi.fn().mockResolvedValue({ aiConfigs: [config] }),
       },
+      setAiConfigsUseCase: { execute: saveExecute },
     } as unknown as DIContainer);
     const { result } = renderHook(() => useAiConfigsForm(), {
       wrapper: createWrapper(mockDI),
@@ -274,12 +272,16 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("DeepSeek"));
-    act(() => result.current.setApiEndpointInput("http://new"));
-    act(() => result.current.setApiKeyInput("sk-new"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.form.setValue("alias", "DeepSeek"));
+    act(() => result.current.form.setValue("api_endpoint", "http://new"));
+    act(() => result.current.form.setValue("api_key", "sk-new"));
+    act(() => result.current.form.setValue("ai_model", "model-v1"));
+    await act(async () => {
+      result.current.handleSaveConfig();
+    });
 
-    expect(toast.warning).toHaveBeenCalledWith("该别名已存在，请使用其他别名");
+    expect(saveExecute).not.toHaveBeenCalled();
+    expect(result.current.editingIndex).toBe(-1);
   });
 
   it("handleSaveConfig 添加模式应追加配置", async () => {
@@ -296,10 +298,10 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("NewAI"));
-    act(() => result.current.setApiEndpointInput("http://new"));
-    act(() => result.current.setApiKeyInput("sk-new"));
-    act(() => result.current.setModelInput("model-v1"));
+    act(() => result.current.form.setValue("alias", "NewAI"));
+    act(() => result.current.form.setValue("api_endpoint", "http://new"));
+    act(() => result.current.form.setValue("api_key", "sk-new"));
+    act(() => result.current.form.setValue("ai_model", "model-v1"));
     await act(async () => {
       result.current.handleSaveConfig();
     });
@@ -316,12 +318,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
   });
 
   it("handleSaveConfig 编辑模式应更新配置", async () => {
-    const config = {
-      alias: "DeepSeek",
-      api_endpoint: "http://test",
-      api_key: "sk-1",
-      ai_model: "deepseek",
-    };
+    const config = makeConfig();
     const saveExecute = vi.fn().mockResolvedValue(undefined);
     const mockDI = makeDI({
       getAiConfigsUseCase: {
@@ -338,7 +335,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartEdit(0));
-    act(() => result.current.setAliasInput("Updated"));
+    act(() => result.current.form.setValue("alias", "Updated"));
     await act(async () => {
       result.current.handleSaveConfig();
     });
@@ -366,12 +363,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    const config = {
-      alias: NonEmptyStringSchema.parse("DeepSeek"),
-      api_endpoint: NonEmptyStringSchema.parse("http://test"),
-      api_key: NonEmptyStringSchema.parse("sk-1"),
-      ai_model: NonEmptyStringSchema.parse("deepseek"),
-    };
+    const config = makeConfig();
     act(() => result.current.handleTestConfig(config));
 
     await waitFor(() => {
@@ -379,7 +371,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
   });
 
-  it("handleTestCurrentConnection 接口地址为空时应提示警告", async () => {
+  it("handleTestCurrentConnection 接口地址为空时应触发验证错误", async () => {
     const mockDI = makeDI();
     const { result } = renderHook(() => useAiConfigsForm(), {
       wrapper: createWrapper(mockDI),
@@ -390,12 +382,16 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.handleTestCurrentConnection());
+    await act(async () => {
+      result.current.handleTestCurrentConnection();
+    });
 
-    expect(toast.warning).toHaveBeenCalledWith("请输入 AI 接口地址");
+    await waitFor(() => {
+      expect(result.current.form.formState.errors.api_endpoint).toBeDefined();
+    });
   });
 
-  it("handleTestCurrentConnection API 密钥为空时应提示警告", async () => {
+  it("handleTestCurrentConnection API 密钥为空时应触发验证错误", async () => {
     const mockDI = makeDI();
     const { result } = renderHook(() => useAiConfigsForm(), {
       wrapper: createWrapper(mockDI),
@@ -406,10 +402,14 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.setApiEndpointInput("http://test"));
-    act(() => result.current.handleTestCurrentConnection());
+    act(() => result.current.form.setValue("api_endpoint", "http://test"));
+    await act(async () => {
+      result.current.handleTestCurrentConnection();
+    });
 
-    expect(toast.warning).toHaveBeenCalledWith("请输入 API 密钥");
+    await waitFor(() => {
+      expect(result.current.form.formState.errors.api_key).toBeDefined();
+    });
   });
 
   it("handleTestCurrentConnection 应构造配置并调用验证", async () => {
@@ -426,11 +426,13 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("TestAI"));
-    act(() => result.current.setApiEndpointInput("http://test"));
-    act(() => result.current.setApiKeyInput("sk-test"));
-    act(() => result.current.setModelInput("model-v1"));
-    act(() => result.current.handleTestCurrentConnection());
+    act(() => result.current.form.setValue("alias", "TestAI"));
+    act(() => result.current.form.setValue("api_endpoint", "http://test"));
+    act(() => result.current.form.setValue("api_key", "sk-test"));
+    act(() => result.current.form.setValue("ai_model", "model-v1"));
+    await act(async () => {
+      result.current.handleTestCurrentConnection();
+    });
 
     await waitFor(() => {
       expect(execute).toHaveBeenCalledWith({
@@ -438,7 +440,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
         api_endpoint: "http://test",
         api_key: "sk-test",
         ai_model: "model-v1",
-      });
+      } as AiConfig);
     });
   });
 
@@ -455,12 +457,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    const config = {
-      alias: NonEmptyStringSchema.parse("DeepSeek"),
-      api_endpoint: NonEmptyStringSchema.parse("http://test"),
-      api_key: NonEmptyStringSchema.parse("sk-1"),
-      ai_model: NonEmptyStringSchema.parse("deepseek"),
-    };
+    const config = makeConfig();
     act(() => result.current.handleTestConfig(config));
 
     await waitFor(() => {
@@ -468,17 +465,14 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
   });
 
-  it("别名大小写不敏感的重复检查", async () => {
-    const config = {
-      alias: "deepseek",
-      api_endpoint: "http://test",
-      api_key: "sk-1",
-      ai_model: "deepseek",
-    };
+  it("别名大小写不敏感的重复检查应阻止保存", async () => {
+    const config = makeConfig({ alias: "deepseek" });
+    const saveExecute = vi.fn().mockResolvedValue(undefined);
     const mockDI = makeDI({
       getAiConfigsUseCase: {
         execute: vi.fn().mockResolvedValue({ aiConfigs: [config] }),
       },
+      setAiConfigsUseCase: { execute: saveExecute },
     } as unknown as DIContainer);
     const { result } = renderHook(() => useAiConfigsForm(), {
       wrapper: createWrapper(mockDI),
@@ -489,12 +483,14 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("DeepSeek"));
-    act(() => result.current.setApiEndpointInput("http://new"));
-    act(() => result.current.setApiKeyInput("sk-new"));
-    act(() => result.current.handleSaveConfig());
+    act(() => result.current.form.setValue("alias", "DeepSeek"));
+    act(() => result.current.form.setValue("api_endpoint", "http://new"));
+    act(() => result.current.form.setValue("api_key", "sk-new"));
+    await act(async () => {
+      result.current.handleSaveConfig();
+    });
 
-    expect(toast.warning).toHaveBeenCalledWith("该别名已存在，请使用其他别名");
+    expect(saveExecute).not.toHaveBeenCalled();
   });
 
   it("保存配置失败时应显示错误提示", async () => {
@@ -511,10 +507,10 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
     });
 
     act(() => result.current.handleStartAdd());
-    act(() => result.current.setAliasInput("NewAI"));
-    act(() => result.current.setApiEndpointInput("http://new"));
-    act(() => result.current.setApiKeyInput("sk-new"));
-    act(() => result.current.setModelInput("model-v1"));
+    act(() => result.current.form.setValue("alias", "NewAI"));
+    act(() => result.current.form.setValue("api_endpoint", "http://new"));
+    act(() => result.current.form.setValue("api_key", "sk-new"));
+    act(() => result.current.form.setValue("ai_model", "model-v1"));
     await act(async () => {
       result.current.handleSaveConfig();
     });
@@ -537,12 +533,7 @@ describe("useAiConfigsForm AI 配置表单 hook", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    const config = {
-      alias: NonEmptyStringSchema.parse("DeepSeek"),
-      api_endpoint: NonEmptyStringSchema.parse("http://test"),
-      api_key: NonEmptyStringSchema.parse("sk-1"),
-      ai_model: NonEmptyStringSchema.parse("deepseek"),
-    };
+    const config = makeConfig();
     await act(async () => {
       result.current.handleTestConfig(config);
     });

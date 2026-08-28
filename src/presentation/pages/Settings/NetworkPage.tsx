@@ -10,7 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
-import { Input } from "@/presentation/components/ui/input";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+} from "@/presentation/components/ui/field";
+import {
+  InputGroup,
+  InputGroupInput,
+} from "@/presentation/components/ui/input-group";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 
@@ -68,20 +76,19 @@ export default function NetworkPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="px-5 pb-6 flex flex-col gap-4 text-xs">
-          <div className="flex flex-col gap-2">
-            <label
-              htmlFor="proxy-input"
-              className="text-muted-foreground font-medium"
-            >
-              代理服务器地址
-            </label>
-            <Input
-              id="proxy-input"
-              value={proxy}
-              onChange={(e) => setProxy(e.target.value)}
-              placeholder="http://127.0.0.1:7890 or socks5://127.0.0.1:7890 (留空不使用代理)"
-            />
-          </div>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="proxy-input">代理服务器地址</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id="proxy-input"
+                  value={proxy}
+                  onChange={(e) => setProxy(e.target.value)}
+                  placeholder="http://127.0.0.1:7890 or socks5://127.0.0.1:7890 (留空不使用代理)"
+                />
+              </InputGroup>
+            </Field>
+          </FieldGroup>
         </CardContent>
       </Card>
     </form>

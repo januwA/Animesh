@@ -1,8 +1,14 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useDI } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiConfig } from "@/domain/settings/SettingsSchemas";
+import {
+  type AiConfig,
+  type AiConfigInput,
+  AiConfigSchema,
+} from "@/domain/settings/SettingsSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 
@@ -13,12 +19,13 @@ export function useAiConfigsForm() {
     verifyAiConnectionUseCase,
   } = useDI();
 
+  const form = useForm<AiConfigInput>({
+    resolver: zodResolver(AiConfigSchema),
+    defaultValues: { alias: "", api_endpoint: "", api_key: "", ai_model: "" },
+  });
+
   const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [aliasInput, setAliasInput] = useState("");
-  const [apiEndpointInput, setApiEndpointInput] = useState("");
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [modelInput, setModelInput] = useState("");
 
   const { loading } = useQuery(
     () => getAiConfigsUseCase.execute(),
@@ -51,10 +58,7 @@ export function useAiConfigsForm() {
 
   const handleStartAdd = () => {
     setEditingIndex(-1);
-    setAliasInput("");
-    setApiEndpointInput("");
-    setApiKeyInput("");
-    setModelInput("");
+    form.reset({ alias: "", api_endpoint: "", api_key: "", ai_model: "" });
   };
 
   const handleStartEdit = (index: number) => {
@@ -62,10 +66,12 @@ export function useAiConfigsForm() {
     /* v8 ignore next */
     if (!config) return;
     setEditingIndex(index);
-    setAliasInput(config.alias);
-    setApiEndpointInput(config.api_endpoint);
-    setApiKeyInput(config.api_key);
-    setModelInput(config.ai_model);
+    form.reset({
+      alias: config.alias,
+      api_endpoint: config.api_endpoint,
+      api_key: config.api_key,
+      ai_model: config.ai_model,
+    });
   };
 
   const handleCancelEdit = () => {
@@ -83,39 +89,23 @@ export function useAiConfigsForm() {
     }
   };
 
-  const handleSaveConfig = () => {
-    const alias = aliasInput.trim();
-    const api_endpoint = apiEndpointInput.trim();
-    const api_key = apiKeyInput.trim();
-    const ai_model = modelInput.trim();
-
-    if (!alias) {
-      toast.warning("请输入别名");
-      return;
-    }
-    if (!api_endpoint) {
-      toast.warning("请输入接口地址");
-      return;
-    }
-    if (!api_key) {
-      toast.warning("请输入 API 密钥");
-      return;
-    }
+  const handleSaveConfig = form.handleSubmit((data) => {
+    const alias = data.alias.trim();
 
     const duplicate = aiConfigs.some(
       (c, i) =>
         c.alias.toLowerCase() === alias.toLowerCase() && i !== editingIndex,
     );
     if (duplicate) {
-      toast.warning("该别名已存在，请使用其他别名");
+      form.setError("alias", { message: "该别名已存在，请使用其他别名" });
       return;
     }
 
     const newConfig: AiConfig = {
-      alias: NonEmptyStringSchema.parse(alias),
-      api_endpoint: NonEmptyStringSchema.parse(api_endpoint),
-      api_key: NonEmptyStringSchema.parse(api_key),
-      ai_model: NonEmptyStringSchema.parse(ai_model),
+      alias: NonEmptyStringSchema.parse(data.alias),
+      api_endpoint: NonEmptyStringSchema.parse(data.api_endpoint),
+      api_key: NonEmptyStringSchema.parse(data.api_key),
+      ai_model: NonEmptyStringSchema.parse(data.ai_model),
     };
 
     let next: AiConfig[];
@@ -128,43 +118,31 @@ export function useAiConfigsForm() {
     setAiConfigs(next);
     setEditingIndex(null);
     saveConfigs(next);
-  };
+  });
 
   const handleTestConfig = (config: AiConfig) => {
     testConfig(config);
   };
 
-  const handleTestCurrentConnection = () => {
-    if (!apiEndpointInput.trim()) {
-      toast.warning("请输入 AI 接口地址");
-      return;
-    }
-    if (!apiKeyInput.trim()) {
-      toast.warning("请输入 API 密钥");
-      return;
-    }
+  const handleTestCurrentConnection = async () => {
+    const valid = await form.trigger(["api_endpoint", "api_key"]);
+    if (!valid) return;
+    const values = form.getValues();
     testConfig({
-      alias: NonEmptyStringSchema.parse(aliasInput),
-      api_endpoint: NonEmptyStringSchema.parse(apiEndpointInput),
-      api_key: NonEmptyStringSchema.parse(apiKeyInput),
-      ai_model: NonEmptyStringSchema.parse(modelInput),
+      alias: NonEmptyStringSchema.parse(values.alias),
+      api_endpoint: NonEmptyStringSchema.parse(values.api_endpoint),
+      api_key: NonEmptyStringSchema.parse(values.api_key),
+      ai_model: NonEmptyStringSchema.parse(values.ai_model),
     });
   };
 
   return {
+    form,
     aiConfigs,
     editingIndex,
-    aliasInput,
-    apiEndpointInput,
-    apiKeyInput,
-    modelInput,
     testingAi,
     saving,
     loading,
-    setAliasInput,
-    setApiEndpointInput,
-    setApiKeyInput,
-    setModelInput,
     handleStartAdd,
     handleStartEdit,
     handleCancelEdit,

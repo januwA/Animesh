@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/presentation/components/ui/card";
+import { Field, FieldLabel } from "@/presentation/components/ui/field";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -110,9 +111,9 @@ export default function TranslationPage() {
             </Button>
           </CardAction>
         </CardHeader>
-        <CardContent className="px-5 pb-6">
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground font-medium">目标语言</span>
+        <CardContent className="px-5 pb-6 text-xs">
+          <Field orientation="horizontal">
+            <FieldLabel>目标语言</FieldLabel>
             <NativeSelect
               value={targetLang}
               onChange={(e) => setTargetLang(e.target.value)}
@@ -123,12 +124,10 @@ export default function TranslationPage() {
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-          </div>
+          </Field>
 
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground font-medium">
-              翻译提供者
-            </span>
+          <Field orientation="horizontal">
+            <FieldLabel>翻译提供者</FieldLabel>
             <NativeSelect
               value={provider}
               onChange={(e) =>
@@ -141,11 +140,11 @@ export default function TranslationPage() {
                 </NativeSelectOption>
               ))}
             </NativeSelect>
-          </div>
+          </Field>
 
           {provider === "ai" && (
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-muted-foreground font-medium">AI 配置</span>
+            <Field orientation="horizontal">
+              <FieldLabel>AI 配置</FieldLabel>
               {/* v8 ignore start */}
               <NativeSelect
                 value={aiConfigAlias ?? ""}
@@ -163,7 +162,7 @@ export default function TranslationPage() {
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
-            </div>
+            </Field>
           )}
         </CardContent>
       </Card>
