@@ -72,8 +72,7 @@ export default function CachePage() {
               <DialogHeader>
                 <DialogTitle>确定清理缓存数据？</DialogTitle>
                 <DialogDescription>
-                  清理后新番日历、条目详情与 IPTV
-                  等数据将重新联网加载，收藏内容不受影响。
+                  清理后新番日历、条目详情与 IPTV 等数据将重新联网加载。
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="flex-row justify-end gap-2">

@@ -44,12 +44,6 @@ export default function TranslationPage() {
   const [targetLang, setTargetLang] = useState("zh-CN");
   const [provider, setProvider] = useState<TranslationProvider>("google");
   const [aiConfigAlias, setAiConfigAlias] = useState<string | null>(null);
-  const [savedTargetLang, setSavedTargetLang] = useState("zh-CN");
-  const [savedProvider, setSavedProvider] =
-    useState<TranslationProvider>("google");
-  const [savedAiConfigAlias, setSavedAiConfigAlias] = useState<string | null>(
-    null,
-  );
 
   const [aiConfigs, setAiConfigs] = useState<AiConfig[]>([]);
 
@@ -67,18 +61,10 @@ export default function TranslationPage() {
         setTargetLang(config.target_lang);
         setProvider(config.provider);
         setAiConfigAlias(config.ai_config_alias);
-        setSavedTargetLang(config.target_lang);
-        setSavedProvider(config.provider);
-        setSavedAiConfigAlias(config.ai_config_alias);
         setAiConfigs(aiResult.aiConfigs);
       },
     },
   );
-
-  const isDirty =
-    targetLang !== savedTargetLang ||
-    provider !== savedProvider ||
-    aiConfigAlias !== savedAiConfigAlias;
 
   const { execute: save, loading: saving } = useMutation(
     () =>
@@ -89,9 +75,6 @@ export default function TranslationPage() {
       }),
     {
       onSuccess: () => {
-        setSavedTargetLang(targetLang);
-        setSavedProvider(provider);
-        setSavedAiConfigAlias(aiConfigAlias);
         toast.success("翻译设置已保存");
       },
       onError: (err) => toast.error(`保存失败: ${err.message}`),
@@ -122,7 +105,7 @@ export default function TranslationPage() {
             翻译设置
           </CardTitle>
           <CardAction>
-            <Button type="submit" disabled={saving || !isDirty}>
+            <Button type="submit" disabled={saving}>
               保存
             </Button>
           </CardAction>

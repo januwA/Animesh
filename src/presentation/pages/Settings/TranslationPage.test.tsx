@@ -138,13 +138,6 @@ describe("TranslationPage 翻译设置页面", () => {
     expect(screen.getByDisplayValue("请选择")).toBeInTheDocument();
   });
 
-  it("未修改时保存按钮应禁用", async () => {
-    renderPage();
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "保存" })).toBeDisabled();
-    });
-  });
-
   it("修改语言后保存按钮应启用", async () => {
     const user = userEvent.setup();
     renderPage();

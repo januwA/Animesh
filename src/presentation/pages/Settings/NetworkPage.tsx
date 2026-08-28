@@ -17,7 +17,6 @@ import { useQuery } from "@/presentation/hooks/useQuery";
 export default function NetworkPage() {
   const { getProxyUseCase, setProxyUseCase } = useDI();
   const [proxy, setProxy] = useState("");
-  const [savedProxy, setSavedProxy] = useState("");
 
   const { loading } = useQuery(
     () => getProxyUseCase.execute(),
@@ -25,18 +24,14 @@ export default function NetworkPage() {
     {
       onSuccess: (result) => {
         setProxy(result.proxy ?? "");
-        setSavedProxy(result.proxy ?? "");
       },
     },
   );
-
-  const isDirty = proxy !== savedProxy;
 
   const { execute: save, loading: saving } = useMutation(
     () => setProxyUseCase.execute(proxy || null),
     {
       onSuccess: () => {
-        setSavedProxy(proxy);
         toast.success("网络设置已保存");
       },
       onError: (err) => toast.error(`保存失败: ${err.message}`),
@@ -67,7 +62,7 @@ export default function NetworkPage() {
             网络设置
           </CardTitle>
           <CardAction>
-            <Button type="submit" disabled={saving || !isDirty}>
+            <Button type="submit" disabled={saving}>
               保存
             </Button>
           </CardAction>

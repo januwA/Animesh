@@ -320,6 +320,30 @@ mod tests {
         assert_eq!(service.get_max_upload_speed().await, Some(200));
     }
 
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_设置翻译配置_持久化与清空() {
+        let dir = temp_dir("settings_translation");
+        let service = build_service(dir).await;
+
+        assert!(service.get_settings().await.unwrap().translation.is_none());
+
+        let config = TranslationConfig {
+            target_lang: "ja".to_string(),
+            provider: crate::domain::settings::TranslationProvider::Ai,
+            ai_config_alias: Some("gpt".to_string()),
+        };
+        service
+            .set_translation_config(Some(config.clone()))
+            .await
+            .unwrap();
+        let settings = service.get_settings().await.unwrap();
+        assert_eq!(settings.translation.as_ref().unwrap(), &config);
+
+        service.set_translation_config(None).await.unwrap();
+        assert!(service.get_settings().await.unwrap().translation.is_none());
+    }
+
     #[test]
     #[allow(non_snake_case)]
     fn 测试_将KB每秒限制转换为bytes每秒() {

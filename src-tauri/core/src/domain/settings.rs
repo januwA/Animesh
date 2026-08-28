@@ -84,3 +84,86 @@ pub trait SettingsRepository: Send + Sync {
         config: Option<&TranslationConfig>,
     ) -> Result<(), CoreError>;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_TranslationConfig_序列化与反序列化() {
+        let config = TranslationConfig {
+            target_lang: "ja".to_string(),
+            provider: TranslationProvider::Ai,
+            ai_config_alias: Some("gpt".to_string()),
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        let deserialized: TranslationConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(config, deserialized);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_TranslationConfig_反序列化时缺失字段使用默认值() {
+        let json = "{}";
+        let config: TranslationConfig = serde_json::from_str(json).unwrap();
+        assert_eq!(config.target_lang, "zh-CN");
+        assert_eq!(config.provider, TranslationProvider::Google);
+        assert!(config.ai_config_alias.is_none());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_TranslationProvider_序列化为小写() {
+        assert_eq!(
+            serde_json::to_string(&TranslationProvider::Google).unwrap(),
+            "\"google\""
+        );
+        assert_eq!(
+            serde_json::to_string(&TranslationProvider::Ai).unwrap(),
+            "\"ai\""
+        );
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_TranslationProvider_从小写字符串反序列化() {
+        assert_eq!(
+            serde_json::from_str::<TranslationProvider>("\"google\"").unwrap(),
+            TranslationProvider::Google
+        );
+        assert_eq!(
+            serde_json::from_str::<TranslationProvider>("\"ai\"").unwrap(),
+            TranslationProvider::Ai
+        );
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_AppSettings_序列化包含translation字段() {
+        let settings = AppSettings {
+            download_dir: "/tmp/dl".to_string(),
+            proxy: None,
+            ai_configs: None,
+            max_download_speed: None,
+            max_upload_speed: None,
+            translation: Some(TranslationConfig {
+                target_lang: "zh-CN".to_string(),
+                provider: TranslationProvider::Google,
+                ai_config_alias: None,
+            }),
+        };
+        let json = serde_json::to_value(&settings).unwrap();
+        let t = json.get("translation").unwrap();
+        assert_eq!(t.get("target_lang").unwrap(), "zh-CN");
+        assert_eq!(t.get("provider").unwrap(), "google");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_AppSettings_反序列化时translation缺失默认为None() {
+        let json = r#"{"download_dir":"/tmp","proxy":null,"ai_configs":null,"max_download_speed":null,"max_upload_speed":null}"#;
+        let settings: AppSettings = serde_json::from_str(json).unwrap();
+        assert!(settings.translation.is_none());
+    }
+}

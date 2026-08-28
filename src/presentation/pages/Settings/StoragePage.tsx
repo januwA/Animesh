@@ -28,11 +28,8 @@ export default function StoragePage() {
   );
 
   const [downloadDir, setDownloadDir] = useState("");
-  const [savedDownloadDir, setSavedDownloadDir] = useState("");
   const [maxDownloadSpeed, setMaxDownloadSpeed] = useState(0);
   const [maxUploadSpeed, setMaxUploadSpeed] = useState(0);
-  const [savedMaxDownloadSpeed, setSavedMaxDownloadSpeed] = useState(0);
-  const [savedMaxUploadSpeed, setSavedMaxUploadSpeed] = useState(0);
 
   const { loading } = useQuery(
     async () => {
@@ -46,19 +43,11 @@ export default function StoragePage() {
     {
       onSuccess: ({ dirResult, speedResult }) => {
         setDownloadDir(dirResult.downloadDir);
-        setSavedDownloadDir(dirResult.downloadDir);
         setMaxDownloadSpeed(speedResult.maxDownloadSpeed);
         setMaxUploadSpeed(speedResult.maxUploadSpeed);
-        setSavedMaxDownloadSpeed(speedResult.maxDownloadSpeed);
-        setSavedMaxUploadSpeed(speedResult.maxUploadSpeed);
       },
     },
   );
-
-  const isDirty =
-    downloadDir !== savedDownloadDir ||
-    maxDownloadSpeed !== savedMaxDownloadSpeed ||
-    maxUploadSpeed !== savedMaxUploadSpeed;
 
   const { execute: save, loading: saving } = useMutation(
     async (_ctx) => {
@@ -69,9 +58,6 @@ export default function StoragePage() {
     },
     {
       onSuccess: () => {
-        setSavedDownloadDir(downloadDir);
-        setSavedMaxDownloadSpeed(maxDownloadSpeed);
-        setSavedMaxUploadSpeed(maxUploadSpeed);
         toast.success("存储设置已保存");
       },
       onError: (err) => toast.error(`保存失败: ${err.message}`),
@@ -109,7 +95,7 @@ export default function StoragePage() {
             存储设置
           </CardTitle>
           <CardAction>
-            <Button type="submit" disabled={saving || !isDirty}>
+            <Button type="submit" disabled={saving}>
               保存
             </Button>
           </CardAction>
