@@ -1,7 +1,9 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use animesh_core::application::collection_service::CollectionService;
 use animesh_core::application::search_use_case::SearchUseCase;
-use animesh_core::application::settings_service::{AiConfig, AppSettings, SettingsService};
+use animesh_core::application::settings_service::{
+    AiConfig, AppSettings, SettingsService, TranslationConfig,
+};
 use animesh_core::application::stream_service::StreamService;
 use animesh_core::application::subtitle_service::SubtitleService;
 use animesh_core::application::torrent_manager::TorrentManager;
@@ -462,6 +464,14 @@ async fn settings_set_max_upload_speed(
 }
 
 #[tauri::command]
+async fn settings_set_translation_config(
+    config: Option<TranslationConfig>,
+    settings_service: tauri::State<'_, Arc<SettingsService>>,
+) -> Result<(), CoreError> {
+    settings_service.set_translation_config(config).await
+}
+
+#[tauri::command]
 async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, CoreError> {
     #[cfg(mobile)]
     {
@@ -580,6 +590,7 @@ async fn load_or_init_settings(
         ai_configs: None,
         max_download_speed: None,
         max_upload_speed: None,
+        translation: None,
     };
     settings_repo.ensure_initialized(&default_settings).await?;
     log::info!("使用默认设置初始化数据库");
@@ -753,6 +764,7 @@ pub fn run() {
             settings_set_ai_configs,
             settings_set_max_download_speed,
             settings_set_max_upload_speed,
+            settings_set_translation_config,
             select_directory,
             torrent_get_video_metadata,
             torrent_get_subtitle_vtt,

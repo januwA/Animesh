@@ -1,6 +1,8 @@
 use animesh_core::application::collection_service::CollectionService;
 use animesh_core::application::search_use_case::SearchUseCase;
-use animesh_core::application::settings_service::{AiConfig, AppSettings, SettingsService};
+use animesh_core::application::settings_service::{
+    AiConfig, AppSettings, SettingsService, TranslationConfig,
+};
 use animesh_core::application::stream_service::StreamService;
 use animesh_core::application::subtitle_service::SubtitleService;
 use animesh_core::application::torrent_manager::TorrentManager;
@@ -60,6 +62,7 @@ async fn load_or_init_settings(
         ai_configs: None,
         max_download_speed: None,
         max_upload_speed: None,
+        translation: None,
     };
     settings_repo.ensure_initialized(&default_settings).await?;
     log::info!("使用默认设置初始化数据库");
@@ -201,6 +204,10 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/settings/max-upload-speed",
             put(settings_set_max_upload_speed_handler),
+        )
+        .route(
+            "/settings/translation",
+            put(settings_set_translation_config_handler),
         )
         .route("/collections", get(collection_get_all_handler))
         .route("/collections", put(collection_add_handler))
@@ -513,6 +520,23 @@ async fn settings_set_max_upload_speed_handler(
     state
         .settings_service
         .set_max_upload_speed(payload.max_speed)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
+#[derive(serde::Deserialize)]
+struct SetTranslationConfigInput {
+    translation: Option<TranslationConfig>,
+}
+
+async fn settings_set_translation_config_handler(
+    State(state): State<Arc<AppState>>,
+    axum::Json(payload): axum::Json<SetTranslationConfigInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .settings_service
+        .set_translation_config(payload.translation)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(StatusCode::OK)

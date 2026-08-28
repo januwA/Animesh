@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 // 领域模型 AppSettings / AiConfig 已迁移至 domain::settings,这里重新导出以保持公共 API 稳定。
-pub use crate::domain::settings::{AiConfig, AppSettings};
+pub use crate::domain::settings::{AiConfig, AppSettings, TranslationConfig};
 
 /// 应用设置用例:管理下载目录、代理、AI 配置、限速等持久化设置。
 ///
@@ -84,6 +84,7 @@ impl SettingsService {
                 ai_configs: None,
                 max_download_speed: None,
                 max_upload_speed: None,
+                translation: None,
             }),
         }
     }
@@ -91,6 +92,15 @@ impl SettingsService {
     pub async fn set_ai_configs(&self, configs: Option<Vec<AiConfig>>) -> CoreResult<()> {
         self.settings_repo
             .update_ai_configs(configs.as_deref())
+            .await
+    }
+
+    pub async fn set_translation_config(
+        &self,
+        config: Option<TranslationConfig>,
+    ) -> CoreResult<()> {
+        self.settings_repo
+            .update_translation_config(config.as_ref())
             .await
     }
 

@@ -2,6 +2,32 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::CoreError;
 
+/// 翻译配置，序列化为 JSON 存储在 app_settings.translation 列中。
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct TranslationConfig {
+    #[serde(default = "default_target_lang")]
+    pub target_lang: String,
+    #[serde(default = "default_provider")]
+    pub provider: TranslationProvider,
+    #[serde(default)]
+    pub ai_config_alias: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum TranslationProvider {
+    Google,
+    Ai,
+}
+
+fn default_target_lang() -> String {
+    "zh-CN".to_string()
+}
+
+fn default_provider() -> TranslationProvider {
+    TranslationProvider::Google
+}
+
 /// 应用设置聚合根，对应 app_settings 表的单行记录。
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AppSettings {
@@ -13,6 +39,8 @@ pub struct AppSettings {
     pub max_download_speed: Option<u32>,
     #[serde(default)]
     pub max_upload_speed: Option<u32>,
+    #[serde(default)]
+    pub translation: Option<TranslationConfig>,
 }
 
 /// AI 配置项，序列化为 JSON 存储在 app_settings.ai_configs 列中。
@@ -50,4 +78,9 @@ pub trait SettingsRepository: Send + Sync {
     async fn update_max_download_speed(&self, speed: Option<u32>) -> Result<(), CoreError>;
     /// 原子更新 max_upload_speed。
     async fn update_max_upload_speed(&self, speed: Option<u32>) -> Result<(), CoreError>;
+    /// 原子更新 translation 配置。
+    async fn update_translation_config(
+        &self,
+        config: Option<&TranslationConfig>,
+    ) -> Result<(), CoreError>;
 }
