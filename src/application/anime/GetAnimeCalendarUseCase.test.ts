@@ -1,6 +1,5 @@
 import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AnimeCache } from "../../domain/anime/AnimeCache";
 import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
 import { GetAnimeCalendarUseCase } from "./GetAnimeCalendarUseCase";
 
@@ -9,55 +8,27 @@ describe("GetAnimeCalendarUseCase 获取新番日历", () => {
     getCalendar: vi.fn(),
   } as unknown as AnimeRepository;
 
-  const mockCache = {
-    getCalendar: vi.fn(),
-    setCalendar: vi.fn(),
-  } as unknown as AnimeCache;
-
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  it("应该在缓存命中时直接返回缓存数据且不请求 Repository", async () => {
-    const cachedData = [
-      {
-        weekday: { id: 1 },
-        items: [
-          { id: 2, name: "高分", rating: 9.0 },
-          { id: 1, name: "低分", rating: 4.0 },
-        ] as any,
-      },
-    ];
-    vi.mocked(mockCache.getCalendar).mockResolvedValueOnce(cachedData);
-
-    const useCase = new GetAnimeCalendarUseCase(mockRepo, mockCache);
-    const results = await useCase.execute(Background);
-
-    expect(mockCache.getCalendar).toHaveBeenCalledWith(Background);
-    expect(mockRepo.getCalendar).not.toHaveBeenCalled();
-    expect(results).toEqual(cachedData);
-  });
-
-  it("应该在缓存未命中时请求 Repository 并写入缓存", async () => {
+  it("应该请求 Repository 并返回排序后的数据", async () => {
     const freshData = [
       {
         weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },
         items: [{ id: 101, name: "Anime Monday", rating: 7.5 } as any],
       },
     ];
-    vi.mocked(mockCache.getCalendar).mockResolvedValueOnce(null);
     vi.mocked(mockRepo.getCalendar).mockResolvedValueOnce(freshData);
 
-    const useCase = new GetAnimeCalendarUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeCalendarUseCase(mockRepo);
     const results = await useCase.execute(Background);
 
-    expect(mockCache.getCalendar).toHaveBeenCalledWith(Background);
     expect(mockRepo.getCalendar).toHaveBeenCalledWith(Background);
-    expect(mockCache.setCalendar).toHaveBeenCalledWith(Background, freshData);
     expect(results).toEqual(freshData);
   });
 
-  it("应该在缓存未命中时对每个星期的 items 按 rating 降序排序，rating 为 0 排在最后", async () => {
+  it("应该对每个星期的 items 按 rating 降序排序，rating 为 0 排在最后", async () => {
     const freshData = [
       {
         weekday: { id: 1 },
@@ -75,10 +46,9 @@ describe("GetAnimeCalendarUseCase 获取新番日历", () => {
         ] as any,
       },
     ];
-    vi.mocked(mockCache.getCalendar).mockResolvedValueOnce(null);
     vi.mocked(mockRepo.getCalendar).mockResolvedValueOnce(freshData);
 
-    const useCase = new GetAnimeCalendarUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeCalendarUseCase(mockRepo);
     const results = await useCase.execute(Background);
 
     expect(results[0].items.map((i: { rating: number }) => i.rating)).toEqual([
@@ -99,10 +69,9 @@ describe("GetAnimeCalendarUseCase 获取新番日历", () => {
         ] as any,
       },
     ];
-    vi.mocked(mockCache.getCalendar).mockResolvedValueOnce(null);
     vi.mocked(mockRepo.getCalendar).mockResolvedValueOnce(freshData);
 
-    const useCase = new GetAnimeCalendarUseCase(mockRepo, mockCache);
+    const useCase = new GetAnimeCalendarUseCase(mockRepo);
     await useCase.execute(Background);
 
     expect(freshData[0].items.map((i: { rating: number }) => i.rating)).toEqual(

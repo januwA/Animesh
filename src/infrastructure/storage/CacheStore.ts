@@ -9,4 +9,5 @@ export interface CacheStore {
   setItem<T>(key: string, data: T, ttlMs: number): Promise<void>;
   removeItem(key: string): Promise<void>;
   clear(): Promise<void>;
+  clearByPrefix(prefix: string): Promise<void>;
 }

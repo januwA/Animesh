@@ -1,5 +1,4 @@
 import type { Context } from "ajanuw-context";
-import type { AnimeCache } from "@/domain/anime/AnimeCache";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
 
@@ -25,17 +24,9 @@ export function recentMonthWindows(
 }
 
 export class GetWallpaperImagesUseCase {
-  constructor(
-    private readonly animeRepository: AnimeRepository,
-    private readonly animeCache: AnimeCache,
-  ) {}
+  constructor(private readonly animeRepository: AnimeRepository) {}
 
   async execute(ctx: Context): Promise<AnimeSubject[]> {
-    const cached = await this.animeCache.getRankedSubjects(ctx);
-    if (cached) {
-      return cached;
-    }
-
     const subjects: AnimeSubject[] = [];
     for (const { year, month } of recentMonthWindows(
       RANKED_SUBJECT_MONTH_WINDOW,
@@ -48,8 +39,6 @@ export class GetWallpaperImagesUseCase {
       });
       subjects.push(...items);
     }
-    const top = subjects.slice(0, RANKED_SUBJECT_LIMIT);
-    await this.animeCache.setRankedSubjects(ctx, top);
-    return top;
+    return subjects.slice(0, RANKED_SUBJECT_LIMIT);
   }
 }

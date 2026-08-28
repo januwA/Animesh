@@ -1,5 +1,4 @@
 import type { Context } from "ajanuw-context";
-import type { AnimeCache } from "@/domain/anime/AnimeCache";
 import type { AnimeEpisodesPage } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
@@ -11,38 +10,18 @@ export interface GetEpisodesPageCommand {
 }
 
 export class GetAnimeEpisodesUseCase {
-  constructor(
-    private readonly animeRepository: AnimeRepository,
-    private readonly animeCache: AnimeCache,
-  ) {}
+  constructor(private readonly animeRepository: AnimeRepository) {}
 
   async execute(
     ctx: Context,
     command: GetEpisodesPageCommand,
   ): Promise<AnimeEpisodesPage> {
     const { subjectId, offset, limit } = command;
-    const cached = await this.animeCache.getEpisodes(
+    return this.animeRepository.getEpisodes(
       ctx,
       NonEmptyStringSchema.parse(subjectId),
       offset,
       limit,
     );
-    if (cached) {
-      return cached;
-    }
-    const page = await this.animeRepository.getEpisodes(
-      ctx,
-      NonEmptyStringSchema.parse(subjectId),
-      offset,
-      limit,
-    );
-    await this.animeCache.setEpisodes(
-      ctx,
-      NonEmptyStringSchema.parse(subjectId),
-      offset,
-      limit,
-      page,
-    );
-    return page;
   }
 }

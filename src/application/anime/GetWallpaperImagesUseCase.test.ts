@@ -1,7 +1,6 @@
 import { Background } from "ajanuw-context";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
-import type { AnimeCache } from "../../domain/anime/AnimeCache";
 import type { AnimeRepository } from "../../domain/anime/AnimeRepository";
 import {
   GetWallpaperImagesUseCase,
@@ -29,11 +28,6 @@ describe("GetWallpaperImagesUseCase 获取壁纸图片", () => {
     getRankedSubjects: vi.fn(),
   } as unknown as AnimeRepository;
 
-  const mockCache = {
-    getRankedSubjects: vi.fn(),
-    setRankedSubjects: vi.fn(),
-  } as unknown as AnimeCache;
-
   beforeEach(() => {
     vi.resetAllMocks();
     vi.useFakeTimers();
@@ -44,29 +38,15 @@ describe("GetWallpaperImagesUseCase 获取壁纸图片", () => {
     vi.useRealTimers();
   });
 
-  it("缓存命中时直接返回缓存数据且不请求 Repository", async () => {
-    vi.mocked(mockCache.getRankedSubjects).mockResolvedValueOnce([
-      rankedSubject,
-    ]);
-
-    const useCase = new GetWallpaperImagesUseCase(mockRepo, mockCache);
-    const results = await useCase.execute(Background);
-
-    expect(mockCache.getRankedSubjects).toHaveBeenCalledWith(Background);
-    expect(mockRepo.getRankedSubjects).not.toHaveBeenCalled();
-    expect(results).toEqual([rankedSubject]);
-  });
-
-  it("按本月与上月分别请求并合并后写入缓存", async () => {
+  it("按本月与上月分别请求并合并后返回", async () => {
     const current = [{ ...rankedSubject, id: 1, rating: 8 }];
     const last = [{ ...rankedSubject, id: 2, rating: 9 }];
 
-    vi.mocked(mockCache.getRankedSubjects).mockResolvedValueOnce(null);
     vi.mocked(mockRepo.getRankedSubjects)
       .mockResolvedValueOnce(paged(current))
       .mockResolvedValueOnce(paged(last));
 
-    const useCase = new GetWallpaperImagesUseCase(mockRepo, mockCache);
+    const useCase = new GetWallpaperImagesUseCase(mockRepo);
     const results = await useCase.execute(Background);
 
     expect(mockRepo.getRankedSubjects).toHaveBeenNthCalledWith(1, Background, {
@@ -79,10 +59,6 @@ describe("GetWallpaperImagesUseCase 获取壁纸图片", () => {
       sort: "rank",
       year: 2026,
     });
-    expect(mockCache.setRankedSubjects).toHaveBeenCalledWith(Background, [
-      ...current,
-      ...last,
-    ]);
     expect(results).toEqual([...current, ...last]);
   });
 
@@ -92,28 +68,25 @@ describe("GetWallpaperImagesUseCase 获取壁纸图片", () => {
       id: i + 1,
     }));
 
-    vi.mocked(mockCache.getRankedSubjects).mockResolvedValueOnce(null);
     vi.mocked(mockRepo.getRankedSubjects)
       .mockResolvedValueOnce(paged(items.slice(0, RANKED_SUBJECT_LIMIT)))
       .mockResolvedValueOnce(paged(items.slice(RANKED_SUBJECT_LIMIT)));
 
-    const useCase = new GetWallpaperImagesUseCase(mockRepo, mockCache);
+    const useCase = new GetWallpaperImagesUseCase(mockRepo);
     const results = await useCase.execute(Background);
 
     expect(results).toHaveLength(RANKED_SUBJECT_LIMIT);
   });
 
-  it("任一月份请求失败时向上抛出错误且不写缓存", async () => {
-    vi.mocked(mockCache.getRankedSubjects).mockResolvedValueOnce(null);
+  it("任一月份请求失败时向上抛出错误", async () => {
     vi.mocked(mockRepo.getRankedSubjects)
       .mockResolvedValueOnce(paged([rankedSubject]))
       .mockRejectedValueOnce(new Error("network error"));
 
-    const useCase = new GetWallpaperImagesUseCase(mockRepo, mockCache);
+    const useCase = new GetWallpaperImagesUseCase(mockRepo);
     const promise = useCase.execute(Background);
 
     await expect(promise).rejects.toThrow("network error");
-    expect(mockCache.setRankedSubjects).not.toHaveBeenCalled();
   });
 });
 

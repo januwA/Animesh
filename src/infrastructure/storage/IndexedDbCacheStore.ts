@@ -113,4 +113,32 @@ export class IndexedDbCacheStore implements CacheStore {
       // 忽略清理失败
     }
   }
+
+  async clearByPrefix(prefix: string): Promise<void> {
+    try {
+      const db = await this.getDb();
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.openCursor();
+      return new Promise<void>((resolve, reject) => {
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (cursor) {
+            const key = String(cursor.key);
+            if (key.startsWith(`${prefix}:`)) {
+              cursor.delete();
+            }
+            cursor.continue();
+          } else {
+            resolve();
+          }
+        };
+        request.onerror = () => reject(request.error);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch {
+      // 忽略清理失败
+    }
+  }
 }

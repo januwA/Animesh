@@ -58,14 +58,11 @@ import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersio
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { AiClient } from "../domain/ai/AiClient";
 import type { Logger } from "../domain/logger/logger";
-import { BrowserAnilistCache } from "../infrastructure/anilist/BrowserAnilistCache";
 import { HttpAnilistRepository } from "../infrastructure/anilist/HttpAnilistRepository";
-import { BrowserBangumiCache } from "../infrastructure/bangumi/BrowserBangumiCache";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpCollectionRepository } from "../infrastructure/collection/HttpCollectionRepository";
 import { TauriCollectionRepository } from "../infrastructure/collection/TauriCollectionRepository";
 import { FetchHttpClient } from "../infrastructure/http/HttpClient";
-import { BrowserIptvCache } from "../infrastructure/iptv/BrowserIptvCache";
 import { HttpIptvRepository } from "../infrastructure/iptv/HttpIptvRepository";
 import { TauriIptvStreamUrlRepository } from "../infrastructure/iptv/TauriIptvStreamUrlRepository";
 import { WebIptvStreamUrlRepository } from "../infrastructure/iptv/WebIptvStreamUrlRepository";
@@ -160,12 +157,12 @@ export function createDefaultDIContainer(): DIContainer {
   const logger = new ConsoleLogger("App");
   const httpClient = new FetchHttpClient();
   const torrentRepository = isTauri
-    ? new TauriTorrentRepository()
-    : new HttpTorrentRepository(httpClient);
+    ? new TauriTorrentRepository(cacheStore)
+    : new HttpTorrentRepository(httpClient, cacheStore);
   const settingsRepository = isTauri
     ? new TauriSettingsRepository()
     : new HttpSettingsRepository(httpClient);
-  const bangumiRepository = new HttpBangumiRepository(httpClient);
+  const bangumiRepository = new HttpBangumiRepository(httpClient, cacheStore);
   const collectionRepository = isTauri
     ? new TauriCollectionRepository()
     : new HttpCollectionRepository(httpClient);
@@ -178,7 +175,6 @@ export function createDefaultDIContainer(): DIContainer {
   const updateRepository = isTauri
     ? new GithubUpdateRepository(openerRepository)
     : new WebUpdateRepository();
-  // 字幕翻译缓存仓储：Tauri 桌面端走 IPC → SQLite；Web 端用 NoOp 空实现（不持久化，但不影响流程）
   const subtitleTranslationRepository =
     new TauriSubtitleTranslationRepository();
 
@@ -191,7 +187,6 @@ export function createDefaultDIContainer(): DIContainer {
     ? new TauriAiClient()
     : new FetchAiClient(httpClient);
 
-  // 翻译服务
   const googleTranslateClient = new GoogleTranslateClient();
   const aiTranslateClient = new AiTranslateClient(aiClient);
   const translationCache = new IndexedDbTranslationCache(cacheStore);
@@ -269,52 +264,39 @@ export function createDefaultDIContainer(): DIContainer {
   const getSubtitleTranslationByIdUseCase =
     new GetSubtitleTranslationByIdUseCase(subtitleTranslationRepository);
 
-  const bangumiCache = new BrowserBangumiCache(cacheStore);
   const getBangumiCalendarUseCase = new GetAnimeCalendarUseCase(
     bangumiRepository,
-    bangumiCache,
   );
-  const anilistRepository = new HttpAnilistRepository(httpClient);
-  const anilistCache = new BrowserAnilistCache(cacheStore);
+  const anilistRepository = new HttpAnilistRepository(httpClient, cacheStore);
   const getAnilistCalendarUseCase = new GetAnimeCalendarUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getAnilistSubjectUseCase = new GetAnimeSubjectUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getAnilistEpisodesUseCase = new GetAnimeEpisodesUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getAnilistPersonsUseCase = new GetAnimePersonsUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getAnilistCharactersUseCase = new GetAnimeCharactersUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getBangumiSubjectUseCase = new GetAnimeSubjectUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const getBangumiEpisodesUseCase = new GetAnimeEpisodesUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const getBangumiPersonsUseCase = new GetAnimePersonsUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const getBangumiCharactersUseCase = new GetAnimeCharactersUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const getWallpaperImagesUseCase = new GetWallpaperImagesUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const getBangumiNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
     bangumiRepository,
@@ -328,16 +310,9 @@ export function createDefaultDIContainer(): DIContainer {
   const getAnilistNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
     anilistRepository,
   );
-  const iptvCache = new BrowserIptvCache(cacheStore);
-  const iptvRepository = new HttpIptvRepository(httpClient);
-  const getIptvCountriesUseCase = new GetIptvCountriesUseCase(
-    iptvRepository,
-    iptvCache,
-  );
-  const getIptvChannelsUseCase = new GetIptvChannelsUseCase(
-    iptvRepository,
-    iptvCache,
-  );
+  const iptvRepository = new HttpIptvRepository(httpClient, cacheStore);
+  const getIptvCountriesUseCase = new GetIptvCountriesUseCase(iptvRepository);
+  const getIptvChannelsUseCase = new GetIptvChannelsUseCase(iptvRepository);
   const iptvStreamUrlRepository = isTauri
     ? new TauriIptvStreamUrlRepository()
     : new WebIptvStreamUrlRepository();

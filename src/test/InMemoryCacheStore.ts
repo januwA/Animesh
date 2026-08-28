@@ -54,6 +54,14 @@ export class InMemoryCacheStore implements CacheStore {
     this.records.clear();
   }
 
+  async clearByPrefix(prefix: string): Promise<void> {
+    for (const key of this.records.keys()) {
+      if (key.startsWith(`${prefix}:`)) {
+        this.records.delete(key);
+      }
+    }
+  }
+
   /**
    * 直接写入原始信封记录，用于构造损坏数据场景。
    */

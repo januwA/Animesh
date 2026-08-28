@@ -1,4 +1,5 @@
 import type { Context } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import { z } from "zod";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
@@ -15,15 +16,29 @@ import {
   type VideoMetadata,
   VideoMetadataSchema,
 } from "../../domain/torrent/TorrentSchemas";
+import { Cached } from "../cache/CachedDecorator";
 import type { HttpClient } from "../http/HttpClient";
+import type { CacheStore } from "../storage/CacheStore";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"
   : (import.meta.env.VITE_API_BASE_URL as string) || "/api";
 
 export class HttpTorrentRepository implements TorrentRepository {
-  constructor(private readonly httpClient: HttpClient) {}
+  /** @internal accessed by @Cached decorator */
+  declare store: CacheStore;
 
+  constructor(
+    private readonly httpClient: HttpClient,
+    store: CacheStore,
+  ) {
+    this.store = store;
+  }
+
+  @Cached({
+    ttl: new Duration({ minutes: 10 }),
+    excludeArgs: [0],
+  })
   async search(
     ctx: Context,
     keyword: string,

@@ -1,4 +1,5 @@
 import type { Context } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import type {
   AnimeRepository,
   NextSeasonSubjectsPage,
@@ -14,7 +15,9 @@ import type {
   AnimeSubjectSearchParams,
   AnimeSubjectSearchResult,
 } from "@/domain/anime/AnimeSchemas";
+import { Cached } from "../cache/CachedDecorator";
 import type { HttpClient } from "../http/HttpClient";
+import type { CacheStore } from "../storage/CacheStore";
 import {
   AnilistCalendarResponseSchema,
   AnilistCharactersResponseSchema,
@@ -183,8 +186,20 @@ function getWeekRange(): { startDate: number; endDate: number } {
 }
 
 export class HttpAnilistRepository implements AnimeRepository {
-  constructor(private readonly client: HttpClient) {}
+  /** @internal accessed by @Cached decorator */
+  declare store: CacheStore;
 
+  constructor(
+    private readonly client: HttpClient,
+    store: CacheStore,
+  ) {
+    this.store = store;
+  }
+
+  @Cached({
+    ttl: new Duration({ days: 7 }),
+    excludeArgs: [0],
+  })
   async getCalendar(ctx: Context): Promise<AnimeCalendarDay[]> {
     const { startDate, endDate } = getWeekRange();
     const allSchedules = await this.fetchAiringSchedules(
@@ -281,6 +296,10 @@ export class HttpAnilistRepository implements AnimeRepository {
     return await response.json();
   }
 
+  @Cached({
+    ttl: new Duration({ days: 1 }),
+    excludeArgs: [0],
+  })
   async getRankedSubjects(
     ctx: Context,
     params: Parameters<AnimeRepository["getRankedSubjects"]>[1],
@@ -304,6 +323,10 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+    excludeArgs: [0],
+  })
   async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
     const data = await this.graphqlRequest(ctx, MEDIA_DETAIL_QUERY, {
       id: Number(subjectId),
@@ -317,6 +340,10 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 1 }),
+    excludeArgs: [0],
+  })
   async getEpisodes(
     ctx: Context,
     subjectId: string,
@@ -335,6 +362,10 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+    excludeArgs: [0],
+  })
   async getSubjectPersons(
     ctx: Context,
     subjectId: string,
@@ -351,6 +382,10 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+    excludeArgs: [0],
+  })
   async getSubjectCharacters(
     ctx: Context,
     subjectId: string,
@@ -367,6 +402,10 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ hours: 12 }),
+    excludeArgs: [0],
+  })
   async searchSubjects(
     ctx: Context,
     params: AnimeSubjectSearchParams,
@@ -386,6 +425,10 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 1 }),
+    excludeArgs: [0],
+  })
   async getNextSeasonSubjects(
     ctx: Context,
     params: NextSeasonSubjectsParams,
