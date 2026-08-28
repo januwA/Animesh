@@ -25,6 +25,11 @@ const makeDeps = (
       max_download_speed: 100,
       max_upload_speed: 200,
       ai_configs: [],
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     }),
   },
   getCurrentVersionUseCase: {
@@ -82,6 +87,11 @@ describe("useSettingsPage 设置页面 hook", () => {
           max_download_speed: 100,
           max_upload_speed: 200,
           ai_configs: [makeConfig()],
+          translation: {
+            target_lang: "zh-CN",
+            provider: "google" as const,
+            ai_config_alias: null,
+          },
         }),
       },
     });
@@ -128,6 +138,11 @@ describe("useSettingsPage 设置页面 hook", () => {
       ai_configs: [],
       max_download_speed: 100,
       max_upload_speed: 200,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     } as Settings);
     expect(toast.success).toHaveBeenCalledWith(
       "设置已保存，后续下载任务将使用新路径",

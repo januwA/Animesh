@@ -4,6 +4,7 @@ import {
   type AiConfig,
   type Settings,
   SettingsSchema,
+  type TranslationConfig,
 } from "../../domain/settings/SettingsSchemas";
 import type { HttpClient } from "../http/HttpClient";
 
@@ -78,6 +79,16 @@ export class HttpSettingsRepository implements SettingsRepository {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ max_speed: speed }),
+    });
+  }
+
+  async setTranslationConfig(config: TranslationConfig): Promise<void> {
+    await this.httpClient.request(`${baseUrl}/settings/translation`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ translation: config }),
     });
   }
 

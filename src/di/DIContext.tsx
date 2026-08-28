@@ -43,6 +43,7 @@ import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseC
 import { SearchTorrentsWithAiUseCase } from "../application/torrent/SearchTorrentsWithAiUseCase";
 import { SetTorrentSubjectUseCase } from "../application/torrent/SetTorrentSubjectUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
+import { TranslateTextUseCase } from "../application/translation/TranslateTextUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
@@ -69,6 +70,9 @@ import { TauriSettingsRepository } from "../infrastructure/settings/TauriSetting
 import { IndexedDbCacheStore } from "../infrastructure/storage/IndexedDbCacheStore";
 import { HttpTorrentRepository } from "../infrastructure/torrent/HttpTorrentRepository";
 import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
+import { AiTranslateClient } from "../infrastructure/translation/AiTranslateClient";
+import { GoogleTranslateClient } from "../infrastructure/translation/GoogleTranslateClient";
+import { IndexedDbTranslationCache } from "../infrastructure/translation/IndexedDbTranslationCache";
 import { GithubUpdateRepository } from "../infrastructure/update/GithubUpdateRepository";
 import { WebUpdateRepository } from "../infrastructure/update/WebUpdateRepository";
 
@@ -106,6 +110,7 @@ export interface DIContainer {
   deleteSubtitleTranslationUseCase: DeleteSubtitleTranslationUseCase;
   saveSubtitleTranslationUseCase: SaveSubtitleTranslationUseCase;
   getSubtitleTranslationByIdUseCase: GetSubtitleTranslationByIdUseCase;
+  translateTextUseCase: TranslateTextUseCase;
 
   getBangumiCalendarUseCase: GetAnimeCalendarUseCase;
   getAnilistCalendarUseCase: GetAnimeCalendarUseCase;
@@ -167,6 +172,16 @@ export function createDefaultDIContainer(): DIContainer {
   const aiClient: AiClient = isTauri
     ? new TauriAiClient()
     : new FetchAiClient(httpClient);
+
+  // 翻译服务
+  const googleTranslateClient = new GoogleTranslateClient();
+  const aiTranslateClient = new AiTranslateClient(aiClient);
+  const translationCache = new IndexedDbTranslationCache(cacheStore);
+  const translateTextUseCase = new TranslateTextUseCase(
+    googleTranslateClient,
+    aiTranslateClient,
+    translationCache,
+  );
 
   const searchTorrentsWithAiUseCase = new SearchTorrentsWithAiUseCase(
     torrentRepository,
@@ -341,6 +356,7 @@ export function createDefaultDIContainer(): DIContainer {
     deleteSubtitleTranslationUseCase,
     saveSubtitleTranslationUseCase,
     getSubtitleTranslationByIdUseCase,
+    translateTextUseCase,
 
     getBangumiCalendarUseCase,
     getAnilistCalendarUseCase,

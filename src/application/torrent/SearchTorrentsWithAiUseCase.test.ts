@@ -76,6 +76,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -116,6 +121,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -197,6 +207,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -237,6 +252,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
 
     // 模拟 TorrentRepository 的多次调用：
@@ -384,6 +404,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -468,6 +493,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -521,6 +551,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -627,6 +662,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -730,6 +770,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -814,6 +859,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -912,6 +962,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -959,6 +1014,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -1010,6 +1070,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
 
@@ -1098,6 +1163,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 
@@ -1156,6 +1226,11 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
       proxy: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     vi.mocked(mockTorrentRepo.search).mockResolvedValueOnce(mockTorrents);
 

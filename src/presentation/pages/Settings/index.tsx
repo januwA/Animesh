@@ -12,6 +12,7 @@ import { NetworkSettingsSection } from "./NetworkSettingsSection";
 import { SettingsActionHeader } from "./SettingsActionHeader";
 import { SettingsLoading } from "./SettingsLoading";
 import { StorageSettingsSection } from "./StorageSettingsSection";
+import { TranslationSettingsSection } from "./TranslationSettingsSection";
 import { UpdateCheckSection } from "./UpdateCheckSection";
 import { useSettingsPage } from "./useSettingsPage";
 
@@ -104,6 +105,16 @@ export default function Settings() {
         <CacheSettingsSection
           clearingCache={page.actions.clearingCache}
           onClearClick={() => page.actions.setConfirmClearOpen(true)}
+        />
+
+        <TranslationSettingsSection
+          targetLang={page.form.translation.targetLang}
+          provider={page.form.translation.provider}
+          aiConfigAlias={page.form.translation.aiConfigAlias}
+          aiConfigs={page.form.ai.aiConfigs}
+          onTargetLangChange={page.form.translation.setTargetLang}
+          onProviderChange={page.form.translation.setProvider}
+          onAiConfigAliasChange={page.form.translation.setAiConfigAlias}
         />
 
         {page.isTauri && (

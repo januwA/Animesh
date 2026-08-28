@@ -4,6 +4,7 @@ import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUse
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { TranslatableText } from "@/presentation/components/TranslatableText";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { Button } from "../../components/ui/button";
 import { FavoriteButton } from "./FavoriteButton";
@@ -114,9 +115,11 @@ export function SubjectInfoCard({
             )}
 
             <div className="flex items-start justify-between gap-3">
-              <h1 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
-                {displayName}
-              </h1>
+              <TranslatableText
+                text={displayName}
+                as="h1"
+                className="text-xl md:text-3xl font-bold tracking-tight text-foreground"
+              />
 
               {subject && (
                 <div className="flex items-center gap-1 shrink-0">
@@ -190,9 +193,11 @@ export function SubjectInfoCard({
               </div>
 
               {subject.summary && (
-                <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-                  {subject.summary}
-                </p>
+                <TranslatableText
+                  text={subject.summary}
+                  as="p"
+                  className="text-sm text-muted-foreground leading-relaxed line-clamp-2"
+                />
               )}
             </div>
           )}

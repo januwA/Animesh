@@ -70,6 +70,11 @@ describe("useSettingsActions 设置动作 hook", () => {
         ai_configs: [],
         max_download_speed: null,
         max_upload_speed: null,
+        translation: {
+          target_lang: "zh-CN",
+          provider: "google" as const,
+          ai_config_alias: null,
+        },
       });
     });
 
@@ -81,6 +86,11 @@ describe("useSettingsActions 设置动作 hook", () => {
       ai_configs: [],
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     expect(toast.success).toHaveBeenCalledWith(
       "设置已保存，后续下载任务将使用新路径",
@@ -102,6 +112,11 @@ describe("useSettingsActions 设置动作 hook", () => {
         ai_configs: [],
         max_download_speed: null,
         max_upload_speed: null,
+        translation: {
+          target_lang: "zh-CN",
+          provider: "google" as const,
+          ai_config_alias: null,
+        },
       });
     });
 

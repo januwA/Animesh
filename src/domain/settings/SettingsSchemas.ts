@@ -10,12 +10,27 @@ export const AiConfigSchema = z.object({
 
 export type AiConfig = z.infer<typeof AiConfigSchema>;
 
+export const TranslationProviderSchema = z.enum(["google", "ai"]);
+export type TranslationProvider = z.infer<typeof TranslationProviderSchema>;
+
+export const TranslationConfigSchema = z.object({
+  target_lang: z.string().default("zh-CN"),
+  provider: TranslationProviderSchema.default("google"),
+  ai_config_alias: z.string().nullable().default(null),
+});
+export type TranslationConfig = z.infer<typeof TranslationConfigSchema>;
+
 export const SettingsSchema = z.object({
   download_dir: z.string(),
   proxy: z.string().nullable(),
   ai_configs: z.array(AiConfigSchema).nullable(),
   max_download_speed: z.number().nullable(),
   max_upload_speed: z.number().nullable(),
+  translation: TranslationConfigSchema.catch({
+    target_lang: "zh-CN",
+    provider: "google",
+    ai_config_alias: null,
+  }),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;

@@ -10,6 +10,7 @@ describe("SaveSettingsUseCase 保存配置", () => {
     setAiConfigs: vi.fn(),
     setMaxDownloadSpeed: vi.fn(),
     setMaxUploadSpeed: vi.fn(),
+    setTranslationConfig: vi.fn(),
   };
   const mockRepo = rawMockRepo as unknown as SettingsRepository;
 
@@ -35,6 +36,11 @@ describe("SaveSettingsUseCase 保存配置", () => {
       ],
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     expect(rawMockRepo.setDownloadDir).toHaveBeenCalledWith("/mock/dir2");
     expect(rawMockRepo.setProxy).toHaveBeenCalledWith("http://127.0.0.1:1080");
@@ -59,6 +65,11 @@ describe("SaveSettingsUseCase 保存配置", () => {
       ai_configs: null,
       max_download_speed: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     expect(rawMockRepo.setAiConfigs).toHaveBeenCalledWith(null);
   });
@@ -73,6 +84,11 @@ describe("SaveSettingsUseCase 保存配置", () => {
       max_upload_speed: 256,
       ai_configs: null,
       max_download_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     expect(rawMockRepo.setMaxUploadSpeed).toHaveBeenCalledWith(256);
   });
@@ -87,6 +103,11 @@ describe("SaveSettingsUseCase 保存配置", () => {
       max_download_speed: 1024,
       ai_configs: null,
       max_upload_speed: null,
+      translation: {
+        target_lang: "zh-CN",
+        provider: "google" as const,
+        ai_config_alias: null,
+      },
     });
     expect(rawMockRepo.setMaxDownloadSpeed).toHaveBeenCalledWith(1024);
   });

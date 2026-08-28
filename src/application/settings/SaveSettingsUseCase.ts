@@ -10,5 +10,6 @@ export class SaveSettingsUseCase {
     await this.settingsRepository.setAiConfigs(dto.ai_configs);
     await this.settingsRepository.setMaxDownloadSpeed(dto.max_download_speed);
     await this.settingsRepository.setMaxUploadSpeed(dto.max_upload_speed);
+    await this.settingsRepository.setTranslationConfig(dto.translation);
   }
 }

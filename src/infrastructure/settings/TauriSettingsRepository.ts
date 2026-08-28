@@ -6,6 +6,7 @@ import {
   type AiConfig,
   type Settings,
   SettingsSchema,
+  type TranslationConfig,
 } from "../../domain/settings/SettingsSchemas";
 
 export class TauriSettingsRepository implements SettingsRepository {
@@ -42,6 +43,10 @@ export class TauriSettingsRepository implements SettingsRepository {
     return invoke<void>(commands.settings_set_max_upload_speed, {
       maxSpeed: speed,
     });
+  }
+
+  async setTranslationConfig(config: TranslationConfig): Promise<void> {
+    return invoke<void>(commands.settings_set_translation_config, { config });
   }
 
   async selectDirectory(): Promise<NonEmptyString | null> {

@@ -4,7 +4,10 @@ import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCa
 import type { GetCurrentVersionUseCase } from "@/application/update/GetCurrentVersionUseCase";
 import type { OpenUpdateUrlUseCase } from "@/application/update/OpenUpdateUrlUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import { AiConfigSchema } from "@/domain/settings/SettingsSchemas";
+import {
+  AiConfigSchema,
+  TranslationConfigSchema,
+} from "@/domain/settings/SettingsSchemas";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
 import type { UseSettingsActionsDeps } from "./useSettingsActions";
@@ -54,6 +57,7 @@ const SettingsFormSchema = z.object({
     .number()
     .int("上传速度限制必须是整数")
     .min(0, "上传速度限制不能为负数"),
+  translation: TranslationConfigSchema,
 });
 // v8 ignore stop
 
@@ -130,6 +134,11 @@ export function useSettingsPage(deps: UseSettingsPageDeps) {
       ai_configs: form.ai.aiConfigs,
       max_download_speed: form.storage.maxDownloadSpeed,
       max_upload_speed: form.storage.maxUploadSpeed,
+      translation: {
+        target_lang: form.translation.targetLang,
+        provider: form.translation.provider,
+        ai_config_alias: form.translation.aiConfigAlias,
+      },
     });
 
     if (!validation.success) {

@@ -28,6 +28,7 @@ export const commands = {
   settings_set_ai_configs: "settings_set_ai_configs",
   settings_set_max_download_speed: "settings_set_max_download_speed",
   settings_set_max_upload_speed: "settings_set_max_upload_speed",
+  settings_set_translation_config: "settings_set_translation_config",
   select_directory: "select_directory",
   ai_chat_request: "ai_chat_request",
   subtitle_translation_get: "subtitle_translation_get",

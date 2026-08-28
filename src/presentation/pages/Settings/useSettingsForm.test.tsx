@@ -19,6 +19,11 @@ const makeSettings = (overrides: Partial<Settings> = {}): Settings => ({
   max_download_speed: 100,
   max_upload_speed: 200,
   ai_configs: [],
+  translation: {
+    target_lang: "zh-CN",
+    provider: "google" as const,
+    ai_config_alias: null,
+  },
   ...overrides,
 });
 

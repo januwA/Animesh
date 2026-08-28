@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiConfig, Settings } from "@/domain/settings/SettingsSchemas";
+import type {
+  AiConfig,
+  Settings,
+  TranslationConfig,
+  TranslationProvider,
+} from "@/domain/settings/SettingsSchemas";
 
 interface FormSnapshot {
   downloadDir: string;
@@ -9,6 +14,7 @@ interface FormSnapshot {
   maxDownloadSpeed: number;
   maxUploadSpeed: number;
   aiConfigs: AiConfig[];
+  translation: TranslationConfig;
 }
 
 export function useSettingsForm() {
@@ -24,6 +30,13 @@ export function useSettingsForm() {
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [modelInput, setModelInput] = useState("");
 
+  const [translationTargetLang, setTranslationTargetLang] = useState("zh-CN");
+  const [translationProvider, setTranslationProvider] =
+    useState<TranslationProvider>("google");
+  const [translationAiConfigAlias, setTranslationAiConfigAlias] = useState<
+    string | null
+  >(null);
+
   const [savedSnapshot, setSavedSnapshot] = useState<FormSnapshot | null>(null);
 
   const applySettings = (settings: Settings) => {
@@ -32,12 +45,16 @@ export function useSettingsForm() {
     setMaxDownloadSpeed(settings.max_download_speed ?? 0);
     setMaxUploadSpeed(settings.max_upload_speed ?? 0);
     setAiConfigs(settings.ai_configs || []);
+    setTranslationTargetLang(settings.translation.target_lang);
+    setTranslationProvider(settings.translation.provider);
+    setTranslationAiConfigAlias(settings.translation.ai_config_alias);
     setSavedSnapshot({
       downloadDir: settings.download_dir,
       proxy: settings.proxy || "",
       maxDownloadSpeed: settings.max_download_speed ?? 0,
       maxUploadSpeed: settings.max_upload_speed ?? 0,
       aiConfigs: settings.ai_configs || [],
+      translation: settings.translation,
     });
   };
 
@@ -47,6 +64,11 @@ export function useSettingsForm() {
     maxDownloadSpeed,
     maxUploadSpeed,
     aiConfigs: aiConfigs,
+    translation: {
+      target_lang: translationTargetLang,
+      provider: translationProvider,
+      ai_config_alias: translationAiConfigAlias,
+    },
   });
 
   const isDirty =
@@ -161,6 +183,14 @@ export function useSettingsForm() {
       handleCancelEdit,
       handleDeleteConfig,
       handleSaveConfig,
+    },
+    translation: {
+      targetLang: translationTargetLang,
+      setTargetLang: setTranslationTargetLang,
+      provider: translationProvider,
+      setProvider: setTranslationProvider,
+      aiConfigAlias: translationAiConfigAlias,
+      setAiConfigAlias: setTranslationAiConfigAlias,
     },
     applySettings,
     markSaved,
