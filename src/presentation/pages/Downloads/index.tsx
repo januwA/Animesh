@@ -104,7 +104,7 @@ function DownloadsView() {
                       to={
                         group.subjectPlatform === "anilist"
                           ? `/anilist/subject/${group.subjectId}`
-                          : `/subject/${group.subjectId}`
+                          : `/bangumi/subject/${group.subjectId}`
                       }
                     >
                       <ExternalLink className="h-3.5 w-3.5" />

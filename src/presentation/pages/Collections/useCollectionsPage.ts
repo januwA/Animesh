@@ -22,7 +22,7 @@ export function useCollectionsPage(deps: UseCollectionsPageDeps) {
     const route =
       item.platform === "anilist"
         ? `/anilist/subject/${item.subjectId}`
-        : `/subject/${item.subjectId}`;
+        : `/bangumi/subject/${item.subjectId}`;
     navigate(route, {
       viewTransition: true,
       state: {

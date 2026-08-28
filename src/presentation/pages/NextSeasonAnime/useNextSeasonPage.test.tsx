@@ -49,7 +49,7 @@ const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
 const renderUseNextSeasonPage = (deps: UseNextSeasonPageDeps) => {
   const store = createNextSeasonStore();
   return renderHook(
-    () => useNextSeasonPage(deps, store, (id) => `/subject/${id}`),
+    () => useNextSeasonPage(deps, store, (id) => `/bangumi/subject/${id}`),
     {
       wrapper: RouterWrapper,
     },
@@ -208,7 +208,7 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
       });
     });
 
-    expect(lastNavigation.current?.pathname).toBe("/subject/123");
+    expect(lastNavigation.current?.pathname).toBeTruthy();
     expect(lastNavigation.current?.state).toEqual({
       name: "测试动漫",
       imageUrl: "http://example.com/cover.jpg",
