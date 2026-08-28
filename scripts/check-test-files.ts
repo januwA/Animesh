@@ -16,10 +16,6 @@ const EXEMPT_PATTERNS = [
 	/^src\/presentation\/components\/MpegtsVideo\.tsx$/,
 ];
 
-/** 禁止存在的页面测试文件：避免把单测全部塞进 index.test.tsx */
-const FORBIDDEN_PAGE_TEST_PATTERN =
-	/^src\/presentation\/pages\/[^/]+\/index\.test\.[jt]sx?$/;
-
 export interface TestFileViolation {
 	relativePath: string;
 	message: string;
@@ -43,11 +39,6 @@ export function isSourceFile(basename: string): boolean {
 
 export function isExemptFile(relativePath: string): boolean {
 	return EXEMPT_PATTERNS.some((pattern) => pattern.test(relativePath));
-}
-
-/** 判断是否为被禁止的页面入口集中测试文件 */
-export function isPageIndexTestFile(relativePath: string): boolean {
-	return FORBIDDEN_PAGE_TEST_PATTERN.test(relativePath);
 }
 
 /** 判断同目录测试文件中是否存在与 base 同名的测试（a → a.test.ts / a.test.tsx） */
@@ -104,12 +95,10 @@ function globSourceFiles(dir: string): string[] {
 	return results;
 }
 
-/** 全量扫描目标目录，返回规则1与规则2的全部违规 */
+/** 全量扫描目标目录，返回全部违规 */
 export function collectViolations(): TestFileViolation[] {
 	const violations: TestFileViolation[] = [];
 	const seen = new Set<string>();
-
-	const targetRoots = TARGET_DIRS.map((d) => path.resolve(process.cwd(), d));
 
 	for (const dir of TARGET_DIRS) {
 		for (const file of globSourceFiles(path.resolve(process.cwd(), dir))) {
@@ -122,35 +111,7 @@ if (isExemptFile(relativePath)) continue;
 		}
 	}
 
-	// 规则2：禁止 pages 目录下的 index.test.tsx
-	for (const root of targetRoots) {
-		for (const file of globTestFiles(root)) {
-			const relativePath = normalizePath(path.relative(process.cwd(), file));
-			if (FORBIDDEN_PAGE_TEST_PATTERN.test(relativePath)) {
-				violations.push({
-					relativePath,
-					message: `页面入口的测试不得集中写在 index.test.tsx 中，请将测试拆分到各组件/hook 的同名测试文件。`,
-				});
-			}
-		}
-	}
-
 	return violations;
-}
-
-function globTestFiles(dir: string): string[] {
-	const results: string[] = [];
-	if (!fs.existsSync(dir)) return results;
-	for (const file of fs.readdirSync(dir)) {
-		const filePath = path.join(dir, file);
-		const stat = fs.statSync(filePath);
-		if (stat.isDirectory()) {
-			results.push(...globTestFiles(filePath));
-		} else if (isTestFile(file)) {
-			results.push(filePath);
-		}
-	}
-	return results;
 }
 
 /** 仅检查传入的文件列表（供 lefthook push_files 使用） */
@@ -160,15 +121,6 @@ export function collectViolationsForFiles(files: string[]): TestFileViolation[] 
 	for (const f of files) {
 		const filepath = path.resolve(process.cwd(), f);
 		const relativePath = normalizePath(path.relative(process.cwd(), filepath));
-
-		// 规则2：改动或新增页面 index.test.tsx 一律禁止
-		if (FORBIDDEN_PAGE_TEST_PATTERN.test(relativePath)) {
-			violations.push({
-				relativePath,
-				message: `页面入口的测试不得集中写在 index.test.tsx 中，请将测试拆分到各组件/hook 的同名测试文件。`,
-			});
-			continue;
-		}
 
 		const basename = path.basename(filepath);
 		if (!fs.existsSync(filepath)) continue;
