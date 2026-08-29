@@ -121,9 +121,11 @@ describe("LivePlayerView 直播播放器视图组件", () => {
       vjsMock.trigger();
     });
 
-    expect(vi.mocked(toast)).toHaveBeenCalledWith(
-      "直播流中断，正在自动重连...",
-    );
+    await waitFor(() => {
+      expect(vi.mocked(toast)).toHaveBeenCalledWith(
+        "直播流中断，正在自动重连...",
+      );
+    });
   });
 
   it("重连次数达到上限后应该停止自动重连", async () => {
@@ -135,13 +137,15 @@ describe("LivePlayerView 直播播放器视图组件", () => {
 
     const vjsMock = (globalThis as any).__vjsMock;
     for (let i = 0; i < 6; i += 1) {
-      act(() => {
+      await act(async () => {
         vjsMock.setError({ code: 3 } as MediaError);
         vjsMock.trigger();
       });
     }
 
-    expect(vi.mocked(toast)).toHaveBeenCalledTimes(5);
+    await waitFor(() => {
+      expect(vi.mocked(toast)).toHaveBeenCalledTimes(5);
+    });
   });
 
   it("点击复制按钮时应该复制原始直播源地址", async () => {
