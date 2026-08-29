@@ -157,7 +157,7 @@ export function createDefaultDIContainer(): DIContainer {
   const logger = new ConsoleLogger("App");
   const httpClient = new FetchHttpClient();
   const torrentRepository = isTauri
-    ? new TauriTorrentRepository(cacheStore)
+    ? new TauriTorrentRepository(httpClient, cacheStore)
     : new HttpTorrentRepository(httpClient, cacheStore);
   const settingsRepository = isTauri
     ? new TauriSettingsRepository()

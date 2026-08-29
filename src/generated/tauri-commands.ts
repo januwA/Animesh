@@ -2,8 +2,6 @@
 // 请勿手动编辑，运行 `cargo run -p xtask -- generate` 重新生成
 
 export const commands = {
-  cancel_search: "cancel_search",
-  search_torrents: "search_torrents",
   torrent_add_magnet: "torrent_add_magnet",
   cancel_add_magnet: "cancel_add_magnet",
   get_stream_port: "get_stream_port",

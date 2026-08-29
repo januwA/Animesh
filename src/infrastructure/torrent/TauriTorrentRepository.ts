@@ -19,10 +19,12 @@ import {
   VideoMetadataSchema,
 } from "../../domain/torrent/TorrentSchemas";
 import { Cached } from "../cache/CachedDecorator";
+import type { HttpClient } from "../http/HttpClient";
 import type { CacheStore } from "../storage/CacheStore";
 
 export class TauriTorrentRepository implements TorrentRepository {
   constructor(
+    private readonly httpClient: HttpClient,
     /** @internal accessed by @Cached decorator */
     public readonly store: CacheStore,
   ) {}
@@ -36,30 +38,18 @@ export class TauriTorrentRepository implements TorrentRepository {
     keyword: string,
     engine: TorrentSearchEngine,
   ): Promise<SearchResultItem[]> {
-    const traceId = ctx.value<string>("traceId") || "";
-    let isFinished = false;
-    ctx.done().then(() => {
-      if (!isFinished) {
-        invoke<void>(commands.cancel_search, { traceId }).catch(() => {});
-      }
-    });
-
-    try {
-      const raw = await invoke<unknown>(commands.search_torrents, {
-        traceId,
-        keyword,
-        engine,
+    const port = await this.getStreamPort();
+    const raw = await this.httpClient.getJson<unknown>(
+      `http://127.0.0.1:${port}/torrent_search`,
+      { ctx, params: { keyword, engine } },
+    );
+    const result = z.array(SearchResultItemSchema).safeParse(raw);
+    if (!result.success) {
+      throw new Error("torrent_search API structure mismatch", {
+        cause: result.error,
       });
-      const result = z.array(SearchResultItemSchema).safeParse(raw);
-      if (!result.success) {
-        throw new Error("search_torrents API structure mismatch", {
-          cause: result.error,
-        });
-      }
-      return result.data;
-    } finally {
-      isFinished = true;
     }
+    return result.data;
   }
 
   async pauseTorrent(infoHash: string): Promise<void> {

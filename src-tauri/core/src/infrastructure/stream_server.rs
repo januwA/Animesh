@@ -1,3 +1,5 @@
+use crate::application::search_use_case::SearchUseCase;
+use crate::domain::crawler::SearchResultItem;
 use crate::domain::stream::{proxy_base_url, IPTV_PROXY_PATH};
 use crate::domain::torrent::{parse_range, TorrentRepository};
 use crate::error::CoreResult;
@@ -8,7 +10,7 @@ use axum::{
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
-    Router,
+    Json, Router,
 };
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, SeekFrom};
@@ -20,6 +22,7 @@ use tokio_util::io::ReaderStream;
 pub struct StreamState {
     pub torrent_repo: Arc<dyn TorrentRepository>,
     pub hls_proxy: HlsProxyState,
+    pub search_use_case: Arc<SearchUseCase>,
 }
 
 /// 绑定内嵌流媒体服务器监听地址。
@@ -37,7 +40,7 @@ pub async fn bind_stream_listener() -> Result<TcpListener, std::io::Error> {
     TcpListener::bind(&stream_addr).await
 }
 
-/// 构建流媒体路由：视频流接口 + IPTV HLS 代理，并配置 CORS 允许 Webview/本地网络访问。
+/// 构建流媒体路由：视频流接口 + IPTV HLS 代理 + 种子搜索，并配置 CORS 允许 Webview/本地网络访问。
 pub fn build_stream_router(state: StreamState) -> Router {
     use tower_http::cors::{Any, CorsLayer};
     let cors = CorsLayer::new()
@@ -46,6 +49,7 @@ pub fn build_stream_router(state: StreamState) -> Router {
         .allow_headers(Any);
 
     Router::new()
+        .route("/torrent_search", get(torrent_search_handler))
         .route("/stream/:info_hash/:file_id", get(stream_handler))
         .route(IPTV_PROXY_PATH, get(iptv_proxy_route))
         .layer(cors)
@@ -57,10 +61,12 @@ pub fn spawn_stream_server(
     listener: TcpListener,
     torrent_repo: Arc<dyn TorrentRepository>,
     hls_proxy: HlsProxyState,
+    search_use_case: Arc<SearchUseCase>,
 ) {
     let app = build_stream_router(StreamState {
         torrent_repo,
         hls_proxy,
+        search_use_case,
     });
     tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();
@@ -70,12 +76,32 @@ pub fn spawn_stream_server(
 /// 由组合根调用：绑定端口 + 创建 HLS 代理 + 启动服务器，返回实际监听端口。
 pub async fn start_stream_server(
     torrent_repo: Arc<dyn TorrentRepository>,
+    search_use_case: Arc<SearchUseCase>,
 ) -> CoreResult<(u16, HlsProxyState)> {
     let listener = bind_stream_listener().await?;
     let port = listener.local_addr()?.port();
     let hls_proxy = HlsProxyState::new(proxy_base_url(port));
-    spawn_stream_server(listener, torrent_repo, hls_proxy.clone());
+    spawn_stream_server(listener, torrent_repo, hls_proxy.clone(), search_use_case);
     Ok((port, hls_proxy))
+}
+
+#[derive(serde::Deserialize)]
+struct TorrentSearchQuery {
+    keyword: String,
+    engine: String,
+}
+
+/// 种子资源搜索接口，按引擎分发请求并返回搜索结果。
+async fn torrent_search_handler(
+    State(state): State<StreamState>,
+    Query(query): Query<TorrentSearchQuery>,
+) -> Result<Json<Vec<SearchResultItem>>, (StatusCode, String)> {
+    let items = state
+        .search_use_case
+        .execute(&query.engine, &query.keyword)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(items))
 }
 
 /// IPTV HLS 代理入口，转发到 HlsProxyState 处理。

@@ -96,11 +96,14 @@ impl TorrentManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::application::search_use_case::SearchUseCase;
+    use crate::domain::settings::SettingsRepository;
     use crate::infrastructure::db::AppDatabase;
     use crate::infrastructure::rqbit_torrent::create_torrent_repository;
+    use crate::infrastructure::settings_repository::SqliteSettingsRepository;
     use crate::infrastructure::subject_binding_repository::SqliteSubjectBindingRepository;
     use crate::infrastructure::test_mocks::{
-        temp_dir, MockSubjectBindingRepository, MockTorrentRepository,
+        temp_dir, MockCrawlerRepository, MockSubjectBindingRepository, MockTorrentRepository,
     };
     use std::path::PathBuf;
     use std::sync::RwLock;
@@ -272,9 +275,19 @@ mod tests {
 
         // 测试 HTTP 流式播放接口_未找到种子
         let hls_proxy = HlsProxyState::new(crate::domain::stream::proxy_base_url(0));
+        let db = AppDatabase::connect_in_memory()
+            .await
+            .expect("内存库应成功");
+        let settings_repo: Arc<dyn SettingsRepository> =
+            Arc::new(SqliteSettingsRepository::new(&db));
+        let search_use_case = Arc::new(SearchUseCase::new(
+            Arc::new(MockCrawlerRepository),
+            settings_repo,
+        ));
         let app = build_stream_router(StreamState {
             torrent_repo: manager.torrent_repo.clone(),
             hls_proxy,
+            search_use_case,
         });
 
         use axum::body::Body;

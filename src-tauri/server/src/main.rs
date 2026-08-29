@@ -122,12 +122,15 @@ async fn main() -> anyhow::Result<()> {
     let subject_binding_repo: Arc<dyn SubjectBindingRepository> =
         Arc::new(SqliteSubjectBindingRepository::new(&db).await);
 
-    let (port, hls_proxy) =
-        animesh_core::infrastructure::stream_server::start_stream_server(torrent_repo.clone())
-            .await
-            .context("初始化流媒体服务器失败")?;
-
     let crawler_repo = animesh_core::infrastructure::http_crawler::create_crawler_repository();
+    let search_use_case = Arc::new(SearchUseCase::new(crawler_repo, settings_repo.clone()));
+
+    let (port, hls_proxy) = animesh_core::infrastructure::stream_server::start_stream_server(
+        torrent_repo.clone(),
+        search_use_case.clone(),
+    )
+    .await
+    .context("初始化流媒体服务器失败")?;
     let subtitle_cache: Arc<dyn animesh_core::domain::subtitles::SubtitleCache> =
         Arc::new(animesh_core::infrastructure::subtitle_cache::InMemorySubtitleCache::new());
     let subtitle_extractor: Arc<dyn animesh_core::domain::subtitles::SubtitleExtractor> =
@@ -140,7 +143,6 @@ async fn main() -> anyhow::Result<()> {
         torrent_repo.clone(),
         download_dir_lock.clone(),
     );
-    let search_use_case = SearchUseCase::new(crawler_repo, settings_repo);
     let subtitle_service = SubtitleService::new(
         torrent_repo.clone(),
         subtitle_cache,
@@ -161,7 +163,7 @@ async fn main() -> anyhow::Result<()> {
     let state = Arc::new(AppState {
         torrent_manager: Arc::new(torrent_manager),
         settings_service: Arc::new(settings_service),
-        search_use_case: Arc::new(search_use_case),
+        search_use_case,
         subtitle_service: Arc::new(subtitle_service),
         stream_service: Arc::new(stream_service),
         collection_service: Arc::new(collection_service),
