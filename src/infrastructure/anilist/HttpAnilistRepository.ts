@@ -186,15 +186,11 @@ function getWeekRange(): { startDate: number; endDate: number } {
 }
 
 export class HttpAnilistRepository implements AnimeRepository {
-  /** @internal accessed by @Cached decorator */
-  declare store: CacheStore;
-
   constructor(
     private readonly client: HttpClient,
-    store: CacheStore,
-  ) {
-    this.store = store;
-  }
+    /** @internal accessed by @Cached decorator */
+    public readonly store: CacheStore,
+  ) {}
 
   @Cached({
     ttl: new Duration({ days: 7 }),

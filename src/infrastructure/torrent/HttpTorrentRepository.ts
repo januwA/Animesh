@@ -25,15 +25,10 @@ const baseUrl = import.meta.env.PROD
   : (import.meta.env.VITE_API_BASE_URL as string) || "/api";
 
 export class HttpTorrentRepository implements TorrentRepository {
-  /** @internal accessed by @Cached decorator */
-  declare store: CacheStore;
-
   constructor(
     private readonly httpClient: HttpClient,
-    store: CacheStore,
-  ) {
-    this.store = store;
-  }
+    public readonly store: CacheStore,
+  ) {}
 
   @Cached({
     ttl: new Duration({ minutes: 10 }),

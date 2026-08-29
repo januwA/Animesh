@@ -22,12 +22,10 @@ import { Cached } from "../cache/CachedDecorator";
 import type { CacheStore } from "../storage/CacheStore";
 
 export class TauriTorrentRepository implements TorrentRepository {
-  /** @internal accessed by @Cached decorator */
-  declare store: CacheStore;
-
-  constructor(store: CacheStore) {
-    this.store = store;
-  }
+  constructor(
+    /** @internal accessed by @Cached decorator */
+    public readonly store: CacheStore,
+  ) {}
 
   @Cached({
     ttl: new Duration({ minutes: 10 }),

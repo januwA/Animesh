@@ -164,7 +164,7 @@ export function createDefaultDIContainer(): DIContainer {
     : new HttpSettingsRepository(httpClient);
   const bangumiRepository = new HttpBangumiRepository(httpClient, cacheStore);
   const collectionRepository = isTauri
-    ? new TauriCollectionRepository()
+    ? new TauriCollectionRepository(cacheStore)
     : new HttpCollectionRepository(httpClient);
   const notificationRepository = isTauri
     ? new TauriNotificationRepository()

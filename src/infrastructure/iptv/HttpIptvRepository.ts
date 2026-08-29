@@ -12,15 +12,10 @@ const COUNTRIES_URL = "https://iptv-org.github.io/api/countries.json";
 const PLAYLIST_BASE_URL = "https://iptv-org.github.io/iptv/countries";
 
 export class HttpIptvRepository implements IptvRepository {
-  /** @internal accessed by @Cached decorator */
-  declare store: CacheStore;
-
   constructor(
     private readonly client: HttpClient,
-    store: CacheStore,
-  ) {
-    this.store = store;
-  }
+    public readonly store: CacheStore,
+  ) {}
 
   @Cached({
     ttl: new Duration({ days: 30 }),

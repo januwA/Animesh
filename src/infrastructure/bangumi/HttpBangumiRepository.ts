@@ -29,15 +29,11 @@ import {
 } from "./BangumiSchemas";
 
 export class HttpBangumiRepository implements AnimeRepository {
-  /** @internal accessed by @Cached decorator */
-  declare store: CacheStore;
-
   constructor(
     private readonly client: HttpClient,
-    store: CacheStore,
-  ) {
-    this.store = store;
-  }
+    /** @internal accessed by @Cached decorator */
+    public readonly store: CacheStore,
+  ) {}
 
   @Cached({
     ttl: new Duration({ days: 7 }),
