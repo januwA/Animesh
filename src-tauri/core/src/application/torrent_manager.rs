@@ -282,12 +282,20 @@ mod tests {
             Arc::new(SqliteSettingsRepository::new(&db));
         let search_use_case = Arc::new(SearchUseCase::new(
             Arc::new(MockCrawlerRepository),
+            settings_repo.clone(),
+        ));
+
+        let http_client = Arc::new(crate::infrastructure::http_client::MockHttpClient::default());
+        let ai_chat_use_case = Arc::new(crate::application::ai_chat_use_case::AiChatUseCase::new(
+            http_client,
             settings_repo,
         ));
+
         let app = build_stream_router(StreamState {
             torrent_repo: manager.torrent_repo.clone(),
             hls_proxy,
             search_use_case,
+            ai_chat_use_case,
         });
 
         use axum::body::Body;

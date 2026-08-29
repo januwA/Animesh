@@ -174,6 +174,18 @@ mod tests {
 
         let input_br = "Line 1\\NLine 2\\nLine 3";
         assert_eq!(strip_ass_tags(input_br), "Line 1\nLine 2\nLine 3");
+
+        let input_backslash_other = "Test\\xValue";
+        assert_eq!(strip_ass_tags(input_backslash_other), "TestxValue");
+
+        let input_backslash_space = "Test\\hValue";
+        assert_eq!(strip_ass_tags(input_backslash_space), "Test Value");
+
+        let input_empty_tag = "{}text";
+        assert_eq!(strip_ass_tags(input_empty_tag), "text");
+
+        let input_nested = "{\\b1}bold{/\\b1} normal";
+        assert_eq!(strip_ass_tags(input_nested), "bold normal");
     }
 
     #[test]
@@ -210,6 +222,14 @@ mod tests {
         let invalid = [0xFF, 0xFE, 0x00, 0x80, 0x81];
         let result = decode_subtitle_bytes(&invalid);
         assert!(result.contains('\u{FFFD}'));
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_解码无BOM的非法字节_应通过chardetng检测并用替换字符兜底() {
+        let no_bom_invalid = [0xC0, 0xAF, 0xE0, 0x80];
+        let result = decode_subtitle_bytes(&no_bom_invalid);
+        assert!(!result.is_empty());
     }
 
     #[test]

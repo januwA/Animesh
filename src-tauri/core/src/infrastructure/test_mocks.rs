@@ -7,6 +7,7 @@
 #![cfg(test)]
 
 use crate::domain::crawler::{CrawlerRepository, SearchResultItem};
+use crate::domain::settings::{AiConfig, AppSettings, SettingsRepository, TranslationConfig};
 use crate::domain::stream::{StreamKind, StreamProber};
 use crate::domain::subtitles::{SubtitleCache, SubtitleExtractor, VideoInfo, VideoMetadata};
 use crate::domain::torrent::{
@@ -317,6 +318,58 @@ impl CrawlerRepository for MockCrawlerRepository {
         _proxy: Option<String>,
     ) -> CoreResult<Vec<SearchResultItem>> {
         Ok(vec![make_item("anibt")])
+    }
+}
+
+// ============================================================================
+// MockSettingsRepository
+// ============================================================================
+
+/// 可配置的 `SettingsRepository` 测试替身。
+#[derive(Default, Clone)]
+pub struct MockSettingsRepository {
+    pub proxy: Option<String>,
+    pub get_proxy_error: Option<String>,
+    pub post_error: Option<String>,
+}
+
+#[async_trait::async_trait]
+impl SettingsRepository for MockSettingsRepository {
+    async fn get(&self) -> Result<Option<AppSettings>, CoreError> {
+        Ok(None)
+    }
+    async fn upsert(&self, _settings: &AppSettings) -> Result<(), CoreError> {
+        Ok(())
+    }
+    async fn ensure_initialized(&self, _default: &AppSettings) -> Result<AppSettings, CoreError> {
+        unimplemented!()
+    }
+    async fn update_download_dir(&self, _dir: &str) -> Result<(), CoreError> {
+        unimplemented!()
+    }
+    async fn update_proxy(&self, _proxy: Option<&str>) -> Result<(), CoreError> {
+        unimplemented!()
+    }
+    async fn get_proxy(&self) -> Result<Option<String>, CoreError> {
+        if let Some(err) = &self.get_proxy_error {
+            return Err(CoreError::Message(err.clone()));
+        }
+        Ok(self.proxy.clone())
+    }
+    async fn update_ai_configs(&self, _configs: Option<&[AiConfig]>) -> Result<(), CoreError> {
+        unimplemented!()
+    }
+    async fn update_max_download_speed(&self, _speed: Option<u32>) -> Result<(), CoreError> {
+        unimplemented!()
+    }
+    async fn update_max_upload_speed(&self, _speed: Option<u32>) -> Result<(), CoreError> {
+        unimplemented!()
+    }
+    async fn update_translation_config(
+        &self,
+        _config: Option<&TranslationConfig>,
+    ) -> Result<(), CoreError> {
+        unimplemented!()
     }
 }
 

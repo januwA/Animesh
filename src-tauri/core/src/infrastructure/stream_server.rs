@@ -1,3 +1,4 @@
+use crate::application::ai_chat_use_case::AiChatUseCase;
 use crate::application::search_use_case::SearchUseCase;
 use crate::domain::crawler::SearchResultItem;
 use crate::domain::stream::{proxy_base_url, IPTV_PROXY_PATH};
@@ -9,7 +10,7 @@ use axum::{
     extract::{Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 use std::sync::Arc;
@@ -23,6 +24,7 @@ pub struct StreamState {
     pub torrent_repo: Arc<dyn TorrentRepository>,
     pub hls_proxy: HlsProxyState,
     pub search_use_case: Arc<SearchUseCase>,
+    pub ai_chat_use_case: Arc<AiChatUseCase>,
 }
 
 /// 绑定内嵌流媒体服务器监听地址。
@@ -52,6 +54,7 @@ pub fn build_stream_router(state: StreamState) -> Router {
         .route("/torrent_search", get(torrent_search_handler))
         .route("/stream/:info_hash/:file_id", get(stream_handler))
         .route(IPTV_PROXY_PATH, get(iptv_proxy_route))
+        .route("/ai/chat-request", post(ai_chat_request_handler))
         .layer(cors)
         .with_state(state)
 }
@@ -62,11 +65,13 @@ pub fn spawn_stream_server(
     torrent_repo: Arc<dyn TorrentRepository>,
     hls_proxy: HlsProxyState,
     search_use_case: Arc<SearchUseCase>,
+    ai_chat_use_case: Arc<AiChatUseCase>,
 ) {
     let app = build_stream_router(StreamState {
         torrent_repo,
         hls_proxy,
         search_use_case,
+        ai_chat_use_case,
     });
     tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();
@@ -77,11 +82,18 @@ pub fn spawn_stream_server(
 pub async fn start_stream_server(
     torrent_repo: Arc<dyn TorrentRepository>,
     search_use_case: Arc<SearchUseCase>,
+    ai_chat_use_case: Arc<AiChatUseCase>,
 ) -> CoreResult<(u16, HlsProxyState)> {
     let listener = bind_stream_listener().await?;
     let port = listener.local_addr()?.port();
     let hls_proxy = HlsProxyState::new(proxy_base_url(port));
-    spawn_stream_server(listener, torrent_repo, hls_proxy.clone(), search_use_case);
+    spawn_stream_server(
+        listener,
+        torrent_repo,
+        hls_proxy.clone(),
+        search_use_case,
+        ai_chat_use_case,
+    );
     Ok((port, hls_proxy))
 }
 
@@ -178,4 +190,23 @@ async fn stream_handler(
     };
 
     Ok(response)
+}
+
+#[derive(serde::Deserialize)]
+pub struct AiChatRequestInput {
+    pub endpoint: String,
+    pub api_key: String,
+    pub body_json: String,
+}
+
+/// AI 聊天请求接口，转发到大模型 API。
+pub async fn ai_chat_request_handler(
+    State(state): State<StreamState>,
+    Json(payload): Json<AiChatRequestInput>,
+) -> Result<String, (StatusCode, String)> {
+    state
+        .ai_chat_use_case
+        .execute(&payload.endpoint, &payload.api_key, &payload.body_json)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }

@@ -1,3 +1,4 @@
+use animesh_core::application::ai_chat_use_case::AiChatUseCase;
 use animesh_core::application::collection_service::CollectionService;
 use animesh_core::application::search_use_case::SearchUseCase;
 use animesh_core::application::settings_service::{
@@ -30,6 +31,7 @@ struct AppState {
     torrent_manager: Arc<TorrentManager>,
     settings_service: Arc<SettingsService>,
     search_use_case: Arc<SearchUseCase>,
+    ai_chat_use_case: Arc<AiChatUseCase>,
     subtitle_service: Arc<SubtitleService>,
     stream_service: Arc<StreamService>,
     collection_service: Arc<CollectionService>,
@@ -125,9 +127,13 @@ async fn main() -> anyhow::Result<()> {
     let crawler_repo = animesh_core::infrastructure::http_crawler::create_crawler_repository();
     let search_use_case = Arc::new(SearchUseCase::new(crawler_repo, settings_repo.clone()));
 
+    let http_client = Arc::new(animesh_core::infrastructure::http_client::ReqwestHttpClient);
+    let ai_chat_use_case = Arc::new(AiChatUseCase::new(http_client, settings_repo.clone()));
+
     let (port, hls_proxy) = animesh_core::infrastructure::stream_server::start_stream_server(
         torrent_repo.clone(),
         search_use_case.clone(),
+        ai_chat_use_case.clone(),
     )
     .await
     .context("初始化流媒体服务器失败")?;
@@ -164,6 +170,7 @@ async fn main() -> anyhow::Result<()> {
         torrent_manager: Arc::new(torrent_manager),
         settings_service: Arc::new(settings_service),
         search_use_case,
+        ai_chat_use_case,
         subtitle_service: Arc::new(subtitle_service),
         stream_service: Arc::new(stream_service),
         collection_service: Arc::new(collection_service),
@@ -600,11 +607,13 @@ struct AiChatRequestInput {
 }
 
 async fn ai_chat_request_handler(
+    State(state): State<Arc<AppState>>,
     axum::Json(payload): axum::Json<AiChatRequestInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let resp =
-        animesh_core::send_ai_chat_request(&payload.endpoint, &payload.api_key, &payload.body_json)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let resp = state
+        .ai_chat_use_case
+        .execute(&payload.endpoint, &payload.api_key, &payload.body_json)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(resp)
 }

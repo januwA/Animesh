@@ -184,7 +184,7 @@ export function createDefaultDIContainer(): DIContainer {
   const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
 
   const aiClient: AiClient = isTauri
-    ? new TauriAiClient()
+    ? new TauriAiClient(httpClient)
     : new FetchAiClient(httpClient);
 
   const googleTranslateClient = new GoogleTranslateClient();

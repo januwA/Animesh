@@ -407,15 +407,6 @@ async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, CoreE
 }
 
 #[tauri::command]
-async fn ai_chat_request(
-    endpoint: String,
-    api_key: String,
-    body_json: String,
-) -> Result<String, CoreError> {
-    animesh_core::send_ai_chat_request(&endpoint, &api_key, &body_json).await
-}
-
-#[tauri::command]
 async fn subtitle_translation_get(
     id: String,
     repo: tauri::State<'_, Arc<SqliteSubtitleTranslationRepository>>,
@@ -583,10 +574,19 @@ pub fn run() {
                     animesh_core::infrastructure::http_crawler::create_crawler_repository();
                 let search_use_case = Arc::new(SearchUseCase::new(crawler_repo, settings_repo.clone()));
 
+                let http_client = Arc::new(animesh_core::infrastructure::http_client::ReqwestHttpClient);
+                let ai_chat_use_case = Arc::new(
+                    animesh_core::application::ai_chat_use_case::AiChatUseCase::new(
+                        http_client,
+                        settings_repo.clone(),
+                    ),
+                );
+
                 let (port, hls_proxy) =
                     animesh_core::infrastructure::stream_server::start_stream_server(
                         torrent_repo.clone(),
                         search_use_case,
+                        ai_chat_use_case,
                     )
                     .await
                     .context("初始化流媒体服务器失败")?;
@@ -667,7 +667,6 @@ pub fn run() {
             select_directory,
             torrent_get_video_metadata,
             torrent_get_subtitle_vtt,
-            ai_chat_request,
             subtitle_translation_get,
             subtitle_translation_list_by_torrent,
             subtitle_translation_save,
