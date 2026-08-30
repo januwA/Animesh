@@ -11,6 +11,7 @@ import { GetNextSeasonAnimeUseCase } from "../application/anime/GetNextSeasonAni
 import { GetWallpaperImagesUseCase } from "../application/anime/GetWallpaperImagesUseCase";
 import { SearchAnimeSubjectsUseCase } from "../application/anime/SearchAnimeSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
+import { SweepExpiredCacheUseCase } from "../application/cache/SweepExpiredCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
 import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
 import { GetFavoriteStatusUseCase } from "../application/collection/GetFavoriteStatusUseCase";
@@ -120,6 +121,7 @@ export interface DIContainer {
   getTranslationConfigUseCase: GetTranslationConfigUseCase;
   setTranslationConfigUseCase: SetTranslationConfigUseCase;
   clearCacheUseCase: ClearCacheUseCase;
+  sweepExpiredCacheUseCase: SweepExpiredCacheUseCase;
   translateSubtitleUseCase: TranslateSubtitleUseCase;
   getSubtitleTranslationsUseCase: GetSubtitleTranslationsUseCase;
   deleteSubtitleTranslationUseCase: DeleteSubtitleTranslationUseCase;
@@ -250,6 +252,7 @@ export function createDefaultDIContainer(): DIContainer {
     logger.withCategory("SearchTorrentsWithAiUseCase"),
   );
   const clearCacheUseCase = new ClearCacheUseCase(cacheStore);
+  const sweepExpiredCacheUseCase = new SweepExpiredCacheUseCase(cacheStore);
   const translateSubtitleUseCase = new TranslateSubtitleUseCase(
     aiClient,
     subtitleTranslationRepository,
@@ -336,6 +339,8 @@ export function createDefaultDIContainer(): DIContainer {
 
   const openUrlUseCase = new OpenUrlUseCase(openerRepository);
 
+  sweepExpiredCacheUseCase.execute().catch(() => {});
+
   return {
     logger,
 
@@ -369,6 +374,7 @@ export function createDefaultDIContainer(): DIContainer {
     getTranslationConfigUseCase,
     setTranslationConfigUseCase,
     clearCacheUseCase,
+    sweepExpiredCacheUseCase,
     translateSubtitleUseCase,
     getSubtitleTranslationsUseCase,
     deleteSubtitleTranslationUseCase,

@@ -62,6 +62,18 @@ export class InMemoryCacheStore implements CacheStore {
     }
   }
 
+  async clearExpired(): Promise<number> {
+    const now = Date.now();
+    let deletedCount = 0;
+    for (const [key, record] of this.records) {
+      if (now > record.expiry) {
+        this.records.delete(key);
+        deletedCount++;
+      }
+    }
+    return deletedCount;
+  }
+
   /**
    * 直接写入原始信封记录，用于构造损坏数据场景。
    */

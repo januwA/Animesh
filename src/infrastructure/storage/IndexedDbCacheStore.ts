@@ -103,6 +103,34 @@ export class IndexedDbCacheStore implements CacheStore {
   }
 
   @Logged()
+  async clearExpired(): Promise<number> {
+    const now = Date.now();
+    let deletedCount = 0;
+    const db = await this.getDb();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.openCursor();
+    return new Promise<number>((resolve, reject) => {
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) {
+          const record = cursor.value as { expiry?: number } | undefined;
+          if (record?.expiry !== undefined && now > record.expiry) {
+            cursor.delete();
+            deletedCount++;
+          }
+          cursor.continue();
+        } else {
+          resolve(deletedCount);
+        }
+      };
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = () => resolve(deletedCount);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  @Logged()
   async clearByPrefix(prefix: string): Promise<void> {
     const db = await this.getDb();
     const tx = db.transaction(STORE_NAME, "readwrite");

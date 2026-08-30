@@ -10,4 +10,5 @@ export interface CacheStore {
   removeItem(key: string): Promise<void>;
   clear(): Promise<void>;
   clearByPrefix(prefix: string): Promise<void>;
+  clearExpired(): Promise<number>;
 }
