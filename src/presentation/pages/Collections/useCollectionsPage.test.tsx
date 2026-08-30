@@ -16,7 +16,7 @@ const makeDeps = (
 });
 
 const lastNavigation: {
-  current: { pathname: string; state: unknown } | null;
+  current: { pathname: string; search: string; state: unknown } | null;
 } = { current: null };
 const LocationTracker = () => {
   lastNavigation.current = useLocation();
@@ -122,7 +122,8 @@ describe("useCollectionsPage 收藏页面 hook", () => {
       });
     });
 
-    expect(lastNavigation.current?.pathname).toBeTruthy();
+    expect(lastNavigation.current?.pathname).toBe("/anime/subject/101");
+    expect(lastNavigation.current?.search).toBe("?platform=bangumi");
     expect(lastNavigation.current?.state).toEqual({
       name: "测试动画",
       imageUrl: null,
@@ -147,7 +148,8 @@ describe("useCollectionsPage 收藏页面 hook", () => {
       });
     });
 
-    expect(lastNavigation.current?.pathname).toBe("/anilist/subject/202");
+    expect(lastNavigation.current?.pathname).toBe("/anime/subject/202");
+    expect(lastNavigation.current?.search).toBe("?platform=anilist");
     expect(lastNavigation.current?.state).toEqual({
       name: "Anilist动画",
       imageUrl: null,

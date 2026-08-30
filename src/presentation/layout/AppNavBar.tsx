@@ -8,7 +8,8 @@ import {
   Settings as SettingsIcon,
   Tv,
 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { cn } from "@/presentation/lib/utils";
 
@@ -26,19 +27,25 @@ const navItemStateClass = (isActive: boolean) =>
     : "text-muted-foreground hover:text-foreground hover:bg-accent/50";
 
 interface NavItem {
-  path: string;
+  pathname: string;
+  platform?: AnimePlatform;
   label: string;
   icon: LucideIcon;
 }
 
 const primaryItems: NavItem[] = [
-  { path: "/torrent_search", label: "搜索", icon: Search },
-  { path: "/bangumi", label: "Bangumi", icon: Calendar },
-  { path: "/anilist", label: "AniList", icon: CalendarDays },
-  { path: "/collections", label: "收藏", icon: Heart },
-  { path: "/downloads", label: "下载", icon: Download },
-  { path: "/settings", label: "设置", icon: SettingsIcon },
-  { path: "/live", label: "直播", icon: Tv },
+  { pathname: "/torrent_search", label: "搜索", icon: Search },
+  { pathname: "/anime", platform: "bangumi", label: "Bangumi", icon: Calendar },
+  {
+    pathname: "/anime",
+    platform: "anilist",
+    label: "AniList",
+    icon: CalendarDays,
+  },
+  { pathname: "/collections", label: "收藏", icon: Heart },
+  { pathname: "/downloads", label: "下载", icon: Download },
+  { pathname: "/settings", label: "设置", icon: SettingsIcon },
+  { pathname: "/live", label: "直播", icon: Tv },
 ];
 
 interface NavItemLinkProps {
@@ -50,12 +57,12 @@ interface NavItemLinkProps {
 function NavItemLink({ item, isActive, badgeCount = 0 }: NavItemLinkProps) {
   const Icon = item.icon;
   const showBadge = badgeCount > 0;
+  const to = item.platform
+    ? `${item.pathname}?platform=${item.platform}`
+    : item.pathname;
 
   return (
-    <Link
-      to={item.path}
-      className={cn(navItemBaseClass, navItemStateClass(isActive))}
-    >
+    <Link to={to} className={cn(navItemBaseClass, navItemStateClass(isActive))}>
       {isActive && (
         <span className="absolute inset-0 bg-primary/10 rounded-xl blur-xs -z-10 md:hidden animate-fade-in" />
       )}
@@ -73,8 +80,19 @@ function NavItemLink({ item, isActive, badgeCount = 0 }: NavItemLinkProps) {
 // 底部导航组件
 export function AppNavBar() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { torrents } = useTorrentStatus();
   const activeCount = torrents.filter((t) => !t.finished && !t.paused).length;
+  const currentPlatform = searchParams.get("platform");
+
+  const getIsActive = (item: NavItem) => {
+    if (item.platform) {
+      return (
+        location.pathname === item.pathname && currentPlatform === item.platform
+      );
+    }
+    return location.pathname.startsWith(item.pathname);
+  };
 
   return (
     <nav
@@ -87,10 +105,12 @@ export function AppNavBar() {
     >
       {primaryItems.map((item) => (
         <NavItemLink
-          key={item.path}
+          key={
+            item.platform ? `${item.pathname}-${item.platform}` : item.pathname
+          }
           item={item}
-          isActive={location.pathname.startsWith(item.path)}
-          badgeCount={item.path === "/downloads" ? activeCount : 0}
+          isActive={getIsActive(item)}
+          badgeCount={item.pathname === "/downloads" ? activeCount : 0}
         />
       ))}
     </nav>

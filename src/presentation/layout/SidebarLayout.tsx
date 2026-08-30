@@ -1,6 +1,8 @@
 import { Calendar, CalendarDays, Search } from "lucide-react";
 import { Suspense } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useSearchParams } from "react-router-dom";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
+import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
 import {
   Sidebar,
   SidebarContent,
@@ -21,25 +23,31 @@ interface SidebarItem {
   icon: React.ComponentType;
 }
 
-function getSidebarItems(pathname: string): SidebarItem[] {
-  if (pathname.startsWith("/anilist")) {
-    return [
-      { title: "新番日历", url: "/anilist", icon: Calendar },
-      { title: "下季新番", url: "/anilist/next-season", icon: CalendarDays },
-      { title: "搜索动画", url: "/anilist/search", icon: Search },
-    ];
-  }
-
+function getSidebarItems(platform: AnimePlatform): SidebarItem[] {
   return [
-    { title: "新番日历", url: "/bangumi", icon: Calendar },
-    { title: "下季新番", url: "/bangumi/next-season", icon: CalendarDays },
-    { title: "搜索动画", url: "/bangumi/search", icon: Search },
+    { title: "新番日历", url: `/anime?platform=${platform}`, icon: Calendar },
+    {
+      title: "下季新番",
+      url: `/anime/next-season?platform=${platform}`,
+      icon: CalendarDays,
+    },
+    {
+      title: "搜索动画",
+      url: `/anime/search?platform=${platform}`,
+      icon: Search,
+    },
   ];
 }
 
 export function SidebarLayout() {
   const location = useLocation();
-  const sidebarItems = getSidebarItems(location.pathname);
+  const [searchParams] = useSearchParams();
+  const platformResult = AnimePlatformSchema.safeParse(
+    searchParams.get("platform"),
+  );
+  const platform = platformResult.success ? platformResult.data : "bangumi";
+  const sidebarItems = getSidebarItems(platform);
+  const currentUrl = location.pathname + location.search;
 
   return (
     <SidebarProvider>
@@ -52,7 +60,7 @@ export function SidebarLayout() {
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton
                       asChild
-                      isActive={location.pathname === item.url}
+                      isActive={currentUrl === item.url}
                       tooltip={item.title}
                     >
                       <Link to={item.url}>

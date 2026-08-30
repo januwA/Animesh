@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
@@ -20,28 +21,28 @@ const platformConfigs = {
     title: "Bangumi 周放送",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getBangumiCalendarUseCase,
     useStore: useBangumiCalendarStore,
-    subjectPath: (id: number) => `/bangumi/subject/${id}`,
+    subjectPath: (id: number) => `/anime/subject/${id}?platform=bangumi`,
   },
   anilist: {
     title: "AniList 周放送",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getAnilistCalendarUseCase,
     useStore: useAnilistCalendarStore,
-    subjectPath: (id: number) => `/anilist/subject/${id}`,
+    subjectPath: (id: number) => `/anime/subject/${id}?platform=anilist`,
   },
 } as const;
 
-export interface SubjectCalendarProps {
-  platform?: AnimePlatform;
-}
-
-export default function SubjectCalendar({
-  platform = "bangumi",
-}: SubjectCalendarProps) {
-  const platformResult = AnimePlatformSchema.safeParse(platform);
+export default function SubjectCalendar() {
+  const [searchParams] = useSearchParams();
+  const platformResult = AnimePlatformSchema.safeParse(
+    searchParams.get("platform"),
+  );
 
   if (!platformResult.success) {
     return (
-      <InvalidParamsView title="无效的平台参数" error={platformResult.error} />
+      <InvalidParamsView
+        title="缺少 platform 参数"
+        error={platformResult.error}
+      />
     );
   }
 

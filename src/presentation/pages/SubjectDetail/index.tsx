@@ -36,20 +36,19 @@ const pageParamSchema = z
   .optional()
   .default("1");
 
-export interface SubjectDetailProps {
-  platform?: AnimePlatform;
-}
-
-export default function SubjectDetail({
-  platform = "bangumi",
-}: SubjectDetailProps) {
-  const platformResult = AnimePlatformSchema.safeParse(platform);
+export default function SubjectDetail() {
   const { subjectId = "" } = useParams<{ subjectId: string }>();
   const [searchParams] = useSearchParams();
+  const platformResult = AnimePlatformSchema.safeParse(
+    searchParams.get("platform"),
+  );
 
   if (!platformResult.success) {
     return (
-      <InvalidParamsView title="无效的平台参数" error={platformResult.error} />
+      <InvalidParamsView
+        title="缺少 platform 参数"
+        error={platformResult.error}
+      />
     );
   }
 

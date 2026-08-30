@@ -25,7 +25,7 @@ const platformConfigs = {
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.searchBangumiSubjectsUseCase,
     useStore: useBangumiSearchStore,
-    subjectPath: (id: number) => `/bangumi/subject/${id}`,
+    subjectPath: (id: number) => `/anime/subject/${id}?platform=bangumi`,
   },
   anilist: {
     title: "AniList 搜索",
@@ -33,26 +33,25 @@ const platformConfigs = {
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.searchAnilistSubjectsUseCase,
     useStore: useAnilistSearchStore,
-    subjectPath: (id: number) => `/anilist/subject/${id}`,
+    subjectPath: (id: number) => `/anime/subject/${id}?platform=anilist`,
   },
 } as const;
 
-export interface SubjectSearchProps {
-  platform?: AnimePlatform;
-}
-
-export default function SubjectSearch({
-  platform = "bangumi",
-}: SubjectSearchProps) {
-  const platformResult = AnimePlatformSchema.safeParse(platform);
+export default function SubjectSearch() {
   const [searchParams] = useSearchParams();
+  const platformResult = AnimePlatformSchema.safeParse(
+    searchParams.get("platform"),
+  );
   const keywordResult = keywordParamSchema.safeParse(
     searchParams.get("keyword") ?? undefined,
   );
 
   if (!platformResult.success) {
     return (
-      <InvalidParamsView title="无效的平台参数" error={platformResult.error} />
+      <InvalidParamsView
+        title="缺少 platform 参数"
+        error={platformResult.error}
+      />
     );
   }
 

@@ -46,12 +46,8 @@ export const routes: RouteObject[] = [
             element: <TorrentDetail />,
           },
           {
-            path: "bangumi/subject/:subjectId",
-            element: <SubjectDetail platform="bangumi" />,
-          },
-          {
-            path: "anilist/subject/:subjectId",
-            element: <SubjectDetail platform="anilist" />,
+            path: "anime/subject/:subjectId",
+            element: <SubjectDetail />,
           },
           {
             path: "play/:infoHash/:fileId",
@@ -87,38 +83,20 @@ export const routes: RouteObject[] = [
             element: <SidebarLayout />,
             children: [
               {
-                path: "bangumi",
+                path: "anime",
                 children: [
                   {
                     path: "",
                     index: true,
-                    element: <SubjectCalendar platform="bangumi" />,
+                    element: <SubjectCalendar />,
                   },
                   {
                     path: "search",
-                    element: <SubjectSearch platform="bangumi" />,
+                    element: <SubjectSearch />,
                   },
                   {
                     path: "next-season",
-                    element: <NextSeasonAnime platform="bangumi" />,
-                  },
-                ],
-              },
-              {
-                path: "anilist",
-                children: [
-                  {
-                    path: "",
-                    index: true,
-                    element: <SubjectCalendar platform="anilist" />,
-                  },
-                  {
-                    path: "search",
-                    element: <SubjectSearch platform="anilist" />,
-                  },
-                  {
-                    path: "next-season",
-                    element: <NextSeasonAnime platform="anilist" />,
+                    element: <NextSeasonAnime />,
                   },
                 ],
               },
