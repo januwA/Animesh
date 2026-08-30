@@ -1,7 +1,7 @@
 import { Duration } from "ajanuw-duration";
 import { z } from "zod";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import type { TranslationCache } from "@/domain/translation/TranslationCache";
-import type { CacheStore } from "@/infrastructure/storage/CacheStore";
 
 const TRANSLATION_CACHE_PREFIX = "translation";
 const TRANSLATION_CACHE_TTL_MS = new Duration({ days: 7 }).inMilliseconds;

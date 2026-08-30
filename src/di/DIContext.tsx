@@ -57,7 +57,7 @@ import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { AiClient } from "../domain/ai/AiClient";
-import type { Logger } from "../domain/logger/logger";
+import { type Logger, LogLevel } from "../domain/logger/logger";
 import { HttpAnilistRepository } from "../infrastructure/anilist/HttpAnilistRepository";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpCollectionRepository } from "../infrastructure/collection/HttpCollectionRepository";
@@ -153,8 +153,11 @@ export interface DIContainer {
 
 export function createDefaultDIContainer(): DIContainer {
   const isTauri = import.meta.env.MODE !== "web";
-  const cacheStore = new IndexedDbCacheStore();
-  const logger = new ConsoleLogger("App");
+  const logger = new ConsoleLogger(
+    "App",
+    import.meta.env.DEV ? LogLevel.DEBUG : LogLevel.ERROR,
+  );
+  const cacheStore = new IndexedDbCacheStore(logger);
   const httpClient = new FetchHttpClient();
   const torrentRepository = isTauri
     ? new TauriTorrentRepository(httpClient, cacheStore)

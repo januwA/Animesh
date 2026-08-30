@@ -3,6 +3,8 @@ import {
   type NonEmptyString,
   NonEmptyStringSchema,
 } from "@/domain/common/NonEmptyString";
+import type { AiConfig } from "@/domain/settings/SettingsSchemas";
+import { Logged } from "@/infrastructure/logger/LoggedDecorator";
 import type { AiClient } from "../../domain/ai/AiClient";
 import type { Logger } from "../../domain/logger/logger";
 import {
@@ -53,9 +55,10 @@ export class SearchTorrentsWithAiUseCase {
     private torrentRepository: TorrentRepository,
     private getAiConfigsUseCase: GetAiConfigsUseCase,
     private aiClient: AiClient,
-    private logger: Logger,
+    public logger: Logger,
   ) {}
 
+  @Logged({ excludeArgs: [0] })
   async execute(
     ctx: Context,
     dto: {
@@ -64,74 +67,42 @@ export class SearchTorrentsWithAiUseCase {
       aiAlias: NonEmptyString;
     },
   ): Promise<AiSearchResultItem[]> {
-    this.logger.info("开始执行 AI Agent 智能搜索与推荐流程", dto);
-
     const rawResults = await this.torrentRepository.search(
       ctx,
       dto.keyword,
       dto.engine,
     );
-    this.logger.debug(`传统保底检索完成，找到资源数量: ${rawResults.length}`);
-
     try {
-      const aiSettings = await this.getAiSettings(dto.aiAlias);
-      if (!aiSettings) {
-        this.logger.info(
-          "AI 智能搜索未启用或配置信息不完整，无缝退化为返回传统搜索结果",
-        );
+      const aiConfig = await this.getAiSettings(dto.aiAlias);
+      if (!aiConfig) {
         return rawResults;
       }
-
-      return await this.runAiPipeline(ctx, dto, aiSettings, rawResults);
-    } catch (error: unknown) {
-      this.handleAiError(error);
+      return await this.runAiPipeline(ctx, dto, aiConfig, rawResults);
+    } catch (_error: unknown) {
       return rawResults;
     }
   }
 
-  private async getAiSettings(aiAlias: NonEmptyString): Promise<{
-    endpoint: NonEmptyString;
-    apiKey: NonEmptyString;
-    model: NonEmptyString;
-  } | null> {
+  @Logged()
+  private async getAiSettings(
+    aiAlias: NonEmptyString,
+  ): Promise<AiConfig | undefined> {
     const { aiConfigs } = await this.getAiConfigsUseCase.execute();
-
-    // If configs exist, look up by alias or use the first one
     if (aiConfigs.length > 0) {
-      const config = aiConfigs.find((c) => c.alias === aiAlias);
-      if (config?.api_endpoint && config.api_key) {
-        return {
-          endpoint: config.api_endpoint,
-          apiKey: config.api_key,
-          model: config.ai_model,
-        };
-      }
+      return aiConfigs.find((c) => c.alias === aiAlias);
     }
-
-    return null;
   }
 
+  @Logged({ excludeArgs: [0] })
   private async runAiPipeline(
     ctx: Context,
     dto: { keyword: NonEmptyString; engine: TorrentSearchEngine },
-    aiSettings: {
-      endpoint: NonEmptyString;
-      apiKey: NonEmptyString;
-      model: NonEmptyString;
-    },
+    aiConfig: AiConfig,
     rawResults: SearchResultItem[],
   ): Promise<AiSearchResultItem[]> {
-    const { endpoint, apiKey, model } = aiSettings;
-    this.logger.info("AI 智能 Agent 准备就绪，开始多引擎 ReAct 决策循环", {
-      model,
-      endpoint,
-    });
-
     let { currentTorrents, content } = await this.executeReActLoop(
       ctx,
-      endpoint,
-      apiKey,
-      model,
+      aiConfig,
       rawResults,
       dto.keyword,
       dto.engine,
@@ -140,16 +111,13 @@ export class SearchTorrentsWithAiUseCase {
     if (!content && currentTorrents.length > 0) {
       content = await this.fallbackEvaluate(
         ctx,
-        endpoint,
-        apiKey,
-        model,
+        aiConfig,
         currentTorrents,
         dto.keyword,
       );
     }
 
     if (!content) {
-      this.logger.info("未获取到有效的 AI 评分推荐内容，返回无打分的结果");
       return currentTorrents;
     }
 
@@ -169,11 +137,10 @@ export class SearchTorrentsWithAiUseCase {
     ];
   }
 
+  @Logged({ excludeArgs: [0] })
   private async runSingleReActStep(
     ctx: Context,
-    endpoint: NonEmptyString,
-    apiKey: NonEmptyString,
-    model: NonEmptyString,
+    aiConfig: AiConfig,
     messages: ChatCompletionMessage[],
     tools: ChatCompletionTool[],
     currentTorrents: SearchResultItem[],
@@ -182,21 +149,13 @@ export class SearchTorrentsWithAiUseCase {
     content: string;
     shouldBreak: boolean;
   }> {
-    const data = await this.fetchAiResponse(
-      ctx,
-      endpoint,
-      apiKey,
-      model,
-      messages,
-      tools,
-    );
+    const data = await this.fetchAiResponse(ctx, aiConfig, messages, tools);
     if (data === null) {
       return { currentTorrents, content: "", shouldBreak: true };
     }
 
     const message = data?.choices?.[0]?.message;
     if (!message) {
-      this.logger.warn("大模型响应无返回 Choices 消息，退出 ReAct 循环");
       return { currentTorrents, content: "", shouldBreak: true };
     }
     messages.push(message);
@@ -204,11 +163,10 @@ export class SearchTorrentsWithAiUseCase {
     return this.processReActStep(ctx, message, messages, currentTorrents);
   }
 
+  @Logged({ excludeArgs: [0] })
   private async executeReActLoop(
     ctx: Context,
-    endpoint: NonEmptyString,
-    apiKey: NonEmptyString,
-    model: NonEmptyString,
+    aiConfig: AiConfig,
     rawResults: SearchResultItem[],
     keyword: NonEmptyString,
     initialEngine: TorrentSearchEngine,
@@ -219,15 +177,9 @@ export class SearchTorrentsWithAiUseCase {
     let content = "";
 
     for (let i = 0; i < 3; i++) {
-      this.logger.info(
-        `---- [Agent ReAct 决策] 第 ${i + 1} 轮请求大模型开始 ----`,
-        messages,
-      );
       const step = await this.runSingleReActStep(
         ctx,
-        endpoint,
-        apiKey,
-        model,
+        aiConfig,
         messages,
         tools,
         currentTorrents,
@@ -239,6 +191,7 @@ export class SearchTorrentsWithAiUseCase {
     return { currentTorrents, content };
   }
 
+  @Logged({ excludeArgs: [0] })
   private async processReActStep(
     ctx: Context,
     message: ChatCompletionMessage,
@@ -258,38 +211,33 @@ export class SearchTorrentsWithAiUseCase {
       );
       return { currentTorrents: torrents, content: "", shouldBreak: false };
     }
-    this.logger.info(
-      "[Agent 决策] AI 决定结束搜索决策过程，已产出评分推荐数据",
-    );
     return {
       currentTorrents,
       content: message.content || "",
       shouldBreak: true,
     };
   }
-
+  @Logged({ excludeArgs: [0] })
   private async fetchAiResponse(
     ctx: Context,
-    endpoint: NonEmptyString,
-    apiKey: NonEmptyString,
-    model: NonEmptyString,
+    aiConfig: AiConfig,
     messages: ChatCompletionMessage[],
     tools: ChatCompletionTool[],
   ): Promise<ChatCompletionResponse | null> {
-    try {
-      const res = await this.aiClient.post(ctx, endpoint, apiKey, {
-        model,
+    const res = await this.aiClient.post(
+      ctx,
+      aiConfig.api_endpoint,
+      aiConfig.api_key,
+      {
+        model: aiConfig.ai_model,
         messages,
         tools,
         temperature: 0.1,
-      });
-      return res as ChatCompletionResponse;
-    } catch (err: unknown) {
-      this.logger.warn("AI 过滤网络请求失败，执行降级策略", err);
-      return null;
-    }
+      },
+    );
+    return res as ChatCompletionResponse;
   }
-
+  @Logged({ excludeArgs: [0] })
   private async handleToolCalls(
     ctx: Context,
     toolCalls: ChatCompletionToolCall[],
@@ -297,7 +245,6 @@ export class SearchTorrentsWithAiUseCase {
     currentTorrents: SearchResultItem[],
   ): Promise<SearchResultItem[]> {
     let updatedTorrents = currentTorrents;
-    this.logger.info(`[Agent 决策] AI 决定调用本地搜索引擎工具获取资源...`);
     for (const toolCall of toolCalls) {
       if (toolCall.function.name === "search_torrents") {
         const res = await this.executeSearchTool(ctx, toolCall);
@@ -314,7 +261,7 @@ export class SearchTorrentsWithAiUseCase {
     }
     return updatedTorrents;
   }
-
+  @Logged({ excludeArgs: [0] })
   private async executeSearchTool(
     ctx: Context,
     toolCall: ChatCompletionToolCall,
@@ -322,21 +269,14 @@ export class SearchTorrentsWithAiUseCase {
     let args: { keyword: string; engine: TorrentSearchEngine };
     try {
       args = JSON.parse(toolCall.function.arguments);
-    } catch (e) {
-      this.logger.warn("解析 AI 传递的工具参数失败", e);
+    } catch (_e) {
       return { searchResults: [], toolContent: "解析参数失败" };
     }
 
-    this.logger.info(
-      `[工具执行] 调用 'search_torrents' 引擎: "${args.engine}"，搜索词: "${args.keyword}"`,
-    );
     const searchResults = await this.torrentRepository.search(
       ctx,
       NonEmptyStringSchema.parse(args.keyword),
       args.engine,
-    );
-    this.logger.info(
-      `[工具执行结果] 引擎: "${args.engine}" 搜索完毕，找到种子数量: ${searchResults.length}`,
     );
 
     const itemsToEvaluate = searchResults.slice(0, 30);
@@ -412,23 +352,20 @@ export class SearchTorrentsWithAiUseCase {
       .join("\n");
     return `请对以下种子进行打分排序：\n用户意图: "${keyword}"\n列表：\n${listStr}\n请返回只包含 JSON 数组的格式评价。`;
   }
-
+  @Logged({ excludeArgs: [0] })
   private async fallbackEvaluate(
     ctx: Context,
-    endpoint: NonEmptyString,
-    apiKey: NonEmptyString,
-    model: NonEmptyString,
+    aiConfig: AiConfig,
     torrents: SearchResultItem[],
     keyword: NonEmptyString,
   ): Promise<string> {
-    this.logger.info(
-      "[Agent 兜底] AI 经历了工具调用但没有输出评分文本，发起一轮单轮打分评估",
-    );
     const evalPrompt = this.buildEvalPrompt(keyword, torrents);
-
-    try {
-      const data = (await this.aiClient.post(ctx, endpoint, apiKey, {
-        model,
+    const data = (await this.aiClient.post(
+      ctx,
+      aiConfig.api_endpoint,
+      aiConfig.api_key,
+      {
+        model: aiConfig.ai_model,
         messages: [
           {
             role: "system",
@@ -438,12 +375,9 @@ export class SearchTorrentsWithAiUseCase {
           { role: "user", content: evalPrompt },
         ],
         temperature: 0.1,
-      })) as ChatCompletionResponse;
-      return data?.choices?.[0]?.message?.content || "";
-    } catch (err: unknown) {
-      this.logger.warn("AI 兜底打分请求失败", err);
-      return "";
-    }
+      },
+    )) as ChatCompletionResponse;
+    return data?.choices?.[0]?.message?.content || "";
   }
 
   private parseAndSortRatings(
@@ -460,13 +394,8 @@ export class SearchTorrentsWithAiUseCase {
     }>;
 
     if (!Array.isArray(aiRatings)) {
-      this.logger.warn("大模型输出格式不是有效的 JSON 数组，返回无打分的结果");
       return torrents;
     }
-
-    this.logger.info(
-      `[打分过滤] 大模型成功评估了 ${aiRatings.length} 个种子的相关性`,
-    );
 
     const aiResults: AiSearchResultItem[] = torrents.map((item, idx) => {
       const rating = aiRatings.find((r) => r.index === idx);
@@ -479,29 +408,6 @@ export class SearchTorrentsWithAiUseCase {
       (a, b) => (b.ai_score ?? -1) - (a.ai_score ?? -1),
     );
 
-    this.logger.info("AI 搜索精选排序完成", {
-      bestTitle: sortedResults[0]?.title,
-      bestScore: sortedResults[0]?.ai_score,
-      bestReason: sortedResults[0]?.ai_reason,
-    });
-
     return sortedResults;
-  }
-
-  private handleAiError(error: unknown): void {
-    const isFetchError =
-      error instanceof TypeError && error.message === "Failed to fetch";
-    if (isFetchError) {
-      this.logger.error(
-        "AI 网络请求被拦截或失败（通常由跨域 CORS 限制或服务未启动导致）。\n" +
-          "排查指引：\n" +
-          "1. 请确认本地 AI 服务已正常启动（如 Ollama 是否在后台运行）。\n" +
-          "2. 请检查 AI 接口地址 (Endpoint) 是否正确。如果是本地 Ollama，请使用 http://127.0.0.1:11434/v1 （切勿使用 ollama.com 官方网站域名！）。\n" +
-          "3. 如果是本地请求被跨域拦截，请以允许跨域方式启动本地模型。例如在 Windows 上，请在终端执行 `set OLLAMA_ORIGINS=*` 之后再运行 `ollama serve`。",
-        error,
-      );
-    } else {
-      this.logger.error("AI 搜索过滤执行出错，降级回原有搜索结果", error);
-    }
   }
 }

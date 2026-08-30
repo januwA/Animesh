@@ -1,5 +1,7 @@
 import { z } from "zod";
-import type { CacheStore } from "./CacheStore";
+import type { Logger } from "@/domain/logger/logger";
+import type { CacheStore } from "@/domain/storage/CacheStore";
+import { Logged } from "../logger/LoggedDecorator";
 
 const DB_NAME = "animesh-cache";
 const DB_VERSION = 1;
@@ -11,6 +13,7 @@ const CacheEnvelopeSchema = z.object({
 });
 
 export class IndexedDbCacheStore implements CacheStore {
+  constructor(public readonly logger: Logger) {}
   private dbPromise: Promise<IDBDatabase> | null = null;
 
   private openDatabase(): Promise<IDBDatabase> {
@@ -50,95 +53,77 @@ export class IndexedDbCacheStore implements CacheStore {
     );
   }
 
+  @Logged({ excludeArgs: [1] })
   async getItem<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
-    try {
-      const record: unknown = await this.runTransaction("readonly", (store) =>
-        store.get(key),
-      );
-      if (!record) {
-        return null;
-      }
-
-      const envelopeResult = CacheEnvelopeSchema.safeParse(record);
-      if (!envelopeResult.success) {
-        await this.removeItem(key);
-        return null;
-      }
-
-      const { data, expiry } = envelopeResult.data;
-      if (Date.now() > expiry) {
-        await this.removeItem(key);
-        return null;
-      }
-
-      const validationResult = schema.safeParse(data);
-      if (!validationResult.success) {
-        await this.removeItem(key);
-        return null;
-      }
-
-      return validationResult.data;
-    } catch {
+    const record: unknown = await this.runTransaction("readonly", (store) =>
+      store.get(key),
+    );
+    if (!record) {
       return null;
     }
+
+    const envelopeResult = CacheEnvelopeSchema.safeParse(record);
+    if (!envelopeResult.success) {
+      await this.removeItem(key);
+      return null;
+    }
+
+    const { data, expiry } = envelopeResult.data;
+    if (Date.now() > expiry) {
+      await this.removeItem(key);
+      return null;
+    }
+
+    const validationResult = schema.safeParse(data);
+    if (!validationResult.success) {
+      await this.removeItem(key);
+      return null;
+    }
+
+    return validationResult.data;
   }
 
-  /**
-   * 写入带 TTL 的缓存。存储失败（如配额不足）时静默忽略，不阻塞业务。
-   */
+  @Logged()
   async setItem<T>(key: string, data: T, ttlMs: number): Promise<void> {
     const entry = {
       data,
       expiry: Date.now() + ttlMs,
     };
-    try {
-      await this.runTransaction("readwrite", (store) => store.put(entry, key));
-    } catch {
-      // 缓存写入失败不影响主流程
-    }
+    await this.runTransaction("readwrite", (store) => store.put(entry, key));
   }
 
+  @Logged()
   async removeItem(key: string): Promise<void> {
-    try {
-      await this.runTransaction("readwrite", (store) => store.delete(key));
-    } catch {
-      // 忽略清理失败
-    }
+    await this.runTransaction("readwrite", (store) => store.delete(key));
   }
 
+  @Logged()
   async clear(): Promise<void> {
-    try {
-      await this.runTransaction("readwrite", (store) => store.clear());
-    } catch {
-      // 忽略清理失败
-    }
+    await this.runTransaction("readwrite", (store) => store.clear());
   }
 
+  @Logged()
   async clearByPrefix(prefix: string): Promise<void> {
-    try {
-      const db = await this.getDb();
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.openCursor();
-      return new Promise<void>((resolve, reject) => {
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (cursor) {
-            const key = String(cursor.key);
-            if (key.startsWith(`${prefix}:`)) {
-              cursor.delete();
-            }
-            cursor.continue();
-          } else {
-            resolve();
+    const db = await this.getDb();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.openCursor();
+    return new Promise<void>((resolve, reject) => {
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) {
+          const key = String(cursor.key);
+          if (key.startsWith(`${prefix}:`)) {
+            cursor.delete();
           }
-        };
-        request.onerror = () => reject(request.error);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-    } catch {
-      // 忽略清理失败
-    }
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
   }
 }

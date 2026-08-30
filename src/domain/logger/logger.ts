@@ -5,6 +5,13 @@ export enum LogLevel {
   ERROR = "error",
 }
 
+export const LogPriority: Record<LogLevel, number> = {
+  [LogLevel.DEBUG]: 0,
+  [LogLevel.INFO]: 1,
+  [LogLevel.WARN]: 2,
+  [LogLevel.ERROR]: 3,
+};
+
 /**
  * ILogger 定义了日志记录的契约。
  * 它是一个跨越所有层的横切关注点。

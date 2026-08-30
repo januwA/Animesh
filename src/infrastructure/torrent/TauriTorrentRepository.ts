@@ -3,6 +3,7 @@ import type { Context } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
 import { z } from "zod";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import { commands } from "@/generated/tauri-commands";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
@@ -20,7 +21,6 @@ import {
 } from "../../domain/torrent/TorrentSchemas";
 import { Cached } from "../cache/CachedDecorator";
 import type { HttpClient } from "../http/HttpClient";
-import type { CacheStore } from "../storage/CacheStore";
 
 export class TauriTorrentRepository implements TorrentRepository {
   constructor(

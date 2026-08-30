@@ -1,7 +1,7 @@
 import type { z } from "zod";
 
 /**
- * 通用键值缓存存储接口。真实依赖 IndexedDB 的实现为 IndexedDbCacheStore，
+ * 通用键值缓存存储接口。
  * 测试时可通过该接口注入内存 Mock，避免直接接触浏览器存储。
  */
 export interface CacheStore {

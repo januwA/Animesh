@@ -8,9 +8,9 @@ import {
   CollectionRecordSchema,
   toFavoriteItem,
 } from "@/domain/collection/CollectionSchemas";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import { commands } from "@/generated/tauri-commands";
 import { Cached } from "../cache/CachedDecorator";
-import type { CacheStore } from "../storage/CacheStore";
 
 const COLLECTION_CACHE_PREFIX = "UserCollection";
 

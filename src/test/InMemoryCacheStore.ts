@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { CacheStore } from "@/infrastructure/storage/CacheStore";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 
 const EnvelopeSchema = z.object({
   data: z.unknown(),

@@ -1,12 +1,14 @@
 import type { Duration } from "ajanuw-duration";
 import { z } from "zod";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import { fnv1a32 } from "@/utils";
-import type { CacheStore } from "../storage/CacheStore";
 
 export interface CachedOptions {
   ttl: Duration;
   prefix?: string;
   excludeArgs?: number[];
+  /** 缓存操作失败时是否静默处理，默认 false（向上抛出） */
+  swallowErrors?: boolean;
 }
 
 interface CacheAwareInstance {
@@ -39,13 +41,22 @@ export function Cached(options: CachedOptions) {
         ? `${options.prefix}:${methodName}:${argsHash}`
         : fnv1a32(`${className}:${methodName}:${argsHash}`);
 
-      const cached = await store.getItem(key, z.unknown());
+      let cached: unknown = null;
+      try {
+        cached = await store.getItem(key, z.unknown());
+      } catch (e) {
+        if (!options.swallowErrors) throw e;
+      }
       if (cached !== null) {
         return cached;
       }
 
       const result = await value.call(this, ...args);
-      await store.setItem(key, result, options.ttl.inMilliseconds);
+      try {
+        await store.setItem(key, result, options.ttl.inMilliseconds);
+      } catch (e) {
+        if (!options.swallowErrors) throw e;
+      }
       return result;
     };
   };
