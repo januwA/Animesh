@@ -113,4 +113,20 @@ describe("AppNavBar 组件", () => {
 
     expect(liveLink.className).not.toContain("bg-primary/10");
   });
+
+  it("路由命中 bangumi 平台时，Bangumi 导航项应呈现高亮态", () => {
+    renderNavBar("/anime?platform=bangumi");
+
+    const bangumiLink = screen.getByRole("link", { name: "Bangumi" });
+
+    expect(bangumiLink.className).toContain("bg-primary/10");
+  });
+
+  it("路由命中 anilist 平台时，Bangumi 导航项不应该呈现高亮态", () => {
+    renderNavBar("/anime?platform=anilist");
+
+    const bangumiLink = screen.getByRole("link", { name: "Bangumi" });
+
+    expect(bangumiLink.className).not.toContain("bg-primary/10");
+  });
 });

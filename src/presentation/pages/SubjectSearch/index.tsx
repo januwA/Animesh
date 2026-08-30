@@ -20,16 +20,14 @@ const keywordParamSchema = z
 
 const platformConfigs = {
   bangumi: {
-    title: "Bangumi 搜索",
-    description: "搜索 Bangumi 动漫条目",
+    title: "搜索 Bangumi 动漫条目",
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.searchBangumiSubjectsUseCase,
     useStore: useBangumiSearchStore,
     subjectPath: (id: number) => `/anime/subject/${id}?platform=bangumi`,
   },
   anilist: {
-    title: "AniList 搜索",
-    description: "搜索 AniList 动漫条目",
+    title: "搜索 AniList 动漫条目",
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.searchAnilistSubjectsUseCase,
     useStore: useAnilistSearchStore,
@@ -89,7 +87,6 @@ function SubjectSearchView({
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">{config.title}</h1>
-        <p className="text-sm text-muted-foreground">{config.description}</p>
       </div>
 
       <SubjectSearchForm

@@ -72,4 +72,11 @@ describe("SidebarLayout 侧边栏布局", () => {
 
     expect(screen.getByText("搜索内容")).toBeInTheDocument();
   });
+
+  it("平台参数无效时应回落到默认 bangumi 平台", () => {
+    renderSidebarLayout(["/anime?platform=invalid"]);
+
+    const links = screen.getAllByRole("link", { name: "新番日历" });
+    expect(links[0]).toHaveAttribute("href", "/anime?platform=bangumi");
+  });
 });
