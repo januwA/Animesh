@@ -1,8 +1,11 @@
 import type { CancelFunc, Context } from "ajanuw-context";
-import { Background, Canceled, WithCancel } from "ajanuw-context";
+import { Background, Canceled, WithCancel, WithTimeout } from "ajanuw-context";
+import type { Duration } from "ajanuw-duration";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface UseMutationOptions<T, P> {
+  /** 执行超时时间，超时后 context 会被取消 */
+  timeout?: Duration;
   /** 执行成功后的回调，接收返回数据与本次参数 */
   onSuccess?: (data: T, params: P) => void;
   /** 执行失败后的回调，接收错误与本次参数 */
@@ -55,7 +58,9 @@ export function useMutation<T, P = void>(
     activeCancelRef.current?.();
     activeCancelRef.current = null;
 
-    const [ctx, cancel] = WithCancel(Background);
+    const [ctx, cancel] = optionsRef.current.timeout
+      ? WithTimeout(Background, optionsRef.current.timeout.inMilliseconds)
+      : WithCancel(Background);
     activeCancelRef.current = cancel;
 
     setLoading(true);

@@ -1,3 +1,4 @@
+import { Duration } from "ajanuw-duration";
 import type { SubmitEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -75,6 +76,7 @@ export function useTorrentSearchPage(
         : searchTorrentsUseCase.execute(ctx, dto);
     },
     {
+      timeout: new Duration({ seconds: 15 }),
       onSuccess: (data) => setSearchResults(data),
       onError: () => setSearchResults([]),
     },

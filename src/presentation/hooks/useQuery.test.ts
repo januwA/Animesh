@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { Canceled } from "ajanuw-context";
+import { Canceled, DeadlineExceeded } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import { describe, expect, it, vi } from "vitest";
 import { useQuery } from "./useQuery";
 
@@ -239,5 +240,76 @@ describe("useQuery 数据查询 hook", () => {
     });
     expect(result.current.error).toBeInstanceOf(Error);
     expect(result.current.error?.message).toBe("undefined");
+  });
+
+  it("设置 timeout 后请求超时应取消 context 并触发 onError", async () => {
+    const { promise } = deferred<string>();
+    const onError = vi.fn();
+
+    const { result } = renderHook(() =>
+      useQuery(
+        (ctx) =>
+          Promise.race([
+            promise,
+            ctx.done().then(() => {
+              throw ctx.err()!;
+            }),
+          ]),
+        [],
+        {
+          timeout: new Duration({ milliseconds: 50 }),
+          onError,
+        },
+      ),
+    );
+
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.error?.message).toBe("context deadline exceeded");
+    expect(result.current.loading).toBe(false);
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it("设置 timeout 后请求在超时前完成应正常返回数据", async () => {
+    const { result } = renderHook(() =>
+      useQuery(() => Promise.resolve("成功"), [], {
+        timeout: new Duration({ seconds: 5 }),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.data).toBe("成功");
+    expect(result.current.error).toBeNull();
+  });
+
+  it("设置 timeout 后超时应触发 ctx.err() 为 DeadlineExceeded", async () => {
+    let capturedCtx: { err: () => unknown } | null = null;
+    const { promise } = deferred<string>();
+
+    const { unmount } = renderHook(() =>
+      useQuery(
+        (ctx) => {
+          capturedCtx = ctx;
+          return promise;
+        },
+        [],
+        { timeout: new Duration({ milliseconds: 50 }) },
+      ),
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    expect(capturedCtx!.err()).toBe(DeadlineExceeded);
+    unmount();
   });
 });

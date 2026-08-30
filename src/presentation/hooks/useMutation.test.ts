@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
-import { Canceled } from "ajanuw-context";
+import { Canceled, DeadlineExceeded } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import { describe, expect, it, vi } from "vitest";
 import { useMutation } from "./useMutation";
 
@@ -219,5 +220,121 @@ describe("useMutation 数据变更 hook", () => {
     expect(result.current.data).toBeNull();
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
+  });
+
+  it("设置 timeout 后执行超时应取消 context 并触发 onError", async () => {
+    const { promise } = deferred<string>();
+    const onError = vi.fn();
+
+    const { result } = renderHook(() =>
+      useMutation<string, void>(
+        (ctx) =>
+          Promise.race([
+            promise,
+            ctx.done().then(() => {
+              throw ctx.err()!;
+            }),
+          ]),
+        {
+          timeout: new Duration({ milliseconds: 50 }),
+          onError,
+        },
+      ),
+    );
+
+    let resolved: string | null = null;
+    act(() => {
+      result.current.execute().then((value) => {
+        resolved = value;
+      });
+    });
+
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    expect(resolved).toBeNull();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.error?.message).toBe("context deadline exceeded");
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), undefined);
+  });
+
+  it("设置 timeout 后执行在超时前完成应正常返回数据", async () => {
+    const { result } = renderHook(() =>
+      useMutation<string, void>(() => Promise.resolve("成功"), {
+        timeout: new Duration({ seconds: 5 }),
+      }),
+    );
+
+    let resolved: string | null = null;
+    await act(async () => {
+      resolved = await result.current.execute();
+    });
+
+    expect(resolved).toBe("成功");
+    expect(result.current.data).toBe("成功");
+    expect(result.current.error).toBeNull();
+  });
+
+  it("设置 timeout 后超时应触发 ctx.err() 为 DeadlineExceeded", async () => {
+    let capturedCtx: { err: () => unknown } | null = null;
+    const { promise } = deferred<string>();
+
+    const { result } = renderHook(() =>
+      useMutation<string, void>(
+        (ctx) => {
+          capturedCtx = ctx;
+          return promise;
+        },
+        { timeout: new Duration({ milliseconds: 50 }) },
+      ),
+    );
+
+    act(() => {
+      result.current.execute();
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    expect(capturedCtx!.err()).toBe(DeadlineExceeded);
+  });
+
+  it("设置 timeout 后多次 execute 应每次创建新的带超时 context", async () => {
+    const { promise } = deferred<string>();
+    const executeFns = vi.fn((_ctx: { err: () => unknown }) => promise);
+
+    const { result } = renderHook(() =>
+      useMutation(executeFns, {
+        timeout: new Duration({ milliseconds: 100 }),
+      }),
+    );
+
+    act(() => {
+      result.current.execute();
+    });
+
+    const firstCtx = executeFns.mock.calls[0][0];
+
+    // 取消第一次
+    act(() => {
+      result.current.cancel();
+    });
+
+    expect(firstCtx.err()).toBe(Canceled);
+
+    // 第二次 execute 应该创建新的未取消 context
+    act(() => {
+      result.current.execute();
+    });
+
+    const secondCtx = executeFns.mock.calls[1][0];
+    expect(secondCtx.err()).toBeNull();
+
+    expect(executeFns).toHaveBeenCalledTimes(2);
   });
 });
