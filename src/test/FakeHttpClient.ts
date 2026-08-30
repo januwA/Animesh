@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import type { HttpClient } from "../infrastructure/http/HttpClient";
+import type { HttpClient } from "@/domain/http/HttpClient";
 
 export type FakeHttpClient = HttpClient & {
   getJson: ReturnType<typeof vi.fn>;

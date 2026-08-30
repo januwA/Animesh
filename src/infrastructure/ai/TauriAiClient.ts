@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Context } from "ajanuw-context";
+import type { HttpClient } from "@/domain/http/HttpClient";
 import { commands } from "@/generated/tauri-commands";
 import type { AiClient } from "../../domain/ai/AiClient";
-import type { HttpClient } from "../http/HttpClient";
 
 export class TauriAiClient implements AiClient {
   constructor(private readonly httpClient: HttpClient) {}

@@ -1,4 +1,5 @@
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
+import type { HttpClient } from "@/domain/http/HttpClient";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
 import {
   type AiConfig,
@@ -6,7 +7,6 @@ import {
   SettingsSchema,
   type TranslationConfig,
 } from "../../domain/settings/SettingsSchemas";
-import type { HttpClient } from "../http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"

@@ -1,6 +1,6 @@
 import type { Context } from "ajanuw-context";
+import type { HttpClient } from "@/domain/http/HttpClient";
 import type { AiClient } from "../../domain/ai/AiClient";
-import type { HttpClient } from "../http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"

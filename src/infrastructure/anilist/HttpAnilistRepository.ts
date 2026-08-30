@@ -15,9 +15,9 @@ import type {
   AnimeSubjectSearchParams,
   AnimeSubjectSearchResult,
 } from "@/domain/anime/AnimeSchemas";
+import type { HttpClient } from "@/domain/http/HttpClient";
 import type { CacheStore } from "@/domain/storage/CacheStore";
 import { Cached } from "../cache/CachedDecorator";
-import type { HttpClient } from "../http/HttpClient";
 import {
   AnilistCalendarResponseSchema,
   AnilistCharactersResponseSchema,

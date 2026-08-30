@@ -6,7 +6,7 @@ import {
   CollectionRecordSchema,
   toFavoriteItem,
 } from "@/domain/collection/CollectionSchemas";
-import type { HttpClient } from "../http/HttpClient";
+import type { HttpClient } from "@/domain/http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"

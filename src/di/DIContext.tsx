@@ -1,4 +1,6 @@
 import { createContext, use } from "react";
+import type { HttpClient } from "@/domain/http/HttpClient";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import { FetchAiClient } from "@/infrastructure/ai/FetchAiClient";
 import { TauriAiClient } from "@/infrastructure/ai/TauriAiClient";
 import { TauriSubtitleTranslationRepository } from "@/infrastructure/subtitle/TauriSubtitleTranslationRepository";
@@ -11,7 +13,6 @@ import { GetNextSeasonAnimeUseCase } from "../application/anime/GetNextSeasonAni
 import { GetWallpaperImagesUseCase } from "../application/anime/GetWallpaperImagesUseCase";
 import { SearchAnimeSubjectsUseCase } from "../application/anime/SearchAnimeSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
-import { SweepExpiredCacheUseCase } from "../application/cache/SweepExpiredCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
 import { GetCollectionsUseCase } from "../application/collection/GetCollectionsUseCase";
 import { GetFavoriteStatusUseCase } from "../application/collection/GetFavoriteStatusUseCase";
@@ -58,23 +59,20 @@ import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { AiClient } from "../domain/ai/AiClient";
-import { type Logger, LogLevel } from "../domain/logger/logger";
+import type { Logger } from "../domain/logger/logger";
 import { HttpAnilistRepository } from "../infrastructure/anilist/HttpAnilistRepository";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpCollectionRepository } from "../infrastructure/collection/HttpCollectionRepository";
 import { TauriCollectionRepository } from "../infrastructure/collection/TauriCollectionRepository";
-import { FetchHttpClient } from "../infrastructure/http/HttpClient";
 import { HttpIptvRepository } from "../infrastructure/iptv/HttpIptvRepository";
 import { TauriIptvStreamUrlRepository } from "../infrastructure/iptv/TauriIptvStreamUrlRepository";
 import { WebIptvStreamUrlRepository } from "../infrastructure/iptv/WebIptvStreamUrlRepository";
-import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
 import { WebNotificationRepository } from "../infrastructure/notification/WebNotificationRepository";
 import { TauriOpenerRepository } from "../infrastructure/opener/TauriOpenerRepository";
 import { WebOpenerRepository } from "../infrastructure/opener/WebOpenerRepository";
 import { HttpSettingsRepository } from "../infrastructure/settings/HttpSettingsRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
-import { IndexedDbCacheStore } from "../infrastructure/storage/IndexedDbCacheStore";
 import { HttpTorrentRepository } from "../infrastructure/torrent/HttpTorrentRepository";
 import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
 import { AiTranslateClient } from "../infrastructure/translation/AiTranslateClient";
@@ -121,7 +119,6 @@ export interface DIContainer {
   getTranslationConfigUseCase: GetTranslationConfigUseCase;
   setTranslationConfigUseCase: SetTranslationConfigUseCase;
   clearCacheUseCase: ClearCacheUseCase;
-  sweepExpiredCacheUseCase: SweepExpiredCacheUseCase;
   translateSubtitleUseCase: TranslateSubtitleUseCase;
   getSubtitleTranslationsUseCase: GetSubtitleTranslationsUseCase;
   deleteSubtitleTranslationUseCase: DeleteSubtitleTranslationUseCase;
@@ -153,14 +150,16 @@ export interface DIContainer {
   openUrlUseCase: OpenUrlUseCase;
 }
 
-export function createDefaultDIContainer(): DIContainer {
+export function createDIContainer({
+  logger,
+  cacheStore,
+  httpClient,
+}: {
+  logger: Logger;
+  cacheStore: CacheStore;
+  httpClient: HttpClient;
+}): DIContainer {
   const isTauri = import.meta.env.MODE !== "web";
-  const logger = new ConsoleLogger(
-    "App",
-    import.meta.env.DEV ? LogLevel.DEBUG : LogLevel.ERROR,
-  );
-  const cacheStore = new IndexedDbCacheStore(logger);
-  const httpClient = new FetchHttpClient();
   const torrentRepository = isTauri
     ? new TauriTorrentRepository(httpClient, cacheStore)
     : new HttpTorrentRepository(httpClient, cacheStore);
@@ -252,7 +251,6 @@ export function createDefaultDIContainer(): DIContainer {
     logger.withCategory("SearchTorrentsWithAiUseCase"),
   );
   const clearCacheUseCase = new ClearCacheUseCase(cacheStore);
-  const sweepExpiredCacheUseCase = new SweepExpiredCacheUseCase(cacheStore);
   const translateSubtitleUseCase = new TranslateSubtitleUseCase(
     aiClient,
     subtitleTranslationRepository,
@@ -339,8 +337,6 @@ export function createDefaultDIContainer(): DIContainer {
 
   const openUrlUseCase = new OpenUrlUseCase(openerRepository);
 
-  sweepExpiredCacheUseCase.execute().catch(() => {});
-
   return {
     logger,
 
@@ -374,7 +370,6 @@ export function createDefaultDIContainer(): DIContainer {
     getTranslationConfigUseCase,
     setTranslationConfigUseCase,
     clearCacheUseCase,
-    sweepExpiredCacheUseCase,
     translateSubtitleUseCase,
     getSubtitleTranslationsUseCase,
     deleteSubtitleTranslationUseCase,

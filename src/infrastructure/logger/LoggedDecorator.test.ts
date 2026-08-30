@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, type Mocked, vi } from "vitest";
-import type { Logger } from "@/domain/logger/logger";
+import { type Logger, LogLevel } from "@/domain/logger/logger";
 import { Logged } from "./LoggedDecorator";
 
 function createMockLogger(): Mocked<Logger> {
@@ -125,7 +125,7 @@ describe("Logged 装饰器", () => {
       class TestService {
         logger?: Logger = mockLogger;
 
-        @Logged({ level: "info" })
+        @Logged({ level: LogLevel.INFO })
         async fetchData(): Promise<string> {
           return "ok";
         }

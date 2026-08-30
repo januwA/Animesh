@@ -1,8 +1,8 @@
-import type { Logger } from "@/domain/logger/logger";
+import { type Logger, LogLevel } from "@/domain/logger/logger";
 
 export interface LoggedOptions {
-  /** 入口/出口日志级别，默认 "debug" */
-  level?: "debug" | "info" | "warn" | "error";
+  /** 入口/出口日志级别，默认 LogLevel.DEBUG */
+  level?: LogLevel;
   /** 按参数索引（从 0 开始）排除不记录的参数 */
   excludeArgs?: number[];
 }
@@ -20,7 +20,7 @@ export function Logged(options: LoggedOptions = {}) {
     context: ClassMethodDecoratorContext<LogAwareInstance, AnyMethod>,
   ) => {
     const methodName = String(context.name);
-    const logLevel = options.level ?? "debug";
+    const logLevel = options.level ?? LogLevel.DEBUG;
 
     return async function (this: LogAwareInstance, ...args: unknown[]) {
       const logger = this.logger;

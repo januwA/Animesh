@@ -9,6 +9,7 @@ import type {
   AnimeSubjectSearchParams,
   AnimeSubjectSearchResult,
 } from "@/domain/anime/AnimeSchemas";
+import type { HttpClient } from "@/domain/http/HttpClient";
 import type { CacheStore } from "@/domain/storage/CacheStore";
 import type {
   AnimeRepository,
@@ -17,7 +18,6 @@ import type {
   RankedSubjectsPage,
 } from "../../domain/anime/AnimeRepository";
 import { Cached } from "../cache/CachedDecorator";
-import type { HttpClient } from "../http/HttpClient";
 import {
   BangumiCalendarResponseSchema,
   BangumiCharactersResponseSchema,
