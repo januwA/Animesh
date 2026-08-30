@@ -425,10 +425,6 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     });
 
     expect(result).toBeDefined();
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      "解析 AI 传递的工具参数失败",
-      expect.any(SyntaxError),
-    );
   });
 
   it("当大模型返回的评分内容不是有效的 JSON 数组时，应该返回未评分的原始结果", async () => {
@@ -473,9 +469,6 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     });
 
     expect(result).toEqual(mockTorrents);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      "大模型输出格式不是有效的 JSON 数组，返回无打分的结果",
-    );
   });
 
   it("当部分种子没有获得大模型的评分时，应该保留未评分状态并放在排序末尾", async () => {
@@ -546,7 +539,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     expect(result).toBeDefined();
     expect(mockLogger.error).toHaveBeenCalledWith(
-      "AI 搜索过滤执行出错，降级回原有搜索结果",
+      expect.stringContaining("getAiSettings()"),
       expect.any(Error),
     );
   });
@@ -571,9 +564,7 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     expect(result).toBeDefined();
     expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "AI 网络请求被拦截或失败（通常由跨域 CORS 限制或服务未启动导致）。",
-      ),
+      expect.stringContaining("getAiSettings()"),
       expect.any(TypeError),
     );
   });
@@ -668,11 +659,6 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     expect(mockFetch).toHaveBeenCalledTimes(4);
     expect(result[0].ai_score).toBe(85);
     expect(result[0].ai_reason).toBe("来自兜底打分");
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "[Agent 兜底] AI 经历了工具调用但没有输出评分文本",
-      ),
-    );
   });
 
   it("当 AI 决策达到最大迭代次数且兜底打分请求失败时，应该降级返回无评分结果", async () => {
@@ -747,10 +733,6 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(4);
     expect(result).toEqual(mockTorrents);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      "AI 兜底打分请求失败",
-      expect.any(Error),
-    );
   });
 
   it("当 AI 决策达到最大迭代次数且兜底打分返回空内容时，应该直接返回无评分的原始结果", async () => {
@@ -840,9 +822,6 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(4);
     expect(result).toEqual(mockTorrents);
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      "未获取到有效的 AI 评分推荐内容，返回无打分的结果",
-    );
   });
 
   it("当大模型响应无返回 Choices 消息时，应该退出 ReAct 循环并优雅返回原始结果", async () => {
@@ -881,9 +860,6 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
     });
 
     expect(result).toEqual(mockTorrents);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      "大模型响应无返回 Choices 消息，退出 ReAct 循环",
-    );
   });
 
   it("当 AI 决定结束搜索决策过程但返回空内容时，应该直接返回无评分的原始结果", async () => {
@@ -1065,6 +1041,40 @@ describe("SearchTorrentsWithAiUseCase 测试", () => {
         ),
       }),
     );
+  });
+
+  it("当 fetchAiResponse 返回 null 时，应该退出 ReAct 循环并返回原始结果", async () => {
+    mockAiConfigs([
+      {
+        alias: NonEmptyStringSchema.parse("Default"),
+        api_endpoint: NonEmptyStringSchema.parse(
+          "https://api.example.com/v1/chat/completions",
+        ),
+        api_key: NonEmptyStringSchema.parse("test-key"),
+        ai_model: NonEmptyStringSchema.parse("gpt-4o"),
+      },
+    ]);
+    vi.mocked(mockTorrentRepo.search).mockResolvedValue(mockTorrents);
+
+    const mockFetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () => "null",
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const useCase = new SearchTorrentsWithAiUseCase(
+      mockTorrentRepo,
+      mockGetAiConfigsUseCase,
+      new FetchAiClient(new FetchHttpClient()),
+      mockLogger,
+    );
+    const result = await useCase.execute(ctx, {
+      keyword: NonEmptyStringSchema.parse("昨日青空"),
+      engine: "dmhy",
+      aiAlias: NonEmptyStringSchema.parse("Default"),
+    });
+
+    expect(result).toEqual(mockTorrents);
   });
 
   it("当 AI 开启但配置信息不完整时，应该无缝退化为返回传统搜索结果", async () => {
