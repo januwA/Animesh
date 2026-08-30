@@ -28,24 +28,28 @@ export function Logged(options: LoggedOptions = {}) {
         return value.call(this, ...args);
       }
 
+      const opId = crypto.randomUUID().slice(0, 8);
       const className = this.constructor.name;
       const label = `${className}.${methodName}`;
 
       const filteredArgs = options.excludeArgs
         ? args.filter((_, i) => !options.excludeArgs?.includes(i))
         : args;
-      logger[logLevel](`${label}() called`, filteredArgs);
+      logger[logLevel](`[${opId}] ${label}() called`, filteredArgs);
 
       const start = performance.now();
       try {
         const result = await value.call(this, ...args);
         const duration = performance.now() - start;
-        logger[logLevel](`${label}() → ${duration.toFixed(1)}ms`, result);
+        logger[logLevel](
+          `[${opId}] ${label}() → ${duration.toFixed(1)}ms`,
+          result,
+        );
         return result;
       } catch (error) {
         const duration = performance.now() - start;
         logger.error(
-          `${label}() → error after ${duration.toFixed(1)}ms`,
+          `[${opId}] ${label}() → error after ${duration.toFixed(1)}ms`,
           error,
         );
         throw error;

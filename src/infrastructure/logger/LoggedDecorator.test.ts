@@ -36,11 +36,15 @@ describe("Logged 装饰器", () => {
       expect(result).toBe("data-42");
       expect(mockLogger.debug).toHaveBeenCalledTimes(2);
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        "TestService.fetchData() called",
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.fetchData\(\) called$/,
+        ),
         ["42"],
       );
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.stringMatching(/^TestService\.fetchData\(\) → [\d.]+ms$/),
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.fetchData\(\) → [\d.]+ms$/,
+        ),
         "data-42",
       );
     });
@@ -83,7 +87,9 @@ describe("Logged 装饰器", () => {
       await service.fetchData("42", "global", "trace-123");
 
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        "TestService.fetchData() called",
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.fetchData\(\) called$/,
+        ),
         ["global"],
       );
     });
@@ -102,12 +108,14 @@ describe("Logged 装饰器", () => {
       await expect(service.failingMethod()).rejects.toThrow("boom");
 
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        "TestService.failingMethod() called",
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.failingMethod\(\) called$/,
+        ),
         [],
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^TestService\.failingMethod\(\) → error after [\d.]+ms$/,
+          /^\[[0-9a-f]{8}\] TestService\.failingMethod\(\) → error after [\d.]+ms$/,
         ),
         expect.objectContaining({ message: "boom" }),
       );
