@@ -50,6 +50,7 @@ pub fn parse_dmhy_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
             magnet: item.enclosure.url,
             description: item.description,
         })
+        .filter(|item| !item.title.is_empty() && !item.link.is_empty() && !item.magnet.is_empty())
         .collect();
 
     Ok(results)
@@ -98,6 +99,7 @@ pub fn parse_bangumi_moe_json(json_data: &str) -> CoreResult<Vec<SearchResultIte
                 description: item.description,
             }
         })
+        .filter(|item| !item.title.is_empty() && !item.link.is_empty() && !item.magnet.is_empty())
         .collect();
 
     Ok(results)
@@ -169,6 +171,7 @@ pub fn parse_mikan_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
                 description: item.description,
             }
         })
+        .filter(|item| !item.title.is_empty() && !item.link.is_empty() && !item.magnet.is_empty())
         .collect();
 
     Ok(results)
@@ -218,6 +221,7 @@ pub fn parse_acgrip_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
             magnet: item.enclosure.url,
             description: item.description,
         })
+        .filter(|item| !item.title.is_empty() && !item.link.is_empty() && !item.magnet.is_empty())
         .collect();
 
     Ok(results)
@@ -270,6 +274,7 @@ pub fn parse_anibt_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
             magnet: item.torrent.magnet_uri,
             description: item.description,
         })
+        .filter(|item| !item.title.is_empty() && !item.link.is_empty() && !item.magnet.is_empty())
         .collect();
 
     Ok(results)
@@ -337,6 +342,7 @@ pub fn parse_nyaa_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
                 description: item.description,
             }
         })
+        .filter(|item| !item.title.is_empty() && !item.link.is_empty() && !item.magnet.is_empty())
         .collect();
 
     Ok(results)
@@ -454,13 +460,11 @@ mod tests {
         }"#;
 
         let results = parse_bangumi_moe_json(mock_json).unwrap();
-        assert_eq!(results.len(), 2);
+        assert_eq!(results.len(), 1);
         assert!(results[0]
             .magnet
             .contains("magnet:?xt=urn:btih:9e7a29997087a067e5e0b6fa50653288bd2aabff"));
-        assert!(results[1].magnet.is_empty());
         assert!(results[0].description.is_empty());
-        assert!(results[1].description.is_empty());
     }
 
     #[test]
@@ -633,5 +637,198 @@ mod tests {
         let invalid_xml = "<invalid>";
         let result = parse_anibt_rss(invalid_xml);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn 测试_过滤dmhy_rss_空字段项被丢弃() {
+        let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>动漫花园</title>
+    <item>
+      <title>有效标题</title>
+      <link>http://example.com/valid</link>
+      <pubDate>Mon, 23 Jun 2026 12:00:00 +0800</pubDate>
+      <enclosure url="magnet:?xt=urn:btih:VALID" length="1000" type="application/x-bittorrent" />
+    </item>
+    <item>
+      <title></title>
+      <link>http://example.com/empty-title</link>
+      <pubDate>Mon, 23 Jun 2026 12:00:00 +0800</pubDate>
+      <enclosure url="magnet:?xt=urn:btih:EMPTYTITLE" length="1000" type="application/x-bittorrent" />
+    </item>
+    <item>
+      <title>空magnet</title>
+      <link>http://example.com/empty-magnet</link>
+      <pubDate>Mon, 23 Jun 2026 12:00:00 +0800</pubDate>
+      <enclosure url="" length="1000" type="application/x-bittorrent" />
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_dmhy_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "有效标题");
+    }
+
+    #[test]
+    fn 测试_过滤bangumi_moe_json_空字段项被丢弃() {
+        let mock_json = r#"{
+            "torrents": [
+                {
+                    "_id": "valid1",
+                    "title": "",
+                    "publish_time": "2026-06-22T03:00:58.506Z",
+                    "magnet": "magnet:?xt=urn:btih:valid",
+                    "infoHash": "valid",
+                    "size": "500 MB"
+                },
+                {
+                    "_id": "valid2",
+                    "title": "有效标题",
+                    "publish_time": "2026-06-22T03:00:58.506Z",
+                    "magnet": null,
+                    "infoHash": null,
+                    "size": null
+                }
+            ]
+        }"#;
+
+        let results = parse_bangumi_moe_json(mock_json).unwrap();
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn 测试_过滤mikan_rss_空字段项被丢弃() {
+        let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Mikan Project</title>
+    <item>
+      <title>有效标题</title>
+      <link>https://mikanani.me/Home/Episode/aaa111bbb222ccc333ddd444eee555fff666aa00</link>
+      <description><![CDATA[<p>test</p>]]></description>
+      <torrent xmlns="https://mikanani.me/0.1/">
+        <link>https://mikanani.me/Home/Episode/aaa111bbb222ccc333ddd444eee555fff666aa00</link>
+        <contentLength>1000</contentLength>
+        <pubDate>2026-06-22T11:00:58.074015</pubDate>
+      </torrent>
+      <enclosure type="application/x-bittorrent" length="1000" url="https://mikanani.me/Download/aaa111bbb222ccc333ddd444eee555fff666aa00.torrent" />
+    </item>
+    <item>
+      <title>无效hash</title>
+      <link>https://example.com/not-a-hash</link>
+      <description><![CDATA[<p>test</p>]]></description>
+      <torrent xmlns="https://mikanani.me/0.1/">
+        <link>https://example.com/not-a-hash</link>
+        <contentLength>1000</contentLength>
+        <pubDate>2026-06-22T11:00:58.074015</pubDate>
+      </torrent>
+      <enclosure type="application/x-bittorrent" length="1000" url="https://example.com/not-a-hash.torrent" />
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_mikan_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "有效标题");
+    }
+
+    #[test]
+    fn 测试_过滤nyaa_rss_空字段项被丢弃() {
+        let mock_xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nyaa="https://nyaa.si/xmlns/nyaa" version="2.0">
+  <channel>
+    <title>Nyaa</title>
+    <item>
+      <title>有效标题</title>
+      <link>https://nyaa.si/download/123.torrent</link>
+      <guid isPermaLink="true">https://nyaa.si/view/123</guid>
+      <pubDate>Sat, 20 Jun 2026 14:23:11 -0000</pubDate>
+      <nyaa:infoHash>02884c75f52f499ba9eafb31004526bfd7ec8c1b</nyaa:infoHash>
+      <nyaa:size>438.3 MiB</nyaa:size>
+      <description><![CDATA[<a href="https://nyaa.si/view/123">#123</a>]]></description>
+    </item>
+    <item>
+      <title>空infoHash</title>
+      <link>https://nyaa.si/download/456.torrent</link>
+      <guid isPermaLink="true">https://nyaa.si/view/456</guid>
+      <pubDate>Sat, 20 Jun 2026 14:23:11 -0000</pubDate>
+      <nyaa:infoHash></nyaa:infoHash>
+      <nyaa:size>100 MiB</nyaa:size>
+      <description><![CDATA[<a href="https://nyaa.si/view/456">#456</a>]]></description>
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_nyaa_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "有效标题");
+    }
+
+    #[test]
+    fn 测试_过滤acgrip_rss_空字段项被丢弃() {
+        let mock_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:torrent="http://xmlns.ezrss.it/0.1/" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>ACG.RIP</title>
+    <item>
+      <title>有效标题</title>
+      <pubDate>Fri, 05 Jun 2026 08:15:41 -0700</pubDate>
+      <link>https://acg.rip/t/123</link>
+      <description><![CDATA[<p>test</p>]]></description>
+      <enclosure url="https://acg.rip/t/123.torrent" type="application/x-bittorrent"/>
+    </item>
+    <item>
+      <title>空enclosure url</title>
+      <pubDate>Fri, 05 Jun 2026 08:15:41 -0700</pubDate>
+      <link>https://acg.rip/t/456</link>
+      <description><![CDATA[<p>test</p>]]></description>
+      <enclosure url="" type="application/x-bittorrent"/>
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_acgrip_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "有效标题");
+    }
+
+    #[test]
+    fn 测试_过滤anibt_rss_空字段项被丢弃() {
+        let mock_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:anibt="https://anibt.net/xmlns/rss/1.0/">
+  <channel>
+    <title>Anibt</title>
+    <item>
+      <title>有效标题</title>
+      <link>https://anibt.net/release/valid</link>
+      <pubDate>Fri, 17 Jul 2026 02:27:06 +0800</pubDate>
+      <description><![CDATA[<p>test</p>]]></description>
+      <torrent xmlns="https://anibt.moe/xmlns/0.1/">
+        <link>https://anibt.net/release/valid</link>
+        <contentLength>1000</contentLength>
+        <pubDate>2026-07-16T18:27:06</pubDate>
+        <magneturi>magnet:?xt=urn:btih:valid</magneturi>
+      </torrent>
+    </item>
+    <item>
+      <title>空magnet</title>
+      <link>https://anibt.net/release/empty</link>
+      <pubDate>Fri, 17 Jul 2026 02:27:06 +0800</pubDate>
+      <description><![CDATA[<p>test</p>]]></description>
+      <torrent xmlns="https://anibt.moe/xmlns/0.1/">
+        <link>https://anibt.net/release/empty</link>
+        <contentLength>1000</contentLength>
+        <pubDate>2026-07-16T18:27:06</pubDate>
+        <magneturi></magneturi>
+      </torrent>
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_anibt_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "有效标题");
     }
 }
