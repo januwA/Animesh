@@ -248,6 +248,8 @@ pub struct AnibtItem {
     pub pub_date: String,
     #[serde(rename = "description", default)]
     pub description: String,
+    #[serde(rename = "torrentUrl", default)]
+    pub torrent_url: String,
     pub torrent: AnibtTorrent,
 }
 
@@ -271,7 +273,11 @@ pub fn parse_anibt_rss(xml_data: &str) -> CoreResult<Vec<SearchResultItem>> {
             title: item.title,
             link: item.link,
             pub_date: item.pub_date,
-            magnet: item.torrent.magnet_uri,
+            magnet: if item.torrent.magnet_uri.is_empty() {
+                item.torrent_url
+            } else {
+                item.torrent.magnet_uri
+            },
             description: item.description,
         })
         .filter(|item| !item.title.is_empty() && !item.link.is_empty() && !item.magnet.is_empty())
@@ -603,6 +609,7 @@ mod tests {
       <description><![CDATA[<p>喵萌奶茶屋 1080P 简繁日内封字幕</p>]]></description>
       <anibt:type>anime</anibt:type>
       <anibt:releaseId>rel_pGPUDY2z9WX_</anibt:releaseId>
+      <anibt:torrentUrl>https://anibt.net/api/torrent/rel_pGPUDY2z9WX_.torrent</anibt:torrentUrl>
       <torrent xmlns="https://anibt.moe/xmlns/0.1/">
         <link>https://anibt.net/release/rel_pGPUDY2z9WX_</link>
         <contentLength>123456789</contentLength>
@@ -630,6 +637,40 @@ mod tests {
             "magnet:?xt=urn:btih:6d04d7ee50c873dd71face5fddf6807a0a8a763e&dn=test&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce"
         );
         assert_eq!(item.description, "<p>喵萌奶茶屋 1080P 简繁日内封字幕</p>");
+    }
+
+    #[test]
+    fn 测试_解析anibt_rss_magneturi为空时fallback到torrent_url() {
+        let mock_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:anibt="https://anibt.net/xmlns/rss/1.0/">
+  <channel>
+    <title>Anibt Anime Releases</title>
+    <item>
+      <title>[晚街与灯][Re：从零开始的异世界生活 第四季][11 - 总第77][WEB-DL Remux][1080P_AVC_AAC][简繁日内封PGS]</title>
+      <link>https://anibt.net/release/rel_rPWTR15BIVTr</link>
+      <guid isPermaLink="false">rel_rPWTR15BIVTr</guid>
+      <pubDate>Wed, 24 Jun 2026 14:09:07 +0800</pubDate>
+      <description><![CDATA[<p>test</p>]]></description>
+      <anibt:type>anime</anibt:type>
+      <anibt:releaseId>rel_rPWTR15BIVTr</anibt:releaseId>
+      <anibt:torrentUrl>https://anibt.net/api/torrent/rel_rPWTR15BIVTr.torrent</anibt:torrentUrl>
+      <torrent xmlns="https://anibt.moe/xmlns/0.1/">
+        <link>https://anibt.net/release/rel_rPWTR15BIVTr</link>
+        <contentLength>1519003151</contentLength>
+        <pubDate>2026-06-24T14:09:07+08:00</pubDate>
+        <magneturi></magneturi>
+      </torrent>
+      <enclosure url="https://anibt.net/api/torrent/rel_rPWTR15BIVTr.torrent" length="1519003151" type="application/x-bittorrent"/>
+    </item>
+  </channel>
+</rss>"#;
+
+        let items = parse_anibt_rss(mock_xml).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(
+            items[0].magnet,
+            "https://anibt.net/api/torrent/rel_rPWTR15BIVTr.torrent"
+        );
     }
 
     #[test]
@@ -805,6 +846,7 @@ mod tests {
       <link>https://anibt.net/release/valid</link>
       <pubDate>Fri, 17 Jul 2026 02:27:06 +0800</pubDate>
       <description><![CDATA[<p>test</p>]]></description>
+      <anibt:torrentUrl>https://anibt.net/api/torrent/valid.torrent</anibt:torrentUrl>
       <torrent xmlns="https://anibt.moe/xmlns/0.1/">
         <link>https://anibt.net/release/valid</link>
         <contentLength>1000</contentLength>
@@ -813,7 +855,7 @@ mod tests {
       </torrent>
     </item>
     <item>
-      <title>空magnet</title>
+      <title>空magnet和torrentUrl</title>
       <link>https://anibt.net/release/empty</link>
       <pubDate>Fri, 17 Jul 2026 02:27:06 +0800</pubDate>
       <description><![CDATA[<p>test</p>]]></description>
