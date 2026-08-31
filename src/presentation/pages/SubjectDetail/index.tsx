@@ -21,6 +21,7 @@ import { StaffSection } from "@/presentation/pages/SubjectDetail/StaffSection";
 import { SubjectInfoCard } from "@/presentation/pages/SubjectDetail/SubjectInfoCard";
 import { SubjectResourcesTab } from "@/presentation/pages/SubjectDetail/SubjectResourcesTab";
 import { SummarySection } from "@/presentation/pages/SubjectDetail/SummarySection";
+import type { UseSubjectDetailDeps } from "./useSubjectDetail";
 import { useSubjectDetail } from "./useSubjectDetail";
 
 const subjectParamsSchema = z.object({
@@ -35,6 +36,31 @@ const pageParamSchema = z
   .regex(/^\d+$/, "页码必须是数字")
   .optional()
   .default("1");
+
+const platformConfigs = {
+  bangumi: {
+    getDeps: (di: ReturnType<typeof useDI>): UseSubjectDetailDeps => ({
+      getSubjectUseCase: di.getBangumiSubjectUseCase,
+      getEpisodesUseCase: di.getBangumiEpisodesUseCase,
+      getPersonsUseCase: di.getBangumiPersonsUseCase,
+      getCharactersUseCase: di.getBangumiCharactersUseCase,
+      openUrlUseCase: di.openUrlUseCase,
+      setTorrentSubjectUseCase: di.setTorrentSubjectUseCase,
+      clearTorrentSubjectUseCase: di.clearTorrentSubjectUseCase,
+    }),
+  },
+  anilist: {
+    getDeps: (di: ReturnType<typeof useDI>): UseSubjectDetailDeps => ({
+      getSubjectUseCase: di.getAnilistSubjectUseCase,
+      getEpisodesUseCase: di.getAnilistEpisodesUseCase,
+      getPersonsUseCase: di.getAnilistPersonsUseCase,
+      getCharactersUseCase: di.getAnilistCharactersUseCase,
+      openUrlUseCase: di.openUrlUseCase,
+      setTorrentSubjectUseCase: di.setTorrentSubjectUseCase,
+      clearTorrentSubjectUseCase: di.clearTorrentSubjectUseCase,
+    }),
+  },
+} as const;
 
 export default function SubjectDetail() {
   const { subjectId = "" } = useParams<{ subjectId: string }>();
@@ -93,26 +119,10 @@ function SubjectDetailView({
   const { torrents } = useTorrentStatus();
   const [activeTab, setActiveTab] = useState("summary");
 
-  const isAnilist = platform === "anilist";
+  const config = platformConfigs[platform];
   const detail = useSubjectDetail(
     { subjectId, page, platform, torrents, activeTab },
-    {
-      getSubjectUseCase: isAnilist
-        ? di.getAnilistSubjectUseCase
-        : di.getBangumiSubjectUseCase,
-      getEpisodesUseCase: isAnilist
-        ? di.getAnilistEpisodesUseCase
-        : di.getBangumiEpisodesUseCase,
-      getPersonsUseCase: isAnilist
-        ? di.getAnilistPersonsUseCase
-        : di.getBangumiPersonsUseCase,
-      getCharactersUseCase: isAnilist
-        ? di.getAnilistCharactersUseCase
-        : di.getBangumiCharactersUseCase,
-      openUrlUseCase: di.openUrlUseCase,
-      setTorrentSubjectUseCase: di.setTorrentSubjectUseCase,
-      clearTorrentSubjectUseCase: di.clearTorrentSubjectUseCase,
-    },
+    config.getDeps(di),
   );
 
   if (detail.info.subjectQuery.error) {
