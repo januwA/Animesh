@@ -1,7 +1,9 @@
 import { Languages, Loader2 } from "lucide-react";
+import { useMemo } from "react";
 import type { TranslationProvider } from "@/domain/settings/SettingsSchemas";
 import { Button } from "@/presentation/components/ui/button";
 import { useTranslation } from "@/presentation/hooks/useTranslation";
+import { sanitizeHtml } from "@/presentation/lib/sanitizeHtml";
 import { cn } from "@/presentation/lib/utils";
 
 export interface TranslatableTextProps {
@@ -19,6 +21,10 @@ export interface TranslatableTextProps {
   targetLang?: string;
   /** 翻译提供者 */
   provider?: TranslationProvider;
+  /**
+   * 开启后把 text 视为 HTML 源码，原文与译文均在渲染前经 sanitizeHtml 净化。
+   */
+  renderHtml?: boolean;
 }
 
 export function TranslatableText({
@@ -29,6 +35,7 @@ export function TranslatableText({
   sourceLang,
   targetLang,
   provider,
+  renderHtml = false,
 }: TranslatableTextProps) {
   const {
     translatedText,
@@ -40,7 +47,17 @@ export function TranslatableText({
     showingOriginal,
   } = useTranslation(text, { sourceLang, targetLang, provider });
 
-  const displayText = isTranslated && !showingOriginal ? translatedText : text;
+  // v8 ignore next
+  const displayText =
+    isTranslated && !showingOriginal ? (translatedText ?? text) : text;
+
+  // 用 useMemo 缓存净化后的 HTML 对象：displayText 不变时引用稳定，
+  // 避免父层无关重渲染导致 React 每次都重写 dangerouslySetInnerHTML 内容（闪烁）。
+  // 仅在 renderHtml 开启时才进行净化，纯文本模式不调用 sanitizeHtml。
+  const sanitizedHtml = useMemo(
+    () => (renderHtml ? { __html: sanitizeHtml(displayText) } : null),
+    [displayText, renderHtml],
+  );
 
   return (
     <div className="relative">
@@ -77,7 +94,12 @@ export function TranslatableText({
         )}
       </div>
 
-      <Tag className={cn("m-0", className)}>{displayText}</Tag>
+      <Tag
+        className={cn("m-0", className)}
+        {...(renderHtml && sanitizedHtml
+          ? { dangerouslySetInnerHTML: sanitizedHtml }
+          : { children: displayText })}
+      />
     </div>
   );
 }

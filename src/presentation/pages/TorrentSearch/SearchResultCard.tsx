@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import { TranslatableText } from "@/presentation/components/TranslatableText";
 import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
 import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
@@ -23,7 +24,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/presentation/components/ui/collapsible";
-import { sanitizeHtml } from "@/presentation/lib/sanitizeHtml";
 import { cn } from "@/presentation/lib/utils";
 import { formatLocalDate } from "@/utils";
 
@@ -104,12 +104,12 @@ export function SearchResultCard({
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div
-                className="mt-2 text-xs text-muted-foreground leading-relaxed break-words"
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: 内容已通过 sanitizeHtml 使用 DOMPurify 净化
-                dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(item.description),
-                }}
+              <TranslatableText
+                text={item.description}
+                renderHtml
+                as="div"
+                className="mt-2 text-xs text-muted-foreground leading-relaxed wrap-break-word"
+                toolbarClassName="mt-2"
               />
             </CollapsibleContent>
           </Collapsible>

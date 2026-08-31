@@ -31,6 +31,7 @@ export function SummarySection({ subject }: SummarySectionProps) {
         </h2>
         <TranslatableText
           text={subject.summary}
+          renderHtml
           as="p"
           className="text-sm text-foreground leading-relaxed whitespace-pre-wrap"
         />

@@ -195,6 +195,7 @@ export function SubjectInfoCard({
               {subject.summary && (
                 <TranslatableText
                   text={subject.summary}
+                  renderHtml
                   as="p"
                   className="text-sm text-muted-foreground leading-relaxed line-clamp-2"
                 />
