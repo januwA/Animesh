@@ -19,7 +19,6 @@ export interface UseSubjectEpisodesParams {
   subject: AnimeSubject | undefined;
 }
 
-/** useSubjectEpisodes 的依赖，由调用方（页面组合根）注入 */
 export interface UseSubjectEpisodesDeps {
   getAnimeEpisodesUseCase: Pick<GetAnimeEpisodesUseCase, "execute">;
 }
@@ -40,14 +39,14 @@ export function useSubjectEpisodes(
   deps: UseSubjectEpisodesDeps,
 ): SubjectEpisodesResult {
   const { subjectId, page, subject } = params;
-  const { getAnimeEpisodesUseCase: getBangumiEpisodesUseCase } = deps;
+  const { getAnimeEpisodesUseCase } = deps;
 
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
 
   const episodesQuery = useQuery<EpisodesPageData>(
     async (ctx) => {
-      const data = await getBangumiEpisodesUseCase.execute(ctx, {
+      const data = await getAnimeEpisodesUseCase.execute(ctx, {
         subjectId: NonEmptyStringSchema.parse(String(subjectId)),
         offset: (page - 1) * EPISODES_PAGE_SIZE,
         limit: EPISODES_PAGE_SIZE,
@@ -57,7 +56,7 @@ export function useSubjectEpisodes(
         total: data.total,
       };
     },
-    [subjectId, page, getBangumiEpisodesUseCase],
+    [subjectId, page, getAnimeEpisodesUseCase],
   );
   const episodes = episodesQuery.data?.items ?? [];
   const totalEpisodes = episodesQuery.data?.total ?? 0;

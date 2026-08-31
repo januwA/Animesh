@@ -1,7 +1,7 @@
 import { Download, FolderOpen, Unlink } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { NonEmptyString } from "@/domain/common/NonEmptyString";
+import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
 import { Button } from "@/presentation/components/ui/button";
 import {
@@ -16,31 +16,34 @@ import {
   EmptyContent,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
+import type { UseSubjectResourcesDeps } from "./useSubjectResources";
+import { useSubjectResources } from "./useSubjectResources";
 
 export interface SubjectResourcesTabProps {
+  subjectId: number;
+  platform: AnimePlatform;
   subjectName: string;
-  boundTorrents: TorrentStatusInfo[];
-  unboundTorrents: TorrentStatusInfo[];
-  bindLoading: boolean;
-  unbindLoading: boolean;
-  onBind: (infoHash: string) => void;
-  onUnbind: (infoHash: NonEmptyString) => void;
+  torrents: TorrentStatusInfo[];
+  deps: UseSubjectResourcesDeps;
 }
 
 export function SubjectResourcesTab({
+  subjectId,
+  platform,
   subjectName,
-  boundTorrents,
-  unboundTorrents,
-  bindLoading,
-  unbindLoading,
-  onBind,
-  onUnbind,
+  torrents,
+  deps,
 }: SubjectResourcesTabProps) {
   const [bindOpen, setBindOpen] = useState(false);
 
-  const handleUnbind = (infoHash: NonEmptyString) => {
-    onUnbind(infoHash);
-  };
+  const r = useSubjectResources(
+    { subjectId, platform, torrents, subjectName },
+    deps,
+  );
+  const boundTorrents = r.boundTorrents;
+  const unboundTorrents = r.unboundTorrents;
+  const bindLoading = r.bindLoading;
+  const unbindLoading = r.unbindLoading;
 
   return (
     <div className="flex flex-col gap-4 pt-4">
@@ -97,7 +100,7 @@ export function SubjectResourcesTab({
                 size="sm"
                 className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive shrink-0"
                 disabled={unbindLoading}
-                onClick={() => handleUnbind(torrent.info_hash)}
+                onClick={() => r.handleUnbind(torrent.info_hash)}
               >
                 <Unlink className="h-3.5 w-3.5" />
                 解绑
@@ -145,7 +148,7 @@ export function SubjectResourcesTab({
                       size="sm"
                       className="h-7 px-2.5 text-xs shrink-0"
                       disabled={bindLoading}
-                      onClick={() => onBind(torrent.info_hash)}
+                      onClick={() => r.handleBind(torrent.info_hash)}
                     >
                       绑定
                     </Button>

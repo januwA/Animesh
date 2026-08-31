@@ -5,28 +5,27 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
-import type { ConsolidatedStaffMember } from "@/presentation/hooks/useSubjectCast";
 import { StaffPersonBadge } from "./StaffPersonBadge";
+import type { UseSubjectStaffDeps } from "./useSubjectCast";
+import { useSubjectStaff } from "./useSubjectCast";
 
 export interface StaffSectionProps {
-  staffGroupedByRole: Map<string, ConsolidatedStaffMember[]>;
-  loading: boolean;
-  error: Error | null;
-  onRetry: () => void;
+  subjectId: number;
+  deps: UseSubjectStaffDeps;
 }
 
-export function StaffSection({
-  staffGroupedByRole,
-  loading,
-  error,
-  onRetry,
-}: StaffSectionProps) {
+export function StaffSection({ subjectId, deps }: StaffSectionProps) {
+  const cast = useSubjectStaff({ subjectId }, deps);
+  const staffGroupedByRole = cast.staffGroupedByRole;
+  const loading = cast.personsQuery.loading;
+  const error = cast.personsQuery.error;
+
   if (error) {
     return (
       <ErrorState
         title="获取制作人员数据失败"
         message={error}
-        onRetry={onRetry}
+        onRetry={cast.personsQuery.refetch}
       />
     );
   }

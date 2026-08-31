@@ -4,8 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { UseSubjectInfoDeps } from "@/presentation/hooks/useSubjectInfo";
-import { useSubjectInfo } from "@/presentation/hooks/useSubjectInfo";
+import type { UseSubjectInfoDeps } from "./useSubjectInfo";
+import { useSubjectInfo } from "./useSubjectInfo";
 
 const makeSubject = (): AnimeSubject => ({
   id: 123,

@@ -1,7 +1,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { vi } from "vitest";
-import type { AnimeEpisode } from "@/domain/anime/AnimeSchemas";
-import { EpisodesSection } from "@/presentation/pages/SubjectDetail/EpisodesSection";
+import { beforeEach, vi } from "vitest";
+import type { AnimeEpisode, AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { EpisodesSection } from "./EpisodesSection";
+import type {
+  SubjectEpisodesResult,
+  UseSubjectEpisodesDeps,
+} from "./useSubjectEpisodes";
+import { useSubjectEpisodes } from "./useSubjectEpisodes";
+
+vi.mock(import("./useSubjectEpisodes"), () => ({
+  useSubjectEpisodes: vi.fn(),
+}));
+
+const mockedUseSubjectEpisodes = vi.mocked(useSubjectEpisodes);
 
 const makeEpisode = (sort: number): AnimeEpisode => ({
   id: 1000 + sort,
@@ -11,6 +22,17 @@ const makeEpisode = (sort: number): AnimeEpisode => ({
   airdate: "2026-07-01",
 });
 
+const makeSubject = (): AnimeSubject => ({
+  id: 123,
+  name: "测试动漫",
+  summary: "简介",
+  image: "",
+  rating: 8.5,
+  date: null as never,
+  eps: 12,
+  platform: "TV",
+});
+
 const formatDate = (d: Date) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -18,29 +40,49 @@ const formatDate = (d: Date) => {
   return `${y}-${m}-${day}`;
 };
 
-const defaultProps = () => ({
-  episodes: [] as AnimeEpisode[],
-  totalEpisodes: 0,
-  totalPages: 1,
-  page: 1,
-  todayStr: formatDate(new Date()),
-  loading: false,
-  error: null as Error | null,
-  onRetry: vi.fn(),
-  onEpisodeClick: vi.fn(),
-  onPageChange: vi.fn(),
-  onJumpToEpisode: vi.fn(),
+const makeDeps = (): UseSubjectEpisodesDeps => ({
+  getAnimeEpisodesUseCase: { execute: vi.fn() },
 });
 
+const makeResult = (
+  episodes: AnimeEpisode[] = [],
+  overrides: Partial<SubjectEpisodesResult> = {},
+): SubjectEpisodesResult => ({
+  episodesQuery: {
+    data: { items: episodes, total: episodes.length },
+    loading: false,
+    error: null,
+    refetch: vi.fn(),
+  },
+  episodes,
+  totalEpisodes: episodes.length,
+  totalPages: 1,
+  todayStr: formatDate(new Date()),
+  handleEpisodeClick: vi.fn(),
+  changePage: vi.fn(),
+  jumpToEpisode: vi.fn(),
+  ...overrides,
+});
+
+const renderSection = (result: SubjectEpisodesResult) => {
+  mockedUseSubjectEpisodes.mockReturnValue(result);
+  return render(
+    <EpisodesSection
+      subjectId={123}
+      page={1}
+      subject={makeSubject()}
+      deps={makeDeps()}
+    />,
+  );
+};
+
 describe("EpisodesSection 剧集列表组件", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("应该渲染剧集卡片", () => {
-    render(
-      <EpisodesSection
-        {...defaultProps()}
-        episodes={[makeEpisode(1), makeEpisode(2)]}
-        totalEpisodes={2}
-      />,
-    );
+    renderSection(makeResult([makeEpisode(1), makeEpisode(2)]));
 
     expect(screen.getByText("第 1 集")).toBeInTheDocument();
     expect(screen.getByText("第 2 集")).toBeInTheDocument();
@@ -48,26 +90,19 @@ describe("EpisodesSection 剧集列表组件", () => {
   });
 
   it("当没有剧集时，应该显示空状态提示", () => {
-    render(<EpisodesSection {...defaultProps()} />);
+    renderSection(makeResult());
 
     expect(screen.getByText("暂无剧集数据")).toBeInTheDocument();
   });
 
-  it("点击剧集卡片时，应该调用 onEpisodeClick", () => {
-    const onEpisodeClick = vi.fn();
+  it("点击剧集卡片时，应该调用 handleEpisodeClick", () => {
+    const handleEpisodeClick = vi.fn();
     const ep = makeEpisode(1);
-    render(
-      <EpisodesSection
-        {...defaultProps()}
-        episodes={[ep]}
-        totalEpisodes={1}
-        onEpisodeClick={onEpisodeClick}
-      />,
-    );
+    renderSection(makeResult([ep], { totalEpisodes: 1, handleEpisodeClick }));
 
     fireEvent.click(screen.getByText("第 1 集").closest("button")!);
 
-    expect(onEpisodeClick).toHaveBeenCalledWith(ep);
+    expect(handleEpisodeClick).toHaveBeenCalledWith(ep);
   });
 
   it("如果当前时间 >= ep.airdate，剧集卡片应该使用主色样式；否则使用普通样式", () => {
@@ -75,23 +110,19 @@ describe("EpisodesSection 剧集列表组件", () => {
     const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
     const future = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-    render(
-      <EpisodesSection
-        {...defaultProps()}
-        episodes={[
-          {
-            ...makeEpisode(1),
-            name: "已播出剧集",
-            airdate: formatDate(yesterday),
-          },
-          {
-            ...makeEpisode(2),
-            name: "未播出剧集",
-            airdate: formatDate(future),
-          },
-        ]}
-        totalEpisodes={2}
-      />,
+    renderSection(
+      makeResult([
+        {
+          ...makeEpisode(1),
+          name: "已播出剧集",
+          airdate: formatDate(yesterday),
+        },
+        {
+          ...makeEpisode(2),
+          name: "未播出剧集",
+          airdate: formatDate(future),
+        },
+      ]),
     );
 
     const airedCard = screen.getByText("已播出剧集").closest("button");
@@ -104,13 +135,16 @@ describe("EpisodesSection 剧集列表组件", () => {
   });
 
   it("当有错误时，应该显示错误状态并可重试", () => {
-    const onRetry = vi.fn();
-    render(
-      <EpisodesSection
-        {...defaultProps()}
-        error={new Error("Episodes API Error")}
-        onRetry={onRetry}
-      />,
+    const refetch = vi.fn();
+    renderSection(
+      makeResult([], {
+        episodesQuery: {
+          data: null,
+          loading: false,
+          error: new Error("Episodes API Error"),
+          refetch,
+        },
+      }),
     );
 
     expect(screen.getByText("获取剧集列表失败")).toBeInTheDocument();
@@ -118,12 +152,19 @@ describe("EpisodesSection 剧集列表组件", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
 
-    expect(onRetry).toHaveBeenCalledOnce();
+    expect(refetch).toHaveBeenCalledOnce();
   });
 
   it("加载中时应该显示骨架屏", () => {
-    const { container } = render(
-      <EpisodesSection {...defaultProps()} loading={true} />,
+    const { container } = renderSection(
+      makeResult([], {
+        episodesQuery: {
+          data: null,
+          loading: true,
+          error: null,
+          refetch: vi.fn(),
+        },
+      }),
     );
 
     const skeletons = container.querySelectorAll("[data-slot='skeleton']");
@@ -131,28 +172,21 @@ describe("EpisodesSection 剧集列表组件", () => {
   });
 
   it("总页数大于 1 时，应该显示分页组件", () => {
-    render(
-      <EpisodesSection
-        {...defaultProps()}
-        episodes={Array.from({ length: 50 }, (_, i) => makeEpisode(i + 1))}
-        totalEpisodes={103}
-        totalPages={3}
-        page={1}
-      />,
+    renderSection(
+      makeResult(
+        Array.from({ length: 50 }, (_, i) => makeEpisode(i + 1)),
+        {
+          totalEpisodes: 103,
+          totalPages: 3,
+        },
+      ),
     );
 
     expect(screen.getByText("共 103 集")).toBeInTheDocument();
   });
 
   it("总页数为 1 时，不应该显示分页组件", () => {
-    render(
-      <EpisodesSection
-        {...defaultProps()}
-        episodes={[makeEpisode(1)]}
-        totalEpisodes={1}
-        totalPages={1}
-      />,
-    );
+    renderSection(makeResult([makeEpisode(1)], { totalEpisodes: 1 }));
 
     expect(screen.getByText("共 1 集")).toBeInTheDocument();
   });

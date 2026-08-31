@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import type { GetAnimeSubjectUseCase } from "@/application/anime/GetAnimeSubjectUseCase";
 import type { OpenUrlUseCase } from "@/application/opener/OpenUrlUseCase";
 import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
@@ -23,7 +23,6 @@ export interface SubjectInfoResult {
   subject: AnimeSubject | undefined;
   displayName: string;
   imageUrl: string | undefined;
-  handleBack: () => void;
   handleOpenUrl: () => void;
 }
 
@@ -34,7 +33,6 @@ export function useSubjectInfo(
   const { subjectId, platform } = params;
   const { getSubjectUseCase, openUrlUseCase } = deps;
 
-  const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as { name?: string; imageUrl?: string } | null;
 
@@ -47,18 +45,6 @@ export function useSubjectInfo(
     [subjectId, getSubjectUseCase],
   );
   const subject = subjectQuery.data ?? undefined;
-
-  // v8 ignore start
-  const handleBack = () => {
-    if (document.startViewTransition) {
-      document.startViewTransition(() => {
-        navigate(-1);
-      });
-    } else {
-      navigate(-1);
-    }
-  };
-  // v8 ignore stop
 
   const displayName = subject?.name || state?.name || "加载中...";
   const imageUrl = subject?.image || state?.imageUrl;
@@ -75,7 +61,6 @@ export function useSubjectInfo(
     subject,
     displayName,
     imageUrl,
-    handleBack,
     handleOpenUrl,
   };
 }

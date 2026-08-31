@@ -1,4 +1,4 @@
-import type { AnimeEpisode } from "@/domain/anime/AnimeSchemas";
+import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import {
   Empty,
@@ -6,35 +6,28 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
-import { EpisodePaginationBar } from "@/presentation/pages/SubjectDetail/EpisodePaginationBar";
+import { EpisodePaginationBar } from "./EpisodePaginationBar";
+import type { UseSubjectEpisodesDeps } from "./useSubjectEpisodes";
+import { useSubjectEpisodes } from "./useSubjectEpisodes";
 
 export interface EpisodesSectionProps {
-  episodes: AnimeEpisode[];
-  totalEpisodes: number;
-  totalPages: number;
+  subjectId: number;
   page: number;
-  todayStr: string;
-  loading: boolean;
-  error: Error | null;
-  onRetry: () => void;
-  onEpisodeClick: (episode: AnimeEpisode) => void;
-  onPageChange: (page: number) => void;
-  onJumpToEpisode: (episodeNumber: number) => void;
+  subject: AnimeSubject | undefined;
+  deps: UseSubjectEpisodesDeps;
 }
 
 export function EpisodesSection({
-  episodes,
-  totalEpisodes,
-  totalPages,
+  subjectId,
   page,
-  todayStr,
-  loading,
-  error,
-  onRetry,
-  onEpisodeClick,
-  onPageChange,
-  onJumpToEpisode,
+  subject,
+  deps,
 }: EpisodesSectionProps) {
+  const r = useSubjectEpisodes({ subjectId, page, subject }, deps);
+  const { episodes, totalEpisodes, totalPages, todayStr } = r;
+  const loading = r.episodesQuery.loading;
+  const error = r.episodesQuery.error;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -50,7 +43,7 @@ export function EpisodesSection({
         <ErrorState
           title="获取剧集列表失败"
           message={error}
-          onRetry={onRetry}
+          onRetry={r.episodesQuery.refetch}
         />
       ) : loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -68,7 +61,7 @@ export function EpisodesSection({
                 <button
                   key={ep.id}
                   type="button"
-                  onClick={() => onEpisodeClick(ep)}
+                  onClick={() => r.handleEpisodeClick(ep)}
                   className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
                     isAired
                       ? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
@@ -113,8 +106,8 @@ export function EpisodesSection({
               page={page}
               totalPages={totalPages}
               total={totalEpisodes}
-              onPageChange={onPageChange}
-              onJumpToEpisode={onJumpToEpisode}
+              onPageChange={r.changePage}
+              onJumpToEpisode={r.jumpToEpisode}
             />
           )}
         </>

@@ -1,6 +1,8 @@
-query ($startDate: Int!, $endDate: Int!, $page: Int!) {
+query Page($startDate: Int!, $endDate: Int!, $page: Int!) {
   Page(page: $page, perPage: 50) {
-    pageInfo { hasNextPage }
+    pageInfo {
+      hasNextPage
+    }
     airingSchedules(
       airingAt_greater: $startDate
       airingAt_lesser: $endDate
@@ -12,8 +14,17 @@ query ($startDate: Int!, $endDate: Int!, $page: Int!) {
       mediaId
       media {
         id
-        title { romaji english native userPreferred }
-        coverImage { large medium color }
+        title {
+          romaji
+          english
+          native
+          userPreferred
+        }
+        coverImage {
+          large
+          medium
+          color
+        }
         averageScore
       }
     }

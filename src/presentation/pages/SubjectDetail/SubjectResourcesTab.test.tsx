@@ -6,11 +6,22 @@ import {
   RouterProvider,
   useLocation,
 } from "react-router-dom";
-import { vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
-import { SubjectResourcesTab } from "@/presentation/pages/SubjectDetail/SubjectResourcesTab";
+import { SubjectResourcesTab } from "./SubjectResourcesTab";
+import type {
+  SubjectResourcesResult,
+  UseSubjectResourcesDeps,
+} from "./useSubjectResources";
+import { useSubjectResources } from "./useSubjectResources";
+
+vi.mock(import("./useSubjectResources"), () => ({
+  useSubjectResources: vi.fn(),
+}));
+
+const mockedUseSubjectResources = vi.mocked(useSubjectResources);
 
 const currentLocation = {
   current: null as { pathname: string; search: string } | null,
@@ -38,18 +49,27 @@ const makeTorrent = (
   ...overrides,
 });
 
-const defaultProps = () => ({
-  subjectName: "测试动漫标题",
-  boundTorrents: [] as TorrentStatusInfo[],
-  unboundTorrents: [] as TorrentStatusInfo[],
+const makeDeps = (): UseSubjectResourcesDeps => ({
+  setTorrentSubjectUseCase: { execute: vi.fn() },
+  clearTorrentSubjectUseCase: { execute: vi.fn() },
+});
+
+const makeResult = (
+  overrides: Partial<SubjectResourcesResult> = {},
+): SubjectResourcesResult => ({
+  boundResourcesCount: 0,
+  boundTorrents: [],
+  unboundTorrents: [],
   bindLoading: false,
   unbindLoading: false,
-  onBind: vi.fn(),
-  onUnbind: vi.fn() as (infoHash: NonEmptyString) => void,
+  handleBind: vi.fn(),
+  handleUnbind: vi.fn() as (infoHash: NonEmptyString) => void,
+  ...overrides,
 });
 
 /** SubjectResourcesTab uses Link, so we need a router wrapper */
-const renderWithRouter = (props: ReturnType<typeof defaultProps>) => {
+const renderWithRouter = (result: SubjectResourcesResult) => {
+  mockedUseSubjectResources.mockReturnValue(result);
   const router = createMemoryRouter(
     [
       {
@@ -63,7 +83,15 @@ const renderWithRouter = (props: ReturnType<typeof defaultProps>) => {
         children: [
           {
             path: "subject/:subjectId",
-            element: <SubjectResourcesTab {...props} />,
+            element: (
+              <SubjectResourcesTab
+                subjectId={123}
+                platform="bangumi"
+                subjectName="测试动漫标题"
+                torrents={[]}
+                deps={makeDeps()}
+              />
+            ),
           },
           { path: "torrent", element: <div>种子详情页</div> },
         ],
@@ -84,7 +112,7 @@ describe("SubjectResourcesTab 资源标签页组件", () => {
   });
 
   it("当没有绑定任务时，应该展示空状态", () => {
-    renderWithRouter(defaultProps());
+    renderWithRouter(makeResult());
 
     expect(screen.getByText("暂未绑定下载资源")).toBeInTheDocument();
     expect(
@@ -93,19 +121,13 @@ describe("SubjectResourcesTab 资源标签页组件", () => {
   });
 
   it("应该展示已绑定任务列表", () => {
-    renderWithRouter({
-      ...defaultProps(),
-      boundTorrents: [makeTorrent()],
-    });
+    renderWithRouter(makeResult({ boundTorrents: [makeTorrent()] }));
 
     expect(screen.getByText("测试种子")).toBeInTheDocument();
   });
 
   it("点击已绑定任务行，应该跳转到种子详情页并携带 hash 与标题", async () => {
-    renderWithRouter({
-      ...defaultProps(),
-      boundTorrents: [makeTorrent()],
-    });
+    renderWithRouter(makeResult({ boundTorrents: [makeTorrent()] }));
 
     await user.click(screen.getByTestId("bound-torrent-row"));
 
@@ -116,24 +138,21 @@ describe("SubjectResourcesTab 资源标签页组件", () => {
     );
   });
 
-  it("点击解绑按钮，应该调用 onUnbind", async () => {
-    const onUnbind = vi.fn();
-    renderWithRouter({
-      ...defaultProps(),
-      boundTorrents: [makeTorrent()],
-      onUnbind,
-    });
+  it("点击解绑按钮，应该调用 handleUnbind", async () => {
+    const handleUnbind = vi.fn();
+    renderWithRouter(
+      makeResult({ boundTorrents: [makeTorrent()], handleUnbind }),
+    );
 
     await user.click(screen.getByRole("button", { name: /解绑/ }));
 
-    expect(onUnbind).toHaveBeenCalledWith(NonEmptyStringSchema.parse("hash-1"));
+    expect(handleUnbind).toHaveBeenCalledWith(
+      NonEmptyStringSchema.parse("hash-1"),
+    );
   });
 
   it("打开绑定对话框，应该展示未绑定任务列表", async () => {
-    renderWithRouter({
-      ...defaultProps(),
-      unboundTorrents: [makeTorrent()],
-    });
+    renderWithRouter(makeResult({ unboundTorrents: [makeTorrent()] }));
 
     await user.click(screen.getByRole("button", { name: /绑定下载/ }));
 
@@ -141,22 +160,20 @@ describe("SubjectResourcesTab 资源标签页组件", () => {
     expect(screen.getByText("测试种子")).toBeInTheDocument();
   });
 
-  it("在绑定对话框中点击绑定按钮，应该调用 onBind", async () => {
-    const onBind = vi.fn();
-    renderWithRouter({
-      ...defaultProps(),
-      unboundTorrents: [makeTorrent()],
-      onBind,
-    });
+  it("在绑定对话框中点击绑定按钮，应该调用 handleBind", async () => {
+    const handleBind = vi.fn();
+    renderWithRouter(
+      makeResult({ unboundTorrents: [makeTorrent()], handleBind }),
+    );
 
     await user.click(screen.getByRole("button", { name: /绑定下载/ }));
     await user.click(screen.getByRole("button", { name: "绑定" }));
 
-    expect(onBind).toHaveBeenCalledWith("hash-1");
+    expect(handleBind).toHaveBeenCalledWith("hash-1");
   });
 
   it("当 unboundTorrents 为空时，绑定对话框应该显示空状态", async () => {
-    renderWithRouter(defaultProps());
+    renderWithRouter(makeResult());
 
     await user.click(screen.getByRole("button", { name: /绑定下载/ }));
 

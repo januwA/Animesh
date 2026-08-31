@@ -1,4 +1,6 @@
+import type { GetAnimeCharactersUseCase } from "@/application/anime/GetAnimeCharactersUseCase";
 import type { AnimeCharacter } from "@/domain/anime/AnimeSchemas";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import {
   Empty,
@@ -6,24 +8,38 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { CharacterCard } from "./CharacterCard";
 
 export interface CharactersSectionProps {
-  characters: AnimeCharacter[];
-  loading: boolean;
-  error: Error | null;
-  onRetry: () => void;
+  subjectId: number;
+  getCharactersUseCase: Pick<GetAnimeCharactersUseCase, "execute">;
 }
 
 export function CharactersSection({
-  characters,
-  loading,
-  error,
-  onRetry,
+  subjectId,
+  getCharactersUseCase,
 }: CharactersSectionProps) {
+  const charactersQuery = useQuery<AnimeCharacter[]>(
+    (ctx) =>
+      getCharactersUseCase.execute(
+        ctx,
+        NonEmptyStringSchema.parse(String(subjectId)),
+      ),
+    [subjectId, getCharactersUseCase],
+  );
+
+  const characters = charactersQuery.data || [];
+  const loading = charactersQuery.loading;
+  const error = charactersQuery.error;
+
   if (error) {
     return (
-      <ErrorState title="获取角色数据失败" message={error} onRetry={onRetry} />
+      <ErrorState
+        title="获取角色数据失败"
+        message={error}
+        onRetry={charactersQuery.refetch}
+      />
     );
   }
 

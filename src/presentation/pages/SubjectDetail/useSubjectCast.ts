@@ -1,7 +1,6 @@
 import { useMemo } from "react";
-import type { GetAnimeCharactersUseCase } from "@/application/anime/GetAnimeCharactersUseCase";
 import type { GetAnimePersonsUseCase } from "@/application/anime/GetAnimePersonsUseCase";
-import type { AnimeCharacter, AnimePerson } from "@/domain/anime/AnimeSchemas";
+import type { AnimePerson } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { UseQueryResult } from "@/presentation/hooks/useQuery";
 import { useQuery } from "@/presentation/hooks/useQuery";
@@ -42,55 +41,36 @@ export function consolidateStaff(
   return Array.from(personMap.values());
 }
 
-export interface UseSubjectCastParams {
+export interface UseSubjectStaffParams {
   subjectId: number;
-  enabledCharacters?: boolean;
   enabledPersons?: boolean;
 }
 
-/** useSubjectCast 的依赖，由调用方（页面组合根）注入 */
-export interface UseSubjectCastDeps {
+export interface UseSubjectStaffDeps {
   getAnimePersonsUseCase: Pick<GetAnimePersonsUseCase, "execute">;
-  getAnimeCharactersUseCase: Pick<GetAnimeCharactersUseCase, "execute">;
 }
 
-export interface SubjectCastResult {
-  charactersQuery: UseQueryResult<AnimeCharacter[]>;
-  characters: AnimeCharacter[];
+export interface SubjectStaffResult {
   personsQuery: UseQueryResult<AnimePerson[]>;
   persons: AnimePerson[];
   consolidatedStaff: ConsolidatedStaffMember[];
   staffGroupedByRole: Map<string, ConsolidatedStaffMember[]>;
 }
 
-export function useSubjectCast(
-  params: UseSubjectCastParams,
-  deps: UseSubjectCastDeps,
-): SubjectCastResult {
-  const { subjectId, enabledCharacters = true, enabledPersons = true } = params;
-  const {
-    getAnimePersonsUseCase: getBangumiPersonsUseCase,
-    getAnimeCharactersUseCase: getBangumiCharactersUseCase,
-  } = deps;
-
-  const charactersQuery = useQuery<AnimeCharacter[]>(
-    (ctx) =>
-      getBangumiCharactersUseCase.execute(
-        ctx,
-        NonEmptyStringSchema.parse(String(subjectId)),
-      ),
-    [subjectId, getBangumiCharactersUseCase],
-    { enabled: enabledCharacters },
-  );
-  const characters = charactersQuery.data ?? [];
+export function useSubjectStaff(
+  params: UseSubjectStaffParams,
+  deps: UseSubjectStaffDeps,
+): SubjectStaffResult {
+  const { subjectId, enabledPersons = true } = params;
+  const { getAnimePersonsUseCase } = deps;
 
   const personsQuery = useQuery<AnimePerson[]>(
     (ctx) =>
-      getBangumiPersonsUseCase.execute(
+      getAnimePersonsUseCase.execute(
         ctx,
         NonEmptyStringSchema.parse(String(subjectId)),
       ),
-    [subjectId, getBangumiPersonsUseCase],
+    [subjectId, getAnimePersonsUseCase],
     { enabled: enabledPersons },
   );
   const persons = personsQuery.data ?? [];
@@ -113,8 +93,6 @@ export function useSubjectCast(
   }, [consolidatedStaff]);
 
   return {
-    charactersQuery,
-    characters,
     personsQuery,
     persons,
     consolidatedStaff,

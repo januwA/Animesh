@@ -45,7 +45,14 @@ const makeSubject = (overrides: Partial<AnimeSubject> = {}): AnimeSubject => ({
 
 const renderCard = async (
   subject: AnimeSubject | undefined,
-  options: { displayName?: string; imageUrl?: string } = {},
+  options: {
+    displayName?: string;
+    imageUrl?: string;
+    error?: Error | null;
+    onRetry: () => void;
+  } = {
+    onRetry: () => {},
+  },
 ) => {
   const mockDI = createMockDI();
   const result = render(
@@ -56,6 +63,8 @@ const renderCard = async (
         platform="bangumi"
         displayName={options.displayName ?? "测试动漫标题"}
         imageUrl={options.imageUrl}
+        error={options.error}
+        onRetry={options.onRetry}
         onOpenUrl={vi.fn()}
         getFavoriteStatusUseCase={{ execute: vi.fn().mockResolvedValue(false) }}
         addFavoriteUseCase={{ execute: vi.fn().mockResolvedValue(undefined) }}
@@ -90,6 +99,7 @@ describe("SubjectInfoCard 信息卡片组件", () => {
     await renderCard(undefined, {
       displayName: "传递的动画名称",
       imageUrl: "http://example.com/large.jpg",
+      onRetry: () => {},
     });
 
     expect(screen.getByText("传递的动画名称")).toBeInTheDocument();
@@ -99,7 +109,7 @@ describe("SubjectInfoCard 信息卡片组件", () => {
   });
 
   it("当 imageUrl 为 undefined 时，应该显示占位图标", async () => {
-    await renderCard(makeSubject(), { imageUrl: undefined });
+    await renderCard(makeSubject(), { imageUrl: undefined, onRetry: () => {} });
 
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
@@ -112,7 +122,7 @@ describe("SubjectInfoCard 信息卡片组件", () => {
         date: null as never,
         eps: null as never,
       }),
-      { displayName: "Test Anime Title" },
+      { displayName: "Test Anime Title", onRetry: () => {} },
     );
 
     expect(screen.getByText("Test Anime Title")).toBeInTheDocument();
@@ -159,6 +169,45 @@ describe("SubjectInfoCard 信息卡片组件", () => {
     expect(screen.queryByText("共 12 话")).not.toBeInTheDocument();
     expect(screen.queryByText("2026-07-01")).not.toBeInTheDocument();
     expect(screen.queryByText("TV")).not.toBeInTheDocument();
+    expect(screen.getByText("8.5")).toBeInTheDocument();
+  });
+
+  it("subject 缺失且存在 error 时，应该内联展示错误状态与重试按钮", async () => {
+    const onRetry = vi.fn();
+    await renderCard(undefined, {
+      displayName: "回退名称",
+      imageUrl: "http://example.com/fallback.jpg",
+      error: new Error("Subject API Error"),
+      onRetry,
+    });
+
+    expect(screen.getByText("获取动漫详情失败")).toBeInTheDocument();
+    expect(screen.getByText("Subject API Error")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+    // 错误态下不应显示加载骨架
+    expect(screen.queryByText("正在加载动漫详情...")).not.toBeInTheDocument();
+  });
+
+  it("subject 缺失且存在 error 时，点击重试应该调用 onRetry", async () => {
+    const onRetry = vi.fn();
+    await renderCard(undefined, {
+      error: new Error("Subject API Error"),
+      onRetry,
+    });
+
+    screen.getByRole("button", { name: "重试" }).click();
+
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it("subject 存在且存在 error 时，不应该渲染错误状态", async () => {
+    await renderCard(makeSubject(), {
+      error: new Error("Subject API Error"),
+      onRetry: () => {},
+    });
+
+    expect(screen.queryByText("获取动漫详情失败")).not.toBeInTheDocument();
+    expect(screen.getByText("测试动漫标题")).toBeInTheDocument();
     expect(screen.getByText("8.5")).toBeInTheDocument();
   });
 });

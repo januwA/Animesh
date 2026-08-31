@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import { useDI } from "@/di/DIContext";
+import type { GetAnimeCharactersUseCase } from "@/application/anime/GetAnimeCharactersUseCase";
+import { type DIContainer, useDI } from "@/di/DIContext";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
-import { ErrorState } from "@/presentation/components/ErrorState";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
-import { Badge } from "@/presentation/components/ui/badge";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import {
   Tabs,
@@ -21,8 +20,10 @@ import { StaffSection } from "@/presentation/pages/SubjectDetail/StaffSection";
 import { SubjectInfoCard } from "@/presentation/pages/SubjectDetail/SubjectInfoCard";
 import { SubjectResourcesTab } from "@/presentation/pages/SubjectDetail/SubjectResourcesTab";
 import { SummarySection } from "@/presentation/pages/SubjectDetail/SummarySection";
-import type { UseSubjectDetailDeps } from "./useSubjectDetail";
-import { useSubjectDetail } from "./useSubjectDetail";
+import type { UseSubjectStaffDeps } from "./useSubjectCast";
+import type { UseSubjectEpisodesDeps } from "./useSubjectEpisodes";
+import { type UseSubjectInfoDeps, useSubjectInfo } from "./useSubjectInfo";
+import type { UseSubjectResourcesDeps } from "./useSubjectResources";
 
 const subjectParamsSchema = z.object({
   subjectId: z
@@ -37,30 +38,50 @@ const pageParamSchema = z
   .optional()
   .default("1");
 
-const platformConfigs = {
-  bangumi: {
-    getDeps: (di: ReturnType<typeof useDI>): UseSubjectDetailDeps => ({
-      getSubjectUseCase: di.getBangumiSubjectUseCase,
-      getEpisodesUseCase: di.getBangumiEpisodesUseCase,
-      getPersonsUseCase: di.getBangumiPersonsUseCase,
-      getCharactersUseCase: di.getBangumiCharactersUseCase,
+/** 根据平台组装各 Section 所需的使用用例依赖，由页面组合根统一注入 */
+function buildSectionDeps(
+  di: DIContainer,
+  platform: AnimePlatform,
+): {
+  getCharactersUseCase: GetAnimeCharactersUseCase;
+  infoDeps: UseSubjectInfoDeps;
+  episodesDeps: UseSubjectEpisodesDeps;
+  staffDeps: UseSubjectStaffDeps;
+  resourcesDeps: UseSubjectResourcesDeps;
+} {
+  const animeDeps =
+    platform === "bangumi"
+      ? {
+          getSubjectUseCase: di.getBangumiSubjectUseCase,
+          getEpisodesUseCase: di.getBangumiEpisodesUseCase,
+          getPersonsUseCase: di.getBangumiPersonsUseCase,
+          getCharactersUseCase: di.getBangumiCharactersUseCase,
+        }
+      : {
+          getSubjectUseCase: di.getAnilistSubjectUseCase,
+          getEpisodesUseCase: di.getAnilistEpisodesUseCase,
+          getPersonsUseCase: di.getAnilistPersonsUseCase,
+          getCharactersUseCase: di.getAnilistCharactersUseCase,
+        };
+
+  return {
+    getCharactersUseCase: animeDeps.getCharactersUseCase,
+    infoDeps: {
+      getSubjectUseCase: animeDeps.getSubjectUseCase,
       openUrlUseCase: di.openUrlUseCase,
+    },
+    episodesDeps: {
+      getAnimeEpisodesUseCase: animeDeps.getEpisodesUseCase,
+    },
+    staffDeps: {
+      getAnimePersonsUseCase: animeDeps.getPersonsUseCase,
+    },
+    resourcesDeps: {
       setTorrentSubjectUseCase: di.setTorrentSubjectUseCase,
       clearTorrentSubjectUseCase: di.clearTorrentSubjectUseCase,
-    }),
-  },
-  anilist: {
-    getDeps: (di: ReturnType<typeof useDI>): UseSubjectDetailDeps => ({
-      getSubjectUseCase: di.getAnilistSubjectUseCase,
-      getEpisodesUseCase: di.getAnilistEpisodesUseCase,
-      getPersonsUseCase: di.getAnilistPersonsUseCase,
-      getCharactersUseCase: di.getAnilistCharactersUseCase,
-      openUrlUseCase: di.openUrlUseCase,
-      setTorrentSubjectUseCase: di.setTorrentSubjectUseCase,
-      clearTorrentSubjectUseCase: di.clearTorrentSubjectUseCase,
-    }),
-  },
-} as const;
+    },
+  };
+}
 
 export default function SubjectDetail() {
   const { subjectId = "" } = useParams<{ subjectId: string }>();
@@ -119,34 +140,21 @@ function SubjectDetailView({
   const { torrents } = useTorrentStatus();
   const [activeTab, setActiveTab] = useState("summary");
 
-  const config = platformConfigs[platform];
-  const detail = useSubjectDetail(
-    { subjectId, page, platform, torrents, activeTab },
-    config.getDeps(di),
-  );
-
-  if (detail.info.subjectQuery.error) {
-    return (
-      <div className="space-y-4">
-        <ErrorState
-          title={"获取动漫详情失败"}
-          message={detail.info.subjectQuery.error}
-          onRetry={detail.info.subjectQuery.refetch}
-        />
-      </div>
-    );
-  }
+  const deps = buildSectionDeps(di, platform);
+  const info = useSubjectInfo({ subjectId, platform }, deps.infoDeps);
 
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
       {/* Info Header Card */}
       <SubjectInfoCard
-        subject={detail.info.subject}
+        subject={info.subject}
         subjectId={subjectId}
         platform={platform}
-        displayName={detail.info.displayName}
-        imageUrl={detail.info.imageUrl}
-        onOpenUrl={detail.info.handleOpenUrl}
+        displayName={info.displayName}
+        imageUrl={info.imageUrl}
+        onOpenUrl={info.handleOpenUrl}
+        error={info.subjectQuery.error}
+        onRetry={info.subjectQuery.refetch}
         getFavoriteStatusUseCase={di.getFavoriteStatusUseCase}
         addFavoriteUseCase={di.addFavoriteUseCase}
         removeFavoriteUseCase={di.removeFavoriteUseCase}
@@ -156,17 +164,10 @@ function SubjectDetailView({
       <Card className="ani-card">
         <CardContent>
           <EpisodesSection
-            episodes={detail.episodes.episodes}
-            totalEpisodes={detail.episodes.totalEpisodes}
-            totalPages={detail.episodes.totalPages}
+            subjectId={subjectId}
             page={page}
-            todayStr={detail.episodes.todayStr}
-            loading={detail.episodes.episodesQuery.loading}
-            error={detail.episodes.episodesQuery.error}
-            onRetry={detail.episodes.episodesQuery.refetch}
-            onEpisodeClick={detail.episodes.handleEpisodeClick}
-            onPageChange={detail.episodes.changePage}
-            onJumpToEpisode={detail.episodes.jumpToEpisode}
+            subject={info.subject}
+            deps={deps.episodesDeps}
           />
         </CardContent>
       </Card>
@@ -175,42 +176,21 @@ function SubjectDetailView({
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="summary">简介</TabsTrigger>
-          <TabsTrigger value="characters">
-            角色
-            {detail.cast.characters.length > 0 && (
-              <Badge variant="secondary">{detail.cast.characters.length}</Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="staff">
-            制作人员
-            {detail.cast.persons.length > 0 && (
-              <Badge variant="secondary">
-                {detail.cast.consolidatedStaff.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="resources">
-            资源
-            {detail.resources.boundResourcesCount > 0 && (
-              <Badge variant="secondary">
-                {detail.resources.boundResourcesCount}
-              </Badge>
-            )}
-          </TabsTrigger>
+          <TabsTrigger value="characters">角色</TabsTrigger>
+          <TabsTrigger value="staff">制作人员</TabsTrigger>
+          <TabsTrigger value="resources">资源</TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="pt-4">
-          <SummarySection subject={detail.info.subject} />
+          <SummarySection subject={info.subject} />
         </TabsContent>
 
         <TabsContent value="characters" className="pt-4">
           <Card className="ani-card">
             <CardContent>
               <CharactersSection
-                characters={detail.cast.characters}
-                loading={detail.cast.charactersQuery.loading}
-                error={detail.cast.charactersQuery.error}
-                onRetry={detail.cast.charactersQuery.refetch}
+                subjectId={subjectId}
+                getCharactersUseCase={deps.getCharactersUseCase}
               />
             </CardContent>
           </Card>
@@ -219,12 +199,7 @@ function SubjectDetailView({
         <TabsContent value="staff" className="pt-4">
           <Card className="ani-card">
             <CardContent>
-              <StaffSection
-                staffGroupedByRole={detail.cast.staffGroupedByRole}
-                loading={detail.cast.personsQuery.loading}
-                error={detail.cast.personsQuery.error}
-                onRetry={detail.cast.personsQuery.refetch}
-              />
+              <StaffSection subjectId={subjectId} deps={deps.staffDeps} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -233,13 +208,11 @@ function SubjectDetailView({
           <Card className="ani-card">
             <CardContent>
               <SubjectResourcesTab
-                subjectName={detail.info.displayName}
-                boundTorrents={detail.resources.boundTorrents}
-                unboundTorrents={detail.resources.unboundTorrents}
-                bindLoading={detail.resources.bindLoading}
-                unbindLoading={detail.resources.unbindLoading}
-                onBind={detail.resources.handleBind}
-                onUnbind={detail.resources.handleUnbind}
+                subjectId={subjectId}
+                platform={platform}
+                subjectName={info.displayName}
+                torrents={torrents}
+                deps={deps.resourcesDeps}
               />
             </CardContent>
           </Card>

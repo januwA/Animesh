@@ -4,6 +4,7 @@ import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUse
 import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavoriteStatusUseCase";
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { ErrorState } from "@/presentation/components/ErrorState";
 import { TranslatableText } from "@/presentation/components/TranslatableText";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { Button } from "../../components/ui/button";
@@ -16,6 +17,10 @@ export interface SubjectInfoCardProps {
   displayName: string;
   imageUrl: string | undefined;
   onOpenUrl: () => void;
+  /** 条目详情接口错误，用于在头部内联展示（不阻塞页面其他区域） */
+  error?: Error | null;
+  /** 点击错误重试按钮的回调 */
+  onRetry: () => void;
   getFavoriteStatusUseCase: Pick<GetFavoriteStatusUseCase, "execute">;
   addFavoriteUseCase: Pick<AddFavoriteUseCase, "execute">;
   removeFavoriteUseCase: Pick<RemoveFavoriteUseCase, "execute">;
@@ -50,6 +55,8 @@ export function SubjectInfoCard({
   displayName,
   imageUrl,
   onOpenUrl,
+  error,
+  onRetry,
   getFavoriteStatusUseCase,
   addFavoriteUseCase,
   removeFavoriteUseCase,
@@ -142,18 +149,28 @@ export function SubjectInfoCard({
 
           {/* Stats / Loading Status */}
           {!subject ? (
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
-                <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                <span>正在加载动漫详情...</span>
+            error ? (
+              <div className="pt-2">
+                <ErrorState
+                  title="获取动漫详情失败"
+                  message={error}
+                  onRetry={onRetry}
+                />
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Skeleton className="h-16 rounded-xl" />
-                <Skeleton className="h-16 rounded-xl" />
-                <Skeleton className="h-16 rounded-xl" />
-                <Skeleton className="h-16 rounded-xl" />
+            ) : (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                  <span>正在加载动漫详情...</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Skeleton className="h-16 rounded-xl" />
+                  <Skeleton className="h-16 rounded-xl" />
+                  <Skeleton className="h-16 rounded-xl" />
+                  <Skeleton className="h-16 rounded-xl" />
+                </div>
               </div>
-            </div>
+            )
           ) : (
             <div className="space-y-4 pt-2">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
-import type { UseSubjectResourcesDeps } from "@/presentation/hooks/useSubjectResources";
-import { useSubjectResources } from "@/presentation/hooks/useSubjectResources";
+import type { UseSubjectResourcesDeps } from "./useSubjectResources";
+import { useSubjectResources } from "./useSubjectResources";
 
 const makeTorrent = (
   overrides: Partial<TorrentStatusInfo>,
