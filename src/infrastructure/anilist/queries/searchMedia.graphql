@@ -1,0 +1,11 @@
+query ($search: String, $page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo { total }
+    media(search: $search, type: ANIME) {
+      id
+      title { romaji english native userPreferred }
+      coverImage { large medium color }
+      averageScore
+    }
+  }
+}

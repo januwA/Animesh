@@ -1,0 +1,11 @@
+query ($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    airingSchedule(notYetAired: false, page: 1, perPage: 250) {
+      nodes {
+        id
+        airingAt
+        episode
+      }
+    }
+  }
+}

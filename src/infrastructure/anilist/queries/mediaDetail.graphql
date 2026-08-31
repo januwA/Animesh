@@ -1,0 +1,13 @@
+query ($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    id
+    title { romaji english native userPreferred }
+    description(asHtml: false)
+    coverImage { large medium color }
+    averageScore
+    episodes
+    startDate { year month day }
+    format
+    status
+  }
+}

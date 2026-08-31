@@ -29,142 +29,16 @@ import {
   AnilistStaffResponseSchema,
   AnilistSubjectResponseSchema,
 } from "./AnilistSchemas";
+import AIRING_SCHEDULE_QUERY from "./queries/airingSchedule.graphql?raw";
+import MEDIA_CHARACTERS_QUERY from "./queries/mediaCharacters.graphql?raw";
+import MEDIA_DETAIL_QUERY from "./queries/mediaDetail.graphql?raw";
+import MEDIA_EPISODES_QUERY from "./queries/mediaEpisodes.graphql?raw";
+import MEDIA_STAFF_QUERY from "./queries/mediaStaff.graphql?raw";
+import NEXT_SEASON_MEDIA_QUERY from "./queries/nextSeasonMedia.graphql?raw";
+import RANKED_MEDIA_QUERY from "./queries/rankedMedia.graphql?raw";
+import SEARCH_MEDIA_QUERY from "./queries/searchMedia.graphql?raw";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
-
-const AIRING_SCHEDULE_QUERY = `
-query ($startDate: Int!, $endDate: Int!, $page: Int!) {
-  Page(page: $page, perPage: 50) {
-    pageInfo { hasNextPage }
-    airingSchedules(
-      airingAt_greater: $startDate
-      airingAt_lesser: $endDate
-      sort: TIME
-    ) {
-      id
-      airingAt
-      episode
-      mediaId
-      media {
-        id
-        title { romaji english native userPreferred }
-        coverImage { large medium color }
-        averageScore
-      }
-    }
-  }
-}
-`;
-
-const MEDIA_DETAIL_QUERY = `
-query ($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    id
-    title { romaji english native userPreferred }
-    description(asHtml: false)
-    coverImage { large medium color }
-    averageScore
-    episodes
-    startDate { year month day }
-    format
-    status
-  }
-}
-`;
-
-const MEDIA_EPISODES_QUERY = `
-query ($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    airingSchedule(notYetAired: false, page: 1, perPage: 250) {
-      nodes {
-        id
-        airingAt
-        episode
-      }
-    }
-  }
-}
-`;
-
-const MEDIA_CHARACTERS_QUERY = `
-query ($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    characters(sort: ROLE) {
-      edges {
-        role
-        node {
-          id
-          name { full }
-          image { large }
-        }
-        voiceActors(language: JAPANESE) {
-          name { full }
-        }
-      }
-    }
-  }
-}
-`;
-
-const MEDIA_STAFF_QUERY = `
-query ($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    staff(sort: RELEVANCE) {
-      edges {
-        role
-        node {
-          id
-          name { full }
-          image { large }
-        }
-      }
-    }
-  }
-}
-`;
-
-const SEARCH_MEDIA_QUERY = `
-query ($search: String, $page: Int, $perPage: Int) {
-  Page(page: $page, perPage: $perPage) {
-    pageInfo { total }
-    media(search: $search, type: ANIME) {
-      id
-      title { romaji english native userPreferred }
-      coverImage { large medium color }
-      averageScore
-    }
-  }
-}
-`;
-
-const NEXT_SEASON_MEDIA_QUERY = `
-query ($startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt, $page: Int, $perPage: Int) {
-  Page(page: $page, perPage: $perPage) {
-    pageInfo { hasNextPage }
-    media(type: ANIME, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser, sort: FAVOURITES_DESC) {
-      id
-      title { romaji english native userPreferred }
-      coverImage { large medium color }
-      averageScore
-      startDate { year month day }
-    }
-  }
-}
-`;
-
-const RANKED_MEDIA_QUERY = `
-query ($startDateGreater: FuzzyDateInt, $startDateLesser: FuzzyDateInt, $page: Int, $perPage: Int) {
-  Page(page: $page, perPage: $perPage) {
-    pageInfo { total }
-    media(type: ANIME, startDate_greater: $startDateGreater, startDate_lesser: $startDateLesser, sort: SCORE_DESC) {
-      id
-      title { romaji english native userPreferred }
-      coverImage { large medium color }
-      averageScore
-    }
-  }
-}
-`;
 
 function getWeekRange(): { startDate: number; endDate: number } {
   const now = new Date();
