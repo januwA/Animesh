@@ -1,12 +1,5 @@
 import { create } from "zustand";
-import {
-  TORRENT_SEARCH_ENGINES,
-  type TorrentSearchEngine,
-} from "@/domain/torrent/TorrentEngines";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
-
-export const DEFAULT_SEARCH_ENGINE: TorrentSearchEngine =
-  TORRENT_SEARCH_ENGINES[0];
 
 // 未在标题中显式标注字幕组前缀的结果归入该组，并恒排最末
 const UNKNOWN_GROUP_LABEL = "未标注";
@@ -55,14 +48,10 @@ function groupTorrentResults(
 }
 
 interface SearchStoreState {
-  searchKeyword: string;
-  searchEngine: TorrentSearchEngine;
   searchResults: AiSearchResultItem[];
   searchHasSearched: boolean;
   collapsedGroups: Set<string>;
   groups: TorrentResultGroup[];
-  setSearchKeyword: (val: string) => void;
-  setSearchEngine: (val: TorrentSearchEngine) => void;
   setSearchResults: (val: AiSearchResultItem[]) => void;
   setSearchHasSearched: (val: boolean) => void;
   toggleGroup: (name: string) => void;
@@ -72,8 +61,6 @@ interface SearchStoreState {
 }
 
 const initialState = {
-  searchKeyword: "",
-  searchEngine: DEFAULT_SEARCH_ENGINE,
   searchResults: [] as AiSearchResultItem[],
   searchHasSearched: false,
   collapsedGroups: new Set<string>(),
@@ -82,8 +69,6 @@ const initialState = {
 
 export const useSearchStore = create<SearchStoreState>()((set) => ({
   ...initialState,
-  setSearchKeyword: (val) => set({ searchKeyword: val }),
-  setSearchEngine: (val) => set({ searchEngine: val }),
   setSearchResults: (val) =>
     set({ searchResults: val, groups: groupTorrentResults(val) }),
   setSearchHasSearched: (val) => set({ searchHasSearched: val }),

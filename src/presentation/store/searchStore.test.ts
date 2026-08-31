@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import { TORRENT_SEARCH_ENGINES } from "@/domain/torrent/TorrentEngines";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
-import { DEFAULT_SEARCH_ENGINE, useSearchStore } from "./searchStore";
+import { useSearchStore } from "./searchStore";
 
 const mockResult: AiSearchResultItem = {
   title: NonEmptyStringSchema.parse("xxx 第1集"),
@@ -17,11 +16,8 @@ describe("搜索全局状态 store", () => {
     useSearchStore.getState().reset();
   });
 
-  it("应该提供默认状态与默认常量", () => {
-    expect(DEFAULT_SEARCH_ENGINE).toBe(TORRENT_SEARCH_ENGINES[0]);
+  it("应该提供默认状态", () => {
     const state = useSearchStore.getState();
-    expect(state.searchKeyword).toBe("");
-    expect(state.searchEngine).toBe(DEFAULT_SEARCH_ENGINE);
     expect(state.searchResults).toEqual([]);
     expect(state.searchHasSearched).toBe(false);
     expect(state.collapsedGroups).toEqual(new Set());
@@ -30,14 +26,10 @@ describe("搜索全局状态 store", () => {
 
   it("应该能通过 setter 更新各个字段", () => {
     const state = useSearchStore.getState();
-    state.setSearchKeyword("xxx");
-    state.setSearchEngine("nyaa");
     state.setSearchResults([mockResult]);
     state.setSearchHasSearched(true);
 
     const updated = useSearchStore.getState();
-    expect(updated.searchKeyword).toBe("xxx");
-    expect(updated.searchEngine).toBe("nyaa");
     expect(updated.searchResults).toEqual([mockResult]);
     expect(updated.searchHasSearched).toBe(true);
   });
@@ -103,13 +95,10 @@ describe("搜索全局状态 store", () => {
 
   it("应该能通过 reset 恢复初始状态", () => {
     const state = useSearchStore.getState();
-    state.setSearchKeyword("xxx");
     state.setSearchResults([mockResult]);
     state.collapseAllGroups(["字幕组"]);
     state.reset();
     expect(useSearchStore.getState()).toMatchObject({
-      searchKeyword: "",
-      searchEngine: DEFAULT_SEARCH_ENGINE,
       searchResults: [],
       searchHasSearched: false,
       collapsedGroups: new Set(),

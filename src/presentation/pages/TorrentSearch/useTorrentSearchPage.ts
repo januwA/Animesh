@@ -1,20 +1,35 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Duration } from "ajanuw-duration";
-import type { SubmitEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { z } from "zod";
 import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
 import type { SearchTorrentsUseCase } from "@/application/torrent/SearchTorrentsUseCase";
 import type { SearchTorrentsWithAiUseCase } from "@/application/torrent/SearchTorrentsWithAiUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
+import {
+  TORRENT_SEARCH_ENGINES,
+  type TorrentSearchEngine,
+} from "@/domain/torrent/TorrentEngines";
 import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { useSearchHistoryStore } from "@/presentation/store/searchHistoryStore";
 import { useSearchStore } from "@/presentation/store/searchStore";
 
-const SELECTED_AI_ALIAS_KEY = "animesh_selected_ai_alias";
+export interface TorrentSearchFormValues {
+  keyword: string;
+  searchEngine: TorrentSearchEngine;
+  aiAlias: string;
+}
+
+const torrentSearchFormSchema = z.object({
+  keyword: z.string().trim().min(1, "请输入搜索关键词"),
+  searchEngine: z.enum(TORRENT_SEARCH_ENGINES),
+  aiAlias: z.string(),
+});
 
 /** useTorrentSearchPage 的依赖，由调用方（页面组合根）注入 */
 export interface UseTorrentSearchPageDeps {
@@ -35,10 +50,6 @@ export function useTorrentSearchPage(
     getSettingsUseCase,
   } = deps;
 
-  const searchKeyword = useSearchStore((s) => s.searchKeyword);
-  const setSearchKeyword = useSearchStore((s) => s.setSearchKeyword);
-  const searchEngine = useSearchStore((s) => s.searchEngine);
-  const setSearchEngine = useSearchStore((s) => s.setSearchEngine);
   const searchResults = useSearchStore((s) => s.searchResults);
   const setSearchResults = useSearchStore((s) => s.setSearchResults);
   const searchHasSearched = useSearchStore((s) => s.searchHasSearched);
@@ -48,10 +59,6 @@ export function useTorrentSearchPage(
   const addHistory = useSearchHistoryStore((s) => s.addHistory);
   const deleteHistory = useSearchHistoryStore((s) => s.deleteHistory);
   const clearHistory = useSearchHistoryStore((s) => s.clearHistory);
-
-  const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
-    () => localStorage.getItem(SELECTED_AI_ALIAS_KEY) || "none",
-  );
 
   const aiQuery = useQuery(
     () => getSettingsUseCase.execute(),
@@ -88,7 +95,6 @@ export function useTorrentSearchPage(
   const collapseAllGroups = useSearchStore((s) => s.collapseAllGroups);
   const expandAllGroups = useSearchStore((s) => s.expandAllGroups);
 
-  // 仅当搜索结果集合变化（新一次搜索）时重置为全部展开
   const prevResultsRef = useRef(searchResults);
   useEffect(() => {
     if (prevResultsRef.current !== searchResults) {
@@ -101,37 +107,59 @@ export function useTorrentSearchPage(
     groups.length > 0 && collapsedGroups.size === groups.length;
   const groupNames = groups.map((g) => g.name);
 
+  const form = useForm<TorrentSearchFormValues>({
+    resolver: zodResolver(torrentSearchFormSchema),
+    defaultValues: {
+      keyword: "",
+      searchEngine: "anibt",
+      aiAlias: "none",
+    },
+  });
+
   const performSearch = useCallback(
-    (queryText: string) => {
+    (queryText: string, engine: TorrentSearchEngine) => {
       setSearchHasSearched(true);
       addHistory(queryText);
 
       searchMutation.execute({
         queryText,
-        engine: searchEngine,
-        aiAlias: selectedAiAlias,
+        engine,
+        aiAlias: form.getValues("aiAlias"),
       });
     },
-    [
-      searchEngine,
-      selectedAiAlias,
-      searchMutation.execute,
-      setSearchHasSearched,
-      addHistory,
-    ],
+    [form, searchMutation.execute, setSearchHasSearched, addHistory],
   );
+
+  const setSearchKeywordField = useCallback(
+    (val: string) => {
+      form.setValue("keyword", val);
+    },
+    [form],
+  );
+
+  const setSearchEngineField = (val: TorrentSearchEngine) => {
+    form.setValue("searchEngine", val);
+  };
 
   useEffect(() => {
     if (keywordParam) {
-      setSearchKeyword(keywordParam);
+      setSearchKeywordField(keywordParam);
       setSearchParams({}, { replace: true });
-      performSearch(keywordParam);
+      performSearch(keywordParam, form.getValues("searchEngine"));
     }
-  }, [keywordParam, setSearchParams, performSearch, setSearchKeyword]);
+  }, [
+    keywordParam,
+    setSearchParams,
+    performSearch,
+    setSearchKeywordField,
+    form.getValues,
+  ]);
 
-  const handleSearch = (e: SubmitEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    performSearch(searchKeyword.trim());
+    const keyword = form.getValues("keyword").trim();
+    const engine = form.getValues("searchEngine");
+    performSearch(keyword, engine);
   };
 
   const handleDeleteHistory = (item: string) => {
@@ -155,11 +183,6 @@ export function useTorrentSearchPage(
     navigate(`/torrent?magnet=${encodeURIComponent(magnet)}`);
   };
 
-  const handleSelectAiAlias = (alias: string) => {
-    setSelectedAiAlias(alias);
-    localStorage.setItem(SELECTED_AI_ALIAS_KEY, alias);
-  };
-
   const handleToggleAllGroups = () => {
     if (allGroupsCollapsed) {
       expandAllGroups();
@@ -170,17 +193,17 @@ export function useTorrentSearchPage(
 
   return {
     search: {
-      searchKeyword,
-      setSearchKeyword,
-      searchEngine,
-      setSearchEngine,
+      form,
       handleSearch,
       performSearch,
+      searchKeyword: form.watch("keyword"),
+      setSearchKeyword: setSearchKeywordField,
+      searchEngine: form.watch("searchEngine"),
+      setSearchEngine: setSearchEngineField,
     },
     ai: {
       aiConfigs,
-      selectedAiAlias,
-      handleSelectAiAlias,
+      selectedAiAlias: form.watch("aiAlias"),
     },
     searchHistory: {
       history,

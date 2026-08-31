@@ -10,7 +10,6 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
-import { AiFilterBar } from "./AiFilterBar";
 import { AiSearchLoading } from "./AiSearchLoading";
 import { SearchForm } from "./SearchForm";
 import { SearchHistory } from "./SearchHistory";
@@ -55,22 +54,11 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
   return (
     <div className="flex flex-col gap-6">
       <SearchForm
-        keyword={page.search.searchKeyword}
-        setKeyword={page.search.setSearchKeyword}
+        form={page.search.form}
         loading={page.status.loading}
+        aiConfigs={page.ai.aiConfigs}
         onSubmit={page.search.handleSearch}
-        searchEngine={page.search.searchEngine}
-        setSearchEngine={page.search.setSearchEngine}
       />
-
-      {page.ai.aiConfigs.length > 0 && (
-        <AiFilterBar
-          aiConfigs={page.ai.aiConfigs}
-          selectedAiAlias={page.ai.selectedAiAlias}
-          disabled={page.status.loading}
-          onSelect={page.ai.handleSelectAiAlias}
-        />
-      )}
 
       <SearchHistory
         history={page.searchHistory.history}
@@ -90,7 +78,12 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         <ErrorState
           message={page.status.error}
           title="搜索失败"
-          onRetry={() => page.search.performSearch(page.search.searchKeyword)}
+          onRetry={() =>
+            page.search.performSearch(
+              page.search.searchKeyword,
+              page.search.searchEngine,
+            )
+          }
         />
       )}
 
