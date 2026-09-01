@@ -582,4 +582,98 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
       vi.mocked(deps.searchTorrentsUseCase.execute).mock.calls.length,
     ).toBe(callsBeforeBack);
   });
+
+  it("filter.setFilter 应暴露在返回值中", async () => {
+    const { result } = await renderPage();
+    expect(typeof result.current.filter.setFilter).toBe("function");
+  });
+
+  it("设置时间过滤后 filteredResults 应只包含时间范围内的项", async () => {
+    const NOW = new Date("2026-07-01T12:00:00Z").getTime();
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
+
+    const { result, deps } = await renderPage();
+    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+      makeSearchResults(
+        {
+          title: NonEmptyStringSchema.parse("某番 01"),
+          pub_date: "2026-07-01",
+        },
+        {
+          title: NonEmptyStringSchema.parse("某番 02"),
+          pub_date: "2026-05-01",
+        },
+      ),
+    );
+
+    act(() =>
+      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+    );
+    await waitFor(() =>
+      expect(result.current.results.searchResults).toHaveLength(2),
+    );
+
+    act(() => result.current.filter.setFilter({ pubDatePreset: "week" }));
+
+    expect(result.current.results.searchResults).toHaveLength(1);
+    expect(result.current.results.searchResults[0].title).toContain("01");
+
+    vi.restoreAllMocks();
+  });
+
+  it("过滤后 groups 应同步更新", async () => {
+    const NOW = new Date("2026-07-01T12:00:00Z").getTime();
+    vi.spyOn(Date, "now").mockReturnValue(NOW);
+
+    const { result, deps } = await renderPage();
+    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+      makeSearchResults(
+        {
+          title: NonEmptyStringSchema.parse("[GroupA] 某番 01"),
+          pub_date: "2026-07-01",
+        },
+        {
+          title: NonEmptyStringSchema.parse("[GroupA] 某番 02"),
+          pub_date: "2026-05-01",
+        },
+        {
+          title: NonEmptyStringSchema.parse("[GroupB] 其他番 01"),
+          pub_date: "2026-05-01",
+        },
+      ),
+    );
+
+    act(() =>
+      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+    );
+    await waitFor(() => expect(result.current.results.groups).toHaveLength(2));
+
+    act(() => result.current.filter.setFilter({ pubDatePreset: "week" }));
+
+    expect(result.current.results.searchResults).toHaveLength(1);
+    expect(result.current.results.groups).toHaveLength(1);
+    expect(result.current.results.groups[0].name).toBe("GroupA");
+
+    vi.restoreAllMocks();
+  });
+
+  it("无过滤条件时显示全部搜索结果", async () => {
+    const { result, deps } = await renderPage();
+    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+      makeSearchResults(
+        { title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
+        { title: NonEmptyStringSchema.parse("[GroupB] 其他番 01") },
+      ),
+    );
+
+    act(() =>
+      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+    );
+    await waitFor(() =>
+      expect(result.current.results.searchResults).toHaveLength(2),
+    );
+
+    expect(result.current.results.searchResults).toHaveLength(2);
+    expect(result.current.results.groups).toHaveLength(2);
+  });
 });

@@ -105,4 +105,24 @@ describe("搜索全局状态 store", () => {
       groups: [],
     });
   });
+
+  it("应该能通过 setFilter 更新过滤条件", () => {
+    const state = useSearchStore.getState();
+    state.setFilter({ pubDatePreset: "week" });
+    expect(useSearchStore.getState().filter).toEqual({ pubDatePreset: "week" });
+
+    state.setFilter({ pubDatePreset: "24h" });
+    expect(useSearchStore.getState().filter).toEqual({ pubDatePreset: "24h" });
+  });
+
+  it("应该能通过 resetFilter 恢复默认过滤条件", () => {
+    const state = useSearchStore.getState();
+    state.setFilter({ pubDatePreset: "month" });
+    expect(useSearchStore.getState().filter).toEqual({
+      pubDatePreset: "month",
+    });
+
+    state.resetFilter();
+    expect(useSearchStore.getState().filter).toEqual({ pubDatePreset: "all" });
+  });
 });

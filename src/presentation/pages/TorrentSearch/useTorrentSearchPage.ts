@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Duration } from "ajanuw-duration";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -17,7 +17,11 @@ import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { useSearchHistoryStore } from "@/presentation/store/searchHistoryStore";
-import { useSearchStore } from "@/presentation/store/searchStore";
+import {
+  groupTorrentResults,
+  useSearchStore,
+} from "@/presentation/store/searchStore";
+import { filterResults } from "./useSearchFilter";
 
 export interface TorrentSearchFormValues {
   keyword: string;
@@ -54,6 +58,8 @@ export function useTorrentSearchPage(
   const setSearchResults = useSearchStore((s) => s.setSearchResults);
   const searchHasSearched = useSearchStore((s) => s.searchHasSearched);
   const setSearchHasSearched = useSearchStore((s) => s.setSearchHasSearched);
+  const filter = useSearchStore((s) => s.filter);
+  const setFilter = useSearchStore((s) => s.setFilter);
 
   const history = useSearchHistoryStore((s) => s.history);
   const addHistory = useSearchHistoryStore((s) => s.addHistory);
@@ -89,11 +95,20 @@ export function useTorrentSearchPage(
     },
   );
 
-  const groups = useSearchStore((s) => s.groups);
   const collapsedGroups = useSearchStore((s) => s.collapsedGroups);
   const toggleGroup = useSearchStore((s) => s.toggleGroup);
   const collapseAllGroups = useSearchStore((s) => s.collapseAllGroups);
   const expandAllGroups = useSearchStore((s) => s.expandAllGroups);
+
+  const filteredResults = useMemo(
+    () => filterResults(searchResults, filter),
+    [searchResults, filter],
+  );
+
+  const groups = useMemo(
+    () => groupTorrentResults(filteredResults),
+    [filteredResults],
+  );
 
   const prevResultsRef = useRef(searchResults);
   useEffect(() => {
@@ -210,8 +225,11 @@ export function useTorrentSearchPage(
       handleDeleteHistory,
       handleClearHistory,
     },
+    filter: {
+      setFilter,
+    },
     results: {
-      searchResults,
+      searchResults: filteredResults,
       groups,
       collapsedGroups,
       toggleGroup,

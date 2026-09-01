@@ -11,6 +11,7 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { AiSearchLoading } from "./AiSearchLoading";
+import { FilterForm } from "./FilterForm";
 import { SearchForm } from "./SearchForm";
 import { SearchHistory } from "./SearchHistory";
 import { SearchLoading } from "./SearchLoading";
@@ -59,6 +60,8 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         aiConfigs={page.ai.aiConfigs}
         onSubmit={page.search.handleSearch}
       />
+
+      <FilterForm onFilterChange={page.filter.setFilter} />
 
       <SearchHistory
         history={page.searchHistory.history}
