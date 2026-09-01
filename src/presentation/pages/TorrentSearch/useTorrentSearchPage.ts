@@ -5,17 +5,14 @@ import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
-import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
 import type { SearchTorrentsUseCase } from "@/application/torrent/SearchTorrentsUseCase";
-import type { SearchTorrentsWithAiUseCase } from "@/application/torrent/SearchTorrentsWithAiUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import {
   TORRENT_SEARCH_ENGINES,
   type TorrentSearchEngine,
 } from "@/domain/torrent/TorrentEngines";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
-import { useQuery } from "@/presentation/hooks/useQuery";
 import { useSearchHistoryStore } from "@/presentation/store/searchHistoryStore";
 import {
   groupTorrentResults,
@@ -25,21 +22,58 @@ import { filterResults } from "./useSearchFilter";
 
 export interface TorrentSearchFormValues {
   keyword: string;
-  searchEngine: TorrentSearchEngine;
-  aiAlias: string;
+  searchEngines: TorrentSearchEngine[];
 }
 
 const torrentSearchFormSchema = z.object({
   keyword: z.string().trim().min(1, "请输入搜索关键词"),
-  searchEngine: z.enum(TORRENT_SEARCH_ENGINES),
-  aiAlias: z.string(),
+  searchEngines: z
+    .array(z.enum(TORRENT_SEARCH_ENGINES))
+    .min(1, "请选择至少一个搜索引擎"),
 });
 
 /** useTorrentSearchPage 的依赖，由调用方（页面组合根）注入 */
 export interface UseTorrentSearchPageDeps {
   searchTorrentsUseCase: Pick<SearchTorrentsUseCase, "execute">;
-  searchTorrentsWithAiUseCase: Pick<SearchTorrentsWithAiUseCase, "execute">;
-  getSettingsUseCase: Pick<GetSettingsUseCase, "execute">;
+}
+
+async function searchMultipleEngines(
+  searchTorrentsUseCase: Pick<SearchTorrentsUseCase, "execute">,
+  ctx: Parameters<SearchTorrentsUseCase["execute"]>[0],
+  keyword: string,
+  engines: TorrentSearchEngine[],
+): Promise<SearchResultItem[]> {
+  const results = await Promise.allSettled(
+    engines.map((engine) =>
+      searchTorrentsUseCase.execute(ctx, {
+        keyword: NonEmptyStringSchema.parse(keyword),
+        engine,
+      }),
+    ),
+  );
+
+  const merged: SearchResultItem[] = [];
+  const seen = new Set<string>();
+
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      for (const item of result.value) {
+        const key = String(item.link);
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(item);
+        }
+      }
+    }
+  }
+
+  const allFailed = results.every((r) => r.status === "rejected");
+  if (allFailed && results.length > 0) {
+    const firstError = results[0] as PromiseRejectedResult;
+    throw firstError.reason;
+  }
+
+  return merged;
 }
 
 export function useTorrentSearchPage(
@@ -48,11 +82,7 @@ export function useTorrentSearchPage(
 ) {
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
-  const {
-    searchTorrentsUseCase,
-    searchTorrentsWithAiUseCase,
-    getSettingsUseCase,
-  } = deps;
+  const { searchTorrentsUseCase } = deps;
 
   const searchResults = useSearchStore((s) => s.searchResults);
   const setSearchResults = useSearchStore((s) => s.setSearchResults);
@@ -66,28 +96,17 @@ export function useTorrentSearchPage(
   const deleteHistory = useSearchHistoryStore((s) => s.deleteHistory);
   const clearHistory = useSearchHistoryStore((s) => s.clearHistory);
 
-  const aiQuery = useQuery(
-    () => getSettingsUseCase.execute(),
-    [getSettingsUseCase],
-  );
-  const aiConfigs = aiQuery.data?.ai_configs ?? [];
-
   const searchMutation = useMutation<
-    AiSearchResultItem[],
-    { queryText: string; engine: TorrentSearchEngine; aiAlias: string }
+    SearchResultItem[],
+    { queryText: string; engines: TorrentSearchEngine[] }
   >(
-    (ctx, params) => {
-      const dto = {
-        keyword: NonEmptyStringSchema.parse(params.queryText),
-        engine: params.engine,
-      };
-      return params.aiAlias !== "none"
-        ? searchTorrentsWithAiUseCase.execute(ctx, {
-            ...dto,
-            aiAlias: NonEmptyStringSchema.parse(params.aiAlias),
-          })
-        : searchTorrentsUseCase.execute(ctx, dto);
-    },
+    (ctx, params) =>
+      searchMultipleEngines(
+        searchTorrentsUseCase,
+        ctx,
+        params.queryText,
+        params.engines,
+      ),
     {
       timeout: new Duration({ seconds: 15 }),
       onSuccess: (data) => setSearchResults(data),
@@ -126,23 +145,18 @@ export function useTorrentSearchPage(
     resolver: zodResolver(torrentSearchFormSchema),
     defaultValues: {
       keyword: "",
-      searchEngine: "anibt",
-      aiAlias: "none",
+      searchEngines: ["anibt"],
     },
   });
 
   const performSearch = useCallback(
-    (queryText: string, engine: TorrentSearchEngine) => {
+    (queryText: string, engines: TorrentSearchEngine[]) => {
       setSearchHasSearched(true);
       addHistory(queryText);
 
-      searchMutation.execute({
-        queryText,
-        engine,
-        aiAlias: form.getValues("aiAlias"),
-      });
+      searchMutation.execute({ queryText, engines });
     },
-    [form, searchMutation.execute, setSearchHasSearched, addHistory],
+    [searchMutation.execute, setSearchHasSearched, addHistory],
   );
 
   const setSearchKeywordField = useCallback(
@@ -152,15 +166,11 @@ export function useTorrentSearchPage(
     [form],
   );
 
-  const setSearchEngineField = (val: TorrentSearchEngine) => {
-    form.setValue("searchEngine", val);
-  };
-
   useEffect(() => {
     if (keywordParam) {
       setSearchKeywordField(keywordParam);
       setSearchParams({}, { replace: true });
-      performSearch(keywordParam, form.getValues("searchEngine"));
+      performSearch(keywordParam, form.getValues("searchEngines"));
     }
   }, [
     keywordParam,
@@ -170,11 +180,11 @@ export function useTorrentSearchPage(
     form.getValues,
   ]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.SubmitEvent) => {
     e.preventDefault();
     const keyword = form.getValues("keyword").trim();
-    const engine = form.getValues("searchEngine");
-    performSearch(keyword, engine);
+    const engines = form.getValues("searchEngines");
+    performSearch(keyword, engines);
   };
 
   const handleDeleteHistory = (item: string) => {
@@ -213,12 +223,7 @@ export function useTorrentSearchPage(
       performSearch,
       searchKeyword: form.watch("keyword"),
       setSearchKeyword: setSearchKeywordField,
-      searchEngine: form.watch("searchEngine"),
-      setSearchEngine: setSearchEngineField,
-    },
-    ai: {
-      aiConfigs,
-      selectedAiAlias: form.watch("aiAlias"),
+      searchEngines: form.watch("searchEngines"),
     },
     searchHistory: {
       history,

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 
 // 未在标题中显式标注字幕组前缀的结果归入该组，并恒排最末
 const UNKNOWN_GROUP_LABEL = "未标注";
@@ -15,7 +15,7 @@ export const DEFAULT_FILTER: SearchFilter = {
 export interface TorrentResultGroup {
   name: string;
   startIndex: number;
-  items: AiSearchResultItem[];
+  items: SearchResultItem[];
 }
 
 // 提取标题开头的发布组/字幕组名称（支持 [..] 与 【..】），无前缀返回 null
@@ -26,9 +26,9 @@ function extractReleaseGroup(title: string): string | null {
 
 // 将搜索结果按字幕组分组：数量降序、同数量保持首现顺序、未标注组恒排最后；组内保持原相对顺序
 export function groupTorrentResults(
-  results: AiSearchResultItem[],
+  results: SearchResultItem[],
 ): TorrentResultGroup[] {
-  const groups = new Map<string, AiSearchResultItem[]>();
+  const groups = new Map<string, SearchResultItem[]>();
   for (const item of results) {
     const name = extractReleaseGroup(item.title) ?? UNKNOWN_GROUP_LABEL;
     const list = groups.get(name);
@@ -56,12 +56,12 @@ export function groupTorrentResults(
 }
 
 interface SearchStoreState {
-  searchResults: AiSearchResultItem[];
+  searchResults: SearchResultItem[];
   searchHasSearched: boolean;
   collapsedGroups: Set<string>;
   groups: TorrentResultGroup[];
   filter: SearchFilter;
-  setSearchResults: (val: AiSearchResultItem[]) => void;
+  setSearchResults: (val: SearchResultItem[]) => void;
   setSearchHasSearched: (val: boolean) => void;
   toggleGroup: (name: string) => void;
   collapseAllGroups: (groupNames: string[]) => void;
@@ -72,7 +72,7 @@ interface SearchStoreState {
 }
 
 const initialState = {
-  searchResults: [] as AiSearchResultItem[],
+  searchResults: [] as SearchResultItem[],
   searchHasSearched: false,
   collapsedGroups: new Set<string>(),
   groups: [] as TorrentResultGroup[],

@@ -4,7 +4,6 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import {
   TORRENT_SEARCH_ENGINES,
   type TorrentSearchEngine,
@@ -42,8 +41,10 @@ function RouterWrapper({ children }: { children: ReactNode }) {
 function makeSearchResults(
   ...items: Array<Partial<SearchResultItem> & Pick<SearchResultItem, "title">>
 ): SearchResultItem[] {
-  return items.map((item) => ({
-    link: NonEmptyStringSchema.parse("http://example.com/1"),
+  return items.map((item, idx) => ({
+    link: NonEmptyStringSchema.parse(
+      `http://example.com/${String(item.title ?? idx)}`,
+    ),
     pub_date: "2026-06-23",
     magnet: NonEmptyStringSchema.parse("magnet:?xt=urn:btih:TEST1"),
     description: "",
@@ -51,24 +52,11 @@ function makeSearchResults(
   }));
 }
 
-const makeAiConfig = (): AiConfig => ({
-  alias: NonEmptyStringSchema.parse("Test AI"),
-  api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
-  api_key: NonEmptyStringSchema.parse("test-key"),
-  ai_model: NonEmptyStringSchema.parse("gpt-3.5-turbo"),
-});
-
 const makeDeps = (
   overrides: Partial<UseTorrentSearchPageDeps> = {},
 ): UseTorrentSearchPageDeps => ({
   searchTorrentsUseCase: {
     execute: vi.fn().mockResolvedValue([]),
-  },
-  searchTorrentsWithAiUseCase: {
-    execute: vi.fn().mockResolvedValue([]),
-  },
-  getSettingsUseCase: {
-    execute: vi.fn().mockResolvedValue({ download_dir: "/mock" }),
   },
   ...overrides,
 });
@@ -98,11 +86,11 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     locationRef.current = null;
   });
 
-  it("传统模式下搜索调用 searchTorrentsUseCase 并携带默认引擎", async () => {
+  it("搜索调用 searchTorrentsUseCase 并携带默认引擎", async () => {
     const { result, deps } = await renderPage();
 
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
 
     await waitFor(() => {
@@ -115,20 +103,23 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     });
   });
 
-  it("切换搜索引擎后搜索携带对应引擎", async () => {
+  it("多引擎搜索时并发调用 searchTorrentsUseCase", async () => {
     const { result, deps } = await renderPage();
+    const engines: TorrentSearchEngine[] = ["dmhy", "nyaa"];
 
-    act(() => result.current.search.setSearchEngine("bangumi_moe"));
-    act(() => result.current.search.performSearch("xxx", "bangumi_moe"));
+    act(() => result.current.search.performSearch("xxx", engines));
 
     await waitFor(() => {
-      expect(
-        vi.mocked(deps.searchTorrentsUseCase.execute),
-      ).toHaveBeenCalledWith(
-        expect.any(Object),
-        searchDto("xxx", "bangumi_moe"),
-      );
+      expect(deps.searchTorrentsUseCase.execute).toHaveBeenCalledTimes(2);
     });
+    expect(deps.searchTorrentsUseCase.execute).toHaveBeenCalledWith(
+      expect.any(Object),
+      searchDto("xxx", "dmhy"),
+    );
+    expect(deps.searchTorrentsUseCase.execute).toHaveBeenCalledWith(
+      expect.any(Object),
+      searchDto("xxx", "nyaa"),
+    );
   });
 
   it("handleSearch 应使用输入框关键词（去除首尾空白）执行搜索", async () => {
@@ -138,7 +129,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     act((() =>
       result.current.search.handleSearch({
         preventDefault: vi.fn(),
-      } as unknown as React.FormEvent)) as () => void);
+      } as unknown as React.SubmitEvent)) as () => void);
 
     await waitFor(() => {
       expect(
@@ -157,7 +148,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
 
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
 
     await waitFor(() => {
@@ -170,7 +161,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
       new Error("boom"),
     );
     act(() =>
-      result.current.search.performSearch("yyy", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("yyy", [TORRENT_SEARCH_ENGINES[0]]),
     );
 
     await waitFor(() => {
@@ -188,12 +179,12 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
       );
 
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() => expect(result.current.status.error).not.toBeNull());
 
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() => expect(result.current.status.error).toBeNull());
     expect(result.current.results.searchResults).toHaveLength(1);
@@ -203,7 +194,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     const { result } = await renderPage();
 
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
 
     await waitFor(() => {
@@ -227,78 +218,26 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     expect(locationRef.current?.search).toBe("");
   });
 
-  it("选择 AI 别名时应更新表单值", async () => {
-    const { result } = await renderPage();
-
-    act(() => result.current.search.form.setValue("aiAlias", "Test AI"));
-
-    expect(result.current.ai.selectedAiAlias).toBe("Test AI");
-  });
-
-  it("AI 模式下搜索调用 searchTorrentsWithAiUseCase", async () => {
-    const { result, deps } = await renderPage();
-
-    act(() => result.current.search.form.setValue("aiAlias", "Test AI"));
-    act(() =>
-      result.current.search.performSearch(
-        "昨日青空",
-        TORRENT_SEARCH_ENGINES[0],
-      ),
-    );
-
-    await waitFor(() => {
-      expect(deps.searchTorrentsWithAiUseCase.execute).toHaveBeenCalledWith(
-        expect.any(Object),
-        {
-          keyword: "昨日青空",
-          engine: TORRENT_SEARCH_ENGINES[0],
-          aiAlias: "Test AI",
-        },
-      );
-    });
-    expect(
-      vi.mocked(deps.searchTorrentsUseCase.execute),
-    ).not.toHaveBeenCalled();
-  });
-
-  it("getSettings 返回 ai_configs 时 aiConfigs 应随之更新", async () => {
-    const { result } = await renderPage({
-      deps: makeDeps({
-        getSettingsUseCase: {
-          execute: vi.fn().mockResolvedValue({
-            download_dir: "/mock",
-            ai_configs: [makeAiConfig()],
-          }),
-        },
-      }),
-    });
-
-    await waitFor(() => {
-      expect(result.current.ai.aiConfigs).toHaveLength(1);
-    });
-  });
-
   it("搜索时应将关键词加入历史记录（去重、置顶、不限数量）", async () => {
     const { result } = await renderPage();
 
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
     act(() =>
-      result.current.search.performSearch("柯南", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("柯南", [TORRENT_SEARCH_ENGINES[0]]),
     );
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
 
     expect(result.current.searchHistory.history).toEqual(["xxx", "柯南"]);
 
     for (let i = 1; i <= 10; i++) {
       act(() =>
-        result.current.search.performSearch(
-          `动漫_${i}`,
+        result.current.search.performSearch(`动漫_${i}`, [
           TORRENT_SEARCH_ENGINES[0],
-        ),
+        ]),
       );
     }
     await act(async () => {});
@@ -402,7 +341,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     });
 
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
     expect(result.current.status.loading).toBe(true);
 
@@ -429,7 +368,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     });
 
     act(() =>
-      result.current.search.performSearch("xxx", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("xxx", [TORRENT_SEARCH_ENGINES[0]]),
     );
     unmount();
 
@@ -449,7 +388,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
 
     act(() =>
-      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("某番", [TORRENT_SEARCH_ENGINES[0]]),
     );
 
     await waitFor(() => {
@@ -471,7 +410,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
 
     act(() =>
-      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("某番", [TORRENT_SEARCH_ENGINES[0]]),
     );
 
     await waitFor(() => {
@@ -491,7 +430,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
 
     act(() =>
-      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("某番", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() => expect(result.current.results.groups).toHaveLength(2));
 
@@ -512,7 +451,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
 
     act(() =>
-      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("某番", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() => expect(result.current.results.groups).toHaveLength(2));
     expect(result.current.results.allGroupsCollapsed).toBe(false);
@@ -541,7 +480,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
       );
 
     act(() =>
-      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("某番", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() => expect(result.current.results.groups).toHaveLength(2));
 
@@ -549,7 +488,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     expect(result.current.results.allGroupsCollapsed).toBe(true);
 
     act(() =>
-      result.current.search.performSearch("新番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("新番", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() => {
       expect(result.current.results.allGroupsCollapsed).toBe(false);
@@ -564,10 +503,9 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
     const first = await renderPage({ deps });
     act(() =>
-      first.result.current.search.performSearch(
-        "xxx",
+      first.result.current.search.performSearch("xxx", [
         TORRENT_SEARCH_ENGINES[0],
-      ),
+      ]),
     );
     await waitFor(() => {
       expect(first.result.current.results.searchResults).toHaveLength(1);
@@ -607,7 +545,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
 
     act(() =>
-      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("某番", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() =>
       expect(result.current.results.searchResults).toHaveLength(2),
@@ -644,7 +582,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
 
     act(() =>
-      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("某番", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() => expect(result.current.results.groups).toHaveLength(2));
 
@@ -667,7 +605,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
 
     act(() =>
-      result.current.search.performSearch("某番", TORRENT_SEARCH_ENGINES[0]),
+      result.current.search.performSearch("某番", [TORRENT_SEARCH_ENGINES[0]]),
     );
     await waitFor(() =>
       expect(result.current.results.searchResults).toHaveLength(2),
@@ -675,5 +613,24 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
     expect(result.current.results.searchResults).toHaveLength(2);
     expect(result.current.results.groups).toHaveLength(2);
+  });
+
+  it("多引擎搜索结果按 link 去重", async () => {
+    const { result, deps } = await renderPage();
+    const sameItem = makeSearchResults({
+      title: NonEmptyStringSchema.parse("xxx 第1集"),
+    })[0];
+
+    vi.mocked(deps.searchTorrentsUseCase.execute)
+      .mockResolvedValueOnce([sameItem])
+      .mockResolvedValueOnce([
+        { ...sameItem, title: NonEmptyStringSchema.parse("xxx 第1集 (重复)") },
+      ]);
+
+    act(() => result.current.search.performSearch("xxx", ["dmhy", "nyaa"]));
+
+    await waitFor(() => {
+      expect(result.current.results.searchResults).toHaveLength(1);
+    });
   });
 });

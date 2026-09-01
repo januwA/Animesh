@@ -1,4 +1,4 @@
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import type { SearchFilter } from "@/presentation/store/searchStore";
 
 const CUTOFF_MS: Record<"24h" | "week" | "month", number> = {
@@ -8,9 +8,9 @@ const CUTOFF_MS: Record<"24h" | "week" | "month", number> = {
 };
 
 export function filterResults(
-  results: AiSearchResultItem[],
+  results: SearchResultItem[],
   filter: SearchFilter,
-): AiSearchResultItem[] {
+): SearchResultItem[] {
   return results.filter((item) => {
     if (filter.pubDatePreset !== "all") {
       const cutoff = Date.now() - CUTOFF_MS[filter.pubDatePreset];

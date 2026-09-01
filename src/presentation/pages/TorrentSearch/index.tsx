@@ -10,7 +10,6 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
-import { AiSearchLoading } from "./AiSearchLoading";
 import { FilterForm } from "./FilterForm";
 import { SearchForm } from "./SearchForm";
 import { SearchHistory } from "./SearchHistory";
@@ -40,16 +39,10 @@ export default function TorrentSearch() {
 }
 
 function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
-  const {
-    searchTorrentsUseCase,
-    searchTorrentsWithAiUseCase,
-    getSettingsUseCase,
-  } = useDI();
+  const { searchTorrentsUseCase } = useDI();
 
   const page = useTorrentSearchPage(keyword, {
     searchTorrentsUseCase,
-    searchTorrentsWithAiUseCase,
-    getSettingsUseCase,
   });
 
   return (
@@ -57,7 +50,6 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
       <SearchForm
         form={page.search.form}
         loading={page.status.loading}
-        aiConfigs={page.ai.aiConfigs}
         onSubmit={page.search.handleSearch}
       />
 
@@ -70,12 +62,9 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         onClear={page.searchHistory.handleClearHistory}
       />
 
-      {page.status.loading &&
-        (page.ai.selectedAiAlias !== "none" ? (
-          <AiSearchLoading onCancel={page.status.handleCancel} />
-        ) : (
-          <SearchLoading onCancel={page.status.handleCancel} />
-        ))}
+      {page.status.loading && (
+        <SearchLoading onCancel={page.status.handleCancel} />
+      )}
 
       {page.status.error && (
         <ErrorState
@@ -84,7 +73,7 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
           onRetry={() =>
             page.search.performSearch(
               page.search.searchKeyword,
-              page.search.searchEngine,
+              page.search.searchEngines,
             )
           }
         />
@@ -121,7 +110,6 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
             onToggleGroup={page.results.toggleGroup}
             onCopyMagnet={page.results.handleCopyMagnet}
             onPlay={page.results.handlePlay}
-            showBestAi={page.ai.selectedAiAlias !== "none"}
           />
         )}
     </div>

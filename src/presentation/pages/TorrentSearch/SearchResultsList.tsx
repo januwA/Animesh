@@ -20,7 +20,6 @@ interface SearchResultsListProps {
   onToggleGroup: (name: string) => void;
   onCopyMagnet: (magnet: string) => void;
   onPlay: (magnet: string) => void;
-  showBestAi: boolean;
 }
 
 export function SearchResultsList({
@@ -33,7 +32,6 @@ export function SearchResultsList({
   onToggleGroup,
   onCopyMagnet,
   onPlay,
-  showBestAi,
 }: SearchResultsListProps) {
   return (
     <section className="w-full flex flex-col gap-4">
@@ -67,7 +65,6 @@ export function SearchResultsList({
             onOpenChange={() => onToggleGroup(group.name)}
             onCopyMagnet={onCopyMagnet}
             onPlay={onPlay}
-            showBestAi={showBestAi}
           />
         ))}
       </div>

@@ -51,7 +51,6 @@ import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase"
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
-import { SearchTorrentsWithAiUseCase } from "../application/torrent/SearchTorrentsWithAiUseCase";
 import { SetTorrentSubjectUseCase } from "../application/torrent/SetTorrentSubjectUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
 import { TranslateTextUseCase } from "../application/translation/TranslateTextUseCase";
@@ -91,7 +90,6 @@ export interface DIContainer {
   removeFavoriteUseCase: RemoveFavoriteUseCase;
   getFavoriteStatusUseCase: GetFavoriteStatusUseCase;
   searchTorrentsUseCase: SearchTorrentsUseCase;
-  searchTorrentsWithAiUseCase: SearchTorrentsWithAiUseCase;
   subscribeTorrentsUseCase: SubscribeTorrentsUseCase;
   pauseTorrentUseCase: PauseTorrentUseCase;
   resumeTorrentUseCase: ResumeTorrentUseCase;
@@ -244,12 +242,6 @@ export function createDIContainer({
   const setTranslationConfigUseCase = new SetTranslationConfigUseCase(
     settingsRepository,
   );
-  const searchTorrentsWithAiUseCase = new SearchTorrentsWithAiUseCase(
-    torrentRepository,
-    getAiConfigsUseCase,
-    aiClient,
-    logger.withCategory("SearchTorrentsWithAiUseCase"),
-  );
   const clearCacheUseCase = new ClearCacheUseCase(cacheStore);
   const translateSubtitleUseCase = new TranslateSubtitleUseCase(
     aiClient,
@@ -342,7 +334,6 @@ export function createDIContainer({
 
     notifyDownloadCompletionUseCase,
     searchTorrentsUseCase,
-    searchTorrentsWithAiUseCase,
     subscribeTorrentsUseCase,
     pauseTorrentUseCase,
     resumeTorrentUseCase,

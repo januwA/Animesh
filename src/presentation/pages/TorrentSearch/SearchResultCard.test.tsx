@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { TranslatableText } from "@/presentation/components/TranslatableText";
 import { SearchResultCard } from "./SearchResultCard";
 
@@ -24,9 +24,7 @@ vi.mock(import("@/presentation/components/TranslatableText"), () => ({
 
 const TranslatableTextMock = vi.mocked(TranslatableText);
 
-function makeItem(
-  overrides: Partial<AiSearchResultItem> = {},
-): AiSearchResultItem {
+function makeItem(overrides: Partial<SearchResultItem> = {}): SearchResultItem {
   return {
     title: NonEmptyStringSchema.parse("xxx 第1集"),
     link: NonEmptyStringSchema.parse("http://example.com/1"),
@@ -37,10 +35,7 @@ function makeItem(
   };
 }
 
-const renderCard = (
-  overrides: Partial<AiSearchResultItem> = {},
-  isBestAi = false,
-) => {
+const renderCard = (overrides: Partial<SearchResultItem> = {}) => {
   const onCopyMagnet = vi.fn();
   const onPlay = vi.fn();
   render(
@@ -49,7 +44,6 @@ const renderCard = (
       index={0}
       onCopyMagnet={onCopyMagnet}
       onPlay={onPlay}
-      isBestAi={isBestAi}
     />,
   );
   return { onCopyMagnet, onPlay };
@@ -134,25 +128,5 @@ describe("SearchResultCard 搜索结果卡片组件", () => {
     expect(
       screen.queryByTestId("torrent-desc-toggle-0"),
     ).not.toBeInTheDocument();
-  });
-
-  it("有 ai_score 时渲染评分徽章，isBestAi 时显示 AI 智能精选推荐", () => {
-    renderCard(
-      {
-        ai_score: 95,
-        ai_reason: "匹配 1080p 清晰度与简中字幕",
-      },
-      true,
-    );
-
-    expect(screen.getByText("AI 智能精选推荐")).toBeInTheDocument();
-    expect(screen.getByText("匹配度: 95分")).toBeInTheDocument();
-    expect(screen.getByText("匹配 1080p 清晰度与简中字幕")).toBeInTheDocument();
-  });
-
-  it("非最佳 AI 结果时显示 AI 评分过滤徽章", () => {
-    renderCard({ ai_score: 75 });
-
-    expect(screen.getByText("AI 评分过滤")).toBeInTheDocument();
   });
 });

@@ -1,26 +1,21 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { FormProvider, useForm } from "react-hook-form";
 import { vi } from "vitest";
-import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import { SearchForm } from "./SearchForm";
 import type { TorrentSearchFormValues } from "./useTorrentSearchPage";
-
-const makeAiConfig = (alias: string): AiConfig => ({
-  alias: NonEmptyStringSchema.parse(alias),
-  api_endpoint: NonEmptyStringSchema.parse("https://api.openai.com/v1"),
-  api_key: NonEmptyStringSchema.parse("test-key"),
-  ai_model: NonEmptyStringSchema.parse("gpt-3.5-turbo"),
-});
 
 interface RenderSearchFormOptions {
   defaultKeyword?: string;
   loading?: boolean;
-  aiConfigs?: AiConfig[];
+  defaultEngines?: TorrentSearchFormValues["searchEngines"];
 }
 
 function renderSearchForm(options: RenderSearchFormOptions = {}) {
-  const { defaultKeyword = "", loading = false, aiConfigs = [] } = options;
+  const {
+    defaultKeyword = "",
+    loading = false,
+    defaultEngines = ["dmhy"],
+  } = options;
 
   let formRef: ReturnType<typeof useForm<TorrentSearchFormValues>> | null =
     null;
@@ -29,20 +24,14 @@ function renderSearchForm(options: RenderSearchFormOptions = {}) {
     const form = useForm<TorrentSearchFormValues>({
       defaultValues: {
         keyword: defaultKeyword,
-        searchEngine: "dmhy",
-        aiAlias: "none",
+        searchEngines: defaultEngines,
       },
     });
     formRef = form;
 
     return (
       <FormProvider {...form}>
-        <SearchForm
-          form={form}
-          loading={loading}
-          aiConfigs={aiConfigs}
-          onSubmit={vi.fn()}
-        />
+        <SearchForm form={form} loading={loading} onSubmit={vi.fn()} />
       </FormProvider>
     );
   }
@@ -66,18 +55,6 @@ describe("SearchForm 搜索表单组件", () => {
     fireEvent.submit(screen.getByTestId("search-input").closest("form")!);
   });
 
-  it("应该渲染所有搜索引擎选项", () => {
-    renderSearchForm();
-
-    const select = screen.getByDisplayValue("动漫花园");
-    expect(select).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "萌番组" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("option", { name: "蜜柑计划" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Nyaa" })).toBeInTheDocument();
-  });
-
   it("关键词为空时搜索按钮应禁用", () => {
     renderSearchForm({ defaultKeyword: "   " });
 
@@ -91,36 +68,62 @@ describe("SearchForm 搜索表单组件", () => {
     expect(screen.getByText("搜索中...")).toBeInTheDocument();
   });
 
-  it("无 AI 配置时不渲染 AI 过滤栏", () => {
-    renderSearchForm({ aiConfigs: [] });
+  it("单引擎时显示引擎名称", () => {
+    renderSearchForm({ defaultEngines: ["dmhy"] });
 
-    expect(screen.queryByDisplayValue("传统搜索")).not.toBeInTheDocument();
+    expect(screen.getByText("动漫花园")).toBeInTheDocument();
   });
 
-  it("有 AI 配置时应渲染 AI 过滤栏与选项", () => {
-    const aiConfigs = [makeAiConfig("Test AI"), makeAiConfig("GPT-4")];
-    renderSearchForm({ aiConfigs });
+  it("多引擎时显示已选数量", () => {
+    renderSearchForm({ defaultEngines: ["dmhy", "nyaa"] });
 
-    expect(screen.getByDisplayValue("传统搜索")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Test AI" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "GPT-4" })).toBeInTheDocument();
+    expect(screen.getByText("已选 2 个引擎")).toBeInTheDocument();
   });
 
-  it("切换 AI 别名时应更新表单值", () => {
-    const aiConfigs = [makeAiConfig("Test AI")];
-    const { form } = renderSearchForm({ aiConfigs });
+  it("点击引擎按钮弹出 Popover 并显示所有引擎", () => {
+    renderSearchForm();
 
-    fireEvent.change(screen.getByDisplayValue("传统搜索"), {
-      target: { value: "Test AI" },
-    });
+    fireEvent.click(screen.getByText("动漫花园"));
 
-    expect(form.getValues("aiAlias")).toBe("Test AI");
+    expect(screen.getByText("萌番组")).toBeInTheDocument();
+    expect(screen.getByText("蜜柑计划")).toBeInTheDocument();
+    expect(screen.getByText("Nyaa")).toBeInTheDocument();
+    expect(screen.getByText("ACG.RIP")).toBeInTheDocument();
+    expect(screen.getByText("ANiBT")).toBeInTheDocument();
   });
 
-  it("加载中时 AI 过滤栏应禁用", () => {
-    const aiConfigs = [makeAiConfig("Test AI")];
-    renderSearchForm({ aiConfigs, loading: true });
+  it("加载中时引擎按钮应禁用", () => {
+    renderSearchForm({ loading: true });
 
-    expect(screen.getByDisplayValue("传统搜索")).toBeDisabled();
+    expect(screen.getByText("动漫花园")).toBeDisabled();
+  });
+
+  it("点击已选中的复选框应将其从搜索引擎列表中移除", () => {
+    const { form } = renderSearchForm({ defaultEngines: ["dmhy", "nyaa"] });
+
+    fireEvent.click(screen.getByText("已选 2 个引擎"));
+    fireEvent.click(screen.getByText("动漫花园"));
+
+    expect(form.getValues("searchEngines")).toEqual(["nyaa"]);
+  });
+
+  it("点击未选中的复选框应将其添加到搜索引擎列表", () => {
+    const { form } = renderSearchForm({ defaultEngines: ["dmhy"] });
+
+    fireEvent.click(screen.getByText("动漫花园"));
+    const labels = screen.getAllByText("Nyaa");
+    fireEvent.click(labels[labels.length - 1]);
+
+    expect(form.getValues("searchEngines")).toContain("nyaa");
+  });
+
+  it("只剩最后一个引擎时不应允许取消选中", () => {
+    const { form } = renderSearchForm({ defaultEngines: ["dmhy"] });
+
+    fireEvent.click(screen.getByText("动漫花园"));
+    const labels = screen.getAllByText("动漫花园");
+    fireEvent.click(labels[labels.length - 1]);
+
+    expect(form.getValues("searchEngines")).toEqual(["dmhy"]);
   });
 });

@@ -1,10 +1,10 @@
 import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import type { SearchFilter } from "@/presentation/store/searchStore";
 import { filterResults } from "./useSearchFilter";
 
-function makeItem(title: string, pubDate: string): AiSearchResultItem {
+function makeItem(title: string, pubDate: string): SearchResultItem {
   return {
     title: NonEmptyStringSchema.parse(title),
     link: NonEmptyStringSchema.parse("http://example.com/1"),

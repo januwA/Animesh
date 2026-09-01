@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { useSearchStore } from "./searchStore";
 
-const mockResult: AiSearchResultItem = {
+const mockResult: SearchResultItem = {
   title: NonEmptyStringSchema.parse("xxx 第1集"),
   link: NonEmptyStringSchema.parse("http://example.com/1"),
   pub_date: "2026-06-23",

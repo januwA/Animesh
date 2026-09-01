@@ -94,8 +94,3 @@ export type SubtitleTrackInfo = z.infer<typeof SubtitleTrackInfoSchema>;
 export type ChapterInfo = z.infer<typeof ChapterInfoSchema>;
 export type VideoInfo = z.infer<typeof VideoInfoSchema>;
 export type VideoMetadata = z.infer<typeof VideoMetadataSchema>;
-
-export interface AiSearchResultItem extends SearchResultItem {
-  ai_score?: number;
-  ai_reason?: string;
-}
