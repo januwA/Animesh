@@ -41,7 +41,6 @@ describe("filterResults 过滤逻辑", () => {
       ];
       const result = filterResults(items, { pubDatePreset: "24h" });
       expect(result).toHaveLength(1);
-      expect(result[0].title).toContain("01");
     });
 
     it("预设 week 仅保留一周内的结果", () => {

@@ -16,7 +16,6 @@ import { SearchHistory } from "./SearchHistory";
 import { SearchLoading } from "./SearchLoading";
 import { SearchResultsList } from "./SearchResultsList";
 import { useTorrentSearchPage } from "./useTorrentSearchPage";
-import { WelcomeGuide } from "./WelcomeGuide";
 
 const torrentSearchParamsSchema = z.object({
   keyword: z
@@ -79,27 +78,8 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         />
       )}
 
-      {!page.status.loading &&
-        !page.status.error &&
-        (page.status.searchHasSearched &&
-        page.results.searchResults.length === 0 ? (
-          <Card className="ani-card">
-            <CardContent>
-              <Empty>
-                <EmptyContent>
-                  <EmptyTitle>未找到相关资源</EmptyTitle>
-                  <EmptyDescription>请换个关键词试试</EmptyDescription>
-                </EmptyContent>
-              </Empty>
-            </CardContent>
-          </Card>
-        ) : !page.status.searchHasSearched ? (
-          <WelcomeGuide />
-        ) : null)}
-
-      {!page.status.loading &&
-        !page.status.error &&
-        page.results.searchResults.length > 0 && (
+      {page.results.searchResults &&
+        (page.results.searchResults.length ? (
           <SearchResultsList
             totalCount={page.results.searchResults.length}
             groupCount={page.results.groups.length}
@@ -111,7 +91,18 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
             onCopyMagnet={page.results.handleCopyMagnet}
             onPlay={page.results.handlePlay}
           />
-        )}
+        ) : (
+          <Card className="ani-card">
+            <CardContent>
+              <Empty>
+                <EmptyContent>
+                  <EmptyTitle>未找到相关资源</EmptyTitle>
+                  <EmptyDescription>请换个关键词试试</EmptyDescription>
+                </EmptyContent>
+              </Empty>
+            </CardContent>
+          </Card>
+        ))}
     </div>
   );
 }

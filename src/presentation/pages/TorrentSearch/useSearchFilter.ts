@@ -8,15 +8,17 @@ const CUTOFF_MS: Record<"24h" | "week" | "month", number> = {
 };
 
 export function filterResults(
-  results: SearchResultItem[],
+  results: SearchResultItem[] | null,
   filter: SearchFilter,
-): SearchResultItem[] {
-  return results.filter((item) => {
-    if (filter.pubDatePreset !== "all") {
-      const cutoff = Date.now() - CUTOFF_MS[filter.pubDatePreset];
-      const itemTime = new Date(item.pub_date).getTime();
-      if (Number.isNaN(itemTime) || itemTime < cutoff) return false;
-    }
-    return true;
-  });
+): SearchResultItem[] | null {
+  return (
+    results?.filter((item) => {
+      if (filter.pubDatePreset !== "all") {
+        const cutoff = Date.now() - CUTOFF_MS[filter.pubDatePreset];
+        const itemTime = new Date(item.pub_date).getTime();
+        if (Number.isNaN(itemTime) || itemTime < cutoff) return false;
+      }
+      return true;
+    }) ?? null
+  );
 }

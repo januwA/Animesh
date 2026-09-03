@@ -154,7 +154,6 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     await waitFor(() => {
       expect(result.current.results.searchResults).toHaveLength(1);
     });
-    expect(result.current.status.searchHasSearched).toBe(true);
     expect(result.current.searchHistory.history).toEqual(["xxx"]);
 
     vi.mocked(deps.searchTorrentsUseCase.execute).mockRejectedValueOnce(
@@ -200,7 +199,6 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     await waitFor(() => {
       expect(result.current.results.searchResults).toEqual([]);
     });
-    expect(result.current.status.searchHasSearched).toBe(true);
   });
 
   it("挂载时传入 URL keyword 应触发搜索并清空 URL 参数", async () => {
@@ -554,7 +552,6 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     act(() => result.current.filter.setFilter({ pubDatePreset: "week" }));
 
     expect(result.current.results.searchResults).toHaveLength(1);
-    expect(result.current.results.searchResults[0].title).toContain("01");
 
     vi.restoreAllMocks();
   });

@@ -56,13 +56,11 @@ export function groupTorrentResults(
 }
 
 interface SearchStoreState {
-  searchResults: SearchResultItem[];
-  searchHasSearched: boolean;
+  searchResults: SearchResultItem[] | null;
   collapsedGroups: Set<string>;
   groups: TorrentResultGroup[];
   filter: SearchFilter;
   setSearchResults: (val: SearchResultItem[]) => void;
-  setSearchHasSearched: (val: boolean) => void;
   toggleGroup: (name: string) => void;
   collapseAllGroups: (groupNames: string[]) => void;
   expandAllGroups: () => void;
@@ -72,8 +70,7 @@ interface SearchStoreState {
 }
 
 const initialState = {
-  searchResults: [] as SearchResultItem[],
-  searchHasSearched: false,
+  searchResults: null,
   collapsedGroups: new Set<string>(),
   groups: [] as TorrentResultGroup[],
   filter: DEFAULT_FILTER,
@@ -83,7 +80,6 @@ export const useSearchStore = create<SearchStoreState>()((set) => ({
   ...initialState,
   setSearchResults: (val) =>
     set({ searchResults: val, groups: groupTorrentResults(val) }),
-  setSearchHasSearched: (val) => set({ searchHasSearched: val }),
   toggleGroup: (name) =>
     set((state) => {
       const next = new Set(state.collapsedGroups);

@@ -86,8 +86,6 @@ export function useTorrentSearchPage(
 
   const searchResults = useSearchStore((s) => s.searchResults);
   const setSearchResults = useSearchStore((s) => s.setSearchResults);
-  const searchHasSearched = useSearchStore((s) => s.searchHasSearched);
-  const setSearchHasSearched = useSearchStore((s) => s.setSearchHasSearched);
   const filter = useSearchStore((s) => s.filter);
   const setFilter = useSearchStore((s) => s.setFilter);
 
@@ -125,7 +123,7 @@ export function useTorrentSearchPage(
   );
 
   const groups = useMemo(
-    () => groupTorrentResults(filteredResults),
+    () => groupTorrentResults(filteredResults || []),
     [filteredResults],
   );
 
@@ -151,12 +149,11 @@ export function useTorrentSearchPage(
 
   const performSearch = useCallback(
     (queryText: string, engines: TorrentSearchEngine[]) => {
-      setSearchHasSearched(true);
       addHistory(queryText);
 
       searchMutation.execute({ queryText, engines });
     },
-    [searchMutation.execute, setSearchHasSearched, addHistory],
+    [searchMutation.execute, addHistory],
   );
 
   const setSearchKeywordField = useCallback(
@@ -246,7 +243,6 @@ export function useTorrentSearchPage(
     status: {
       loading: searchMutation.loading,
       error: searchMutation.error,
-      searchHasSearched,
       handleCancel: searchMutation.cancel,
     },
   };

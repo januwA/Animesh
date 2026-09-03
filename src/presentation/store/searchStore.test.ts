@@ -18,8 +18,7 @@ describe("搜索全局状态 store", () => {
 
   it("应该提供默认状态", () => {
     const state = useSearchStore.getState();
-    expect(state.searchResults).toEqual([]);
-    expect(state.searchHasSearched).toBe(false);
+    expect(state.searchResults).toEqual(null);
     expect(state.collapsedGroups).toEqual(new Set());
     expect(state.groups).toEqual([]);
   });
@@ -27,11 +26,9 @@ describe("搜索全局状态 store", () => {
   it("应该能通过 setter 更新各个字段", () => {
     const state = useSearchStore.getState();
     state.setSearchResults([mockResult]);
-    state.setSearchHasSearched(true);
 
     const updated = useSearchStore.getState();
     expect(updated.searchResults).toEqual([mockResult]);
-    expect(updated.searchHasSearched).toBe(true);
   });
 
   it("应该能在设置搜索结果为分组计算 groups", () => {
@@ -99,8 +96,7 @@ describe("搜索全局状态 store", () => {
     state.collapseAllGroups(["字幕组"]);
     state.reset();
     expect(useSearchStore.getState()).toMatchObject({
-      searchResults: [],
-      searchHasSearched: false,
+      searchResults: null,
       collapsedGroups: new Set(),
       groups: [],
     });
