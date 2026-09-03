@@ -93,7 +93,6 @@ export function EpisodesSection({
                       </h3>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                      {ep.duration && <span>时长 {ep.duration}</span>}
                       {ep.airdate && <span>首播 {ep.airdate}</span>}
                     </div>
                   </div>

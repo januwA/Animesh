@@ -27,7 +27,6 @@ export interface AnimeEpisode {
   id: number;
   sort: number;
   name: string;
-  duration?: string | null;
   airdate?: string | null;
 }
 

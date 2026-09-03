@@ -30,7 +30,6 @@ const makeEpisode = (sort: number): AnimeEpisode => ({
   id: 1000 + sort,
   sort,
   name: `第 ${sort} 集`,
-  duration: "24:00",
   airdate: "2026-07-01",
 });
 

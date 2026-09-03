@@ -181,7 +181,6 @@ export const AnilistEpisodesResponseSchema = z
       id: node.id,
       sort: node.episode,
       name: "",
-      duration: null as string | null,
       airdate: formatUnixToDate(node.airingAt),
     }));
     items.sort((a, b) => a.sort - b.sort);
