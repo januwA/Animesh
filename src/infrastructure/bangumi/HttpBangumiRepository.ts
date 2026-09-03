@@ -37,7 +37,6 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   @Cached({
     ttl: new Duration({ days: 7 }),
-    excludeArgs: [0],
   })
   async getCalendar(ctx: Context): Promise<AnimeCalendarDay[]> {
     const data = await this.client.getJson<unknown>(
@@ -55,7 +54,6 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   @Cached({
     ttl: new Duration({ days: 1 }),
-    excludeArgs: [0],
   })
   async getRankedSubjects(
     ctx: Context,
@@ -83,7 +81,6 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   @Cached({
     ttl: new Duration({ days: 30 }),
-    excludeArgs: [0],
   })
   async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
     const data = await this.client.getJson<unknown>(
@@ -102,7 +99,6 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   @Cached({
     ttl: new Duration({ days: 1 }),
-    excludeArgs: [0],
   })
   async getEpisodes(
     ctx: Context,
@@ -127,7 +123,6 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   @Cached({
     ttl: new Duration({ days: 30 }),
-    excludeArgs: [0],
   })
   async getSubjectPersons(
     ctx: Context,
@@ -150,7 +145,6 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   @Cached({
     ttl: new Duration({ days: 30 }),
-    excludeArgs: [0],
   })
   async getSubjectCharacters(
     ctx: Context,
@@ -173,7 +167,6 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   @Cached({
     ttl: new Duration({ hours: 12 }),
-    excludeArgs: [0],
   })
   async searchSubjects(
     ctx: Context,
@@ -207,7 +200,6 @@ export class HttpBangumiRepository implements AnimeRepository {
 
   @Cached({
     ttl: new Duration({ days: 1 }),
-    excludeArgs: [0],
   })
   async getNextSeasonSubjects(
     ctx: Context,

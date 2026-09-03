@@ -3,6 +3,7 @@ import { Background } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
 import { z } from "zod";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 import type { HttpClient } from "@/domain/http/HttpClient";
 import type { CacheStore } from "@/domain/storage/CacheStore";
 import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
@@ -33,7 +34,6 @@ export class HttpTorrentRepository implements TorrentRepository {
 
   @Cached({
     ttl: new Duration({ minutes: 10 }),
-    excludeArgs: [0],
   })
   async search(
     ctx: Context,
@@ -89,7 +89,7 @@ export class HttpTorrentRepository implements TorrentRepository {
     ctx: Context,
     magnet: string,
   ): Promise<AddTorrentResult> {
-    const traceId = ctx.value<string>("traceId") || "";
+    const traceId = ctx.value<string>(TRACE_ID) || "";
     ctx.done().then(() => {
       this.httpClient.request(
         Background,

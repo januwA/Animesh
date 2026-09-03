@@ -1,4 +1,6 @@
+import type { Context } from "ajanuw-context";
 import { beforeEach, describe, expect, it, type Mocked, vi } from "vitest";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 import { type Logger, LogLevel } from "@/domain/logger/logger";
 import { Logged } from "./LoggedDecorator";
 
@@ -10,6 +12,17 @@ function createMockLogger(): Mocked<Logger> {
     error: vi.fn(),
     withCategory: vi.fn().mockReturnThis(),
   } as Mocked<Logger>;
+}
+
+function createMockContext(traceId?: string): Context {
+  return {
+    deadline: vi.fn(() => [new Date(0), false] as [Date, boolean]),
+    done: vi.fn(() => new Promise<void>(() => {})),
+    err: vi.fn(() => null),
+    value: vi.fn((key: unknown) =>
+      key === TRACE_ID ? (traceId ?? null) : null,
+    ) as Context["value"],
+  };
 }
 
 describe("Logged 装饰器", () => {
@@ -251,6 +264,147 @@ describe("Logged 装饰器", () => {
 
       expect(result).toBe("data-42");
       expect(mockLogger.debug).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("traceId 作为 opId", () => {
+    it("args 中包含 Context 且有 traceId 时，应使用 traceId 作为 opId", async () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        async fetchData(_ctx: Context, id: string): Promise<string> {
+          return `data-${id}`;
+        }
+      }
+
+      const service = new TestService();
+      const ctx = createMockContext("abc-123-trace");
+      await service.fetchData(ctx, "42");
+
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "[abc-123-trace] TestService.fetchData() called",
+        ["42"],
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining("[abc-123-trace] TestService.fetchData() →"),
+        "data-42",
+      );
+    });
+
+    it("args 中包含 Context 但无 traceId 时，应回退到随机 UUID", async () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        async fetchData(_ctx: Context, id: string): Promise<string> {
+          return `data-${id}`;
+        }
+      }
+
+      const service = new TestService();
+      const ctx = createMockContext(undefined);
+      await service.fetchData(ctx, "42");
+
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.fetchData\(\) called$/,
+        ),
+        ["42"],
+      );
+    });
+
+    it("args 中不包含 Context 时，应使用随机 UUID", async () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        async fetchData(id: string): Promise<string> {
+          return `data-${id}`;
+        }
+      }
+
+      const service = new TestService();
+      await service.fetchData("42");
+
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.fetchData\(\) called$/,
+        ),
+        ["42"],
+      );
+    });
+
+    it("Context 不在第一个参数位置时也能正确识别并排除", async () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        async fetchData(
+          id: string,
+          _name: string,
+          _ctx: Context,
+        ): Promise<string> {
+          return `data-${id}`;
+        }
+      }
+
+      const service = new TestService();
+      const ctx = createMockContext("late-ctx-id");
+      await service.fetchData("42", "test", ctx);
+
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "[late-ctx-id] TestService.fetchData() called",
+        ["42", "test"],
+      );
+    });
+
+    it("检测到 Context 后应自动从日志参数中排除", async () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        async fetchData(
+          _ctx: Context,
+          id: string,
+          _name: string,
+        ): Promise<string> {
+          return `data-${id}`;
+        }
+      }
+
+      const service = new TestService();
+      const ctx = createMockContext("auto-exclude-test");
+      await service.fetchData(ctx, "42", "test");
+
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "[auto-exclude-test] TestService.fetchData() called",
+        ["42", "test"],
+      );
+    });
+
+    it("自动排除 Context 不影响手动 excludeArgs 的叠加使用", async () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged({ excludeArgs: [2] })
+        async fetchData(
+          _ctx: Context,
+          id: string,
+          _name: string,
+        ): Promise<string> {
+          return `data-${id}`;
+        }
+      }
+
+      const service = new TestService();
+      const ctx = createMockContext("combo-test");
+      await service.fetchData(ctx, "42", "test");
+
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "[combo-test] TestService.fetchData() called",
+        ["42"],
+      );
     });
   });
 });

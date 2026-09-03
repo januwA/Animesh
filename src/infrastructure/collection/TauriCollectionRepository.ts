@@ -23,7 +23,6 @@ export class TauriCollectionRepository implements CollectionRepository {
   @Cached({
     prefix: COLLECTION_CACHE_PREFIX,
     ttl: new Duration({ days: 10000 }),
-    excludeArgs: [],
   })
   async getAll(): Promise<FavoriteItem[]> {
     const raw = await invoke<unknown>(commands.collection_get_all);

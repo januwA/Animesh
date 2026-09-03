@@ -1,7 +1,14 @@
 import type { CancelFunc, Context } from "ajanuw-context";
-import { Background, Canceled, WithCancel, WithTimeout } from "ajanuw-context";
+import {
+  Background,
+  Canceled,
+  WithCancel,
+  WithTimeout,
+  WithValue,
+} from "ajanuw-context";
 import type { Duration } from "ajanuw-duration";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 
 export interface UseMutationOptions<T, P> {
   /** 执行超时时间，超时后 context 会被取消 */
@@ -58,9 +65,10 @@ export function useMutation<T, P = void>(
     activeCancelRef.current?.();
     activeCancelRef.current = null;
 
-    const [ctx, cancel] = optionsRef.current.timeout
+    const [rawCtx, cancel] = optionsRef.current.timeout
       ? WithTimeout(Background, optionsRef.current.timeout.inMilliseconds)
       : WithCancel(Background);
+    const ctx = WithValue(rawCtx, TRACE_ID, crypto.randomUUID());
     activeCancelRef.current = cancel;
 
     setLoading(true);

@@ -1,3 +1,5 @@
+import type { Context } from "ajanuw-context";
+import { isContextLike, TRACE_ID } from "@/domain/common/ContextKeys";
 import { type Logger, LogLevel } from "@/domain/logger/logger";
 
 export interface LoggedOptions {
@@ -28,13 +30,19 @@ export function Logged(options: LoggedOptions = {}) {
         return value.call(this, ...args);
       }
 
-      const opId = crypto.randomUUID().slice(0, 8);
+      const ctxIndex = args.findIndex(isContextLike);
+      const traceId =
+        ctxIndex !== -1
+          ? (args[ctxIndex] as Context).value<string>(TRACE_ID)
+          : undefined;
+      const opId = traceId || crypto.randomUUID().slice(0, 8);
       const className = this.constructor.name;
       const label = `${className}.${methodName}`;
 
-      const filteredArgs = options.excludeArgs
-        ? args.filter((_, i) => !options.excludeArgs?.includes(i))
-        : args;
+      const excluded = new Set(options.excludeArgs ?? []);
+      if (ctxIndex !== -1) excluded.add(ctxIndex);
+      const filteredArgs =
+        excluded.size > 0 ? args.filter((_, i) => !excluded.has(i)) : args;
       logger[logLevel](`[${opId}] ${label}() called`, filteredArgs);
 
       const start = performance.now();

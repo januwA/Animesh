@@ -1,5 +1,6 @@
 import { Background, WithValue } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import { ResolveTorrentUseCase } from "./ResolveTorrentUseCase";
@@ -16,7 +17,7 @@ describe("ResolveTorrentUseCase 解析种子", () => {
 
   it("应该在提供 magnet 时正确调用 repository 的 addTorrentMagnet 方法并返回结果", async () => {
     const useCase = new ResolveTorrentUseCase(mockRepo);
-    const ctx = WithValue(Background, "traceId", "test-trace");
+    const ctx = WithValue(Background, TRACE_ID, "test-trace");
     const mockResult = {
       info_hash: NonEmptyStringSchema.parse("123"),
       name: NonEmptyStringSchema.parse("test magnet torrent"),
@@ -36,7 +37,7 @@ describe("ResolveTorrentUseCase 解析种子", () => {
 
   it("应该在只提供 infoHash 时正确调用 repository 的 getTorrentFiles 方法并组合返回结果", async () => {
     const useCase = new ResolveTorrentUseCase(mockRepo);
-    const ctx = WithValue(Background, "traceId", "test-trace");
+    const ctx = WithValue(Background, TRACE_ID, "test-trace");
     const mockFiles = [
       { id: 1, name: NonEmptyStringSchema.parse("file1.mp4"), len: 100 },
     ];
@@ -54,7 +55,7 @@ describe("ResolveTorrentUseCase 解析种子", () => {
 
   it("在没有提供 magnet 和 infoHash 时应该抛出错误", async () => {
     const useCase = new ResolveTorrentUseCase(mockRepo);
-    const ctx = WithValue(Background, "traceId", "test-trace");
+    const ctx = WithValue(Background, TRACE_ID, "test-trace");
     await expect(useCase.execute(ctx, {})).rejects.toThrow(
       "未提供有效的磁力链接或种子 Hash",
     );

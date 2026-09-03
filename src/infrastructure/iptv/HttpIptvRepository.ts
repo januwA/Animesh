@@ -19,7 +19,6 @@ export class HttpIptvRepository implements IptvRepository {
 
   @Cached({
     ttl: new Duration({ days: 30 }),
-    excludeArgs: [0],
   })
   async getCountries(ctx: Context): Promise<IptvCountry[]> {
     const data = await this.client.getJson<unknown>(ctx, COUNTRIES_URL);
@@ -34,7 +33,6 @@ export class HttpIptvRepository implements IptvRepository {
 
   @Cached({
     ttl: new Duration({ days: 7 }),
-    excludeArgs: [0],
   })
   async getChannels(ctx: Context, countryCode: string): Promise<IptvChannel[]> {
     const response = await this.client.request(

@@ -1,8 +1,15 @@
 import type { Context } from "ajanuw-context";
-import { Background, Canceled, WithCancel, WithTimeout } from "ajanuw-context";
+import {
+  Background,
+  Canceled,
+  WithCancel,
+  WithTimeout,
+  WithValue,
+} from "ajanuw-context";
 import type { Duration } from "ajanuw-duration";
 import type { DependencyList } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 
 export interface UseQueryOptions<T> {
   /** 是否启用请求，默认 true；为 false 时不会发起请求，loading 保持 false */
@@ -68,9 +75,10 @@ export function useQuery<T>(
     }
 
     let active = true;
-    const [ctx, cancel] = optionsRef.current.timeout
+    const [rawCtx, cancel] = optionsRef.current.timeout
       ? WithTimeout(Background, optionsRef.current.timeout.inMilliseconds)
       : WithCancel(Background);
+    const ctx = WithValue(rawCtx, TRACE_ID, crypto.randomUUID());
     setLoading(true);
     setError(null);
 
