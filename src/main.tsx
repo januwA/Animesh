@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import ReactDOM from "react-dom/client";
 import { createHashRouter } from "react-router-dom";
 import { createDIContainer } from "./di/DIContext";
@@ -22,7 +23,7 @@ const logger = new ConsoleLogger(
 );
 
 const cacheStore = new IndexedDbCacheStore(logger);
-cacheStore.clearExpired().catch(() => {});
+cacheStore.clearExpired(Background).catch(() => {});
 
 const httpClient = new FetchHttpClient(undefined, logger);
 

@@ -29,7 +29,7 @@ export default function CachePage() {
   const setIptvChannels = useIptvStore((s) => s.setIptvChannels);
 
   const { execute: handleConfirmClearCache, loading: clearingCache } =
-    useMutation(() => clearCacheUseCase.execute(), {
+    useMutation((ctx) => clearCacheUseCase.execute(ctx), {
       onSuccess: () => {
         setCalendar([]);
         setIptvCountries([]);

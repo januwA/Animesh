@@ -38,12 +38,12 @@ export class TranslateTextUseCase {
 
     const cacheKey = this.buildCacheKey(text, dto.sourceLang, dto.targetLang);
 
-    const cached = await this.cache.get(cacheKey);
+    const cached = await this.cache.get(ctx, cacheKey);
     if (cached !== null) return cached;
 
     const translated = await this.translateWithProvider(ctx, dto, text);
 
-    await this.cache.set(cacheKey, translated);
+    await this.cache.set(ctx, cacheKey, translated);
 
     return translated;
   }

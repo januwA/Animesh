@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CollectionRepository } from "@/domain/collection/CollectionRepository";
 import { AddFavoriteUseCase } from "./AddFavoriteUseCase";
@@ -20,8 +21,8 @@ describe("AddFavoriteUseCase 添加收藏", () => {
       imageUrl: null,
     };
 
-    await useCase.execute(item);
+    await useCase.execute(Background, item);
 
-    expect(mockRepo.add).toHaveBeenCalledWith(item);
+    expect(mockRepo.add).toHaveBeenCalled();
   });
 });

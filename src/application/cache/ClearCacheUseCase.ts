@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import type { CacheStore } from "@/domain/storage/CacheStore";
 
 /**
@@ -6,7 +7,7 @@ import type { CacheStore } from "@/domain/storage/CacheStore";
 export class ClearCacheUseCase {
   constructor(private readonly cacheStore: CacheStore) {}
 
-  async execute(): Promise<void> {
-    await this.cacheStore.clear();
+  async execute(ctx: Context): Promise<void> {
+    await this.cacheStore.clear(ctx);
   }
 }

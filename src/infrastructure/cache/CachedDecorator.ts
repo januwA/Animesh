@@ -1,5 +1,8 @@
+import type { Context } from "ajanuw-context";
+import { Background } from "ajanuw-context";
 import type { Duration } from "ajanuw-duration";
 import { z } from "zod";
+import { isContextLike } from "@/domain/common/ContextKeys";
 import type { CacheStore } from "@/domain/storage/CacheStore";
 import { fnv1a32 } from "@/utils";
 
@@ -31,6 +34,8 @@ export function Cached(options: CachedOptions) {
         return value.call(this, ...args);
       }
 
+      const ctx =
+        (args.find(isContextLike) as Context | undefined) ?? Background;
       const className = this.constructor.name;
       const filteredArgs = options.excludeArgs
         ? args.filter((_, i) => !options.excludeArgs?.includes(i))
@@ -43,7 +48,7 @@ export function Cached(options: CachedOptions) {
 
       let cached: unknown = null;
       try {
-        cached = await store.getItem(key, z.unknown());
+        cached = await store.getItem(ctx, key, z.unknown());
       } catch (e) {
         if (!options.swallowErrors) throw e;
       }
@@ -53,7 +58,7 @@ export function Cached(options: CachedOptions) {
 
       const result = await value.call(this, ...args);
       try {
-        await store.setItem(key, result, options.ttl.inMilliseconds);
+        await store.setItem(ctx, key, result, options.ttl.inMilliseconds);
       } catch (e) {
         if (!options.swallowErrors) throw e;
       }

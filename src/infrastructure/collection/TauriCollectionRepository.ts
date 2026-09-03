@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { Context } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
 import { z } from "zod";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
@@ -46,18 +47,22 @@ export class TauriCollectionRepository implements CollectionRepository {
     return z.boolean().parse(raw);
   }
 
-  async add(item: Omit<FavoriteItem, "addedAt">): Promise<void> {
+  async add(ctx: Context, item: Omit<FavoriteItem, "addedAt">): Promise<void> {
     invoke<void>(commands.collection_add, {
       subjectId: item.subjectId,
       platform: item.platform,
       name: item.name,
       imageUrl: item.imageUrl,
     });
-    this.store.clearByPrefix(COLLECTION_CACHE_PREFIX);
+    this.store.clearByPrefix(ctx, COLLECTION_CACHE_PREFIX);
   }
 
-  async remove(subjectId: number, platform: AnimePlatform): Promise<void> {
+  async remove(
+    ctx: Context,
+    subjectId: number,
+    platform: AnimePlatform,
+  ): Promise<void> {
     invoke<void>(commands.collection_remove, { subjectId, platform });
-    this.store.clearByPrefix(COLLECTION_CACHE_PREFIX);
+    this.store.clearByPrefix(ctx, COLLECTION_CACHE_PREFIX);
   }
 }

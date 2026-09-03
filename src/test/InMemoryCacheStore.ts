@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import { z } from "zod";
 import type { CacheStore } from "@/domain/storage/CacheStore";
 
@@ -15,7 +16,11 @@ export class InMemoryCacheStore implements CacheStore {
     { data: unknown; expiry: number }
   >();
 
-  async getItem<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
+  async getItem<T>(
+    _ctx: Context,
+    key: string,
+    schema: z.ZodType<T>,
+  ): Promise<T | null> {
     const record = this.records.get(key);
     if (!record) {
       return null;
@@ -42,19 +47,24 @@ export class InMemoryCacheStore implements CacheStore {
     return validationResult.data;
   }
 
-  async setItem<T>(key: string, data: T, ttlMs: number): Promise<void> {
+  async setItem<T>(
+    _ctx: Context,
+    key: string,
+    data: T,
+    ttlMs: number,
+  ): Promise<void> {
     this.records.set(key, { data, expiry: Date.now() + ttlMs });
   }
 
-  async removeItem(key: string): Promise<void> {
+  async removeItem(_ctx: Context, key: string): Promise<void> {
     this.records.delete(key);
   }
 
-  async clear(): Promise<void> {
+  async clear(_ctx: Context): Promise<void> {
     this.records.clear();
   }
 
-  async clearByPrefix(prefix: string): Promise<void> {
+  async clearByPrefix(_ctx: Context, prefix: string): Promise<void> {
     for (const key of this.records.keys()) {
       if (key.startsWith(`${prefix}:`)) {
         this.records.delete(key);
@@ -62,7 +72,7 @@ export class InMemoryCacheStore implements CacheStore {
     }
   }
 
-  async clearExpired(): Promise<number> {
+  async clearExpired(_ctx: Context): Promise<number> {
     const now = Date.now();
     let deletedCount = 0;
     for (const [key, record] of this.records) {

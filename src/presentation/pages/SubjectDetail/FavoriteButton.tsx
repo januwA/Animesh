@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import { Heart } from "lucide-react";
 import { useState } from "react";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
@@ -43,7 +44,7 @@ export function FavoriteButton({
     const next = !favorited;
     setOptimistic(next);
     if (next) {
-      await addFavoriteUseCase.execute({
+      await addFavoriteUseCase.execute(Background, {
         subjectId: subject.id,
         platform,
         name: subject.name,
@@ -56,7 +57,10 @@ export function FavoriteButton({
         imageUrl: subject.image,
       });
     } else {
-      await removeFavoriteUseCase.execute(subject.id, platform);
+      await removeFavoriteUseCase.execute(Background, {
+        subjectId: subject.id,
+        platform,
+      });
       removeItem(subject.id, platform);
     }
     refetch();

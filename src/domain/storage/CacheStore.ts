@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import type { z } from "zod";
 
 /**
@@ -5,10 +6,14 @@ import type { z } from "zod";
  * 测试时可通过该接口注入内存 Mock，避免直接接触浏览器存储。
  */
 export interface CacheStore {
-  getItem<T>(key: string, schema: z.ZodType<T>): Promise<T | null>;
-  setItem<T>(key: string, data: T, ttlMs: number): Promise<void>;
-  removeItem(key: string): Promise<void>;
-  clear(): Promise<void>;
-  clearByPrefix(prefix: string): Promise<void>;
-  clearExpired(): Promise<number>;
+  getItem<T>(
+    ctx: Context,
+    key: string,
+    schema: z.ZodType<T>,
+  ): Promise<T | null>;
+  setItem<T>(ctx: Context, key: string, data: T, ttlMs: number): Promise<void>;
+  removeItem(ctx: Context, key: string): Promise<void>;
+  clear(ctx: Context): Promise<void>;
+  clearByPrefix(ctx: Context, prefix: string): Promise<void>;
+  clearExpired(ctx: Context): Promise<number>;
 }

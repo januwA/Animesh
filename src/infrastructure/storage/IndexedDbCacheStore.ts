@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import { z } from "zod";
 import type { Logger } from "@/domain/logger/logger";
 import type { CacheStore } from "@/domain/storage/CacheStore";
@@ -53,8 +54,12 @@ export class IndexedDbCacheStore implements CacheStore {
     );
   }
 
-  @Logged({ excludeArgs: [1] })
-  async getItem<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
+  @Logged()
+  async getItem<T>(
+    _ctx: Context,
+    key: string,
+    schema: z.ZodType<T>,
+  ): Promise<T | null> {
     const record: unknown = await this.runTransaction("readonly", (store) =>
       store.get(key),
     );
@@ -64,19 +69,19 @@ export class IndexedDbCacheStore implements CacheStore {
 
     const envelopeResult = CacheEnvelopeSchema.safeParse(record);
     if (!envelopeResult.success) {
-      await this.removeItem(key);
+      await this.removeItem(_ctx, key);
       return null;
     }
 
     const { data, expiry } = envelopeResult.data;
     if (Date.now() > expiry) {
-      await this.removeItem(key);
+      await this.removeItem(_ctx, key);
       return null;
     }
 
     const validationResult = schema.safeParse(data);
     if (!validationResult.success) {
-      await this.removeItem(key);
+      await this.removeItem(_ctx, key);
       return null;
     }
 
@@ -84,7 +89,12 @@ export class IndexedDbCacheStore implements CacheStore {
   }
 
   @Logged()
-  async setItem<T>(key: string, data: T, ttlMs: number): Promise<void> {
+  async setItem<T>(
+    _ctx: Context,
+    key: string,
+    data: T,
+    ttlMs: number,
+  ): Promise<void> {
     const entry = {
       data,
       expiry: Date.now() + ttlMs,
@@ -93,17 +103,17 @@ export class IndexedDbCacheStore implements CacheStore {
   }
 
   @Logged()
-  async removeItem(key: string): Promise<void> {
+  async removeItem(_ctx: Context, key: string): Promise<void> {
     await this.runTransaction("readwrite", (store) => store.delete(key));
   }
 
   @Logged()
-  async clear(): Promise<void> {
+  async clear(_ctx: Context): Promise<void> {
     await this.runTransaction("readwrite", (store) => store.clear());
   }
 
   @Logged()
-  async clearExpired(): Promise<number> {
+  async clearExpired(_ctx: Context): Promise<number> {
     const now = Date.now();
     let deletedCount = 0;
     const db = await this.getDb();
@@ -131,7 +141,7 @@ export class IndexedDbCacheStore implements CacheStore {
   }
 
   @Logged()
-  async clearByPrefix(prefix: string): Promise<void> {
+  async clearByPrefix(_ctx: Context, prefix: string): Promise<void> {
     const db = await this.getDb();
     const tx = db.transaction(STORE_NAME, "readwrite");
     const store = tx.objectStore(STORE_NAME);

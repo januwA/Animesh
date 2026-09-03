@@ -1,3 +1,4 @@
+import type { Context } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
 import { z } from "zod";
 import type { CacheStore } from "@/domain/storage/CacheStore";
@@ -13,12 +14,13 @@ const TRANSLATION_CACHE_TTL_MS = new Duration({ days: 7 }).inMilliseconds;
 export class IndexedDbTranslationCache implements TranslationCache {
   constructor(private readonly store: CacheStore) {}
 
-  async get(key: string): Promise<string | null> {
-    return this.store.getItem(this.toCacheKey(key), z.string());
+  async get(ctx: Context, key: string): Promise<string | null> {
+    return this.store.getItem(ctx, this.toCacheKey(key), z.string());
   }
 
-  async set(key: string, value: string): Promise<void> {
+  async set(ctx: Context, key: string, value: string): Promise<void> {
     await this.store.setItem(
+      ctx,
       this.toCacheKey(key),
       value,
       TRANSLATION_CACHE_TTL_MS,

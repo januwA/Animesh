@@ -22,8 +22,8 @@ function createMockCache(
   store: Map<string, string> = new Map(),
 ): TranslationCache {
   return {
-    get: vi.fn(async (key: string) => store.get(key) ?? null),
-    set: vi.fn(async (key: string, value: string) => {
+    get: vi.fn(async (_ctx: Context, key: string) => store.get(key) ?? null),
+    set: vi.fn(async (_ctx: Context, key: string, value: string) => {
       store.set(key, value);
     }),
   };
@@ -142,6 +142,7 @@ describe("TranslateTextUseCase", () => {
     });
 
     expect(cache.set).toHaveBeenCalledWith(
+      expect.anything(),
       fnv1a32("auto:zh-CN:hello"),
       "translated:hello",
     );

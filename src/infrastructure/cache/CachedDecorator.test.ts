@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
 import { beforeEach, describe, expect, it, type Mocked, vi } from "vitest";
 import type { CacheStore } from "@/domain/storage/CacheStore";
@@ -96,6 +97,7 @@ describe("Cached 装饰器", () => {
 
       expect(result).toBe("fresh-42");
       expect(store.setItem).toHaveBeenCalledWith(
+        Background,
         expect.any(String),
         "fresh-42",
         300_000,
