@@ -1,6 +1,15 @@
 import { Background, Canceled, WithCancel } from "ajanuw-context";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Logger } from "@/domain/logger/logger";
 import { FetchHttpClient } from "./HttpClient";
+
+const mockLogger: Logger = {
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  withCategory: vi.fn().mockReturnThis(),
+};
 
 describe("HttpClient", () => {
   afterEach(() => {
@@ -15,7 +24,7 @@ describe("HttpClient", () => {
     } as Response);
     vi.stubGlobal("fetch", mockFetch);
 
-    const client = new FetchHttpClient();
+    const client = new FetchHttpClient({}, mockLogger);
     const result = await client.getJson("https://api.example.com/test");
 
     expect(mockFetch).toHaveBeenCalledWith(
@@ -36,7 +45,7 @@ describe("HttpClient", () => {
     } as Response);
     vi.stubGlobal("fetch", mockFetch);
 
-    const client = new FetchHttpClient();
+    const client = new FetchHttpClient({}, mockLogger);
     await expect(
       client.getJson("https://api.example.com/test"),
     ).rejects.toThrow("HTTP error! status: 404 Not Found");
@@ -49,7 +58,7 @@ describe("HttpClient", () => {
     const [ctx, cancel] = WithCancel(Background);
     cancel();
 
-    const client = new FetchHttpClient();
+    const client = new FetchHttpClient({}, mockLogger);
     await expect(
       client.getJson("https://api.example.com/test", { ctx }),
     ).rejects.toThrow(Canceled.message);
@@ -64,7 +73,7 @@ describe("HttpClient", () => {
     } as Response);
     vi.stubGlobal("fetch", mockFetch);
 
-    const client = new FetchHttpClient();
+    const client = new FetchHttpClient({}, mockLogger);
     await client.getJson("https://api.example.com/test", {
       params: { keyword: "动画", type: 2, nsfw: false },
     });
@@ -83,7 +92,7 @@ describe("HttpClient", () => {
     } as Response);
     vi.stubGlobal("fetch", mockFetch);
 
-    const client = new FetchHttpClient();
+    const client = new FetchHttpClient({}, mockLogger);
     await client.getJson("https://api.example.com/test", {
       params: { a: "1", b: undefined, c: "3" },
     });
@@ -102,7 +111,7 @@ describe("HttpClient", () => {
     } as Response);
     vi.stubGlobal("fetch", mockFetch);
 
-    const client = new FetchHttpClient();
+    const client = new FetchHttpClient({}, mockLogger);
     await client.getJson("https://api.example.com/test?existing=yes", {
       params: { added: "true" },
     });

@@ -1,11 +1,16 @@
 import type { Context } from "ajanuw-context";
 import type { HttpClient, HttpClientOptions } from "@/domain/http/HttpClient";
+import type { Logger } from "@/domain/logger/logger";
+import { Logged } from "../logger/LoggedDecorator";
 
 /** 基于 fetch 的默认实现，负责 Context 取消与响应错误归一化。 */
 export class FetchHttpClient implements HttpClient {
   private readonly defaultHeaders: HeadersInit;
 
-  constructor(defaults: { headers?: HeadersInit } = {}) {
+  constructor(
+    defaults: { headers?: HeadersInit } = {},
+    public readonly logger: Logger,
+  ) {
     this.defaultHeaders = defaults.headers || {};
   }
 
@@ -37,6 +42,7 @@ export class FetchHttpClient implements HttpClient {
     return `${url}${separator}${queryString}`;
   }
 
+  @Logged()
   async request(
     url: string | URL,
     options: HttpClientOptions = {},

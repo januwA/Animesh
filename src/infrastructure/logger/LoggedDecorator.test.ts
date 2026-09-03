@@ -139,6 +139,102 @@ describe("Logged 装饰器", () => {
     });
   });
 
+  describe("同步函数支持", () => {
+    it("应正确装饰同步函数并记录日志", () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        appendParams(url: string, params?: Record<string, string>): string {
+          if (!params) return url;
+          const query = Object.entries(params)
+            .map(([k, v]) => `${k}=${v}`)
+            .join("&");
+          return `${url}?${query}`;
+        }
+      }
+
+      const service = new TestService();
+      const result = service.appendParams("https://api.example.com", {
+        page: "1",
+      });
+
+      expect(result).toBe("https://api.example.com?page=1");
+      expect(mockLogger.debug).toHaveBeenCalledTimes(2);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.appendParams\(\) called$/,
+        ),
+        ["https://api.example.com", { page: "1" }],
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.appendParams\(\) → [\d.]+ms$/,
+        ),
+        "https://api.example.com?page=1",
+      );
+    });
+
+    it("同步函数无参数时应记录空参数", () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        getTimestamp(): number {
+          return Date.now();
+        }
+      }
+
+      const service = new TestService();
+      const result = service.getTimestamp();
+
+      expect(typeof result).toBe("number");
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.getTimestamp\(\) called$/,
+        ),
+        [],
+      );
+    });
+
+    it("同步函数抛出异常应记录错误日志", () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        failingSync(): string {
+          throw new Error("sync error");
+        }
+      }
+
+      const service = new TestService();
+      expect(() => service.failingSync()).toThrow("sync error");
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\[[0-9a-f]{8}\] TestService\.failingSync\(\) → error after [\d.]+ms$/,
+        ),
+        expect.objectContaining({ message: "sync error" }),
+      );
+    });
+
+    it("同步函数应保持返回值类型不变", () => {
+      class TestService {
+        logger?: Logger = mockLogger;
+
+        @Logged()
+        calculate(a: number, b: number): number {
+          return a + b;
+        }
+      }
+
+      const service = new TestService();
+      const result = service.calculate(1, 2);
+
+      expect(result).toBe(3);
+      expect(typeof result).toBe("number");
+    });
+  });
+
   describe("当 logger 不存在时", () => {
     it("应直接调用原方法，不报错不阻塞", async () => {
       class TestService {

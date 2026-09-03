@@ -24,7 +24,7 @@ const logger = new ConsoleLogger(
 const cacheStore = new IndexedDbCacheStore(logger);
 cacheStore.clearExpired().catch(() => {});
 
-const httpClient = new FetchHttpClient();
+const httpClient = new FetchHttpClient(undefined, logger);
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <App

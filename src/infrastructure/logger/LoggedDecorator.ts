@@ -12,7 +12,7 @@ interface LogAwareInstance {
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: TC39 decorator requires flexible typing to wrap any method signature
-type AnyMethod = (...args: any[]) => Promise<any>;
+type AnyMethod = (...args: any[]) => any | Promise<any>;
 
 export function Logged(options: LoggedOptions = {}) {
   return (
@@ -22,7 +22,7 @@ export function Logged(options: LoggedOptions = {}) {
     const methodName = String(context.name);
     const logLevel = options.level ?? LogLevel.DEBUG;
 
-    return async function (this: LogAwareInstance, ...args: unknown[]) {
+    return function (this: LogAwareInstance, ...args: unknown[]) {
       const logger = this.logger;
       if (!logger) {
         return value.call(this, ...args);
@@ -39,7 +39,36 @@ export function Logged(options: LoggedOptions = {}) {
 
       const start = performance.now();
       try {
-        const result = await value.call(this, ...args);
+        const result = value.call(this, ...args);
+
+        // 检测是否是 Promise（鸭子类型检测）
+        if (
+          result !== null &&
+          typeof result === "object" &&
+          typeof result.then === "function"
+        ) {
+          // 异步函数：使用 .then() 链式处理
+          return result.then(
+            (resolved: unknown) => {
+              const duration = performance.now() - start;
+              logger[logLevel](
+                `[${opId}] ${label}() → ${duration.toFixed(1)}ms`,
+                resolved,
+              );
+              return resolved;
+            },
+            (error: unknown) => {
+              const duration = performance.now() - start;
+              logger.error(
+                `[${opId}] ${label}() → error after ${duration.toFixed(1)}ms`,
+                error,
+              );
+              throw error;
+            },
+          );
+        }
+
+        // 同步函数：直接记录日志
         const duration = performance.now() - start;
         logger[logLevel](
           `[${opId}] ${label}() → ${duration.toFixed(1)}ms`,
