@@ -1,4 +1,5 @@
 import type { Context } from "ajanuw-context";
+import { Background } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
 import { z } from "zod";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
@@ -40,8 +41,9 @@ export class HttpTorrentRepository implements TorrentRepository {
     engine: TorrentSearchEngine,
   ): Promise<SearchResultItem[]> {
     const raw = await this.httpClient.getJson<unknown>(
+      ctx,
       `${baseUrl}/torrents/search`,
-      { ctx, params: { keyword, engine } },
+      { params: { keyword, engine } },
     );
     const result = z.array(SearchResultItemSchema).safeParse(raw);
     if (!result.success) {
@@ -53,22 +55,34 @@ export class HttpTorrentRepository implements TorrentRepository {
   }
 
   async pauseTorrent(infoHash: string): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/pause`, {
-      method: "POST",
-    });
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/torrents/${infoHash}/pause`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   async resumeTorrent(infoHash: string): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/resume`, {
-      method: "POST",
-    });
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/torrents/${infoHash}/resume`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   async deleteTorrent(infoHash: string, deleteFiles: boolean): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}`, {
-      method: "DELETE",
-      params: { deleteFiles },
-    });
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/torrents/${infoHash}`,
+      {
+        method: "DELETE",
+        params: { deleteFiles },
+      },
+    );
   }
 
   async addTorrentMagnet(
@@ -77,12 +91,16 @@ export class HttpTorrentRepository implements TorrentRepository {
   ): Promise<AddTorrentResult> {
     const traceId = ctx.value<string>("traceId") || "";
     ctx.done().then(() => {
-      this.httpClient.request(`${baseUrl}/torrents/add-magnet/${traceId}`, {
-        method: "DELETE",
-      });
+      this.httpClient.request(
+        Background,
+        `${baseUrl}/torrents/add-magnet/${traceId}`,
+        {
+          method: "DELETE",
+        },
+      );
     });
 
-    const response = await this.httpClient.request(`${baseUrl}/torrents`, {
+    const response = await this.httpClient.request(ctx, `${baseUrl}/torrents`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -101,6 +119,7 @@ export class HttpTorrentRepository implements TorrentRepository {
 
   async getTorrentFiles(infoHash: string): Promise<FileDetails[]> {
     const raw = await this.httpClient.getJson<unknown>(
+      Background,
       `${baseUrl}/torrents/${infoHash}/files`,
     );
     const result = z.array(FileDetailsSchema).safeParse(raw);
@@ -114,6 +133,7 @@ export class HttpTorrentRepository implements TorrentRepository {
 
   async getStreamPort(): Promise<number> {
     const raw = await this.httpClient.getJson<unknown>(
+      Background,
       `${baseUrl}/stream-port`,
     );
     const result = z.object({ port: z.number() }).safeParse(raw);
@@ -134,6 +154,7 @@ export class HttpTorrentRepository implements TorrentRepository {
     fileId: number,
   ): Promise<VideoMetadata> {
     const raw = await this.httpClient.getJson<unknown>(
+      Background,
       `${baseUrl}/torrents/${infoHash}/files/${fileId}/metadata`,
     );
     const result = VideoMetadataSchema.safeParse(raw);
@@ -151,6 +172,7 @@ export class HttpTorrentRepository implements TorrentRepository {
     trackId: number,
   ): Promise<string> {
     const response = await this.httpClient.request(
+      Background,
       `${baseUrl}/torrents/${infoHash}/files/${fileId}/subtitles/${trackId}`,
     );
     return response.text();
@@ -162,13 +184,17 @@ export class HttpTorrentRepository implements TorrentRepository {
     platform: AnimePlatform,
     subject_name: string,
   ): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/torrents/${infoHash}/subject`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/torrents/${infoHash}/subject`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ subject_id, platform, subject_name }),
       },
-      body: JSON.stringify({ subject_id, platform, subject_name }),
-    });
+    );
   }
 
   async clearTorrentSubject(
@@ -176,6 +202,7 @@ export class HttpTorrentRepository implements TorrentRepository {
     platform: AnimePlatform,
   ): Promise<void> {
     await this.httpClient.request(
+      Background,
       `${baseUrl}/torrents/${infoHash}/subject/${platform}`,
       { method: "DELETE" },
     );

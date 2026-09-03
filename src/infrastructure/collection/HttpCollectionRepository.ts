@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import { z } from "zod";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { CollectionRepository } from "@/domain/collection/CollectionRepository";
@@ -17,6 +18,7 @@ export class HttpCollectionRepository implements CollectionRepository {
 
   async getAll(): Promise<FavoriteItem[]> {
     const raw = await this.httpClient.getJson<unknown>(
+      Background,
       `${baseUrl}/collections`,
     );
     const result = z.array(CollectionRecordSchema).safeParse(raw);
@@ -39,7 +41,7 @@ export class HttpCollectionRepository implements CollectionRepository {
   }
 
   async add(item: Omit<FavoriteItem, "addedAt">): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/collections`, {
+    await this.httpClient.request(Background, `${baseUrl}/collections`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -55,6 +57,7 @@ export class HttpCollectionRepository implements CollectionRepository {
 
   async remove(subjectId: number, platform: AnimePlatform): Promise<void> {
     await this.httpClient.request(
+      Background,
       `${baseUrl}/collections/${platform}/${subjectId}`,
       { method: "DELETE" },
     );

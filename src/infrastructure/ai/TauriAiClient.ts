@@ -16,9 +16,9 @@ export class TauriAiClient implements AiClient {
     const port = await invoke<number>(commands.get_stream_port);
 
     const response = await this.httpClient.request(
+      ctx,
       `http://127.0.0.1:${port}/ai/chat-request`,
       {
-        ctx,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

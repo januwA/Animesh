@@ -14,11 +14,7 @@ export class FetchHttpClient implements HttpClient {
     this.defaultHeaders = defaults.headers || {};
   }
 
-  private setupContextAbort(
-    ctx: Context | undefined,
-    controller: AbortController,
-  ): void {
-    if (!ctx) return;
+  private setupContextAbort(ctx: Context, controller: AbortController): void {
     if (ctx.err()) {
       throw ctx.err();
     }
@@ -44,10 +40,11 @@ export class FetchHttpClient implements HttpClient {
 
   @Logged()
   async request(
+    ctx: Context,
     url: string | URL,
     options: HttpClientOptions = {},
   ): Promise<Response> {
-    const { ctx, headers, params, ...restOptions } = options;
+    const { headers, params, ...restOptions } = options;
     const controller = new AbortController();
 
     this.setupContextAbort(ctx, controller);
@@ -73,10 +70,11 @@ export class FetchHttpClient implements HttpClient {
   }
 
   async getJson<T>(
+    ctx: Context,
     url: string | URL,
     options: HttpClientOptions = {},
   ): Promise<T> {
-    const response = await this.request(url, {
+    const response = await this.request(ctx, url, {
       ...options,
       method: "GET",
       headers: {

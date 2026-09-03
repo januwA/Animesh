@@ -122,8 +122,7 @@ export class HttpAnilistRepository implements AnimeRepository {
     endDate: number,
     page: number,
   ): Promise<{ hasNextPage: boolean; airingSchedules: unknown[] }> {
-    const response = await this.client.request(ANILIST_ENDPOINT, {
-      ctx,
+    const response = await this.client.request(ctx, ANILIST_ENDPOINT, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -154,8 +153,7 @@ export class HttpAnilistRepository implements AnimeRepository {
     query: string,
     variables: Record<string, unknown>,
   ): Promise<unknown> {
-    const response = await this.client.request(ANILIST_ENDPOINT, {
-      ctx,
+    const response = await this.client.request(ctx, ANILIST_ENDPOINT, {
       method: "POST",
       headers: {
         Accept: "application/json",

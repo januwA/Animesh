@@ -22,7 +22,7 @@ export class HttpIptvRepository implements IptvRepository {
     excludeArgs: [0],
   })
   async getCountries(ctx: Context): Promise<IptvCountry[]> {
-    const data = await this.client.getJson<unknown>(COUNTRIES_URL, { ctx });
+    const data = await this.client.getJson<unknown>(ctx, COUNTRIES_URL);
     const result = IptvCountriesResponseSchema.safeParse(data);
     if (!result.success) {
       throw new Error("IPTV countries response structure mismatch", {
@@ -38,8 +38,8 @@ export class HttpIptvRepository implements IptvRepository {
   })
   async getChannels(ctx: Context, countryCode: string): Promise<IptvChannel[]> {
     const response = await this.client.request(
+      ctx,
       `${PLAYLIST_BASE_URL}/${countryCode.toLowerCase()}.m3u`,
-      { ctx },
     );
     const text = await response.text();
     return parseM3u(text);

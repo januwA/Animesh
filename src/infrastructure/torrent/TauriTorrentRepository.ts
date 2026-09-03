@@ -40,8 +40,9 @@ export class TauriTorrentRepository implements TorrentRepository {
   ): Promise<SearchResultItem[]> {
     const port = await this.getStreamPort();
     const raw = await this.httpClient.getJson<unknown>(
+      ctx,
       `http://127.0.0.1:${port}/torrent_search`,
-      { ctx, params: { keyword, engine } },
+      { params: { keyword, engine } },
     );
     const result = z.array(SearchResultItemSchema).safeParse(raw);
     if (!result.success) {

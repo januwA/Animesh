@@ -16,9 +16,9 @@ export class FetchAiClient implements AiClient {
     payload: unknown,
   ): Promise<unknown> {
     const response = await this.httpClient.request(
+      ctx,
       `${baseUrl}/ai/chat-request`,
       {
-        ctx,
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -41,10 +41,8 @@ export class HttpBangumiRepository implements AnimeRepository {
   })
   async getCalendar(ctx: Context): Promise<AnimeCalendarDay[]> {
     const data = await this.client.getJson<unknown>(
+      ctx,
       "https://api.bgm.tv/calendar",
-      {
-        ctx,
-      },
     );
     const result = BangumiCalendarResponseSchema.safeParse(data);
     if (!result.success) {
@@ -64,9 +62,9 @@ export class HttpBangumiRepository implements AnimeRepository {
     params: Parameters<AnimeRepository["getRankedSubjects"]>[1],
   ): Promise<RankedSubjectsPage> {
     const data = await this.client.getJson<unknown>(
+      ctx,
       "https://api.bgm.tv/v0/subjects",
       {
-        ctx,
         params: {
           type: "2",
           ...params,
@@ -89,8 +87,8 @@ export class HttpBangumiRepository implements AnimeRepository {
   })
   async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
     const data = await this.client.getJson<unknown>(
+      ctx,
       `https://api.bgm.tv/v0/subjects/${subjectId}`,
-      { ctx },
     );
 
     const result = BangumiSubjectSchema.safeParse(data);
@@ -113,8 +111,9 @@ export class HttpBangumiRepository implements AnimeRepository {
     limit: number,
   ): Promise<AnimeEpisodesPage> {
     const data = await this.client.getJson<unknown>(
+      ctx,
       "https://api.bgm.tv/v0/episodes",
-      { ctx, params: { subject_id: subjectId, limit, offset } },
+      { params: { subject_id: subjectId, limit, offset } },
     );
 
     const result = BangumiEpisodesResponseSchema.safeParse(data);
@@ -135,8 +134,9 @@ export class HttpBangumiRepository implements AnimeRepository {
     subjectId: string,
   ): Promise<AnimePerson[]> {
     const data = await this.client.getJson<unknown>(
+      ctx,
       `https://api.bgm.tv/v0/subjects/${subjectId}/persons`,
-      { ctx, params: { subject_id: subjectId } },
+      { params: { subject_id: subjectId } },
     );
 
     const result = BangumiPersonsResponseSchema.safeParse(data);
@@ -157,8 +157,9 @@ export class HttpBangumiRepository implements AnimeRepository {
     subjectId: string,
   ): Promise<AnimeCharacter[]> {
     const data = await this.client.getJson<unknown>(
+      ctx,
       `https://api.bgm.tv/v0/subjects/${subjectId}/characters`,
-      { ctx, params: { subject_id: subjectId } },
+      { params: { subject_id: subjectId } },
     );
 
     const result = BangumiCharactersResponseSchema.safeParse(data);
@@ -179,9 +180,9 @@ export class HttpBangumiRepository implements AnimeRepository {
     params: AnimeSubjectSearchParams,
   ): Promise<AnimeSubjectSearchResult> {
     const response = await this.client.request(
+      ctx,
       "https://api.bgm.tv/v0/search/subjects",
       {
-        ctx,
         method: "POST",
         headers: {
           Accept: "application/json",
@@ -213,9 +214,9 @@ export class HttpBangumiRepository implements AnimeRepository {
     params: NextSeasonSubjectsParams,
   ): Promise<NextSeasonSubjectsPage> {
     const data = await this.client.getJson<unknown>(
+      ctx,
       "https://api.bgm.tv/v0/subjects",
       {
-        ctx,
         params: {
           type: "2",
           year: params.year,

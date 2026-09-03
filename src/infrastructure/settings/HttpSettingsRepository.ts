@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { HttpClient } from "@/domain/http/HttpClient";
 import type { SettingsRepository } from "../../domain/settings/SettingsRepository";
@@ -20,6 +21,7 @@ export class HttpSettingsRepository implements SettingsRepository {
 
   async getSettings(): Promise<Settings> {
     const rawSettings = await this.httpClient.getJson<unknown>(
+      Background,
       `${baseUrl}/settings`,
     );
 
@@ -33,17 +35,21 @@ export class HttpSettingsRepository implements SettingsRepository {
   }
 
   async setDownloadDir(dir: string): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/download-dir`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/settings/download-dir`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dir }),
       },
-      body: JSON.stringify({ dir }),
-    });
+    );
   }
 
   async setProxy(proxy: string | null): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/proxy`, {
+    await this.httpClient.request(Background, `${baseUrl}/settings/proxy`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -53,43 +59,59 @@ export class HttpSettingsRepository implements SettingsRepository {
   }
 
   async setAiConfigs(configs: AiConfig[] | null): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/ai-configs`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/settings/ai-configs`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ configs }),
       },
-      body: JSON.stringify({ configs }),
-    });
+    );
   }
 
   async setMaxDownloadSpeed(speed: number | null): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/max-download-speed`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/settings/max-download-speed`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ max_speed: speed }),
       },
-      body: JSON.stringify({ max_speed: speed }),
-    });
+    );
   }
 
   async setMaxUploadSpeed(speed: number | null): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/max-upload-speed`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/settings/max-upload-speed`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ max_speed: speed }),
       },
-      body: JSON.stringify({ max_speed: speed }),
-    });
+    );
   }
 
   async setTranslationConfig(config: TranslationConfig): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/settings/translation`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/settings/translation`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ translation: config }),
       },
-      body: JSON.stringify({ translation: config }),
-    });
+    );
   }
 
   async selectDirectory(): Promise<NonEmptyString | null> {
