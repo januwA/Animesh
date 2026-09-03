@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, vi } from "vitest";
 import type { AnimeEpisode, AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { TooltipProvider } from "@/presentation/components/ui/tooltip";
 import { EpisodesSection } from "./EpisodesSection";
 import type {
   SubjectEpisodesResult,
@@ -66,12 +67,14 @@ const makeResult = (
 const renderSection = (result: SubjectEpisodesResult) => {
   mockedUseSubjectEpisodes.mockReturnValue(result);
   return render(
-    <EpisodesSection
-      subjectId={123}
-      page={1}
-      subject={makeSubject()}
-      deps={makeDeps()}
-    />,
+    <TooltipProvider>
+      <EpisodesSection
+        subjectId={123}
+        page={1}
+        subject={makeSubject()}
+        deps={makeDeps()}
+      />
+    </TooltipProvider>,
   );
 };
 
@@ -83,8 +86,8 @@ describe("EpisodesSection 剧集列表组件", () => {
   it("应该渲染剧集卡片", () => {
     renderSection(makeResult([makeEpisode(1), makeEpisode(2)]));
 
-    expect(screen.getByText("第 1 集")).toBeInTheDocument();
-    expect(screen.getByText("第 2 集")).toBeInTheDocument();
+    expect(screen.getByText("01")).toBeInTheDocument();
+    expect(screen.getByText("02")).toBeInTheDocument();
     expect(screen.getByText("共 2 集")).toBeInTheDocument();
   });
 
@@ -99,7 +102,7 @@ describe("EpisodesSection 剧集列表组件", () => {
     const ep = makeEpisode(1);
     renderSection(makeResult([ep], { totalEpisodes: 1, handleEpisodeClick }));
 
-    fireEvent.click(screen.getByText("第 1 集").closest("button")!);
+    fireEvent.click(screen.getByText("01").closest("button")!);
 
     expect(handleEpisodeClick).toHaveBeenCalledWith(ep);
   });
@@ -124,8 +127,8 @@ describe("EpisodesSection 剧集列表组件", () => {
       ]),
     );
 
-    const airedCard = screen.getByText("已播出剧集").closest("button");
-    const unairedCard = screen.getByText("未播出剧集").closest("button");
+    const airedCard = screen.getByText("01").closest("button");
+    const unairedCard = screen.getByText("02").closest("button");
 
     expect(airedCard!.className).toContain("bg-primary/5");
     expect(airedCard!.className).toContain("border-primary/20");

@@ -6,6 +6,11 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/presentation/components/ui/tooltip";
 import { EpisodePaginationBar } from "./EpisodePaginationBar";
 import type { UseSubjectEpisodesDeps } from "./useSubjectEpisodes";
 import { useSubjectEpisodes } from "./useSubjectEpisodes";
@@ -46,57 +51,50 @@ export function EpisodesSection({
           onRetry={r.episodesQuery.refetch}
         />
       ) : loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <Skeleton key={n} className="h-16 rounded-xl" />
+        <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: 可行
+            <Skeleton key={i} className="h-9" />
           ))}
         </div>
       ) : episodes.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
             {episodes.map((ep) => {
               // v8 ignore next
               const isAired = ep.airdate ? todayStr >= ep.airdate : false;
               return (
-                <button
-                  key={ep.id}
-                  type="button"
-                  onClick={() => r.handleEpisodeClick(ep)}
-                  className={`group text-left flex items-start gap-3 p-3 rounded-xl transition-all duration-200 ${
-                    isAired
-                      ? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
-                      : "bg-card border border-border hover:border-primary/30 hover:bg-muted/30"
-                  }`}
-                >
-                  <div
-                    className={`h-10 w-10 shrink-0 rounded-lg flex items-center justify-center transition-colors ${
-                      isAired
-                        ? "bg-primary/15 group-hover:bg-primary/25"
-                        : "bg-muted group-hover:bg-primary/10"
-                    }`}
-                  >
-                    <span
-                      className={`text-sm font-bold transition-colors ${
+                <Tooltip key={ep.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => r.handleEpisodeClick(ep)}
+                      className={`group h-9 w-full rounded-lg flex items-center justify-center transition-all duration-200 ${
                         isAired
-                          ? "text-primary"
-                          : "text-muted-foreground group-hover:text-primary"
+                          ? "bg-primary/5 border border-primary/20 hover:border-primary/30 hover:bg-primary/10"
+                          : "bg-card border border-border hover:border-primary/30 hover:bg-muted/30"
                       }`}
                     >
-                      {String(ep.sort).padStart(2, "0")}
-                    </span>
-                  </div>
-
-                  <div className="flex-1 min-w-0 flex flex-col gap-1">
-                    <div className="flex items-center gap-1.5 justify-between">
-                      <h3 className="text-sm font-medium leading-tight text-foreground group-hover:text-primary transition-colors">
-                        {ep.name}
-                      </h3>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                      {ep.airdate && <span>首播 {ep.airdate}</span>}
-                    </div>
-                  </div>
-                </button>
+                      <span
+                        className={`text-xs font-bold transition-colors ${
+                          isAired
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-primary"
+                        }`}
+                      >
+                        {String(ep.sort).padStart(2, "0")}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>{ep.name}</span>
+                    {ep.airdate && (
+                      <span className="text-muted-foreground">
+                        首播 {ep.airdate}
+                      </span>
+                    )}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </div>
