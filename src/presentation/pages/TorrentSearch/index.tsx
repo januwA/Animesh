@@ -44,6 +44,58 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
     searchTorrentsUseCase,
   });
 
+  const StatusPanel = () => {
+    if (page.status.loading) {
+      return <SearchLoading onCancel={page.status.handleCancel} />;
+    }
+
+    if (page.status.error) {
+      return (
+        <ErrorState
+          message={page.status.error}
+          title="搜索失败"
+          onRetry={() =>
+            page.search.performSearch(
+              page.search.searchKeyword,
+              page.search.searchEngines,
+            )
+          }
+        />
+      );
+    }
+
+    if (page.results.searchResults) {
+      if (page.results.searchResults.length) {
+        return (
+          <SearchResultsList
+            totalCount={page.results.searchResults.length}
+            groupCount={page.results.groups.length}
+            allGroupsCollapsed={page.results.allGroupsCollapsed}
+            onToggleAllGroups={page.results.handleToggleAllGroups}
+            groups={page.results.groups}
+            collapsedGroups={page.results.collapsedGroups}
+            onToggleGroup={page.results.toggleGroup}
+            onCopyMagnet={page.results.handleCopyMagnet}
+            onPlay={page.results.handlePlay}
+          />
+        );
+      } else {
+        return (
+          <Card className="ani-card">
+            <CardContent>
+              <Empty>
+                <EmptyContent>
+                  <EmptyTitle>未找到相关资源</EmptyTitle>
+                  <EmptyDescription>请换个关键词试试</EmptyDescription>
+                </EmptyContent>
+              </Empty>
+            </CardContent>
+          </Card>
+        );
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <SearchForm
@@ -61,48 +113,7 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         onClear={page.searchHistory.handleClearHistory}
       />
 
-      {page.status.loading && (
-        <SearchLoading onCancel={page.status.handleCancel} />
-      )}
-
-      {page.status.error && (
-        <ErrorState
-          message={page.status.error}
-          title="搜索失败"
-          onRetry={() =>
-            page.search.performSearch(
-              page.search.searchKeyword,
-              page.search.searchEngines,
-            )
-          }
-        />
-      )}
-
-      {page.results.searchResults &&
-        (page.results.searchResults.length ? (
-          <SearchResultsList
-            totalCount={page.results.searchResults.length}
-            groupCount={page.results.groups.length}
-            allGroupsCollapsed={page.results.allGroupsCollapsed}
-            onToggleAllGroups={page.results.handleToggleAllGroups}
-            groups={page.results.groups}
-            collapsedGroups={page.results.collapsedGroups}
-            onToggleGroup={page.results.toggleGroup}
-            onCopyMagnet={page.results.handleCopyMagnet}
-            onPlay={page.results.handlePlay}
-          />
-        ) : (
-          <Card className="ani-card">
-            <CardContent>
-              <Empty>
-                <EmptyContent>
-                  <EmptyTitle>未找到相关资源</EmptyTitle>
-                  <EmptyDescription>请换个关键词试试</EmptyDescription>
-                </EmptyContent>
-              </Empty>
-            </CardContent>
-          </Card>
-        ))}
+      {StatusPanel()}
     </div>
   );
 }
