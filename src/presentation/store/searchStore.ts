@@ -1,14 +1,19 @@
 import { create } from "zustand";
+import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 
 // 未在标题中显式标注字幕组前缀的结果归入该组，并恒排最末
 const UNKNOWN_GROUP_LABEL = "未标注";
 
 export interface SearchFilter {
+  keyword: string;
+  searchEngines: TorrentSearchEngine[];
   pubDatePreset: "all" | "24h" | "week" | "month";
 }
 
 export const DEFAULT_FILTER: SearchFilter = {
+  keyword: "",
+  searchEngines: ["anibt"],
   pubDatePreset: "all",
 };
 
@@ -64,6 +69,9 @@ interface SearchStoreState {
   toggleGroup: (name: string) => void;
   collapseAllGroups: (groupNames: string[]) => void;
   expandAllGroups: () => void;
+  setKeyword: (keyword: string) => void;
+  setSearchEngines: (engines: TorrentSearchEngine[]) => void;
+  setPubDatePreset: (preset: SearchFilter["pubDatePreset"]) => void;
   setFilter: (filter: SearchFilter) => void;
   resetFilter: () => void;
   reset: () => void;
@@ -93,6 +101,11 @@ export const useSearchStore = create<SearchStoreState>()((set) => ({
   collapseAllGroups: (groupNames) =>
     set({ collapsedGroups: new Set(groupNames) }),
   expandAllGroups: () => set({ collapsedGroups: new Set() }),
+  setKeyword: (keyword) => set((s) => ({ filter: { ...s.filter, keyword } })),
+  setSearchEngines: (engines) =>
+    set((s) => ({ filter: { ...s.filter, searchEngines: engines } })),
+  setPubDatePreset: (preset) =>
+    set((s) => ({ filter: { ...s.filter, pubDatePreset: preset } })),
   setFilter: (filter) => set({ filter }),
   resetFilter: () => set({ filter: DEFAULT_FILTER }),
   reset: () => set(initialState),

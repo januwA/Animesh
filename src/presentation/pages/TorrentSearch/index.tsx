@@ -52,7 +52,7 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
         onSubmit={page.search.handleSearch}
       />
 
-      <FilterForm onFilterChange={page.filter.setFilter} />
+      <FilterForm />
 
       <SearchHistory
         history={page.searchHistory.history}

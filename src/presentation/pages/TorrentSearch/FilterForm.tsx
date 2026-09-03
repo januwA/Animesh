@@ -3,6 +3,7 @@ import { ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/presentation/components/ui/button";
 import {
   Collapsible,
@@ -19,8 +20,7 @@ import {
   NativeSelectOption,
 } from "@/presentation/components/ui/native-select";
 import { cn } from "@/presentation/lib/utils";
-import type { SearchFilter } from "@/presentation/store/searchStore";
-import { DEFAULT_FILTER } from "@/presentation/store/searchStore";
+import { useSearchStore } from "@/presentation/store/searchStore";
 
 const filterFormSchema = z.object({
   pubDatePreset: z.enum(["all", "24h", "week", "month"]),
@@ -28,28 +28,26 @@ const filterFormSchema = z.object({
 
 type FilterFormValues = z.infer<typeof filterFormSchema>;
 
-function toSearchFilter(values: FilterFormValues): SearchFilter {
-  return { pubDatePreset: values.pubDatePreset };
-}
+export function FilterForm() {
+  const { pubDatePreset, setPubDatePreset } = useSearchStore(
+    useShallow((s) => ({
+      pubDatePreset: s.filter.pubDatePreset,
+      setPubDatePreset: s.setPubDatePreset,
+    })),
+  );
 
-interface FilterFormProps {
-  onFilterChange: (filter: SearchFilter) => void;
-}
-
-export function FilterForm({ onFilterChange }: FilterFormProps) {
   const form = useForm<FilterFormValues>({
     resolver: zodResolver(filterFormSchema),
-    defaultValues: { pubDatePreset: DEFAULT_FILTER.pubDatePreset },
+    defaultValues: { pubDatePreset },
   });
 
-  const pubDatePreset = form.watch("pubDatePreset");
+  const watchedPreset = form.watch("pubDatePreset");
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: pubDatePreset 是触发过滤的必要依赖
   useEffect(() => {
-    onFilterChange(toSearchFilter(form.getValues()));
-  }, [pubDatePreset, onFilterChange, form]);
+    setPubDatePreset(watchedPreset);
+  }, [watchedPreset, setPubDatePreset]);
 
-  const hasActiveFilter = pubDatePreset !== "all";
+  const hasActiveFilter = watchedPreset !== "all";
 
   const handleReset = () => {
     form.reset({ pubDatePreset: "all" });

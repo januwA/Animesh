@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useShallow } from "zustand/react/shallow";
 import type { SearchTorrentsUseCase } from "@/application/torrent/SearchTorrentsUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import {
@@ -84,10 +85,30 @@ export function useTorrentSearchPage(
   const [, setSearchParams] = useSearchParams();
   const { searchTorrentsUseCase } = deps;
 
-  const searchResults = useSearchStore((s) => s.searchResults);
-  const setSearchResults = useSearchStore((s) => s.setSearchResults);
-  const filter = useSearchStore((s) => s.filter);
-  const setFilter = useSearchStore((s) => s.setFilter);
+  const {
+    searchResults,
+    setSearchResults,
+    filter,
+    setKeyword,
+    setSearchEngines,
+    collapsedGroups,
+    toggleGroup,
+    collapseAllGroups,
+    expandAllGroups,
+  } = useSearchStore(
+    useShallow((s) => ({
+      searchResults: s.searchResults,
+      setSearchResults: s.setSearchResults,
+      filter: s.filter,
+      setFilter: s.setFilter,
+      setKeyword: s.setKeyword,
+      setSearchEngines: s.setSearchEngines,
+      collapsedGroups: s.collapsedGroups,
+      toggleGroup: s.toggleGroup,
+      collapseAllGroups: s.collapseAllGroups,
+      expandAllGroups: s.expandAllGroups,
+    })),
+  );
 
   const history = useSearchHistoryStore((s) => s.history);
   const addHistory = useSearchHistoryStore((s) => s.addHistory);
@@ -111,11 +132,6 @@ export function useTorrentSearchPage(
       onError: () => setSearchResults([]),
     },
   );
-
-  const collapsedGroups = useSearchStore((s) => s.collapsedGroups);
-  const toggleGroup = useSearchStore((s) => s.toggleGroup);
-  const collapseAllGroups = useSearchStore((s) => s.collapseAllGroups);
-  const expandAllGroups = useSearchStore((s) => s.expandAllGroups);
 
   const filteredResults = useMemo(
     () => filterResults(searchResults, filter),
@@ -142,10 +158,17 @@ export function useTorrentSearchPage(
   const form = useForm<TorrentSearchFormValues>({
     resolver: zodResolver(torrentSearchFormSchema),
     defaultValues: {
-      keyword: "",
-      searchEngines: ["anibt"],
+      keyword: filter.keyword,
+      searchEngines: filter.searchEngines,
     },
   });
+
+  const keywordValue = form.watch("keyword");
+  const enginesValue = form.watch("searchEngines");
+  useEffect(() => {
+    setKeyword(keywordValue);
+    setSearchEngines(enginesValue);
+  }, [keywordValue, enginesValue, setKeyword, setSearchEngines]);
 
   const performSearch = useCallback(
     (queryText: string, engines: TorrentSearchEngine[]) => {
@@ -226,9 +249,6 @@ export function useTorrentSearchPage(
       history,
       handleDeleteHistory,
       handleClearHistory,
-    },
-    filter: {
-      setFilter,
     },
     results: {
       searchResults: filteredResults,

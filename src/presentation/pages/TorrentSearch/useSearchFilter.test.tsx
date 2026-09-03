@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import type { SearchFilter } from "@/presentation/store/searchStore";
+import { DEFAULT_FILTER } from "@/presentation/store/searchStore";
 import { filterResults } from "./useSearchFilter";
 
 function makeItem(title: string, pubDate: string): SearchResultItem {
@@ -14,7 +15,9 @@ function makeItem(title: string, pubDate: string): SearchResultItem {
   };
 }
 
-const DEFAULT_FILTER: SearchFilter = { pubDatePreset: "all" };
+function makeFilter(overrides: Partial<SearchFilter> = {}): SearchFilter {
+  return { ...DEFAULT_FILTER, ...overrides };
+}
 
 describe("filterResults 过滤逻辑", () => {
   it("预设 all 不过滤", () => {
@@ -39,7 +42,7 @@ describe("filterResults 过滤逻辑", () => {
         makeItem("某番 02", "2026-06-30"),
         makeItem("某番 03", "2026-06-20"),
       ];
-      const result = filterResults(items, { pubDatePreset: "24h" });
+      const result = filterResults(items, makeFilter({ pubDatePreset: "24h" }));
       expect(result).toHaveLength(1);
     });
 
@@ -49,7 +52,10 @@ describe("filterResults 过滤逻辑", () => {
         makeItem("某番 02", "2026-06-28"),
         makeItem("某番 03", "2026-06-20"),
       ];
-      const result = filterResults(items, { pubDatePreset: "week" });
+      const result = filterResults(
+        items,
+        makeFilter({ pubDatePreset: "week" }),
+      );
       expect(result).toHaveLength(2);
     });
 
@@ -59,13 +65,16 @@ describe("filterResults 过滤逻辑", () => {
         makeItem("某番 02", "2026-06-15"),
         makeItem("某番 03", "2026-05-30"),
       ];
-      const result = filterResults(items, { pubDatePreset: "month" });
+      const result = filterResults(
+        items,
+        makeFilter({ pubDatePreset: "month" }),
+      );
       expect(result).toHaveLength(2);
     });
 
     it("无效日期字符串的结果被过滤掉", () => {
       const items = [makeItem("某番 01", "invalid-date")];
-      const result = filterResults(items, { pubDatePreset: "24h" });
+      const result = filterResults(items, makeFilter({ pubDatePreset: "24h" }));
       expect(result).toHaveLength(0);
     });
   });

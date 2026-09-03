@@ -104,21 +104,107 @@ describe("搜索全局状态 store", () => {
 
   it("应该能通过 setFilter 更新过滤条件", () => {
     const state = useSearchStore.getState();
-    state.setFilter({ pubDatePreset: "week" });
-    expect(useSearchStore.getState().filter).toEqual({ pubDatePreset: "week" });
+    state.setFilter({
+      keyword: "xxx",
+      searchEngines: ["dmhy"],
+      pubDatePreset: "week",
+    });
+    expect(useSearchStore.getState().filter).toEqual({
+      keyword: "xxx",
+      searchEngines: ["dmhy"],
+      pubDatePreset: "week",
+    });
 
-    state.setFilter({ pubDatePreset: "24h" });
-    expect(useSearchStore.getState().filter).toEqual({ pubDatePreset: "24h" });
+    state.setFilter({
+      keyword: "yyy",
+      searchEngines: ["nyaa"],
+      pubDatePreset: "24h",
+    });
+    expect(useSearchStore.getState().filter).toEqual({
+      keyword: "yyy",
+      searchEngines: ["nyaa"],
+      pubDatePreset: "24h",
+    });
   });
 
   it("应该能通过 resetFilter 恢复默认过滤条件", () => {
     const state = useSearchStore.getState();
-    state.setFilter({ pubDatePreset: "month" });
+    state.setFilter({
+      keyword: "xxx",
+      searchEngines: ["dmhy"],
+      pubDatePreset: "month",
+    });
     expect(useSearchStore.getState().filter).toEqual({
+      keyword: "xxx",
+      searchEngines: ["dmhy"],
       pubDatePreset: "month",
     });
 
     state.resetFilter();
-    expect(useSearchStore.getState().filter).toEqual({ pubDatePreset: "all" });
+    expect(useSearchStore.getState().filter).toEqual({
+      keyword: "",
+      searchEngines: ["anibt"],
+      pubDatePreset: "all",
+    });
+  });
+
+  it("应该能通过 setKeyword 更新关键词", () => {
+    const state = useSearchStore.getState();
+    state.setKeyword("柯南");
+    expect(useSearchStore.getState().filter.keyword).toBe("柯南");
+
+    state.setKeyword("海贼王");
+    expect(useSearchStore.getState().filter.keyword).toBe("海贼王");
+  });
+
+  it("应该能通过 setSearchEngines 更新搜索引擎列表", () => {
+    const state = useSearchStore.getState();
+    state.setSearchEngines(["dmhy", "nyaa"]);
+    expect(useSearchStore.getState().filter.searchEngines).toEqual([
+      "dmhy",
+      "nyaa",
+    ]);
+
+    state.setSearchEngines(["mikan"]);
+    expect(useSearchStore.getState().filter.searchEngines).toEqual(["mikan"]);
+  });
+
+  it("应该能通过 setPubDatePreset 更新发布日期预设", () => {
+    const state = useSearchStore.getState();
+    state.setPubDatePreset("week");
+    expect(useSearchStore.getState().filter.pubDatePreset).toBe("week");
+
+    state.setPubDatePreset("24h");
+    expect(useSearchStore.getState().filter.pubDatePreset).toBe("24h");
+  });
+
+  it("setKeyword/setSearchEngines/setPubDatePreset 应只更新对应子字段", () => {
+    const state = useSearchStore.getState();
+    state.setFilter({
+      keyword: "柯南",
+      searchEngines: ["dmhy"],
+      pubDatePreset: "week",
+    });
+
+    state.setKeyword("海贼王");
+    expect(useSearchStore.getState().filter).toEqual({
+      keyword: "海贼王",
+      searchEngines: ["dmhy"],
+      pubDatePreset: "week",
+    });
+
+    state.setSearchEngines(["nyaa"]);
+    expect(useSearchStore.getState().filter).toEqual({
+      keyword: "海贼王",
+      searchEngines: ["nyaa"],
+      pubDatePreset: "week",
+    });
+
+    state.setPubDatePreset("month");
+    expect(useSearchStore.getState().filter).toEqual({
+      keyword: "海贼王",
+      searchEngines: ["nyaa"],
+      pubDatePreset: "month",
+    });
   });
 });

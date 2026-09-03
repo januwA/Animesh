@@ -10,6 +10,7 @@ import {
 } from "@/domain/torrent/TorrentEngines";
 import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { useSearchHistoryStore } from "@/presentation/store/searchHistoryStore";
+import { useSearchStore } from "@/presentation/store/searchStore";
 import { resetAppStores } from "@/test/store-reset";
 import type { UseTorrentSearchPageDeps } from "./useTorrentSearchPage";
 import { useTorrentSearchPage } from "./useTorrentSearchPage";
@@ -519,11 +520,6 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     ).toBe(callsBeforeBack);
   });
 
-  it("filter.setFilter 应暴露在返回值中", async () => {
-    const { result } = await renderPage();
-    expect(typeof result.current.filter.setFilter).toBe("function");
-  });
-
   it("设置时间过滤后 filteredResults 应只包含时间范围内的项", async () => {
     const NOW = new Date("2026-07-01T12:00:00Z").getTime();
     vi.spyOn(Date, "now").mockReturnValue(NOW);
@@ -549,7 +545,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
       expect(result.current.results.searchResults).toHaveLength(2),
     );
 
-    act(() => result.current.filter.setFilter({ pubDatePreset: "week" }));
+    act(() => useSearchStore.getState().setPubDatePreset("week"));
 
     expect(result.current.results.searchResults).toHaveLength(1);
 
@@ -583,7 +579,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     );
     await waitFor(() => expect(result.current.results.groups).toHaveLength(2));
 
-    act(() => result.current.filter.setFilter({ pubDatePreset: "week" }));
+    act(() => useSearchStore.getState().setPubDatePreset("week"));
 
     expect(result.current.results.searchResults).toHaveLength(1);
     expect(result.current.results.groups).toHaveLength(1);
