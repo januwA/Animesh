@@ -173,6 +173,101 @@ describe("TranslationPage 翻译设置页面", () => {
     });
   });
 
+  it("选择 AI 配置后应正确设置 aiConfigAlias", async () => {
+    const user = userEvent.setup();
+    const execute = vi.fn().mockResolvedValue(undefined);
+    renderPage({
+      getTranslationConfigUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          target_lang: "zh-CN",
+          provider: "google",
+          ai_config_alias: null,
+        }),
+      },
+      getAiConfigsUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          aiConfigs: [
+            {
+              alias: "DeepSeek",
+              api_endpoint: "http://test",
+              api_key: "sk-test",
+              ai_model: "deepseek",
+            },
+          ],
+        }),
+      },
+      setTranslationConfigUseCase: { execute },
+    } as unknown as DIContainer);
+
+    await waitFor(() => {
+      expect(screen.getByText("翻译提供者")).toBeInTheDocument();
+    });
+
+    await user.selectOptions(
+      screen.getByDisplayValue("Google Translate (免费)"),
+      "ai",
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("AI 配置")).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByDisplayValue("请选择"), "DeepSeek");
+
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => {
+      expect(execute).toHaveBeenCalledWith({
+        target_lang: "zh-CN",
+        provider: "ai",
+        ai_config_alias: "DeepSeek",
+      });
+    });
+  });
+
+  it("AI 配置选择空值时应设置 aiConfigAlias 为 null", async () => {
+    const user = userEvent.setup();
+    const execute = vi.fn().mockResolvedValue(undefined);
+    renderPage({
+      getTranslationConfigUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          target_lang: "zh-CN",
+          provider: "ai",
+          ai_config_alias: "DeepSeek",
+        }),
+      },
+      getAiConfigsUseCase: {
+        execute: vi.fn().mockResolvedValue({
+          aiConfigs: [
+            {
+              alias: "DeepSeek",
+              api_endpoint: "http://test",
+              api_key: "sk-test",
+              ai_model: "deepseek",
+            },
+          ],
+        }),
+      },
+      setTranslationConfigUseCase: { execute },
+    } as unknown as DIContainer);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("DeepSeek")).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByDisplayValue("DeepSeek"), "");
+
+    await user.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => {
+      expect(execute).toHaveBeenCalledWith({
+        target_lang: "zh-CN",
+        provider: "ai",
+        ai_config_alias: null,
+      });
+    });
+  });
+
   it("保存失败时应显示错误提示", async () => {
     const user = userEvent.setup();
     const execute = vi.fn().mockRejectedValue(new Error("网络错误"));
