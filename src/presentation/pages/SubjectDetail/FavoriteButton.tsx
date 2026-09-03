@@ -1,4 +1,3 @@
-import { Background } from "ajanuw-context";
 import { Heart } from "lucide-react";
 import { useState } from "react";
 import type { AddFavoriteUseCase } from "@/application/collection/AddFavoriteUseCase";
@@ -6,6 +5,7 @@ import type { GetFavoriteStatusUseCase } from "@/application/collection/GetFavor
 import type { RemoveFavoriteUseCase } from "@/application/collection/RemoveFavoriteUseCase";
 import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { Button } from "@/presentation/components/ui/button";
+import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { useCollectionsStore } from "@/presentation/store/collectionsStore";
 
@@ -40,30 +40,49 @@ export function FavoriteButton({
   const addItem = useCollectionsStore((s) => s.addItem);
   const removeItem = useCollectionsStore((s) => s.removeItem);
 
-  const handleClick = async () => {
+  const addMutation = useMutation<void, void>(
+    (ctx) =>
+      addFavoriteUseCase.execute(ctx, {
+        subjectId: subject.id,
+        platform,
+        name: subject.name,
+        imageUrl: subject.image,
+      }),
+    {
+      onSuccess: () => {
+        addItem({
+          subjectId: subject.id,
+          platform,
+          name: subject.name,
+          imageUrl: subject.image,
+        });
+        refetch();
+      },
+    },
+  );
+
+  const removeMutation = useMutation<void, void>(
+    (ctx) =>
+      removeFavoriteUseCase.execute(ctx, {
+        subjectId: subject.id,
+        platform,
+      }),
+    {
+      onSuccess: () => {
+        removeItem(subject.id, platform);
+        refetch();
+      },
+    },
+  );
+
+  const handleClick = () => {
     const next = !favorited;
     setOptimistic(next);
     if (next) {
-      await addFavoriteUseCase.execute(Background, {
-        subjectId: subject.id,
-        platform,
-        name: subject.name,
-        imageUrl: subject.image,
-      });
-      addItem({
-        subjectId: subject.id,
-        platform,
-        name: subject.name,
-        imageUrl: subject.image,
-      });
+      addMutation.execute();
     } else {
-      await removeFavoriteUseCase.execute(Background, {
-        subjectId: subject.id,
-        platform,
-      });
-      removeItem(subject.id, platform);
+      removeMutation.execute();
     }
-    refetch();
   };
 
   return (
