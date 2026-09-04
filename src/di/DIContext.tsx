@@ -25,7 +25,6 @@ import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { GetAiConfigsUseCase } from "../application/settings/GetAiConfigsUseCase";
 import { GetDownloadDirUseCase } from "../application/settings/GetDownloadDirUseCase";
 import { GetProxyUseCase } from "../application/settings/GetProxyUseCase";
-import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { GetSpeedLimitsUseCase } from "../application/settings/GetSpeedLimitsUseCase";
 import { GetTranslationConfigUseCase } from "../application/settings/GetTranslationConfigUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
@@ -103,7 +102,6 @@ export interface DIContainer {
   getLocalIpUseCase: GetLocalIpUseCase;
   getVideoMetadataUseCase: GetVideoMetadataUseCase;
 
-  getSettingsUseCase: GetSettingsUseCase;
   selectDirectoryUseCase: SelectDirectoryUseCase;
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
@@ -163,7 +161,7 @@ export function createDIContainer({
     ? new TauriTorrentRepository(httpClient, cacheStore)
     : new HttpTorrentRepository(httpClient, cacheStore);
   const settingsRepository = isTauri
-    ? new TauriSettingsRepository()
+    ? new TauriSettingsRepository(cacheStore)
     : new HttpSettingsRepository(httpClient);
   const bangumiRepository = new HttpBangumiRepository(httpClient, cacheStore);
   const collectionRepository = isTauri
@@ -228,7 +226,6 @@ export function createDIContainer({
     torrentRepository,
   );
 
-  const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
   const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
@@ -350,7 +347,6 @@ export function createDIContainer({
     getLocalIpUseCase,
     getVideoMetadataUseCase,
 
-    getSettingsUseCase,
     selectDirectoryUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,
