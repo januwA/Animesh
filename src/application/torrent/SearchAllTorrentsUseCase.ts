@@ -29,6 +29,72 @@ function toTime(pubDate: string): number | null {
   return Number.isNaN(time) ? null : time;
 }
 
+/** 归一化后的 title 是否已在 10 分钟去重窗口内出现过。 */
+function isDuplicate(
+  key: string,
+  time: number | null,
+  pubDatesByTitle: Map<string, number[]>,
+): boolean {
+  if (time === null) return false;
+  return (
+    pubDatesByTitle
+      .get(key)
+      ?.some((accepted) => Math.abs(accepted - time) <= PUB_DATE_WINDOW_MS) ===
+    true
+  );
+}
+
+/** 记录该 title 已保留的发布时间（首次建列表，其后追加）。 */
+function recordTime(
+  key: string,
+  time: number | null,
+  pubDatesByTitle: Map<string, number[]>,
+): void {
+  const acceptedTimes = pubDatesByTitle.get(key);
+  if (acceptedTimes === undefined) {
+    pubDatesByTitle.set(key, time !== null ? [time] : []);
+  } else if (time !== null) {
+    acceptedTimes.push(time);
+  }
+}
+
+/** 收集单个引擎条目的去重合并结果。 */
+function collectItems(
+  items: SearchResultItem[],
+  merged: SearchResultItem[],
+  pubDatesByTitle: Map<string, number[]>,
+): void {
+  for (const item of items) {
+    const key = normalizeTitle(item.title);
+    const time = toTime(item.pub_date);
+    if (isDuplicate(key, time, pubDatesByTitle)) continue;
+    recordTime(key, time, pubDatesByTitle);
+    merged.push(item);
+  }
+}
+
+/** 将各引擎的 settled 结果按归一化 title 去重合并（保留首个出现的条目）。 */
+function dedupeResults(results: PromiseSettledResult<SearchResultItem[]>[]) {
+  const merged: SearchResultItem[] = [];
+  const pubDatesByTitle = new Map<string, number[]>();
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    collectItems(result.value, merged, pubDatesByTitle);
+  }
+  return merged;
+}
+
+/** 全部引擎失败时抛出首个错误。 */
+function throwIfAllFailed(
+  results: PromiseSettledResult<SearchResultItem[]>[],
+): void {
+  const allFailed = results.every((r) => r.status === "rejected");
+  if (allFailed && results.length > 0) {
+    const firstError = results[0] as PromiseRejectedResult;
+    throw firstError.reason;
+  }
+}
+
 /**
  * 多引擎聚合搜索用例。
  *
@@ -52,39 +118,8 @@ export class SearchAllTorrentsUseCase {
       ),
     );
 
-    const merged: SearchResultItem[] = [];
-    const pubDatesByTitle = new Map<string, number[]>();
-
-    for (const result of results) {
-      if (result.status !== "fulfilled") continue;
-      for (const item of result.value) {
-        const key = normalizeTitle(item.title);
-        const time = toTime(item.pub_date);
-        const acceptedTimes = pubDatesByTitle.get(key);
-
-        const isDuplicate =
-          time !== null &&
-          acceptedTimes?.some(
-            (accepted) => Math.abs(accepted - time) <= PUB_DATE_WINDOW_MS,
-          ) === true;
-        if (isDuplicate) continue;
-
-        if (acceptedTimes === undefined) {
-          pubDatesByTitle.set(key, time !== null ? [time] : []);
-        } else if (time !== null) {
-          acceptedTimes.push(time);
-        }
-
-        merged.push(item);
-      }
-    }
-
-    const allFailed = results.every((r) => r.status === "rejected");
-    if (allFailed && results.length > 0) {
-      const firstError = results[0] as PromiseRejectedResult;
-      throw firstError.reason;
-    }
-
+    const merged = dedupeResults(results);
+    throwIfAllFailed(results);
     return merged;
   }
 }

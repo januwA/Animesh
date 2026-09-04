@@ -160,6 +160,54 @@ describe("SearchAllTorrentsUseCase 多引擎搜索并去重合并", () => {
     expect(results.map((r) => r.title)).toEqual(["yyy 第1集"]);
   });
 
+  it("非法 pub_date 的条目不参与去重、单独保留，且不影响后续时间记录", async () => {
+    vi.mocked(searchTorrentsUseCase.execute)
+      .mockResolvedValueOnce([makeItem("xxx 第1集", { pubDate: "not-a-date" })])
+      .mockResolvedValueOnce([
+        makeItem("xxx 第1集", { link: "b", pubDate: "2026-06-23T12:00:00Z" }),
+      ]);
+
+    const results = await useCase.execute(ctx, {
+      keyword: NonEmptyStringSchema.parse("xxx"),
+      engines: ["dmhy", "nyaa"],
+    });
+
+    // 非法 pub_date 无法解析 → 不触发去重，两条都应保留
+    expect(results).toHaveLength(2);
+  });
+
+  it("引擎列表为空时返回空结果且不抛错", async () => {
+    const results = await useCase.execute(ctx, {
+      keyword: NonEmptyStringSchema.parse("xxx"),
+      engines: [],
+    });
+
+    expect(searchTorrentsUseCase.execute).not.toHaveBeenCalled();
+    expect(results).toEqual([]);
+  });
+
+  it("已记录过合法时间的同 title 再次出现非法 pub_date 时走 no-op 并单独保留", async () => {
+    vi.mocked(searchTorrentsUseCase.execute)
+      .mockResolvedValueOnce([
+        makeItem("xxx 第1集", { pubDate: "2026-06-23T12:00:00Z" }),
+      ])
+      .mockResolvedValueOnce([
+        makeItem("xxx 第1集", { link: "b", pubDate: "not-a-date" }),
+      ]);
+
+    const results = await useCase.execute(ctx, {
+      keyword: NonEmptyStringSchema.parse("xxx"),
+      engines: ["dmhy", "nyaa"],
+    });
+
+    // 非法 pub_date 无法解析 → 不触发去重，也不污染已记录的合法时间，两条都保留
+    expect(results).toHaveLength(2);
+    expect(results.map((r) => r.link).sort()).toEqual([
+      "http://example.com/b",
+      "http://example.com/xxx 第1集",
+    ]);
+  });
+
   it("全部引擎失败时抛出首个错误", async () => {
     const firstError = new Error("first boom");
     vi.mocked(searchTorrentsUseCase.execute)
