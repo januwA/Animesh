@@ -181,7 +181,6 @@ export const AnilistEpisodesResponseSchema = z
       id: node.id,
       sort: node.episode,
       name: "",
-      duration: null as string | null,
       airdate: formatUnixToDate(node.airingAt),
     }));
     items.sort((a, b) => a.sort - b.sort);
@@ -291,60 +290,72 @@ export const AnilistSearchResponseSchema = z
     total: dto.data.Page.pageInfo.total,
   }));
 
-// ── 存储 Schema（用于缓存回读校验，与领域形状一致，无需 transform）────────
+// ── Ranked Subjects → RankedSubjectsPage ───────────────────────────────────
 
-export const AnilistCalendarItemStoredSchema = z.object({
+const AnilistRankedMediaSchema = z.object({
   id: z.number(),
-  name: z.string(),
-  image: z.string(),
-  rating: z.number(),
+  title: AnilistTitleSchema,
+  coverImage: AnilistCoverImageSchema,
+  averageScore: z.number().nullable().optional(),
 });
 
-export const AnilistCalendarDayStoredSchema = z.object({
-  weekday: z.object({ id: z.number() }),
-  items: z.array(AnilistCalendarItemStoredSchema),
-});
+export const AnilistRankedResponseSchema = z
+  .object({
+    data: z.object({
+      Page: z.object({
+        pageInfo: z.object({ total: z.number() }),
+        media: z.array(AnilistRankedMediaSchema),
+      }),
+    }),
+  })
+  .transform((dto) => ({
+    items: dto.data.Page.media.map((m) => ({
+      id: m.id,
+      name: pickTitle(m.title),
+      summary: "",
+      image: pickCoverImage(m.coverImage),
+      rating: (m.averageScore ?? 0) / 10,
+    })),
+    total: dto.data.Page.pageInfo.total,
+  }));
 
-export const AnilistCalendarStoredSchema = z.array(
-  AnilistCalendarDayStoredSchema,
-);
+// ── Next Season → AnimeSubject[] ───────────────────────────────────────────
 
-export const AnilistSubjectStoredSchema = z.object({
+const AnilistNextSeasonMediaSchema = z.object({
   id: z.number(),
-  name: z.string(),
-  summary: z.string(),
-  image: z.string(),
-  rating: z.number(),
-  date: z.string().nullable().optional(),
-  eps: z.number().nullable().optional(),
-  platform: z.string().nullable().optional(),
+  title: AnilistTitleSchema,
+  coverImage: AnilistCoverImageSchema,
+  averageScore: z.number().nullable().optional(),
+  startDate: AnilistStartDateSchema.nullable().optional(),
 });
 
-export const AnilistEpisodeStoredSchema = z.object({
-  id: z.number(),
-  sort: z.number(),
-  name: z.string(),
-  duration: z.string().nullable().optional(),
-  airdate: z.string().nullable().optional(),
-});
+export const AnilistNextSeasonResponseSchema = z
+  .object({
+    data: z.object({
+      Page: z.object({
+        pageInfo: z.object({ hasNextPage: z.boolean() }),
+        media: z.array(AnilistNextSeasonMediaSchema),
+      }),
+    }),
+  })
+  .transform((dto) => ({
+    hasNextPage: dto.data.Page.pageInfo.hasNextPage,
+    items: dto.data.Page.media.map((m) => {
+      const startDate = m.startDate;
+      const date =
+        startDate?.year && startDate?.month && startDate?.day
+          ? `${startDate.year}-${String(startDate.month).padStart(2, "0")}-${String(startDate.day).padStart(2, "0")}`
+          : null;
 
-export const AnilistEpisodesStoredSchema = z.object({
-  items: z.array(AnilistEpisodeStoredSchema),
-  total: z.number(),
-});
-
-export const AnilistCharacterStoredSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  relation: z.string(),
-  image: z.string(),
-  actors: z.array(z.object({ name: z.string() })),
-});
-
-export const AnilistPersonStoredSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  relation: z.string(),
-  eps: z.string(),
-  image: z.string(),
-});
+      return {
+        id: m.id,
+        name: pickTitle(m.title),
+        summary: "",
+        image: pickCoverImage(m.coverImage),
+        rating: (m.averageScore ?? 0) / 10,
+        date,
+        eps: null as number | null,
+        platform: null as string | null,
+      };
+    }),
+  }));

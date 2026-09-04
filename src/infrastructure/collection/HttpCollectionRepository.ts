@@ -1,3 +1,4 @@
+import { Background, type Context } from "ajanuw-context";
 import { z } from "zod";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { CollectionRepository } from "@/domain/collection/CollectionRepository";
@@ -6,7 +7,7 @@ import {
   CollectionRecordSchema,
   toFavoriteItem,
 } from "@/domain/collection/CollectionSchemas";
-import type { HttpClient } from "../http/HttpClient";
+import type { HttpClient } from "@/domain/http/HttpClient";
 
 const baseUrl = import.meta.env.PROD
   ? "/api"
@@ -17,6 +18,7 @@ export class HttpCollectionRepository implements CollectionRepository {
 
   async getAll(): Promise<FavoriteItem[]> {
     const raw = await this.httpClient.getJson<unknown>(
+      Background,
       `${baseUrl}/collections`,
     );
     const result = z.array(CollectionRecordSchema).safeParse(raw);
@@ -38,8 +40,8 @@ export class HttpCollectionRepository implements CollectionRepository {
     );
   }
 
-  async add(item: Omit<FavoriteItem, "addedAt">): Promise<void> {
-    await this.httpClient.request(`${baseUrl}/collections`, {
+  async add(ctx: Context, item: Omit<FavoriteItem, "addedAt">): Promise<void> {
+    await this.httpClient.request(ctx, `${baseUrl}/collections`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -53,8 +55,13 @@ export class HttpCollectionRepository implements CollectionRepository {
     });
   }
 
-  async remove(subjectId: number, platform: AnimePlatform): Promise<void> {
+  async remove(
+    ctx: Context,
+    subjectId: number,
+    platform: AnimePlatform,
+  ): Promise<void> {
     await this.httpClient.request(
+      ctx,
       `${baseUrl}/collections/${platform}/${subjectId}`,
       { method: "DELETE" },
     );

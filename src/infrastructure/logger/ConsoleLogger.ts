@@ -1,11 +1,4 @@
-import { type Logger, LogLevel } from "@/domain/logger/logger";
-
-const LogPriority: Record<LogLevel, number> = {
-  [LogLevel.DEBUG]: 0,
-  [LogLevel.INFO]: 1,
-  [LogLevel.WARN]: 2,
-  [LogLevel.ERROR]: 3,
-};
+import { type Logger, LogLevel, LogPriority } from "@/domain/logger/logger";
 
 const logConsole = globalThis.console;
 

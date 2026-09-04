@@ -3,12 +3,19 @@
   - 发现死代码或不可达逻辑：如果某段代码逻辑在现有业务场景下确实无法被触发或验证（例如冗余的分支判断、已废弃的兼容代码），需先通过代码提交历史或需求文档确认它不是预留的边界处理或未来功能占位，再将其删除，而不是强行为其编写测试。
   - 发现难以测试的逻辑：如果某段逻辑需要引入大量 mock（例如深度依赖外部系统、随机性、时间等）才能测试，且该逻辑本身简单、出错概率低、覆盖收益有限，可用 `/* v8 ignore next */`（单行）或 `/* v8 ignore start */ ... /* v8 ignore stop */`（多行）注释跳过覆盖率统计，而不必强行 mock。
   - 删除代码或添加 v8 ignore 前，需在提交说明或注释中简要说明原因，避免后续维护者误解为遗漏测试。
+  - 避免冗余防御：同一约束若有多处实现（例如 `disabled` 属性 + `if` 守卫），只保留一个作为单一职责来源，删除冗余分支，不要为不可达逻辑写测试或 `v8 ignore`。
   - Hook 依赖链测试原则：当 useA → useB → useC → useD 形成依赖链时，测试 useA 应 mock 直接依赖（useB），只测 useA 自身逻辑（即拿到 useB 返回值后做了什么处理），不关心下层 useB/useC/useD 的内部实现。每个 hook 的单测只验证其自身的数据转换、状态管理和副作用。
   - 组件与 Hook 测试边界：组件使用 hook 时，组件测试应 mock 该 hook，只测组件的渲染逻辑和用户交互行为；hook 的内部逻辑由其自身的单测覆盖，无需在组件测试中重复验证。
     - 示例（`src/presentation/components/Layout.test.tsx` 测 `MainLayout` 时 mock `useGlobalEffects`）：
       ```tsx
-      vi.mock("../hooks/useGlobalEffects", () => ({
+      vi.mock(import("../hooks/useGlobalEffects"), () => ({
         useGlobalEffects: vi.fn(),
+      }));
+      ```
+    - 组件依赖的子组件内部有深层 hook/DI 依赖链时，若测试不关心该子组件行为，直接 mock 子组件隔离依赖，不要为了提供 DI 而 mock 整个容器：
+      ```tsx
+      vi.mock(import("@/presentation/components/TranslatableText"), () => ({
+        TranslatableText: vi.fn(({ text }) => <span>{text}</span>),
       }));
       ```
   - 所有自定义 React Context 应同时导出 ContextType（类型）和 Context（值），供测试通过 `<XxxContext value={mock}>` 直接注入桩数据（React 19+ 语法），无需创建 Provider 包裹层。

@@ -3,6 +3,7 @@
 import path from "node:path";
 import process from "node:process";
 
+import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -16,9 +17,22 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react(), process.env.VITEST !== "true" && tailwindcss()].filter(
-      Boolean,
-    ),
+    plugins: [
+      babel({
+        presets: [
+          {
+            preset: () => ({
+              plugins: [
+                ["@babel/plugin-proposal-decorators", { version: "2023-11" }],
+              ],
+            }),
+            rolldown: { filter: { code: "@" } },
+          },
+        ],
+      }),
+      react(),
+      process.env.VITEST !== "true" && tailwindcss(),
+    ].filter(Boolean),
     envPrefix: ["VITE_", "TAURI_ENV_*"],
     resolve: {
       alias: {
@@ -70,11 +84,11 @@ export default defineConfig(({ mode }) => {
           "src/presentation/components/MpegtsVideo.tsx",
           "src/presentation/pages/*/index.tsx",
           "src/di/**",
-          "src/domain/**",
           "src/generated/**",
           "src/infrastructure/**",
         ],
         thresholds: {
+          perFile: true, // 要求每个文件单独满足下面的阈值,而不是汇总
           lines: 100,
           functions: 100,
           branches: 100,

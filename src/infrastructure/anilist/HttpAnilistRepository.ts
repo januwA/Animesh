@@ -1,6 +1,9 @@
 import type { Context } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import type {
   AnimeRepository,
+  NextSeasonSubjectsPage,
+  NextSeasonSubjectsParams,
   RankedSubjectsPage,
 } from "@/domain/anime/AnimeRepository";
 import type {
@@ -12,123 +15,30 @@ import type {
   AnimeSubjectSearchParams,
   AnimeSubjectSearchResult,
 } from "@/domain/anime/AnimeSchemas";
-import type { HttpClient } from "../http/HttpClient";
+import type { HttpClient } from "@/domain/http/HttpClient";
+import type { CacheStore } from "@/domain/storage/CacheStore";
+import { Cached } from "../cache/CachedDecorator";
 import {
   AnilistCalendarResponseSchema,
   AnilistCharactersResponseSchema,
   AnilistEpisodesResponseSchema,
+  AnilistNextSeasonResponseSchema,
+  AnilistRankedResponseSchema,
   AnilistResponseSchema,
   AnilistSearchResponseSchema,
   AnilistStaffResponseSchema,
   AnilistSubjectResponseSchema,
 } from "./AnilistSchemas";
+import AIRING_SCHEDULE_QUERY from "./queries/airingSchedule.graphql?raw";
+import MEDIA_CHARACTERS_QUERY from "./queries/mediaCharacters.graphql?raw";
+import MEDIA_DETAIL_QUERY from "./queries/mediaDetail.graphql?raw";
+import MEDIA_EPISODES_QUERY from "./queries/mediaEpisodes.graphql?raw";
+import MEDIA_STAFF_QUERY from "./queries/mediaStaff.graphql?raw";
+import NEXT_SEASON_MEDIA_QUERY from "./queries/nextSeasonMedia.graphql?raw";
+import RANKED_MEDIA_QUERY from "./queries/rankedMedia.graphql?raw";
+import SEARCH_MEDIA_QUERY from "./queries/searchMedia.graphql?raw";
 
 const ANILIST_ENDPOINT = "https://graphql.anilist.co";
-
-const AIRING_SCHEDULE_QUERY = `
-query ($startDate: Int!, $endDate: Int!, $page: Int!) {
-  Page(page: $page, perPage: 50) {
-    pageInfo { hasNextPage }
-    airingSchedules(
-      airingAt_greater: $startDate
-      airingAt_lesser: $endDate
-      sort: TIME
-    ) {
-      id
-      airingAt
-      episode
-      mediaId
-      media {
-        id
-        title { romaji english native userPreferred }
-        coverImage { large medium color }
-        averageScore
-      }
-    }
-  }
-}
-`;
-
-const MEDIA_DETAIL_QUERY = `
-query ($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    id
-    title { romaji english native userPreferred }
-    description(asHtml: false)
-    coverImage { large medium color }
-    averageScore
-    episodes
-    startDate { year month day }
-    format
-    status
-  }
-}
-`;
-
-const MEDIA_EPISODES_QUERY = `
-query ($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    airingSchedule(notYetAired: false, page: 1, perPage: 250) {
-      nodes {
-        id
-        airingAt
-        episode
-      }
-    }
-  }
-}
-`;
-
-const MEDIA_CHARACTERS_QUERY = `
-query ($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    characters(sort: ROLE) {
-      edges {
-        role
-        node {
-          id
-          name { full }
-          image { large }
-        }
-        voiceActors(language: JAPANESE) {
-          name { full }
-        }
-      }
-    }
-  }
-}
-`;
-
-const MEDIA_STAFF_QUERY = `
-query ($id: Int!) {
-  Media(id: $id, type: ANIME) {
-    staff(sort: RELEVANCE) {
-      edges {
-        role
-        node {
-          id
-          name { full }
-          image { large }
-        }
-      }
-    }
-  }
-}
-`;
-
-const SEARCH_MEDIA_QUERY = `
-query ($search: String, $page: Int, $perPage: Int) {
-  Page(page: $page, perPage: $perPage) {
-    pageInfo { total }
-    media(search: $search, type: ANIME) {
-      id
-      title { romaji english native userPreferred }
-      coverImage { large medium color }
-      averageScore
-    }
-  }
-}
-`;
 
 function getWeekRange(): { startDate: number; endDate: number } {
   const now = new Date();
@@ -149,13 +59,16 @@ function getWeekRange(): { startDate: number; endDate: number } {
   };
 }
 
-function notImplemented(method: string): never {
-  throw new Error(`AnilistRepository.${method} is not implemented`);
-}
-
 export class HttpAnilistRepository implements AnimeRepository {
-  constructor(private readonly client: HttpClient) {}
+  constructor(
+    private readonly client: HttpClient,
+    /** @internal accessed by @Cached decorator */
+    public readonly store: CacheStore,
+  ) {}
 
+  @Cached({
+    ttl: new Duration({ days: 7 }),
+  })
   async getCalendar(ctx: Context): Promise<AnimeCalendarDay[]> {
     const { startDate, endDate } = getWeekRange();
     const allSchedules = await this.fetchAiringSchedules(
@@ -188,26 +101,17 @@ export class HttpAnilistRepository implements AnimeRepository {
     const allSchedules: unknown[] = [];
     let page = 1;
     let hasNextPage = true;
-
-    try {
-      while (hasNextPage) {
-        const pageData = await this.fetchAiringSchedulePage(
-          ctx,
-          startDate,
-          endDate,
-          page,
-        );
-        allSchedules.push(...pageData.airingSchedules);
-        hasNextPage = pageData.hasNextPage;
-        page++;
-      }
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch AniList calendar", { cause: err });
+    while (hasNextPage) {
+      const pageData = await this.fetchAiringSchedulePage(
+        ctx,
+        startDate,
+        endDate,
+        page,
+      );
+      allSchedules.push(...pageData.airingSchedules);
+      hasNextPage = pageData.hasNextPage;
+      page++;
     }
-
     return allSchedules;
   }
 
@@ -217,8 +121,7 @@ export class HttpAnilistRepository implements AnimeRepository {
     endDate: number,
     page: number,
   ): Promise<{ hasNextPage: boolean; airingSchedules: unknown[] }> {
-    const response = await this.client.request(ANILIST_ENDPOINT, {
-      ctx,
+    const response = await this.client.request(ctx, ANILIST_ENDPOINT, {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -249,35 +152,46 @@ export class HttpAnilistRepository implements AnimeRepository {
     query: string,
     variables: Record<string, unknown>,
   ): Promise<unknown> {
-    try {
-      const response = await this.client.request(ANILIST_ENDPOINT, {
-        ctx,
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ query, variables }),
-      });
-      return await response.json();
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch AniList data", { cause: err });
-    }
+    const response = await this.client.request(ctx, ANILIST_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+    return await response.json();
   }
 
-  getRankedSubjects(
-    _ctx: Context,
-    _year: number,
-    _month: number,
-    _limit?: number,
-    _offset?: number,
+  @Cached({
+    ttl: new Duration({ days: 1 }),
+  })
+  async getRankedSubjects(
+    ctx: Context,
+    params: Parameters<AnimeRepository["getRankedSubjects"]>[1],
   ): Promise<RankedSubjectsPage> {
-    notImplemented("getRankedSubjects");
+    const startDateGreater = params.year * 10000 + params.month * 100 + 1;
+    const startDateLesser = params.year * 10000 + params.month * 100 + 31;
+
+    const data = await this.graphqlRequest(ctx, RANKED_MEDIA_QUERY, {
+      startDateGreater,
+      startDateLesser,
+      page: 1,
+      perPage: 20,
+    });
+
+    const result = AnilistRankedResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Anilist ranked response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+  })
   async getSubject(ctx: Context, subjectId: string): Promise<AnimeSubject> {
     const data = await this.graphqlRequest(ctx, MEDIA_DETAIL_QUERY, {
       id: Number(subjectId),
@@ -291,6 +205,9 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 1 }),
+  })
   async getEpisodes(
     ctx: Context,
     subjectId: string,
@@ -309,6 +226,9 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+  })
   async getSubjectPersons(
     ctx: Context,
     subjectId: string,
@@ -325,6 +245,9 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+  })
   async getSubjectCharacters(
     ctx: Context,
     subjectId: string,
@@ -341,6 +264,9 @@ export class HttpAnilistRepository implements AnimeRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ hours: 12 }),
+  })
   async searchSubjects(
     ctx: Context,
     params: AnimeSubjectSearchParams,
@@ -354,6 +280,32 @@ export class HttpAnilistRepository implements AnimeRepository {
     const result = AnilistSearchResponseSchema.safeParse(data);
     if (!result.success) {
       throw new Error("Anilist search response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  @Cached({
+    ttl: new Duration({ days: 1 }),
+  })
+  async getNextSeasonSubjects(
+    ctx: Context,
+    params: NextSeasonSubjectsParams,
+  ): Promise<NextSeasonSubjectsPage> {
+    const page = Math.floor(params.offset / params.limit) + 1;
+    const startDateGreater = params.year * 10000 + params.month * 100 + 1;
+    const startDateLesser = params.year * 10000 + params.month * 100 + 31;
+
+    const data = await this.graphqlRequest(ctx, NEXT_SEASON_MEDIA_QUERY, {
+      page,
+      perPage: params.limit,
+      startDateGreater,
+      startDateLesser,
+    });
+    const result = AnilistNextSeasonResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Anilist next season response structure mismatch", {
         cause: result.error,
       });
     }

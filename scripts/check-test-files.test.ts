@@ -3,7 +3,6 @@ import {
 	hasMatchingTest,
 	isDeclarationFile,
 	isExemptFile,
-	isPageIndexTestFile,
 	isSourceFile,
 	isTestFile,
 } from "./check-test-files";
@@ -32,40 +31,6 @@ describe("check-test-files 测试文件组织检查", () => {
 			expect(
 				hasMatchingTest("utils", ["utils.test.ts", "other.utils.test.ts"]),
 			).toBe(true);
-		});
-	});
-
-	describe("isPageIndexTestFile 禁止的页面集中测试", () => {
-		it("识别 pages 目录下的 index.test.tsx", () => {
-			expect(
-				isPageIndexTestFile(
-					"src/presentation/pages/TorrentSearch/index.test.tsx",
-				),
-			).toBe(true);
-		});
-
-		it("识别 pages 目录下的 index.test.ts", () => {
-			expect(
-				isPageIndexTestFile("src/presentation/pages/Player/index.test.ts"),
-			).toBe(true);
-		});
-
-		it("不识别非 pages 目录的 index.test.tsx", () => {
-			expect(isPageIndexTestFile("src/application/index.test.ts")).toBe(false);
-		});
-
-		it("不识别页面入口 index.tsx 本身", () => {
-			expect(
-				isPageIndexTestFile("src/presentation/pages/Player/index.tsx"),
-			).toBe(false);
-		});
-
-		it("不识别深层嵌套目录的 index.test.tsx", () => {
-			expect(
-				isPageIndexTestFile(
-					"src/presentation/pages/Player/components/index.test.tsx",
-				),
-			).toBe(false);
 		});
 	});
 

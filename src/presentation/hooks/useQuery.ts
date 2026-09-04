@@ -1,11 +1,21 @@
 import type { Context } from "ajanuw-context";
-import { Background, WithCancel } from "ajanuw-context";
+import {
+  Background,
+  Canceled,
+  WithCancel,
+  WithTimeout,
+  WithValue,
+} from "ajanuw-context";
+import type { Duration } from "ajanuw-duration";
 import type { DependencyList } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 
 export interface UseQueryOptions<T> {
   /** 是否启用请求，默认 true；为 false 时不会发起请求，loading 保持 false */
   enabled?: boolean;
+  /** 请求超时时间，超时后 context 会被取消 */
+  timeout?: Duration;
   /** 请求成功后的回调 */
   onSuccess?: (data: T) => void;
   /** 请求失败后的回调 */
@@ -47,9 +57,11 @@ export function useQuery<T>(
   const queryFnRef = useRef(queryFn);
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
+  const optionsRef = useRef(options);
   queryFnRef.current = queryFn;
   onSuccessRef.current = onSuccess;
   onErrorRef.current = onError;
+  optionsRef.current = options;
 
   const refetch = useCallback(() => {
     setVersion((v) => v + 1);
@@ -63,24 +75,27 @@ export function useQuery<T>(
     }
 
     let active = true;
-    const [ctx, cancel] = WithCancel(Background);
+    const [rawCtx, cancel] = optionsRef.current.timeout
+      ? WithTimeout(Background, optionsRef.current.timeout.inMilliseconds)
+      : WithCancel(Background);
+    const ctx = WithValue(rawCtx, TRACE_ID, crypto.randomUUID());
     setLoading(true);
     setError(null);
 
     (async () => {
       try {
         const result = await queryFnRef.current(ctx);
-        if (!active || ctx.err() !== null) return;
+        if (!active || ctx.err() === Canceled) return;
         setData(result);
         setError(null);
         onSuccessRef.current?.(result);
       } catch (err: unknown) {
-        if (!active || ctx.err() !== null) return;
+        if (!active || ctx.err() === Canceled) return;
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);
         onErrorRef.current?.(wrapped);
       } finally {
-        if (active && ctx.err() === null) {
+        if (active) {
           setLoading(false);
         }
       }

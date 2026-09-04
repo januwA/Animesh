@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import {
   type AiConfig,
   AiConfigSchema,
@@ -11,6 +12,7 @@ export class VerifyAiConnectionUseCase {
     const parsed = AiConfigSchema.parse(dto);
 
     const response = (await this.aiClient.post(
+      Background,
       parsed.api_endpoint,
       parsed.api_key,
       {

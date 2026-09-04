@@ -1,4 +1,4 @@
-use crate::domain::settings::{AiConfig, AppSettings, SettingsRepository};
+use crate::domain::settings::{AiConfig, AppSettings, SettingsRepository, TranslationConfig};
 use crate::error::CoreResult;
 use crate::infrastructure::db::AppDatabase;
 use sqlx::Row;
@@ -21,8 +21,8 @@ impl SqliteSettingsRepository {
     /// 此方法仅作为字段级更新的兜底，避免 NOT NULL 约束失败。
     async fn ensure_row_exists(&self) -> CoreResult<()> {
         sqlx::query(
-            "INSERT OR IGNORE INTO app_settings (id, download_dir, proxy, ai_configs, max_download_speed, max_upload_speed)
-             VALUES (1, '', NULL, NULL, NULL, NULL)",
+            "INSERT OR IGNORE INTO app_settings (id, download_dir, proxy, ai_configs, max_download_speed, max_upload_speed, translation)
+             VALUES (1, '', NULL, NULL, NULL, NULL, NULL)",
         )
         .execute(&self.pool)
         .await?;
@@ -34,7 +34,7 @@ impl SqliteSettingsRepository {
 impl SettingsRepository for SqliteSettingsRepository {
     async fn get(&self) -> CoreResult<Option<AppSettings>> {
         let row = sqlx::query(
-            "SELECT download_dir, proxy, ai_configs, max_download_speed, max_upload_speed
+            "SELECT download_dir, proxy, ai_configs, max_download_speed, max_upload_speed, translation
              FROM app_settings WHERE id = 1",
         )
         .fetch_optional(&self.pool)
@@ -43,6 +43,8 @@ impl SettingsRepository for SqliteSettingsRepository {
             None => Ok(None),
             Some(row) => {
                 let ai_configs = parse_ai_configs(row.try_get::<Option<String>, _>("ai_configs")?)?;
+                let translation =
+                    parse_translation(row.try_get::<Option<String>, _>("translation")?)?;
                 Ok(Some(AppSettings {
                     download_dir: row.try_get("download_dir")?,
                     proxy: row.try_get("proxy")?,
@@ -53,6 +55,7 @@ impl SettingsRepository for SqliteSettingsRepository {
                     max_upload_speed: row
                         .try_get::<Option<i64>, _>("max_upload_speed")?
                         .and_then(|v| v.try_into().ok()),
+                    translation,
                 }))
             }
         }
@@ -60,21 +63,24 @@ impl SettingsRepository for SqliteSettingsRepository {
 
     async fn upsert(&self, settings: &AppSettings) -> CoreResult<()> {
         let ai_configs_json = serialize_ai_configs(settings.ai_configs.as_deref())?;
+        let translation_json = serialize_translation(settings.translation.as_ref())?;
         sqlx::query(
-            "INSERT INTO app_settings (id, download_dir, proxy, ai_configs, max_download_speed, max_upload_speed)
-             VALUES (1, ?, ?, ?, ?, ?)
+            "INSERT INTO app_settings (id, download_dir, proxy, ai_configs, max_download_speed, max_upload_speed, translation)
+             VALUES (1, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO UPDATE SET
                 download_dir = excluded.download_dir,
                 proxy = excluded.proxy,
                 ai_configs = excluded.ai_configs,
                 max_download_speed = excluded.max_download_speed,
-                max_upload_speed = excluded.max_upload_speed",
+                max_upload_speed = excluded.max_upload_speed,
+                translation = excluded.translation",
         )
         .bind(&settings.download_dir)
         .bind(settings.proxy.as_deref())
         .bind(ai_configs_json)
         .bind(settings.max_download_speed.map(|v| v as i64))
         .bind(settings.max_upload_speed.map(|v| v as i64))
+        .bind(translation_json)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -143,6 +149,19 @@ impl SettingsRepository for SqliteSettingsRepository {
             .await?;
         Ok(())
     }
+
+    async fn update_translation_config(
+        &self,
+        config: Option<&TranslationConfig>,
+    ) -> CoreResult<()> {
+        self.ensure_row_exists().await?;
+        let json = serialize_translation(config)?;
+        sqlx::query("UPDATE app_settings SET translation = ? WHERE id = 1")
+            .bind(json)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
 }
 
 fn serialize_ai_configs(configs: Option<&[AiConfig]>) -> CoreResult<Option<String>> {
@@ -169,6 +188,24 @@ fn parse_ai_configs(raw: Option<String>) -> CoreResult<Option<Vec<AiConfig>>> {
     }
 }
 
+fn serialize_translation(config: Option<&TranslationConfig>) -> CoreResult<Option<String>> {
+    match config {
+        None => Ok(None),
+        Some(c) => Ok(Some(serde_json::to_string(c)?)),
+    }
+}
+
+fn parse_translation(raw: Option<String>) -> CoreResult<Option<TranslationConfig>> {
+    match raw {
+        None => Ok(None),
+        Some(s) if s.is_empty() => Ok(None),
+        Some(s) => {
+            let config: TranslationConfig = serde_json::from_str(&s)?;
+            Ok(Some(config))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,6 +225,7 @@ mod tests {
             ai_configs: None,
             max_download_speed: None,
             max_upload_speed: None,
+            translation: None,
         }
     }
 
@@ -217,6 +255,11 @@ mod tests {
             ai_configs: Some(sample_ai_configs()),
             max_download_speed: Some(256),
             max_upload_speed: Some(128),
+            translation: Some(TranslationConfig {
+                target_lang: "zh-CN".to_string(),
+                provider: crate::domain::settings::TranslationProvider::Google,
+                ai_config_alias: None,
+            }),
         };
         repo.upsert(&settings).await.expect("写入应成功");
         let loaded = repo.get().await.expect("查询应成功").expect("应存在记录");
@@ -234,6 +277,7 @@ mod tests {
             ai_configs: None,
             max_download_speed: Some(100),
             max_upload_speed: None,
+            translation: None,
         })
         .await
         .unwrap();
@@ -243,6 +287,7 @@ mod tests {
         assert_eq!(loaded.max_download_speed, Some(100));
         assert!(loaded.ai_configs.is_none());
         assert!(loaded.max_upload_speed.is_none());
+        assert!(loaded.translation.is_none());
     }
 
     #[tokio::test]
@@ -269,6 +314,7 @@ mod tests {
             ai_configs: None,
             max_download_speed: Some(500),
             max_upload_speed: None,
+            translation: None,
         };
         repo.upsert(&existing).await.unwrap();
         let default = default_settings("/tmp/default");
@@ -287,6 +333,11 @@ mod tests {
             ai_configs: Some(sample_ai_configs()),
             max_download_speed: Some(100),
             max_upload_speed: Some(50),
+            translation: Some(TranslationConfig {
+                target_lang: "en".to_string(),
+                provider: crate::domain::settings::TranslationProvider::Ai,
+                ai_config_alias: Some("gpt".to_string()),
+            }),
         })
         .await
         .unwrap();
@@ -298,6 +349,8 @@ mod tests {
         assert_eq!(loaded.ai_configs.unwrap().len(), 1);
         assert_eq!(loaded.max_download_speed, Some(100));
         assert_eq!(loaded.max_upload_speed, Some(50));
+        let t = loaded.translation.unwrap();
+        assert_eq!(t.target_lang, "en");
     }
 
     #[tokio::test]
@@ -389,6 +442,23 @@ mod tests {
 
     #[tokio::test]
     #[allow(non_snake_case)]
+    async fn 测试_update_translation_config_序列化与回读() {
+        let repo = setup().await;
+        repo.upsert(&default_settings("/tmp/dl")).await.unwrap();
+        let config = TranslationConfig {
+            target_lang: "zh-CN".to_string(),
+            provider: crate::domain::settings::TranslationProvider::Google,
+            ai_config_alias: None,
+        };
+        repo.update_translation_config(Some(&config)).await.unwrap();
+        let loaded = repo.get().await.unwrap().unwrap();
+        assert_eq!(loaded.translation.as_ref().unwrap(), &config);
+        repo.update_translation_config(None).await.unwrap();
+        assert!(repo.get().await.unwrap().unwrap().translation.is_none());
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
     async fn 测试_字段更新_行不存在时自动插入默认行() {
         let repo = setup().await;
         // 直接调用字段更新，行不存在时应自动 INSERT
@@ -397,6 +467,7 @@ mod tests {
         assert_eq!(loaded.download_dir, "/tmp/auto");
         assert!(loaded.proxy.is_none());
         assert!(loaded.ai_configs.is_none());
+        assert!(loaded.translation.is_none());
     }
 
     #[tokio::test]
@@ -406,23 +477,32 @@ mod tests {
         repo.upsert(&default_settings("/tmp/dl")).await.unwrap();
         // 并发更新不同字段
         let ai_configs = sample_ai_configs();
-        let (r1, r2, r3, r4, r5) = tokio::join!(
+        let translation = TranslationConfig {
+            target_lang: "ja".to_string(),
+            provider: crate::domain::settings::TranslationProvider::Google,
+            ai_config_alias: None,
+        };
+        let (r1, r2, r3, r4, r5, r6) = tokio::join!(
             repo.update_download_dir("/tmp/concurrent"),
             repo.update_proxy(Some("http://proxy")),
             repo.update_ai_configs(Some(&ai_configs)),
             repo.update_max_download_speed(Some(300)),
-            repo.update_max_upload_speed(Some(150))
+            repo.update_max_upload_speed(Some(150)),
+            repo.update_translation_config(Some(&translation))
         );
         r1.unwrap();
         r2.unwrap();
         r3.unwrap();
         r4.unwrap();
         r5.unwrap();
+        r6.unwrap();
         let loaded = repo.get().await.unwrap().unwrap();
         assert_eq!(loaded.download_dir, "/tmp/concurrent");
         assert_eq!(loaded.proxy.as_deref(), Some("http://proxy"));
         assert_eq!(loaded.ai_configs.unwrap().len(), 1);
         assert_eq!(loaded.max_download_speed, Some(300));
         assert_eq!(loaded.max_upload_speed, Some(150));
+        let t = loaded.translation.unwrap();
+        assert_eq!(t.target_lang, "ja");
     }
 }

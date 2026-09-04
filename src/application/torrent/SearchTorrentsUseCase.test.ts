@@ -1,5 +1,6 @@
 import { Background, WithValue } from "ajanuw-context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { TorrentRepository } from "../../domain/torrent/TorrentRepository";
 import { SearchTorrentsUseCase } from "./SearchTorrentsUseCase";
@@ -18,7 +19,7 @@ describe("SearchTorrentsUseCase 搜索资源", () => {
     vi.mocked(mockRepo.search).mockResolvedValueOnce([
       { name: "test anime", magnet: "magnet:?xt=urn:btih:123" } as any,
     ]);
-    const ctx = WithValue(Background, "traceId", "test-trace");
+    const ctx = WithValue(Background, TRACE_ID, "test-trace");
     const results = await useCase.execute(ctx, {
       keyword: NonEmptyStringSchema.parse("test"),
       engine: "mikan",

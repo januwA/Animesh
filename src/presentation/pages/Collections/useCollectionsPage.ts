@@ -19,10 +19,7 @@ export function useCollectionsPage(deps: UseCollectionsPageDeps) {
   });
 
   const handleItemClick = (item: FavoriteItem) => {
-    const route =
-      item.platform === "anilist"
-        ? `/anilist/subject/${item.subjectId}`
-        : `/subject/${item.subjectId}`;
+    const route = `/anime/subject/${item.subjectId}?platform=${item.platform}`;
     navigate(route, {
       viewTransition: true,
       state: {

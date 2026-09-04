@@ -77,11 +77,25 @@ impl AppDatabase {
                 proxy TEXT,
                 ai_configs TEXT,
                 max_download_speed INTEGER,
-                max_upload_speed INTEGER
+                max_upload_speed INTEGER,
+                translation TEXT
             )",
         )
         .execute(&self.pool)
         .await?;
+
+        // 兼容旧版数据库：若 translation 列不存在则追加
+        let has_translation: bool = sqlx::query_scalar::<_, String>(
+            "SELECT name FROM pragma_table_info('app_settings') WHERE name = 'translation'",
+        )
+        .fetch_optional(&self.pool)
+        .await?
+        .is_some();
+        if !has_translation {
+            sqlx::query("ALTER TABLE app_settings ADD COLUMN translation TEXT")
+                .execute(&self.pool)
+                .await?;
+        }
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS subtitle_translations (

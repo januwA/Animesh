@@ -16,7 +16,6 @@ interface SearchResultGroupProps {
   onOpenChange: () => void;
   onCopyMagnet: (magnet: string) => void;
   onPlay: (magnet: string) => void;
-  showBestAi: boolean;
 }
 
 export function SearchResultGroup({
@@ -25,7 +24,6 @@ export function SearchResultGroup({
   onOpenChange,
   onCopyMagnet,
   onPlay,
-  showBestAi,
 }: SearchResultGroupProps) {
   return (
     <Collapsible open={open} onOpenChange={onOpenChange}>
@@ -54,8 +52,6 @@ export function SearchResultGroup({
         <div className="grid gap-4">
           {group.items.map((item, innerIndex) => {
             const flatIndex = group.startIndex + innerIndex;
-            const isBest =
-              showBestAi && flatIndex === 0 && item.ai_score !== undefined;
             return (
               <SearchResultCard
                 key={flatIndex.toString()}
@@ -63,7 +59,6 @@ export function SearchResultGroup({
                 index={flatIndex}
                 onCopyMagnet={onCopyMagnet}
                 onPlay={onPlay}
-                isBestAi={isBest}
               />
             );
           })}

@@ -58,6 +58,7 @@ impl CrawlerRepository for HttpCrawlerRepository {
                 "https://bangumi.moe/api/v2/torrent/search",
                 body_str,
                 Some("text/plain;charset=UTF-8".to_string()),
+                None,
                 proxy,
             )
             .await?;
@@ -147,7 +148,7 @@ mod tests {
     #[allow(non_snake_case)]
     async fn 测试_search_bangumi_moe_错误代理和异常处理() {
         let mock_client = MockHttpClient {
-            post_handler: Arc::new(|_url, _body, _ct, proxy| {
+            post_handler: Arc::new(|_url, _body, _ct, _headers, proxy| {
                 if let Some(p) = proxy {
                     if p.contains("://bad") {
                         return Err("Invalid proxy".to_string().into());
@@ -215,7 +216,7 @@ mod tests {
         }"#;
 
         let mock_client = MockHttpClient {
-            post_handler: Arc::new(move |url, body, content_type, _proxy| {
+            post_handler: Arc::new(move |url, body, content_type, _headers, _proxy| {
                 assert_eq!(url, "https://bangumi.moe/api/v2/torrent/search");
                 assert_eq!(content_type, Some("text/plain;charset=UTF-8".to_string()));
                 assert!(body.contains("xxx"));

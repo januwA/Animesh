@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 // 领域模型 AppSettings / AiConfig 已迁移至 domain::settings,这里重新导出以保持公共 API 稳定。
-pub use crate::domain::settings::{AiConfig, AppSettings};
+pub use crate::domain::settings::{AiConfig, AppSettings, TranslationConfig};
 
 /// 应用设置用例:管理下载目录、代理、AI 配置、限速等持久化设置。
 ///
@@ -84,6 +84,7 @@ impl SettingsService {
                 ai_configs: None,
                 max_download_speed: None,
                 max_upload_speed: None,
+                translation: None,
             }),
         }
     }
@@ -91,6 +92,15 @@ impl SettingsService {
     pub async fn set_ai_configs(&self, configs: Option<Vec<AiConfig>>) -> CoreResult<()> {
         self.settings_repo
             .update_ai_configs(configs.as_deref())
+            .await
+    }
+
+    pub async fn set_translation_config(
+        &self,
+        config: Option<TranslationConfig>,
+    ) -> CoreResult<()> {
+        self.settings_repo
+            .update_translation_config(config.as_ref())
             .await
     }
 
@@ -308,6 +318,30 @@ mod tests {
             .await;
         assert_eq!(service.get_max_download_speed().await, Some(100));
         assert_eq!(service.get_max_upload_speed().await, Some(200));
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
+    async fn 测试_设置翻译配置_持久化与清空() {
+        let dir = temp_dir("settings_translation");
+        let service = build_service(dir).await;
+
+        assert!(service.get_settings().await.unwrap().translation.is_none());
+
+        let config = TranslationConfig {
+            target_lang: "ja".to_string(),
+            provider: crate::domain::settings::TranslationProvider::Ai,
+            ai_config_alias: Some("gpt".to_string()),
+        };
+        service
+            .set_translation_config(Some(config.clone()))
+            .await
+            .unwrap();
+        let settings = service.get_settings().await.unwrap();
+        assert_eq!(settings.translation.as_ref().unwrap(), &config);
+
+        service.set_translation_config(None).await.unwrap();
+        assert!(service.get_settings().await.unwrap().translation.is_none());
     }
 
     #[test]

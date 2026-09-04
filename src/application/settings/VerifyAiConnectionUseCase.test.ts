@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import { describe, expect, it, vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AiClient } from "../../domain/ai/AiClient";
@@ -24,6 +25,7 @@ describe("VerifyAiConnectionUseCase AI 连接验证", () => {
     ).resolves.not.toThrow();
 
     expect(mockAiClient.post).toHaveBeenCalledWith(
+      Background,
       NonEmptyStringSchema.parse("https://api.openai.com/v1"),
       NonEmptyStringSchema.parse("valid-key"),
       {

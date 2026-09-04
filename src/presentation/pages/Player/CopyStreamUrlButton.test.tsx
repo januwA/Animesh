@@ -16,7 +16,7 @@ vi.mock("qrcode.react", () => ({
   ),
 }));
 
-vi.mock("@/presentation/context/StreamServerContext", () => ({
+vi.mock(import("@/presentation/context/StreamServerContext"), () => ({
   useStreamServer: () => ({ streamPort: 45678 }),
 }));
 

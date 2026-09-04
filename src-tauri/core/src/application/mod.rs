@@ -1,3 +1,4 @@
+pub mod ai_chat_use_case;
 pub mod collection_service;
 pub mod search_use_case;
 pub mod settings_service;

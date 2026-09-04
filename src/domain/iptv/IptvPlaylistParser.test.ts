@@ -74,6 +74,45 @@ http://74.91.26.218:82/live/cctv2hd.m3u8`;
     });
   });
 
+  it("应该处理 EXTINF 行中时长不是整数（正则不匹配）的情况", () => {
+    const m3u =
+      "#EXTM3U\n#EXTINF:abc,Non-Integer Duration\nhttps://example.com/float.m3u8";
+
+    const channels = parseM3u(m3u);
+
+    expect(channels).toHaveLength(1);
+    expect(channels[0]).toMatchObject({
+      name: "Non-Integer Duration",
+      url: "https://example.com/float.m3u8",
+    });
+  });
+
+  it("应该处理 EXTINF 行中没有逗号分隔的频道名称", () => {
+    const m3u =
+      "#EXTM3U\n#EXTINF:-1 No Comma Channel\nhttps://example.com/nocomma.m3u8";
+
+    const channels = parseM3u(m3u);
+
+    expect(channels).toHaveLength(1);
+    expect(channels[0]).toMatchObject({
+      name: "No Comma Channel",
+      url: "https://example.com/nocomma.m3u8",
+    });
+  });
+
+  it("应该忽略没有对应 EXTINF 的裸 URL 行", () => {
+    const m3u =
+      "#EXTM3U\nhttps://example.com/orphan.m3u8\n#EXTINF:-1,Valid Channel\nhttps://example.com/valid.m3u8";
+
+    const channels = parseM3u(m3u);
+
+    expect(channels).toHaveLength(1);
+    expect(channels[0]).toMatchObject({
+      name: "Valid Channel",
+      url: "https://example.com/valid.m3u8",
+    });
+  });
+
   it("当输入为空或没有频道条目时应返回空数组", () => {
     expect(parseM3u("")).toEqual([]);
     expect(parseM3u("#EXTM3U\n#EXTINF:-1,No URL\n")).toEqual([]);

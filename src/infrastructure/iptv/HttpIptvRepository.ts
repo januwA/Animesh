@@ -1,27 +1,27 @@
 import type { Context } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
+import type { HttpClient } from "@/domain/http/HttpClient";
+import { IptvCountriesResponseSchema } from "@/domain/iptv/IptvSchemas";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import { parseM3u } from "../../domain/iptv/IptvPlaylistParser";
 import type { IptvRepository } from "../../domain/iptv/IptvRepository";
 import type { IptvChannel, IptvCountry } from "../../domain/iptv/IptvSchemas";
-import { IptvCountriesResponseSchema } from "../../domain/iptv/IptvSchemas";
-import type { HttpClient } from "../http/HttpClient";
+import { Cached } from "../cache/CachedDecorator";
 
 const COUNTRIES_URL = "https://iptv-org.github.io/api/countries.json";
 const PLAYLIST_BASE_URL = "https://iptv-org.github.io/iptv/countries";
 
 export class HttpIptvRepository implements IptvRepository {
-  constructor(private readonly client: HttpClient) {}
+  constructor(
+    private readonly client: HttpClient,
+    public readonly store: CacheStore,
+  ) {}
 
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+  })
   async getCountries(ctx: Context): Promise<IptvCountry[]> {
-    let data: unknown;
-    try {
-      data = await this.client.getJson<unknown>(COUNTRIES_URL, { ctx });
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch IPTV countries", { cause: err });
-    }
-
+    const data = await this.client.getJson<unknown>(ctx, COUNTRIES_URL);
     const result = IptvCountriesResponseSchema.safeParse(data);
     if (!result.success) {
       throw new Error("IPTV countries response structure mismatch", {
@@ -31,21 +31,15 @@ export class HttpIptvRepository implements IptvRepository {
     return result.data;
   }
 
+  @Cached({
+    ttl: new Duration({ days: 7 }),
+  })
   async getChannels(ctx: Context, countryCode: string): Promise<IptvChannel[]> {
-    let text: string;
-    try {
-      const response = await this.client.request(
-        `${PLAYLIST_BASE_URL}/${countryCode.toLowerCase()}.m3u`,
-        { ctx },
-      );
-      text = await response.text();
-    } catch (err: unknown) {
-      if (ctx.err() && err === ctx.err()) {
-        throw err;
-      }
-      throw new Error("Failed to fetch IPTV channels", { cause: err });
-    }
-
+    const response = await this.client.request(
+      ctx,
+      `${PLAYLIST_BASE_URL}/${countryCode.toLowerCase()}.m3u`,
+    );
+    const text = await response.text();
     return parseM3u(text);
   }
 }

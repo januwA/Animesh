@@ -1,13 +1,23 @@
 import type { Context } from "ajanuw-context";
-import { Background, WithCancel } from "ajanuw-context";
+import {
+  Background,
+  Canceled,
+  WithCancel,
+  WithTimeout,
+  WithValue,
+} from "ajanuw-context";
+import type { Duration } from "ajanuw-duration";
 import type { DependencyList } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 
 export type StreamStatus = "idle" | "connecting" | "open" | "closed";
 
 export interface UseStreamOptions<T> {
   /** 是否启用连接，默认 true；为 false 时不会建立连接 */
   enabled?: boolean;
+  /** 连接超时时间，超时后 context 会被取消 */
+  timeout?: Duration;
   /** 流建立连接后的回调 */
   onOpen?: () => void;
   /** 收到新数据的回调 */
@@ -59,11 +69,13 @@ export function useStream<T>(
   const onDataRef = useRef(onData);
   const onErrorRef = useRef(onError);
   const onCloseRef = useRef(onClose);
+  const optionsRef = useRef(options);
   streamFnRef.current = streamFn;
   onOpenRef.current = onOpen;
   onDataRef.current = onData;
   onErrorRef.current = onError;
   onCloseRef.current = onClose;
+  optionsRef.current = options;
 
   const close = useCallback(() => {
     setStatus("closed");
@@ -82,7 +94,10 @@ export function useStream<T>(
 
     let active = true;
     let reader: ReadableStreamDefaultReader<T> | null = null;
-    const [ctx, cancel] = WithCancel(Background);
+    const [rawCtx, cancel] = optionsRef.current.timeout
+      ? WithTimeout(Background, optionsRef.current.timeout.inMilliseconds)
+      : WithCancel(Background);
+    const ctx = WithValue(rawCtx, TRACE_ID, crypto.randomUUID());
 
     setStatus("connecting");
     setError(null);
@@ -90,7 +105,7 @@ export function useStream<T>(
     (async () => {
       try {
         const stream = await streamFnRef.current(ctx);
-        if (!active || ctx.err() !== null) {
+        if (!active || ctx.err()) {
           stream.cancel();
           return;
         }
@@ -105,24 +120,24 @@ export function useStream<T>(
             chunk = await reader.read();
           } catch (err: unknown) {
             // v8 ignore next
-            if (!active || ctx.err() !== null) return;
+            if (!active || ctx.err() === Canceled) return;
             const wrapped = err instanceof Error ? err : new Error(String(err));
             setError(wrapped);
             onErrorRef.current?.(wrapped);
             return;
           }
-          if (chunk.done || !active || ctx.err() !== null) break;
+          if (chunk.done || !active || ctx.err()) break;
           setData(chunk.value);
           onDataRef.current?.(chunk.value);
         }
       } catch (err: unknown) {
         // v8 ignore next
-        if (!active || ctx.err() !== null) return;
+        if (!active || ctx.err() === Canceled) return;
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);
         onErrorRef.current?.(wrapped);
       } finally {
-        if (active && ctx.err() === null) {
+        if (active) {
           reader?.cancel();
           setStatus("closed");
           onCloseRef.current?.();

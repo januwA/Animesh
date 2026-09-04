@@ -1,5 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { Context } from "ajanuw-context";
+import { DeadlineExceeded } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import { describe, expect, it, vi } from "vitest";
 import { useStream } from "./useStream";
 
@@ -359,5 +361,75 @@ describe("useStream 流订阅 hook", () => {
     await waitFor(() => {
       expect(result.current.data).toBe("第二条");
     });
+  });
+
+  it("设置 timeout 后连接超时应取消 context 并设置 error", async () => {
+    const onError = vi.fn();
+
+    const { result } = renderHook(() =>
+      useStream(
+        (ctx) =>
+          Promise.race([
+            new Promise<ReadableStream<string>>(() => {}),
+            ctx.done().then(() => {
+              throw ctx.err()!;
+            }),
+          ]),
+        [],
+        {
+          timeout: new Duration({ milliseconds: 50 }),
+          onError,
+        },
+      ),
+    );
+
+    expect(result.current.status).toBe("connecting");
+
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.error?.message).toBe("context deadline exceeded");
+    expect(result.current.status).toBe("closed");
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it("设置 timeout 后连接在超时前完成应正常打开流", async () => {
+    const handle = createMockStream<string>();
+    const streamFn = createStreamFn(handle.stream);
+
+    const { result } = renderHook(() =>
+      useStream(streamFn, [], {
+        timeout: new Duration({ seconds: 5 }),
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("open");
+    });
+  });
+
+  it("设置 timeout 后超时应触发 ctx.err() 为 DeadlineExceeded", async () => {
+    let capturedCtx: Context | null = null;
+    const { promise } = deferred<ReadableStream<string>>();
+
+    const { unmount } = renderHook(() =>
+      useStream(
+        (ctx) => {
+          capturedCtx = ctx;
+          return promise;
+        },
+        [],
+        { timeout: new Duration({ milliseconds: 50 }) },
+      ),
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    expect(capturedCtx!.err()).toBe(DeadlineExceeded);
+    unmount();
   });
 });

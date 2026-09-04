@@ -1,11 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import type { TorrentResultGroup } from "@/presentation/store/searchStore";
 import { SearchResultsList } from "./SearchResultsList";
 
-function makeItem(title: string): AiSearchResultItem {
+function makeItem(title: string): SearchResultItem {
   return {
     title: NonEmptyStringSchema.parse(title),
     link: NonEmptyStringSchema.parse("http://example.com/1"),
@@ -43,7 +43,6 @@ describe("SearchResultsList 搜索结果列表组件", () => {
         onToggleGroup={vi.fn()}
         onCopyMagnet={vi.fn()}
         onPlay={vi.fn()}
-        showBestAi={false}
       />,
     );
 
@@ -64,7 +63,6 @@ describe("SearchResultsList 搜索结果列表组件", () => {
         onToggleGroup={vi.fn()}
         onCopyMagnet={vi.fn()}
         onPlay={vi.fn()}
-        showBestAi={false}
       />,
     );
 
@@ -86,7 +84,6 @@ describe("SearchResultsList 搜索结果列表组件", () => {
         onToggleGroup={vi.fn()}
         onCopyMagnet={vi.fn()}
         onPlay={vi.fn()}
-        showBestAi={false}
       />,
     );
 
@@ -107,7 +104,6 @@ describe("SearchResultsList 搜索结果列表组件", () => {
         onToggleGroup={vi.fn()}
         onCopyMagnet={vi.fn()}
         onPlay={vi.fn()}
-        showBestAi={false}
       />,
     );
 
@@ -127,7 +123,6 @@ describe("SearchResultsList 搜索结果列表组件", () => {
         onToggleGroup={onToggleGroup}
         onCopyMagnet={vi.fn()}
         onPlay={vi.fn()}
-        showBestAi={false}
       />,
     );
 

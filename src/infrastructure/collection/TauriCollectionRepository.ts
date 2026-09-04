@@ -1,4 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { Context } from "ajanuw-context";
+import { Duration } from "ajanuw-duration";
 import { z } from "zod";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import type { CollectionRepository } from "@/domain/collection/CollectionRepository";
@@ -7,9 +9,22 @@ import {
   CollectionRecordSchema,
   toFavoriteItem,
 } from "@/domain/collection/CollectionSchemas";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import { commands } from "@/generated/tauri-commands";
+import { Cached } from "../cache/CachedDecorator";
+
+const COLLECTION_CACHE_PREFIX = "UserCollection";
 
 export class TauriCollectionRepository implements CollectionRepository {
+  constructor(
+    /** @internal accessed by @Cached decorator */
+    public readonly store: CacheStore,
+  ) {}
+
+  @Cached({
+    prefix: COLLECTION_CACHE_PREFIX,
+    ttl: new Duration({ days: 10000 }),
+  })
   async getAll(): Promise<FavoriteItem[]> {
     const raw = await invoke<unknown>(commands.collection_get_all);
     const result = z.array(CollectionRecordSchema).safeParse(raw);
@@ -32,16 +47,22 @@ export class TauriCollectionRepository implements CollectionRepository {
     return z.boolean().parse(raw);
   }
 
-  async add(item: Omit<FavoriteItem, "addedAt">): Promise<void> {
-    return invoke<void>(commands.collection_add, {
+  async add(ctx: Context, item: Omit<FavoriteItem, "addedAt">): Promise<void> {
+    invoke<void>(commands.collection_add, {
       subjectId: item.subjectId,
       platform: item.platform,
       name: item.name,
       imageUrl: item.imageUrl,
     });
+    this.store.clearByPrefix(ctx, COLLECTION_CACHE_PREFIX);
   }
 
-  async remove(subjectId: number, platform: AnimePlatform): Promise<void> {
-    return invoke<void>(commands.collection_remove, { subjectId, platform });
+  async remove(
+    ctx: Context,
+    subjectId: number,
+    platform: AnimePlatform,
+  ): Promise<void> {
+    invoke<void>(commands.collection_remove, { subjectId, platform });
+    this.store.clearByPrefix(ctx, COLLECTION_CACHE_PREFIX);
   }
 }

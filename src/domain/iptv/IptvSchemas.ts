@@ -17,7 +17,5 @@ export const IptvChannelSchema = z.object({
   url: z.string(),
 });
 
-export const IptvChannelsResponseSchema = z.array(IptvChannelSchema);
-
 export type IptvCountry = z.infer<typeof IptvCountrySchema>;
 export type IptvChannel = z.infer<typeof IptvChannelSchema>;

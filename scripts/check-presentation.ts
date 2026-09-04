@@ -312,118 +312,6 @@ export function checkHooks(code: string, filepath: string): Violation[] {
 	return errors;
 }
 
-/** ---------- 规则 6：测试 DI 注入规范 ---------- */
-
-const CREATE_CONTAINER_IMPORT = "createDIContainerForTest";
-const DIPROVIDER_IMPORT = "DIProvider";
-
-export function isHookTestFile(filepath: string): boolean {
-	const basename = path.posix.basename(filepath.replace(/\\/g, "/"));
-	return /^use.+\.test\.[jt]sx?$/.test(basename);
-}
-
-export function isPageTestFile(filepath: string): boolean {
-	const normalized = filepath.replace(/\\/g, "/");
-	const basename = path.posix.basename(normalized);
-	if (!/^index\.test\.[jt]sx?$/.test(basename)) return false;
-	return normalized.includes(`/src/presentation/pages/`);
-}
-
-export function collectImportNames(program: any): Set<string> {
-	const names = new Set<string>();
-	traverse(program, (node) => {
-		if (node.type !== "ImportDeclaration") return;
-		for (const spec of node.specifiers ?? []) {
-			if (
-				spec.type === "ImportSpecifier" &&
-				spec.imported?.type === "Identifier"
-			) {
-				names.add(spec.imported.name);
-			}
-		}
-	});
-	return names;
-}
-
-export function hasDIContainerCast(program: any): boolean {
-	let found = false;
-	traverse(program, (node) => {
-		if (found) return;
-		if (node.type !== "TSAsExpression") return;
-		const ann = node.typeAnnotation;
-		if (
-			ann?.type === "TSTypeReference" &&
-			ann.typeName?.type === "Identifier" &&
-			ann.typeName.name === "DIContainer"
-		) {
-			found = true;
-		}
-	});
-	return found;
-}
-
-export interface TestDiCheckOptions {
-	siblingUsesUseDI: boolean;
-}
-
-function detectSiblingContext(filepath: string): TestDiCheckOptions {
-	const siblingIndex = path.join(path.dirname(filepath), "index.tsx");
-	const siblingUsesUseDI =
-		fs.existsSync(siblingIndex) &&
-		fs.readFileSync(siblingIndex, "utf8").includes("useDI");
-	return { siblingUsesUseDI };
-}
-
-export function checkTestDi(
-	code: string,
-	filepath: string,
-	options: TestDiCheckOptions = detectSiblingContext(filepath),
-): Violation[] {
-	const parseResult = parseTs(code, filepath);
-	const program = parseResult.program;
-	const imports = collectImportNames(program);
-	const errors: Violation[] = [];
-
-	const report = (offset: number, message: string) => {
-		const loc = offsetToLoc(code, offset);
-		errors.push({ ...loc, severity: "error", message });
-	};
-
-	if (isHookTestFile(filepath)) {
-		const importOffset = code.indexOf(CREATE_CONTAINER_IMPORT);
-		if (imports.has(CREATE_CONTAINER_IMPORT)) {
-			report(
-				importOffset >= 0 ? importOffset : 0,
-				`hook 级单测不得使用 createDIContainerForTest，hook 的 use case 依赖应通过参数直接注入 mock（{ execute: vi.fn() }），断言上移到 use case 的 execute 层。`,
-			);
-		}
-	}
-
-	if (isPageTestFile(filepath) && options.siblingUsesUseDI) {
-		if (!imports.has(DIPROVIDER_IMPORT)) {
-			report(
-				0,
-				`页面级集成测试必须渲染组合根，并使用 <DIProvider value={mock as unknown as DIContainer}> 注入最小 mock 容器（需 import DIProvider）。`,
-			);
-		}
-		if (!hasDIContainerCast(program)) {
-			report(
-				0,
-				`页面级集成测试的 mock 容器必须通过 as unknown as DIContainer 断言构造，禁止依赖 createDIContainerForTest。`,
-			);
-		}
-		if (imports.has(CREATE_CONTAINER_IMPORT)) {
-			const importOffset = code.indexOf(CREATE_CONTAINER_IMPORT);
-			report(
-				importOffset >= 0 ? importOffset : 0,
-				`页面级集成测试不得使用 createDIContainerForTest，应手写最小 mock 容器并显式列出组合根与所有子组件/Provider 消费的 key（如 TorrentStatusProvider 需要 subscribeTorrentsUseCase）。`,
-			);
-		}
-	}
-
-	return errors;
-}
-
 /** ---------- 合并 CLI ---------- */
 
 const rules: CheckRule[] = [
@@ -442,12 +330,6 @@ const rules: CheckRule[] = [
 		name: "hook大小与耦合",
 		targetDirs: [PRESENTATION_DIR],
 		check: checkHooks,
-	},
-	{
-		name: "测试DI注入",
-		targetDirs: [PRESENTATION_DIR],
-		includeFile: (f) => isTestFile(f),
-		check: checkTestDi,
 	},
 ];
 

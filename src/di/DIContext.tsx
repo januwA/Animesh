@@ -1,4 +1,6 @@
 import { createContext, use } from "react";
+import type { HttpClient } from "@/domain/http/HttpClient";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import { FetchAiClient } from "@/infrastructure/ai/FetchAiClient";
 import { TauriAiClient } from "@/infrastructure/ai/TauriAiClient";
 import { TauriSubtitleTranslationRepository } from "@/infrastructure/subtitle/TauriSubtitleTranslationRepository";
@@ -6,8 +8,9 @@ import { GetAnimeCalendarUseCase } from "../application/anime/GetAnimeCalendarUs
 import { GetAnimeCharactersUseCase } from "../application/anime/GetAnimeCharactersUseCase";
 import { GetAnimeEpisodesUseCase } from "../application/anime/GetAnimeEpisodesUseCase";
 import { GetAnimePersonsUseCase } from "../application/anime/GetAnimePersonsUseCase";
-import { GetAnimeRankedSubjectsUseCase } from "../application/anime/GetAnimeRankedSubjectsUseCase";
 import { GetAnimeSubjectUseCase } from "../application/anime/GetAnimeSubjectUseCase";
+import { GetNextSeasonAnimeUseCase } from "../application/anime/GetNextSeasonAnimeUseCase";
+import { GetWallpaperImagesUseCase } from "../application/anime/GetWallpaperImagesUseCase";
 import { SearchAnimeSubjectsUseCase } from "../application/anime/SearchAnimeSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
 import { AddFavoriteUseCase } from "../application/collection/AddFavoriteUseCase";
@@ -19,10 +22,19 @@ import { GetIptvCountriesUseCase } from "../application/iptv/GetIptvCountriesUse
 import { ResolvePlayableStreamUrlUseCase } from "../application/iptv/ResolvePlayableStreamUrlUseCase";
 import { NotifyDownloadCompletionUseCase } from "../application/notification/NotifyDownloadCompletionUseCase";
 import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
+import { GetAiConfigsUseCase } from "../application/settings/GetAiConfigsUseCase";
+import { GetDownloadDirUseCase } from "../application/settings/GetDownloadDirUseCase";
+import { GetProxyUseCase } from "../application/settings/GetProxyUseCase";
 import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
-import { SaveSettingsUseCase } from "../application/settings/SaveSettingsUseCase";
+import { GetSpeedLimitsUseCase } from "../application/settings/GetSpeedLimitsUseCase";
+import { GetTranslationConfigUseCase } from "../application/settings/GetTranslationConfigUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
+import { SetAiConfigsUseCase } from "../application/settings/SetAiConfigsUseCase";
+import { SetDownloadDirUseCase } from "../application/settings/SetDownloadDirUseCase";
+import { SetProxyUseCase } from "../application/settings/SetProxyUseCase";
+import { SetSpeedLimitsUseCase } from "../application/settings/SetSpeedLimitsUseCase";
 import { SetThemeUseCase } from "../application/settings/SetThemeUseCase";
+import { SetTranslationConfigUseCase } from "../application/settings/SetTranslationConfigUseCase";
 import { VerifyAiConnectionUseCase } from "../application/settings/VerifyAiConnectionUseCase";
 import { DeleteSubtitleTranslationUseCase } from "../application/subtitle/DeleteSubtitleTranslationUseCase";
 import { GetSubtitleTranslationByIdUseCase } from "../application/subtitle/GetSubtitleTranslationByIdUseCase";
@@ -38,36 +50,34 @@ import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadata
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
+import { SearchAllTorrentsUseCase } from "../application/torrent/SearchAllTorrentsUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
-import { SearchTorrentsWithAiUseCase } from "../application/torrent/SearchTorrentsWithAiUseCase";
 import { SetTorrentSubjectUseCase } from "../application/torrent/SetTorrentSubjectUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
+import { TranslateTextUseCase } from "../application/translation/TranslateTextUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
 import { OpenUpdateUrlUseCase } from "../application/update/OpenUpdateUrlUseCase";
 import type { AiClient } from "../domain/ai/AiClient";
 import type { Logger } from "../domain/logger/logger";
-import { BrowserAnilistCache } from "../infrastructure/anilist/BrowserAnilistCache";
 import { HttpAnilistRepository } from "../infrastructure/anilist/HttpAnilistRepository";
-import { BrowserBangumiCache } from "../infrastructure/bangumi/BrowserBangumiCache";
 import { HttpBangumiRepository } from "../infrastructure/bangumi/HttpBangumiRepository";
 import { HttpCollectionRepository } from "../infrastructure/collection/HttpCollectionRepository";
 import { TauriCollectionRepository } from "../infrastructure/collection/TauriCollectionRepository";
-import { FetchHttpClient } from "../infrastructure/http/HttpClient";
-import { BrowserIptvCache } from "../infrastructure/iptv/BrowserIptvCache";
 import { HttpIptvRepository } from "../infrastructure/iptv/HttpIptvRepository";
 import { TauriIptvStreamUrlRepository } from "../infrastructure/iptv/TauriIptvStreamUrlRepository";
 import { WebIptvStreamUrlRepository } from "../infrastructure/iptv/WebIptvStreamUrlRepository";
-import { ConsoleLogger } from "../infrastructure/logger/ConsoleLogger";
 import { TauriNotificationRepository } from "../infrastructure/notification/TauriNotificationRepository";
 import { WebNotificationRepository } from "../infrastructure/notification/WebNotificationRepository";
 import { TauriOpenerRepository } from "../infrastructure/opener/TauriOpenerRepository";
 import { WebOpenerRepository } from "../infrastructure/opener/WebOpenerRepository";
 import { HttpSettingsRepository } from "../infrastructure/settings/HttpSettingsRepository";
 import { TauriSettingsRepository } from "../infrastructure/settings/TauriSettingsRepository";
-import { IndexedDbCacheStore } from "../infrastructure/storage/IndexedDbCacheStore";
 import { HttpTorrentRepository } from "../infrastructure/torrent/HttpTorrentRepository";
 import { TauriTorrentRepository } from "../infrastructure/torrent/TauriTorrentRepository";
+import { AiTranslateClient } from "../infrastructure/translation/AiTranslateClient";
+import { GoogleTranslateClient } from "../infrastructure/translation/GoogleTranslateClient";
+import { IndexedDbTranslationCache } from "../infrastructure/translation/IndexedDbTranslationCache";
 import { GithubUpdateRepository } from "../infrastructure/update/GithubUpdateRepository";
 import { WebUpdateRepository } from "../infrastructure/update/WebUpdateRepository";
 
@@ -80,8 +90,7 @@ export interface DIContainer {
   addFavoriteUseCase: AddFavoriteUseCase;
   removeFavoriteUseCase: RemoveFavoriteUseCase;
   getFavoriteStatusUseCase: GetFavoriteStatusUseCase;
-  searchTorrentsUseCase: SearchTorrentsUseCase;
-  searchTorrentsWithAiUseCase: SearchTorrentsWithAiUseCase;
+  searchAllTorrentsUseCase: SearchAllTorrentsUseCase;
   subscribeTorrentsUseCase: SubscribeTorrentsUseCase;
   pauseTorrentUseCase: PauseTorrentUseCase;
   resumeTorrentUseCase: ResumeTorrentUseCase;
@@ -95,16 +104,26 @@ export interface DIContainer {
   getVideoMetadataUseCase: GetVideoMetadataUseCase;
 
   getSettingsUseCase: GetSettingsUseCase;
-  saveSettingsUseCase: SaveSettingsUseCase;
   selectDirectoryUseCase: SelectDirectoryUseCase;
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
+  getDownloadDirUseCase: GetDownloadDirUseCase;
+  setDownloadDirUseCase: SetDownloadDirUseCase;
+  getSpeedLimitsUseCase: GetSpeedLimitsUseCase;
+  setSpeedLimitsUseCase: SetSpeedLimitsUseCase;
+  getProxyUseCase: GetProxyUseCase;
+  setProxyUseCase: SetProxyUseCase;
+  getAiConfigsUseCase: GetAiConfigsUseCase;
+  setAiConfigsUseCase: SetAiConfigsUseCase;
+  getTranslationConfigUseCase: GetTranslationConfigUseCase;
+  setTranslationConfigUseCase: SetTranslationConfigUseCase;
   clearCacheUseCase: ClearCacheUseCase;
   translateSubtitleUseCase: TranslateSubtitleUseCase;
   getSubtitleTranslationsUseCase: GetSubtitleTranslationsUseCase;
   deleteSubtitleTranslationUseCase: DeleteSubtitleTranslationUseCase;
   saveSubtitleTranslationUseCase: SaveSubtitleTranslationUseCase;
   getSubtitleTranslationByIdUseCase: GetSubtitleTranslationByIdUseCase;
+  translateTextUseCase: TranslateTextUseCase;
 
   getBangumiCalendarUseCase: GetAnimeCalendarUseCase;
   getAnilistCalendarUseCase: GetAnimeCalendarUseCase;
@@ -112,9 +131,11 @@ export interface DIContainer {
   getBangumiEpisodesUseCase: GetAnimeEpisodesUseCase;
   getBangumiPersonsUseCase: GetAnimePersonsUseCase;
   getBangumiCharactersUseCase: GetAnimeCharactersUseCase;
-  getBangumiRankedSubjectsUseCase: GetAnimeRankedSubjectsUseCase;
+  getWallpaperImagesUseCase: GetWallpaperImagesUseCase;
   searchBangumiSubjectsUseCase: SearchAnimeSubjectsUseCase;
   searchAnilistSubjectsUseCase: SearchAnimeSubjectsUseCase;
+  getBangumiNextSeasonUseCase: GetNextSeasonAnimeUseCase;
+  getAnilistNextSeasonUseCase: GetNextSeasonAnimeUseCase;
   getAnilistSubjectUseCase: GetAnimeSubjectUseCase;
   getAnilistEpisodesUseCase: GetAnimeEpisodesUseCase;
   getAnilistPersonsUseCase: GetAnimePersonsUseCase;
@@ -128,20 +149,25 @@ export interface DIContainer {
   openUrlUseCase: OpenUrlUseCase;
 }
 
-export function createDefaultDIContainer(): DIContainer {
+export function createDIContainer({
+  logger,
+  cacheStore,
+  httpClient,
+}: {
+  logger: Logger;
+  cacheStore: CacheStore;
+  httpClient: HttpClient;
+}): DIContainer {
   const isTauri = import.meta.env.MODE !== "web";
-  const cacheStore = new IndexedDbCacheStore();
-  const logger = new ConsoleLogger("App");
-  const httpClient = new FetchHttpClient();
   const torrentRepository = isTauri
-    ? new TauriTorrentRepository()
-    : new HttpTorrentRepository(httpClient);
+    ? new TauriTorrentRepository(httpClient, cacheStore)
+    : new HttpTorrentRepository(httpClient, cacheStore);
   const settingsRepository = isTauri
     ? new TauriSettingsRepository()
     : new HttpSettingsRepository(httpClient);
-  const bangumiRepository = new HttpBangumiRepository(httpClient);
+  const bangumiRepository = new HttpBangumiRepository(httpClient, cacheStore);
   const collectionRepository = isTauri
-    ? new TauriCollectionRepository()
+    ? new TauriCollectionRepository(cacheStore)
     : new HttpCollectionRepository(httpClient);
   const notificationRepository = isTauri
     ? new TauriNotificationRepository()
@@ -152,7 +178,6 @@ export function createDefaultDIContainer(): DIContainer {
   const updateRepository = isTauri
     ? new GithubUpdateRepository(openerRepository)
     : new WebUpdateRepository();
-  // 字幕翻译缓存仓储：Tauri 桌面端走 IPC → SQLite；Web 端用 NoOp 空实现（不持久化，但不影响流程）
   const subtitleTranslationRepository =
     new TauriSubtitleTranslationRepository();
 
@@ -160,17 +185,23 @@ export function createDefaultDIContainer(): DIContainer {
     notificationRepository,
   );
   const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
+  const searchAllTorrentsUseCase = new SearchAllTorrentsUseCase(
+    searchTorrentsUseCase,
+  );
 
   const aiClient: AiClient = isTauri
-    ? new TauriAiClient()
+    ? new TauriAiClient(httpClient)
     : new FetchAiClient(httpClient);
 
-  const searchTorrentsWithAiUseCase = new SearchTorrentsWithAiUseCase(
-    torrentRepository,
-    settingsRepository,
-    aiClient,
-    logger.withCategory("SearchTorrentsWithAiUseCase"),
+  const googleTranslateClient = new GoogleTranslateClient();
+  const aiTranslateClient = new AiTranslateClient(aiClient);
+  const translationCache = new IndexedDbTranslationCache(cacheStore);
+  const translateTextUseCase = new TranslateTextUseCase(
+    googleTranslateClient,
+    aiTranslateClient,
+    translationCache,
   );
+
   const subscribeTorrentsUseCase = new SubscribeTorrentsUseCase(
     torrentRepository,
   );
@@ -198,10 +229,23 @@ export function createDefaultDIContainer(): DIContainer {
   );
 
   const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
-  const saveSettingsUseCase = new SaveSettingsUseCase(settingsRepository);
   const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
+  const getDownloadDirUseCase = new GetDownloadDirUseCase(settingsRepository);
+  const setDownloadDirUseCase = new SetDownloadDirUseCase(settingsRepository);
+  const getSpeedLimitsUseCase = new GetSpeedLimitsUseCase(settingsRepository);
+  const setSpeedLimitsUseCase = new SetSpeedLimitsUseCase(settingsRepository);
+  const getProxyUseCase = new GetProxyUseCase(settingsRepository);
+  const setProxyUseCase = new SetProxyUseCase(settingsRepository);
+  const getAiConfigsUseCase = new GetAiConfigsUseCase(settingsRepository);
+  const setAiConfigsUseCase = new SetAiConfigsUseCase(settingsRepository);
+  const getTranslationConfigUseCase = new GetTranslationConfigUseCase(
+    settingsRepository,
+  );
+  const setTranslationConfigUseCase = new SetTranslationConfigUseCase(
+    settingsRepository,
+  );
   const clearCacheUseCase = new ClearCacheUseCase(cacheStore);
   const translateSubtitleUseCase = new TranslateSubtitleUseCase(
     aiClient,
@@ -220,52 +264,42 @@ export function createDefaultDIContainer(): DIContainer {
   const getSubtitleTranslationByIdUseCase =
     new GetSubtitleTranslationByIdUseCase(subtitleTranslationRepository);
 
-  const bangumiCache = new BrowserBangumiCache(cacheStore);
   const getBangumiCalendarUseCase = new GetAnimeCalendarUseCase(
     bangumiRepository,
-    bangumiCache,
   );
-  const anilistRepository = new HttpAnilistRepository(httpClient);
-  const anilistCache = new BrowserAnilistCache(cacheStore);
+  const anilistRepository = new HttpAnilistRepository(httpClient, cacheStore);
   const getAnilistCalendarUseCase = new GetAnimeCalendarUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getAnilistSubjectUseCase = new GetAnimeSubjectUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getAnilistEpisodesUseCase = new GetAnimeEpisodesUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getAnilistPersonsUseCase = new GetAnimePersonsUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getAnilistCharactersUseCase = new GetAnimeCharactersUseCase(
     anilistRepository,
-    anilistCache,
   );
   const getBangumiSubjectUseCase = new GetAnimeSubjectUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const getBangumiEpisodesUseCase = new GetAnimeEpisodesUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const getBangumiPersonsUseCase = new GetAnimePersonsUseCase(
     bangumiRepository,
-    bangumiCache,
   );
   const getBangumiCharactersUseCase = new GetAnimeCharactersUseCase(
     bangumiRepository,
-    bangumiCache,
   );
-  const getBangumiRankedSubjectsUseCase = new GetAnimeRankedSubjectsUseCase(
+  const getWallpaperImagesUseCase = new GetWallpaperImagesUseCase(
     bangumiRepository,
-    bangumiCache,
+  );
+  const getBangumiNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
+    bangumiRepository,
   );
   const searchBangumiSubjectsUseCase = new SearchAnimeSubjectsUseCase(
     bangumiRepository,
@@ -273,16 +307,12 @@ export function createDefaultDIContainer(): DIContainer {
   const searchAnilistSubjectsUseCase = new SearchAnimeSubjectsUseCase(
     anilistRepository,
   );
-  const iptvCache = new BrowserIptvCache(cacheStore);
-  const iptvRepository = new HttpIptvRepository(httpClient);
-  const getIptvCountriesUseCase = new GetIptvCountriesUseCase(
-    iptvRepository,
-    iptvCache,
+  const getAnilistNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
+    anilistRepository,
   );
-  const getIptvChannelsUseCase = new GetIptvChannelsUseCase(
-    iptvRepository,
-    iptvCache,
-  );
+  const iptvRepository = new HttpIptvRepository(httpClient, cacheStore);
+  const getIptvCountriesUseCase = new GetIptvCountriesUseCase(iptvRepository);
+  const getIptvChannelsUseCase = new GetIptvChannelsUseCase(iptvRepository);
   const iptvStreamUrlRepository = isTauri
     ? new TauriIptvStreamUrlRepository()
     : new WebIptvStreamUrlRepository();
@@ -307,8 +337,7 @@ export function createDefaultDIContainer(): DIContainer {
     logger,
 
     notifyDownloadCompletionUseCase,
-    searchTorrentsUseCase,
-    searchTorrentsWithAiUseCase,
+    searchAllTorrentsUseCase,
     subscribeTorrentsUseCase,
     pauseTorrentUseCase,
     resumeTorrentUseCase,
@@ -322,16 +351,26 @@ export function createDefaultDIContainer(): DIContainer {
     getVideoMetadataUseCase,
 
     getSettingsUseCase,
-    saveSettingsUseCase,
     selectDirectoryUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,
+    getDownloadDirUseCase,
+    setDownloadDirUseCase,
+    getSpeedLimitsUseCase,
+    setSpeedLimitsUseCase,
+    getProxyUseCase,
+    setProxyUseCase,
+    getAiConfigsUseCase,
+    setAiConfigsUseCase,
+    getTranslationConfigUseCase,
+    setTranslationConfigUseCase,
     clearCacheUseCase,
     translateSubtitleUseCase,
     getSubtitleTranslationsUseCase,
     deleteSubtitleTranslationUseCase,
     saveSubtitleTranslationUseCase,
     getSubtitleTranslationByIdUseCase,
+    translateTextUseCase,
 
     getBangumiCalendarUseCase,
     getAnilistCalendarUseCase,
@@ -339,9 +378,11 @@ export function createDefaultDIContainer(): DIContainer {
     getBangumiEpisodesUseCase,
     getBangumiPersonsUseCase,
     getBangumiCharactersUseCase,
-    getBangumiRankedSubjectsUseCase,
+    getWallpaperImagesUseCase,
     searchBangumiSubjectsUseCase,
     searchAnilistSubjectsUseCase,
+    getBangumiNextSeasonUseCase,
+    getAnilistNextSeasonUseCase,
     getAnilistSubjectUseCase,
     getAnilistEpisodesUseCase,
     getAnilistPersonsUseCase,

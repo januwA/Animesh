@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import type { TorrentStatusInfo } from "@/domain/torrent/TorrentSchemas";
+import { TranslatableText } from "@/presentation/components/TranslatableText";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,7 +68,9 @@ export function TorrentCard({
     <Card className="ani-card">
       <CardHeader>
         <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-          <CardTitle>{torrent.name}</CardTitle>
+          <CardTitle>
+            <TranslatableText text={torrent.name} as="span" />
+          </CardTitle>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {torrent.created_at && (
               <span>创建时间: {formatLocalDate(torrent.created_at)}</span>

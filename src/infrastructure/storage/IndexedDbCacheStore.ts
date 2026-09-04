@@ -1,5 +1,8 @@
+import type { Context } from "ajanuw-context";
 import { z } from "zod";
-import type { CacheStore } from "./CacheStore";
+import type { Logger } from "@/domain/logger/logger";
+import type { CacheStore } from "@/domain/storage/CacheStore";
+import { Logged } from "../logger/LoggedDecorator";
 
 const DB_NAME = "animesh-cache";
 const DB_VERSION = 1;
@@ -11,6 +14,7 @@ const CacheEnvelopeSchema = z.object({
 });
 
 export class IndexedDbCacheStore implements CacheStore {
+  constructor(public readonly logger: Logger) {}
   private dbPromise: Promise<IDBDatabase> | null = null;
 
   private openDatabase(): Promise<IDBDatabase> {
@@ -50,67 +54,116 @@ export class IndexedDbCacheStore implements CacheStore {
     );
   }
 
-  async getItem<T>(key: string, schema: z.ZodType<T>): Promise<T | null> {
-    try {
-      const record: unknown = await this.runTransaction("readonly", (store) =>
-        store.get(key),
-      );
-      if (!record) {
-        return null;
-      }
-
-      const envelopeResult = CacheEnvelopeSchema.safeParse(record);
-      if (!envelopeResult.success) {
-        await this.removeItem(key);
-        return null;
-      }
-
-      const { data, expiry } = envelopeResult.data;
-      if (Date.now() > expiry) {
-        await this.removeItem(key);
-        return null;
-      }
-
-      const validationResult = schema.safeParse(data);
-      if (!validationResult.success) {
-        await this.removeItem(key);
-        return null;
-      }
-
-      return validationResult.data;
-    } catch {
+  @Logged({
+    excludeArgs: [2],
+  })
+  async getItem<T>(
+    _ctx: Context,
+    key: string,
+    schema: z.ZodType<T>,
+  ): Promise<T | null> {
+    const record: unknown = await this.runTransaction("readonly", (store) =>
+      store.get(key),
+    );
+    if (!record) {
       return null;
     }
+
+    const envelopeResult = CacheEnvelopeSchema.safeParse(record);
+    if (!envelopeResult.success) {
+      await this.removeItem(_ctx, key);
+      return null;
+    }
+
+    const { data, expiry } = envelopeResult.data;
+    if (Date.now() > expiry) {
+      await this.removeItem(_ctx, key);
+      return null;
+    }
+
+    const validationResult = schema.safeParse(data);
+    if (!validationResult.success) {
+      await this.removeItem(_ctx, key);
+      return null;
+    }
+
+    return validationResult.data;
   }
 
-  /**
-   * 写入带 TTL 的缓存。存储失败（如配额不足）时静默忽略，不阻塞业务。
-   */
-  async setItem<T>(key: string, data: T, ttlMs: number): Promise<void> {
+  @Logged()
+  async setItem<T>(
+    _ctx: Context,
+    key: string,
+    data: T,
+    ttlMs: number,
+  ): Promise<void> {
     const entry = {
       data,
       expiry: Date.now() + ttlMs,
     };
-    try {
-      await this.runTransaction("readwrite", (store) => store.put(entry, key));
-    } catch {
-      // 缓存写入失败不影响主流程
-    }
+    await this.runTransaction("readwrite", (store) => store.put(entry, key));
   }
 
-  async removeItem(key: string): Promise<void> {
-    try {
-      await this.runTransaction("readwrite", (store) => store.delete(key));
-    } catch {
-      // 忽略清理失败
-    }
+  @Logged()
+  async removeItem(_ctx: Context, key: string): Promise<void> {
+    await this.runTransaction("readwrite", (store) => store.delete(key));
   }
 
-  async clear(): Promise<void> {
-    try {
-      await this.runTransaction("readwrite", (store) => store.clear());
-    } catch {
-      // 忽略清理失败
-    }
+  @Logged()
+  async clear(_ctx: Context): Promise<void> {
+    await this.runTransaction("readwrite", (store) => store.clear());
+  }
+
+  @Logged()
+  async clearExpired(_ctx: Context): Promise<number> {
+    const now = Date.now();
+    let deletedCount = 0;
+    const db = await this.getDb();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.openCursor();
+    return new Promise<number>((resolve, reject) => {
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) {
+          const record = cursor.value as { expiry?: number } | undefined;
+          if (record?.expiry !== undefined && now > record.expiry) {
+            cursor.delete();
+            deletedCount++;
+          }
+          cursor.continue();
+        } else {
+          resolve(deletedCount);
+        }
+      };
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = () => resolve(deletedCount);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  @Logged()
+  async clearByPrefix(_ctx: Context, prefix: string): Promise<void> {
+    const db = await this.getDb();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.openCursor();
+    return new Promise<void>((resolve, reject) => {
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (cursor) {
+          const key = String(cursor.key);
+          if (key.startsWith(`${prefix}:`)) {
+            cursor.delete();
+          }
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
   }
 }

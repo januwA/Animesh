@@ -1,11 +1,9 @@
 import { Heart } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useDI } from "@/di/DIContext";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import { MediaCard } from "@/presentation/components/MediaCard";
 import { Badge } from "@/presentation/components/ui/badge";
-import { Button } from "@/presentation/components/ui/button";
 import {
   Empty,
   EmptyContent,
@@ -99,9 +97,6 @@ export default function Collections() {
           <EmptyContent>
             <EmptyTitle>还没有收藏任何条目</EmptyTitle>
           </EmptyContent>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/calendar">去新番日历看看</Link>
-          </Button>
         </Empty>
       )}
     </div>

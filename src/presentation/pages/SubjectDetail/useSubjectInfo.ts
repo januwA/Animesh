@@ -1,0 +1,66 @@
+import { useLocation } from "react-router-dom";
+import type { GetAnimeSubjectUseCase } from "@/application/anime/GetAnimeSubjectUseCase";
+import type { OpenUrlUseCase } from "@/application/opener/OpenUrlUseCase";
+import type { AnimePlatform, AnimeSubject } from "@/domain/anime/AnimeSchemas";
+import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
+import type { UseQueryResult } from "@/presentation/hooks/useQuery";
+import { useQuery } from "@/presentation/hooks/useQuery";
+import { getSubjectExternalUrl } from "@/utils";
+
+export interface UseSubjectInfoParams {
+  subjectId: number;
+  platform: AnimePlatform;
+}
+
+/** useSubjectInfo 的依赖，由调用方（页面组合根）注入 */
+export interface UseSubjectInfoDeps {
+  getSubjectUseCase: Pick<GetAnimeSubjectUseCase, "execute">;
+  openUrlUseCase: Pick<OpenUrlUseCase, "execute">;
+}
+
+export interface SubjectInfoResult {
+  subjectQuery: UseQueryResult<AnimeSubject>;
+  subject: AnimeSubject | undefined;
+  displayName: string;
+  imageUrl: string | undefined;
+  handleOpenUrl: () => void;
+}
+
+export function useSubjectInfo(
+  params: UseSubjectInfoParams,
+  deps: UseSubjectInfoDeps,
+): SubjectInfoResult {
+  const { subjectId, platform } = params;
+  const { getSubjectUseCase, openUrlUseCase } = deps;
+
+  const location = useLocation();
+  const state = location.state as { name?: string; imageUrl?: string } | null;
+
+  const subjectQuery = useQuery(
+    (ctx) =>
+      getSubjectUseCase.execute(
+        ctx,
+        NonEmptyStringSchema.parse(String(subjectId)),
+      ),
+    [subjectId, getSubjectUseCase],
+  );
+  const subject = subjectQuery.data ?? undefined;
+
+  const displayName = subject?.name || state?.name || "加载中...";
+  const imageUrl = subject?.image || state?.imageUrl;
+
+  const handleOpenUrl = () => {
+    // v8 ignore next
+    if (!subject) return;
+    const url = getSubjectExternalUrl(platform, subject.id);
+    void openUrlUseCase.execute(NonEmptyStringSchema.parse(url));
+  };
+
+  return {
+    subjectQuery,
+    subject,
+    displayName,
+    imageUrl,
+    handleOpenUrl,
+  };
+}

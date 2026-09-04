@@ -1,29 +1,43 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router-dom";
-import { DetailLayout, MainLayout, NavBarLayout } from "./components/Layout";
+import { Navigate } from "react-router-dom";
+import { DetailLayout, MainLayout, NavBarLayout } from "./layout/Layout";
+import { SidebarLayout } from "./layout/SidebarLayout";
 import TorrentSearch from "./pages/TorrentSearch";
 
 const AiSubtitleTranslation = lazy(
   () => import("./pages/AiSubtitleTranslation"),
 );
-const AnilistCalendar = lazy(() => import("./pages/AnilistCalendar"));
-const AnilistSearch = lazy(() => import("./pages/AnilistSearch"));
-const AnilistSubjectDetail = lazy(() => import("./pages/AnilistSubjectDetail"));
-const BangumiSearch = lazy(() => import("./pages/BangumiSearch"));
-const Calendar = lazy(() => import("./pages/Calendar"));
+const SubjectCalendar = lazy(() => import("./pages/SubjectCalendar"));
 const Collections = lazy(() => import("./pages/Collections"));
 const Downloads = lazy(() => import("./pages/Downloads"));
+const NextSeasonAnime = lazy(() => import("./pages/NextSeasonAnime"));
 const Iptv = lazy(() => import("./pages/Iptv"));
 const LivePlayer = lazy(() => import("./pages/LivePlayer"));
 const Player = lazy(() => import("./pages/Player"));
-const Settings = lazy(() => import("./pages/Settings"));
 const SubjectDetail = lazy(() => import("./pages/SubjectDetail"));
+const SubjectSearch = lazy(() => import("./pages/SubjectSearch"));
 const TorrentDetail = lazy(() => import("./pages/TorrentDetail"));
+
+const SettingsSidebarLayout = lazy(
+  () => import("./pages/Settings/SettingsSidebarLayout"),
+);
+const StoragePage = lazy(() => import("./pages/Settings/StoragePage"));
+const NetworkPage = lazy(() => import("./pages/Settings/NetworkPage"));
+const AiModelsPage = lazy(() => import("./pages/Settings/AiModelsPage"));
+const TranslationPage = lazy(() => import("./pages/Settings/TranslationPage"));
+const CachePage = lazy(() => import("./pages/Settings/CachePage"));
+const AppearancePage = lazy(() => import("./pages/Settings/AppearancePage"));
+const AboutPage = lazy(() => import("./pages/Settings/AboutPage"));
 
 export const routes: RouteObject[] = [
   {
     element: <MainLayout />,
     children: [
+      {
+        index: true,
+        element: <Navigate to="/torrent_search" replace />,
+      },
       {
         element: <DetailLayout />,
         children: [
@@ -32,12 +46,8 @@ export const routes: RouteObject[] = [
             element: <TorrentDetail />,
           },
           {
-            path: "subject/:subjectId",
+            path: "anime/subject/:subjectId",
             element: <SubjectDetail />,
-          },
-          {
-            path: "anilist/subject/:subjectId",
-            element: <AnilistSubjectDetail />,
           },
           {
             path: "play/:infoHash/:fileId",
@@ -51,38 +61,15 @@ export const routes: RouteObject[] = [
             path: "live/play",
             element: <LivePlayer />,
           },
-          {
-            path: "search",
-            element: <BangumiSearch />,
-          },
-          {
-            path: "anilist/search",
-            element: <AnilistSearch />,
-          },
-          {
-            path: "live",
-            element: <Iptv />,
-          },
-          {
-            path: "settings",
-            element: <Settings />,
-          },
         ],
       },
+
       {
         element: <NavBarLayout />,
         children: [
           {
-            path: "",
+            path: "torrent_search",
             element: <TorrentSearch />,
-          },
-          {
-            path: "calendar",
-            element: <Calendar />,
-          },
-          {
-            path: "anilist",
-            element: <AnilistCalendar />,
           },
           {
             path: "collections",
@@ -91,6 +78,47 @@ export const routes: RouteObject[] = [
           {
             path: "downloads",
             element: <Downloads />,
+          },
+          {
+            element: <SidebarLayout />,
+            children: [
+              {
+                path: "anime",
+                children: [
+                  {
+                    path: "",
+                    index: true,
+                    element: <SubjectCalendar />,
+                  },
+                  {
+                    path: "search",
+                    element: <SubjectSearch />,
+                  },
+                  {
+                    path: "next-season",
+                    element: <NextSeasonAnime />,
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            path: "settings",
+            element: <SettingsSidebarLayout />,
+            children: [
+              { index: true, element: <Navigate to="appearance" replace /> },
+              { path: "storage", element: <StoragePage /> },
+              { path: "network", element: <NetworkPage /> },
+              { path: "ai-models", element: <AiModelsPage /> },
+              { path: "translation", element: <TranslationPage /> },
+              { path: "cache", element: <CachePage /> },
+              { path: "appearance", element: <AppearancePage /> },
+              { path: "about", element: <AboutPage /> },
+            ],
+          },
+          {
+            path: "live",
+            element: <Iptv />,
           },
         ],
       },

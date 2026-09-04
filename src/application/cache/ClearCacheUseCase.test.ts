@@ -1,3 +1,4 @@
+import { Background } from "ajanuw-context";
 import { beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { InMemoryCacheStore } from "@/test/InMemoryCacheStore";
@@ -25,19 +26,21 @@ describe("ClearCacheUseCase 清理联网缓存用例", () => {
 
   async function seedCache() {
     for (const key of cacheKeys) {
-      await store.setItem(key, { id: 1 }, 60_000);
+      await store.setItem(Background, key, { id: 1 }, 60_000);
     }
   }
 
   it("应该清空全部缓存", async () => {
     await seedCache();
-    await useCase.execute();
+    await useCase.execute(Background);
     for (const key of cacheKeys) {
-      await expect(store.getItem(key, anySchema)).resolves.toBeNull();
+      await expect(
+        store.getItem(Background, key, anySchema),
+      ).resolves.toBeNull();
     }
   });
 
   it("在空仓库下执行也不应该报错", async () => {
-    await expect(useCase.execute()).resolves.toBeUndefined();
+    await expect(useCase.execute(Background)).resolves.toBeUndefined();
   });
 });

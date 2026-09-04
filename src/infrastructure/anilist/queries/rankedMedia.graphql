@@ -1,0 +1,32 @@
+query Page(
+  $startDateGreater: FuzzyDateInt
+  $startDateLesser: FuzzyDateInt
+  $page: Int
+  $perPage: Int
+) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo {
+      total
+    }
+    media(
+      type: ANIME
+      startDate_greater: $startDateGreater
+      startDate_lesser: $startDateLesser
+      sort: SCORE_DESC
+    ) {
+      id
+      title {
+        romaji
+        english
+        native
+        userPreferred
+      }
+      coverImage {
+        large
+        medium
+        color
+      }
+      averageScore
+    }
+  }
+}

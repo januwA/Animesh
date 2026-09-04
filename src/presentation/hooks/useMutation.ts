@@ -1,8 +1,18 @@
 import type { CancelFunc, Context } from "ajanuw-context";
-import { Background, WithCancel } from "ajanuw-context";
+import {
+  Background,
+  Canceled,
+  WithCancel,
+  WithTimeout,
+  WithValue,
+} from "ajanuw-context";
+import type { Duration } from "ajanuw-duration";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 
 export interface UseMutationOptions<T, P> {
+  /** 执行超时时间，超时后 context 会被取消 */
+  timeout?: Duration;
   /** 执行成功后的回调，接收返回数据与本次参数 */
   onSuccess?: (data: T, params: P) => void;
   /** 执行失败后的回调，接收错误与本次参数 */
@@ -55,7 +65,10 @@ export function useMutation<T, P = void>(
     activeCancelRef.current?.();
     activeCancelRef.current = null;
 
-    const [ctx, cancel] = WithCancel(Background);
+    const [rawCtx, cancel] = optionsRef.current.timeout
+      ? WithTimeout(Background, optionsRef.current.timeout.inMilliseconds)
+      : WithCancel(Background);
+    const ctx = WithValue(rawCtx, TRACE_ID, crypto.randomUUID());
     activeCancelRef.current = cancel;
 
     setLoading(true);
@@ -63,7 +76,7 @@ export function useMutation<T, P = void>(
 
     return mutationFnRef.current(ctx, params).then(
       (result) => {
-        if (ctx.err() !== null) return null;
+        if (ctx.err() === Canceled) return null;
         activeCancelRef.current = null;
         setData(result);
         setLoading(false);
@@ -73,7 +86,7 @@ export function useMutation<T, P = void>(
         return result;
       },
       (err: unknown) => {
-        if (ctx.err() !== null) return null;
+        if (ctx.err() === Canceled) return null;
         activeCancelRef.current = null;
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);

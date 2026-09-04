@@ -1,0 +1,18 @@
+query Media($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    staff(sort: RELEVANCE) {
+      edges {
+        role
+        node {
+          id
+          name {
+            full
+          }
+          image {
+            large
+          }
+        }
+      }
+    }
+  }
+}

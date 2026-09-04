@@ -4,6 +4,7 @@ import { RouterProvider } from "react-router-dom";
 import { Toaster } from "sonner";
 import { type DIContainer, DIContext } from "@/di/DIContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { StreamServerProvider } from "./context/StreamServerContext";
 import { TorrentStatusProvider } from "./context/TorrentStatusContext";
 import "./App.css";
@@ -20,7 +21,9 @@ export default function App({ router, diContainer }: AppProps) {
         <StreamServerProvider>
           <TorrentStatusProvider>
             <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-              <RouterProvider router={router} />
+              <TooltipProvider>
+                <RouterProvider router={router} />
+              </TooltipProvider>
               <Toaster
                 position="top-center"
                 richColors

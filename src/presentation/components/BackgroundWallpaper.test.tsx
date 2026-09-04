@@ -56,7 +56,7 @@ afterEach(() => {
 
 function makeDIContainer(executeMock: (...args: any[]) => any) {
   return {
-    getBangumiRankedSubjectsUseCase: { execute: executeMock },
+    getWallpaperImagesUseCase: { execute: executeMock },
   } as any;
 }
 

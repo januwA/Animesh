@@ -27,7 +27,6 @@ export interface AnimeEpisode {
   id: number;
   sort: number;
   name: string;
-  duration?: string | null;
   airdate?: string | null;
 }
 
@@ -56,7 +55,6 @@ export interface AnimeEpisodesPage {
   total: number;
 }
 
-/** 条目搜索请求参数（POST /v0/search/subjects） */
 export interface AnimeSubjectSearchParams {
   keyword: string;
   limit: number;

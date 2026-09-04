@@ -1,6 +1,9 @@
+use animesh_core::application::ai_chat_use_case::AiChatUseCase;
 use animesh_core::application::collection_service::CollectionService;
 use animesh_core::application::search_use_case::SearchUseCase;
-use animesh_core::application::settings_service::{AiConfig, AppSettings, SettingsService};
+use animesh_core::application::settings_service::{
+    AiConfig, AppSettings, SettingsService, TranslationConfig,
+};
 use animesh_core::application::stream_service::StreamService;
 use animesh_core::application::subtitle_service::SubtitleService;
 use animesh_core::application::torrent_manager::TorrentManager;
@@ -28,6 +31,7 @@ struct AppState {
     torrent_manager: Arc<TorrentManager>,
     settings_service: Arc<SettingsService>,
     search_use_case: Arc<SearchUseCase>,
+    ai_chat_use_case: Arc<AiChatUseCase>,
     subtitle_service: Arc<SubtitleService>,
     stream_service: Arc<StreamService>,
     collection_service: Arc<CollectionService>,
@@ -60,6 +64,7 @@ async fn load_or_init_settings(
         ai_configs: None,
         max_download_speed: None,
         max_upload_speed: None,
+        translation: None,
     };
     settings_repo.ensure_initialized(&default_settings).await?;
     log::info!("使用默认设置初始化数据库");
@@ -119,12 +124,19 @@ async fn main() -> anyhow::Result<()> {
     let subject_binding_repo: Arc<dyn SubjectBindingRepository> =
         Arc::new(SqliteSubjectBindingRepository::new(&db).await);
 
-    let (port, hls_proxy) =
-        animesh_core::infrastructure::stream_server::start_stream_server(torrent_repo.clone())
-            .await
-            .context("初始化流媒体服务器失败")?;
-
     let crawler_repo = animesh_core::infrastructure::http_crawler::create_crawler_repository();
+    let search_use_case = Arc::new(SearchUseCase::new(crawler_repo, settings_repo.clone()));
+
+    let http_client = Arc::new(animesh_core::infrastructure::http_client::ReqwestHttpClient);
+    let ai_chat_use_case = Arc::new(AiChatUseCase::new(http_client, settings_repo.clone()));
+
+    let (port, hls_proxy) = animesh_core::infrastructure::stream_server::start_stream_server(
+        torrent_repo.clone(),
+        search_use_case.clone(),
+        ai_chat_use_case.clone(),
+    )
+    .await
+    .context("初始化流媒体服务器失败")?;
     let subtitle_cache: Arc<dyn animesh_core::domain::subtitles::SubtitleCache> =
         Arc::new(animesh_core::infrastructure::subtitle_cache::InMemorySubtitleCache::new());
     let subtitle_extractor: Arc<dyn animesh_core::domain::subtitles::SubtitleExtractor> =
@@ -137,7 +149,6 @@ async fn main() -> anyhow::Result<()> {
         torrent_repo.clone(),
         download_dir_lock.clone(),
     );
-    let search_use_case = SearchUseCase::new(crawler_repo, settings_repo);
     let subtitle_service = SubtitleService::new(
         torrent_repo.clone(),
         subtitle_cache,
@@ -158,7 +169,8 @@ async fn main() -> anyhow::Result<()> {
     let state = Arc::new(AppState {
         torrent_manager: Arc::new(torrent_manager),
         settings_service: Arc::new(settings_service),
-        search_use_case: Arc::new(search_use_case),
+        search_use_case,
+        ai_chat_use_case,
         subtitle_service: Arc::new(subtitle_service),
         stream_service: Arc::new(stream_service),
         collection_service: Arc::new(collection_service),
@@ -201,6 +213,10 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/settings/max-upload-speed",
             put(settings_set_max_upload_speed_handler),
+        )
+        .route(
+            "/settings/translation",
+            put(settings_set_translation_config_handler),
         )
         .route("/collections", get(collection_get_all_handler))
         .route("/collections", put(collection_add_handler))
@@ -518,6 +534,23 @@ async fn settings_set_max_upload_speed_handler(
     Ok(StatusCode::OK)
 }
 
+#[derive(serde::Deserialize)]
+struct SetTranslationConfigInput {
+    translation: Option<TranslationConfig>,
+}
+
+async fn settings_set_translation_config_handler(
+    State(state): State<Arc<AppState>>,
+    axum::Json(payload): axum::Json<SetTranslationConfigInput>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    state
+        .settings_service
+        .set_translation_config(payload.translation)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(StatusCode::OK)
+}
+
 async fn collection_get_all_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
@@ -574,11 +607,13 @@ struct AiChatRequestInput {
 }
 
 async fn ai_chat_request_handler(
+    State(state): State<Arc<AppState>>,
     axum::Json(payload): axum::Json<AiChatRequestInput>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    let resp =
-        animesh_core::send_ai_chat_request(&payload.endpoint, &payload.api_key, &payload.body_json)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let resp = state
+        .ai_chat_use_case
+        .execute(&payload.endpoint, &payload.api_key, &payload.body_json)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(resp)
 }

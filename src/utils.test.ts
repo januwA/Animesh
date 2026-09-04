@@ -4,6 +4,7 @@ import {
   formatError,
   formatLocalDate,
   formatPlaybackTime,
+  getSubjectExternalUrl,
 } from "./utils";
 
 describe("格式化字节大小函数 formatBytes", () => {
@@ -152,5 +153,19 @@ describe("格式化错误对象函数 formatError", () => {
     const err2 = new Error("错误2", { cause: err1 });
     err1.cause = err2; // 制造循环引用
     expect(formatError(err1)).toBe("错误1 -> 错误2 -> 错误1");
+  });
+});
+
+describe("获取外部链接函数 getSubjectExternalUrl", () => {
+  it("anilist 平台应返回 anilist.co 链接", () => {
+    expect(getSubjectExternalUrl("anilist", 12345)).toBe(
+      "https://anilist.co/anime/12345",
+    );
+  });
+
+  it("bangumi 平台应返回 bgm.tv 链接", () => {
+    expect(getSubjectExternalUrl("bangumi", 67890)).toBe(
+      "https://bgm.tv/subject/67890",
+    );
   });
 });

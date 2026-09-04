@@ -2,7 +2,7 @@
   "name": "animesh",
   "private": true,
   "license": "GPL-3.0-only",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A high-performance desktop anime streaming and downloading client built with Tauri v2, featuring magnet link aggregation search, BitTorrent stream playback, and embedded MKV subtitle extraction and rendering.",
   "type": "module",
   "scripts": {
@@ -35,6 +35,7 @@
     "bump-version": "tsx scripts/bump-version.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-notification": "^2",
     "@tauri-apps/plugin-opener": "^2",
@@ -52,6 +53,7 @@
     "radix-ui": "^1.6.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-hook-form": "^7.86.0",
     "react-router-dom": "^7.18.2",
     "shadcn": "^4.17.0",
     "sonner": "^2.0.8",
@@ -61,7 +63,9 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@babel/plugin-proposal-decorators": "^8.0.2",
     "@biomejs/biome": "^2.5.8",
+    "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^7.0.1",

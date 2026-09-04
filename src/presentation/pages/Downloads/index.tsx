@@ -101,11 +101,7 @@ function DownloadsView() {
                     asChild
                   >
                     <Link
-                      to={
-                        group.subjectPlatform === "anilist"
-                          ? `/anilist/subject/${group.subjectId}`
-                          : `/subject/${group.subjectId}`
-                      }
+                      to={`/anime/subject/${group.subjectId}?platform=${group.subjectPlatform}`}
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Link>

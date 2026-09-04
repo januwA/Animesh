@@ -109,12 +109,13 @@ export class TranslateSubtitleUseCase {
     dto.onProgress(0, total);
 
     for (let i = 0; i < total; i += batchSize) {
-      if (ctx.err() !== null) {
+      if (ctx.err()) {
         throw new Error("字幕翻译已被取消");
       }
 
       const batch = uniqueTexts.slice(i, i + batchSize);
       const batchTranslations = await this.translateBatch(
+        ctx,
         dto.aiConfig,
         dto.sourceLanguage,
         dto.targetLanguage,
@@ -167,6 +168,7 @@ export class TranslateSubtitleUseCase {
   }
 
   private async translateBatch(
+    ctx: Context,
     aiConfig: AiConfig,
     sourceLanguage: string,
     targetLanguage: string,
@@ -188,21 +190,12 @@ export class TranslateSubtitleUseCase {
       ],
       temperature: 0.1,
     };
-
-    let res: unknown;
-    try {
-      res = await this.aiClient.post(
-        aiConfig.api_endpoint,
-        aiConfig.api_key,
-        payload,
-      );
-    } catch (err: unknown) {
-      const tip = this.extractUnrecoverableTip(err);
-      if (tip !== null) throw new Error(tip, { cause: err });
-      this.logger.warn("AI 字幕翻译批次请求失败，已降级保留原文", err);
-      return new Map();
-    }
-
+    const res = await this.aiClient.post(
+      ctx,
+      aiConfig.api_endpoint,
+      aiConfig.api_key,
+      payload,
+    );
     return this.parseBatchResponse(res);
   }
 
@@ -254,29 +247,5 @@ export class TranslateSubtitleUseCase {
 4. 人名、专有名词保留原文或采用公认译名。
 5. 若原文为空字符串，译文也返回空字符串。
 6. 不要漏翻任何条目，每个 index 都必须在返回数组中出现。`;
-  }
-
-  /**
-   * 检测错误是否为不可恢复的 HTTP 4xx 错误（401/402/403）。
-   * 这类错误通常是认证失败、额度用完、权限不足，继续重试只会浪费请求，
-   * 应该立即终止整个翻译流程并提示用户。
-   *
-   * 兼容两种错误信息格式：
-   * - FetchHttpClient: "HTTP error! status: 402 Payment Required"
-   * - Rust 后端 ai_chat_request: "HTTP error status 402 Payment Required: {...}"
-   *
-   * 429（限流）、408（超时）、5xx、网络错误等视为暂时性错误，返回 null 走降级路径。
-   */
-  private extractUnrecoverableTip(err: unknown): string | null {
-    if (!(err instanceof Error)) return null;
-    const match = err.message.match(/status:?\s*(\d{3})/i);
-    if (!match) return null;
-    const code = parseInt(match[1], 10);
-    const tips: Record<number, string> = {
-      401: "AI 接口认证失败，请检查 API Key 是否正确",
-      402: "AI 额度已用完，请充值或更换模型配置",
-      403: "AI 接口拒绝访问，可能是权限不足或区域限制",
-    };
-    return tips[code] ?? null;
   }
 }

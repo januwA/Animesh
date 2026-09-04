@@ -3,10 +3,7 @@ import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { OpenerRepository } from "../../domain/opener/OpenerRepository";
 import type { UpdateInfo } from "../../domain/update/UpdateInfo";
 import type { UpdateRepository } from "../../domain/update/UpdateRepository";
-import {
-  type GithubRelease,
-  GithubReleaseSchema,
-} from "../../domain/update/UpdateSchemas";
+import { type GithubRelease, GithubReleaseSchema } from "./UpdateSchemas";
 
 export class GithubUpdateRepository implements UpdateRepository {
   constructor(private readonly openerRepository: OpenerRepository) {}
@@ -58,9 +55,9 @@ export class GithubUpdateRepository implements UpdateRepository {
 
       return {
         version: release.tag_name,
-        notes: release.body,
-        pubDate: release.published_at,
-        url: this.findInstallerUrl(release.assets),
+        notes: release.body ?? "",
+        pubDate: release.published_at ?? undefined,
+        url: this.findInstallerUrl(release.assets ?? []),
         htmlUrl: release.html_url,
       };
     } catch (err: unknown) {

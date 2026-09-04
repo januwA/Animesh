@@ -7,7 +7,6 @@ import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { TorrentDetailContent } from "./TorrentDetailContent";
 import { useTorrentDetailPage } from "./useTorrentDetailPage";
 
-// v8 ignore start
 const torrentDetailParamsSchema = z
   .object({
     magnet: NonEmptyStringSchema.optional(),
@@ -18,7 +17,6 @@ const torrentDetailParamsSchema = z
     path: ["source"],
   });
 type TorrentDetailParams = z.infer<typeof torrentDetailParamsSchema>;
-// v8 ignore stop
 
 export default function TorrentDetail() {
   const [searchParams] = useSearchParams();
@@ -28,13 +26,11 @@ export default function TorrentDetail() {
     magnet: searchParams.get("magnet") ?? undefined,
     infoHash: searchParams.get("infoHash") ?? undefined,
   });
-  // v8 ignore start
   if (!parsed.success) {
     return (
       <InvalidParamsView title="无效的种子详情参数" error={parsed.error} />
     );
   }
-  // v8 ignore stop
 
   return (
     <TorrentDetailView

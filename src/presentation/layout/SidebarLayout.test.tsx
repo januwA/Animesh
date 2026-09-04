@@ -1,0 +1,82 @@
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { TooltipProvider } from "@/presentation/components/ui/tooltip";
+import { SidebarLayout } from "./SidebarLayout";
+
+function renderSidebarLayout(initialEntries: string[]) {
+  return render(
+    <TooltipProvider>
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route element={<SidebarLayout />}>
+            <Route path="anime" element={<div>日历内容</div>} />
+            <Route path="anime/search" element={<div>搜索内容</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </TooltipProvider>,
+  );
+}
+
+describe("SidebarLayout 侧边栏布局", () => {
+  it("在 bangumi 平台下渲染新番日历和搜索动画菜单项", () => {
+    renderSidebarLayout(["/anime?platform=bangumi"]);
+
+    expect(screen.getByText("日历内容")).toBeInTheDocument();
+    expect(screen.getByText("新番日历")).toBeInTheDocument();
+    expect(screen.getByText("搜索动画")).toBeInTheDocument();
+  });
+
+  it("在 anilist 平台下渲染新番日历和搜索动画菜单项", () => {
+    renderSidebarLayout(["/anime?platform=anilist"]);
+
+    expect(screen.getByText("日历内容")).toBeInTheDocument();
+    expect(screen.getByText("新番日历")).toBeInTheDocument();
+    expect(screen.getByText("搜索动画")).toBeInTheDocument();
+  });
+
+  it("在 bangumi 平台下新番日历链接指向 /anime?platform=bangumi", () => {
+    renderSidebarLayout(["/anime?platform=bangumi"]);
+
+    const links = screen.getAllByRole("link", { name: "新番日历" });
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).toHaveAttribute("href", "/anime?platform=bangumi");
+  });
+
+  it("在 anilist 平台下新番日历链接指向 /anime?platform=anilist", () => {
+    renderSidebarLayout(["/anime?platform=anilist"]);
+
+    const links = screen.getAllByRole("link", { name: "新番日历" });
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).toHaveAttribute("href", "/anime?platform=anilist");
+  });
+
+  it("在 bangumi 平台下搜索动画链接指向 /anime/search?platform=bangumi", () => {
+    renderSidebarLayout(["/anime?platform=bangumi"]);
+
+    const links = screen.getAllByRole("link", { name: "搜索动画" });
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).toHaveAttribute("href", "/anime/search?platform=bangumi");
+  });
+
+  it("在 anilist 平台下搜索动画链接指向 /anime/search?platform=anilist", () => {
+    renderSidebarLayout(["/anime?platform=anilist"]);
+
+    const links = screen.getAllByRole("link", { name: "搜索动画" });
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).toHaveAttribute("href", "/anime/search?platform=anilist");
+  });
+
+  it("渲染子路由内容", () => {
+    renderSidebarLayout(["/anime/search?platform=bangumi"]);
+
+    expect(screen.getByText("搜索内容")).toBeInTheDocument();
+  });
+
+  it("平台参数无效时应回落到默认 bangumi 平台", () => {
+    renderSidebarLayout(["/anime?platform=invalid"]);
+
+    const links = screen.getAllByRole("link", { name: "新番日历" });
+    expect(links[0]).toHaveAttribute("href", "/anime?platform=bangumi");
+  });
+});

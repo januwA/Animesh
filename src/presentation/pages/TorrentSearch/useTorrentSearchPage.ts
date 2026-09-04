@@ -1,25 +1,41 @@
-import type { SubmitEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Duration } from "ajanuw-duration";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
-import type { SearchTorrentsUseCase } from "@/application/torrent/SearchTorrentsUseCase";
-import type { SearchTorrentsWithAiUseCase } from "@/application/torrent/SearchTorrentsWithAiUseCase";
+import { z } from "zod";
+import { useShallow } from "zustand/react/shallow";
+import type { SearchAllTorrentsUseCase } from "@/application/torrent/SearchAllTorrentsUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { TorrentSearchEngine } from "@/domain/torrent/TorrentEngines";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import {
+  TORRENT_SEARCH_ENGINES,
+  type TorrentSearchEngine,
+} from "@/domain/torrent/TorrentEngines";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
-import { useQuery } from "@/presentation/hooks/useQuery";
 import { useSearchHistoryStore } from "@/presentation/store/searchHistoryStore";
-import { useSearchStore } from "@/presentation/store/searchStore";
+import {
+  groupTorrentResults,
+  useSearchStore,
+} from "@/presentation/store/searchStore";
+import { filterResults } from "./useSearchFilter";
 
-const SELECTED_AI_ALIAS_KEY = "animesh_selected_ai_alias";
+export interface TorrentSearchFormValues {
+  keyword: string;
+  searchEngines: TorrentSearchEngine[];
+}
+
+const torrentSearchFormSchema = z.object({
+  keyword: z.string().trim().min(1, "请输入搜索关键词"),
+  searchEngines: z
+    .array(z.enum(TORRENT_SEARCH_ENGINES))
+    .min(1, "请选择至少一个搜索引擎"),
+});
 
 /** useTorrentSearchPage 的依赖，由调用方（页面组合根）注入 */
 export interface UseTorrentSearchPageDeps {
-  searchTorrentsUseCase: Pick<SearchTorrentsUseCase, "execute">;
-  searchTorrentsWithAiUseCase: Pick<SearchTorrentsWithAiUseCase, "execute">;
-  getSettingsUseCase: Pick<GetSettingsUseCase, "execute">;
+  searchAllTorrentsUseCase: Pick<SearchAllTorrentsUseCase, "execute">;
 }
 
 export function useTorrentSearchPage(
@@ -28,65 +44,64 @@ export function useTorrentSearchPage(
 ) {
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
-  const {
-    searchTorrentsUseCase,
-    searchTorrentsWithAiUseCase,
-    getSettingsUseCase,
-  } = deps;
+  const { searchAllTorrentsUseCase } = deps;
 
-  const searchKeyword = useSearchStore((s) => s.searchKeyword);
-  const setSearchKeyword = useSearchStore((s) => s.setSearchKeyword);
-  const searchEngine = useSearchStore((s) => s.searchEngine);
-  const setSearchEngine = useSearchStore((s) => s.setSearchEngine);
-  const searchResults = useSearchStore((s) => s.searchResults);
-  const setSearchResults = useSearchStore((s) => s.setSearchResults);
-  const searchHasSearched = useSearchStore((s) => s.searchHasSearched);
-  const setSearchHasSearched = useSearchStore((s) => s.setSearchHasSearched);
+  const {
+    searchResults,
+    setSearchResults,
+    filter,
+    setKeyword,
+    setSearchEngines,
+    collapsedGroups,
+    toggleGroup,
+    collapseAllGroups,
+    expandAllGroups,
+  } = useSearchStore(
+    useShallow((s) => ({
+      searchResults: s.searchResults,
+      setSearchResults: s.setSearchResults,
+      filter: s.filter,
+      setFilter: s.setFilter,
+      setKeyword: s.setKeyword,
+      setSearchEngines: s.setSearchEngines,
+      collapsedGroups: s.collapsedGroups,
+      toggleGroup: s.toggleGroup,
+      collapseAllGroups: s.collapseAllGroups,
+      expandAllGroups: s.expandAllGroups,
+    })),
+  );
 
   const history = useSearchHistoryStore((s) => s.history);
   const addHistory = useSearchHistoryStore((s) => s.addHistory);
   const deleteHistory = useSearchHistoryStore((s) => s.deleteHistory);
   const clearHistory = useSearchHistoryStore((s) => s.clearHistory);
 
-  const [selectedAiAlias, setSelectedAiAlias] = useState<string>(
-    () => localStorage.getItem(SELECTED_AI_ALIAS_KEY) || "none",
-  );
-
-  const aiQuery = useQuery(
-    () => getSettingsUseCase.execute(),
-    [getSettingsUseCase],
-  );
-  const aiConfigs = aiQuery.data?.ai_configs ?? [];
-
   const searchMutation = useMutation<
-    AiSearchResultItem[],
-    { queryText: string; engine: TorrentSearchEngine; aiAlias: string }
+    SearchResultItem[],
+    { queryText: string; engines: TorrentSearchEngine[] }
   >(
-    (ctx, params) => {
-      const dto = {
+    (ctx, params) =>
+      searchAllTorrentsUseCase.execute(ctx, {
         keyword: NonEmptyStringSchema.parse(params.queryText),
-        engine: params.engine,
-      };
-      return params.aiAlias !== "none"
-        ? searchTorrentsWithAiUseCase.execute(ctx, {
-            ...dto,
-            aiAlias: NonEmptyStringSchema.parse(params.aiAlias),
-          })
-        : searchTorrentsUseCase.execute(ctx, dto);
-    },
+        engines: params.engines,
+      }),
     {
+      timeout: new Duration({ seconds: 15 }),
       onSuccess: (data) => setSearchResults(data),
       onError: () => setSearchResults([]),
     },
   );
 
-  const groups = useSearchStore((s) => s.groups);
-  const collapsedGroups = useSearchStore((s) => s.collapsedGroups);
-  const toggleGroup = useSearchStore((s) => s.toggleGroup);
-  const collapseAllGroups = useSearchStore((s) => s.collapseAllGroups);
-  const expandAllGroups = useSearchStore((s) => s.expandAllGroups);
+  const filteredResults = useMemo(
+    () => filterResults(searchResults, filter),
+    [searchResults, filter],
+  );
 
-  // 仅当搜索结果集合变化（新一次搜索）时重置为全部展开
+  const groups = useMemo(
+    () => groupTorrentResults(filteredResults || []),
+    [filteredResults],
+  );
+
   const prevResultsRef = useRef(searchResults);
   useEffect(() => {
     if (prevResultsRef.current !== searchResults) {
@@ -99,37 +114,56 @@ export function useTorrentSearchPage(
     groups.length > 0 && collapsedGroups.size === groups.length;
   const groupNames = groups.map((g) => g.name);
 
+  const form = useForm<TorrentSearchFormValues>({
+    resolver: zodResolver(torrentSearchFormSchema),
+    defaultValues: {
+      keyword: filter.keyword,
+      searchEngines: filter.searchEngines,
+    },
+  });
+
+  const keywordValue = form.watch("keyword");
+  const enginesValue = form.watch("searchEngines");
+  useEffect(() => {
+    setKeyword(keywordValue);
+    setSearchEngines(enginesValue);
+  }, [keywordValue, enginesValue, setKeyword, setSearchEngines]);
+
   const performSearch = useCallback(
-    (queryText: string) => {
-      setSearchHasSearched(true);
+    (queryText: string, engines: TorrentSearchEngine[]) => {
       addHistory(queryText);
 
-      searchMutation.execute({
-        queryText,
-        engine: searchEngine,
-        aiAlias: selectedAiAlias,
-      });
+      searchMutation.execute({ queryText, engines });
     },
-    [
-      searchEngine,
-      selectedAiAlias,
-      searchMutation.execute,
-      setSearchHasSearched,
-      addHistory,
-    ],
+    [searchMutation.execute, addHistory],
+  );
+
+  const setSearchKeywordField = useCallback(
+    (val: string) => {
+      form.setValue("keyword", val);
+    },
+    [form],
   );
 
   useEffect(() => {
     if (keywordParam) {
-      setSearchKeyword(keywordParam);
+      setSearchKeywordField(keywordParam);
       setSearchParams({}, { replace: true });
-      performSearch(keywordParam);
+      performSearch(keywordParam, form.getValues("searchEngines"));
     }
-  }, [keywordParam, setSearchParams, performSearch, setSearchKeyword]);
+  }, [
+    keywordParam,
+    setSearchParams,
+    performSearch,
+    setSearchKeywordField,
+    form.getValues,
+  ]);
 
-  const handleSearch = (e: SubmitEvent) => {
+  const handleSearch = (e: React.SubmitEvent) => {
     e.preventDefault();
-    performSearch(searchKeyword.trim());
+    const keyword = form.getValues("keyword").trim();
+    const engines = form.getValues("searchEngines");
+    performSearch(keyword, engines);
   };
 
   const handleDeleteHistory = (item: string) => {
@@ -153,11 +187,6 @@ export function useTorrentSearchPage(
     navigate(`/torrent?magnet=${encodeURIComponent(magnet)}`);
   };
 
-  const handleSelectAiAlias = (alias: string) => {
-    setSelectedAiAlias(alias);
-    localStorage.setItem(SELECTED_AI_ALIAS_KEY, alias);
-  };
-
   const handleToggleAllGroups = () => {
     if (allGroupsCollapsed) {
       expandAllGroups();
@@ -168,17 +197,12 @@ export function useTorrentSearchPage(
 
   return {
     search: {
-      searchKeyword,
-      setSearchKeyword,
-      searchEngine,
-      setSearchEngine,
+      form,
       handleSearch,
       performSearch,
-    },
-    ai: {
-      aiConfigs,
-      selectedAiAlias,
-      handleSelectAiAlias,
+      searchKeyword: form.watch("keyword"),
+      setSearchKeyword: setSearchKeywordField,
+      searchEngines: form.watch("searchEngines"),
     },
     searchHistory: {
       history,
@@ -186,7 +210,7 @@ export function useTorrentSearchPage(
       handleClearHistory,
     },
     results: {
-      searchResults,
+      searchResults: filteredResults,
       groups,
       collapsedGroups,
       toggleGroup,
@@ -198,7 +222,6 @@ export function useTorrentSearchPage(
     status: {
       loading: searchMutation.loading,
       error: searchMutation.error,
-      searchHasSearched,
       handleCancel: searchMutation.cancel,
     },
   };

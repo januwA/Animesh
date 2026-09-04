@@ -100,4 +100,37 @@ describe("函数/方法长度检查", () => {
 		const results = checkCode(code, "mix.ts");
 		expect(results).toHaveLength(0);
 	});
+
+	it("函数返回内嵌 class 时，class 方法不应计入外层函数长度", () => {
+		const methods = Array.from(
+			{ length: 5 },
+			(_, i) => `\t\tmethod${i}() { console.log(${i}); }`,
+		).join("\n");
+		const code = `
+function factory() {
+	return class MyClass {
+${methods}
+	};
+}
+		`;
+		const results = checkCode(code, "factory.ts");
+		expect(results).toHaveLength(0);
+	});
+
+	it("函数内嵌套函数时，内嵌函数不应计入外层函数长度", () => {
+		const nested = Array.from(
+			{ length: 5 },
+			(_, i) => `\t\tconsole.log(${i});`,
+		).join("\n");
+		const code = `
+function outer() {
+	function inner() {
+${nested}
+	}
+	return inner;
+}
+		`;
+		const results = checkCode(code, "nested.ts");
+		expect(results).toHaveLength(0);
+	});
 });

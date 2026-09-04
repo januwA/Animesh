@@ -1,29 +1,20 @@
 import type { Context } from "ajanuw-context";
-
-export interface HttpClientOptions extends RequestInit {
-  ctx?: Context;
-  params?: Record<string, string | number | boolean | undefined>;
-}
-
-/** HTTP 客户端契约（端口）：仓库与 AI 客户端依赖此接口，测试可注入假实现。 */
-export interface HttpClient {
-  request(url: string | URL, options?: HttpClientOptions): Promise<Response>;
-  getJson<T>(url: string | URL, options?: HttpClientOptions): Promise<T>;
-}
+import type { HttpClient, HttpClientOptions } from "@/domain/http/HttpClient";
+import type { Logger } from "@/domain/logger/logger";
+import { Logged } from "../logger/LoggedDecorator";
 
 /** 基于 fetch 的默认实现，负责 Context 取消与响应错误归一化。 */
 export class FetchHttpClient implements HttpClient {
   private readonly defaultHeaders: HeadersInit;
 
-  constructor(defaults: { headers?: HeadersInit } = {}) {
+  constructor(
+    defaults: { headers?: HeadersInit } = {},
+    public readonly logger: Logger,
+  ) {
     this.defaultHeaders = defaults.headers || {};
   }
 
-  private setupContextAbort(
-    ctx: Context | undefined,
-    controller: AbortController,
-  ): void {
-    if (!ctx) return;
+  private setupContextAbort(ctx: Context, controller: AbortController): void {
     if (ctx.err()) {
       throw ctx.err();
     }
@@ -47,11 +38,13 @@ export class FetchHttpClient implements HttpClient {
     return `${url}${separator}${queryString}`;
   }
 
+  @Logged()
   async request(
+    ctx: Context,
     url: string | URL,
     options: HttpClientOptions = {},
   ): Promise<Response> {
-    const { ctx, headers, params, ...restOptions } = options;
+    const { headers, params, ...restOptions } = options;
     const controller = new AbortController();
 
     this.setupContextAbort(ctx, controller);
@@ -77,10 +70,11 @@ export class FetchHttpClient implements HttpClient {
   }
 
   async getJson<T>(
+    ctx: Context,
     url: string | URL,
     options: HttpClientOptions = {},
   ): Promise<T> {
-    const response = await this.request(url, {
+    const response = await this.request(ctx, url, {
       ...options,
       method: "GET",
       headers: {

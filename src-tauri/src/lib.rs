@@ -1,12 +1,13 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use animesh_core::application::collection_service::CollectionService;
 use animesh_core::application::search_use_case::SearchUseCase;
-use animesh_core::application::settings_service::{AiConfig, AppSettings, SettingsService};
+use animesh_core::application::settings_service::{
+    AiConfig, AppSettings, SettingsService, TranslationConfig,
+};
 use animesh_core::application::stream_service::StreamService;
 use animesh_core::application::subtitle_service::SubtitleService;
 use animesh_core::application::torrent_manager::TorrentManager;
 use animesh_core::domain::collection::CollectionRecord;
-use animesh_core::domain::crawler::SearchResultItem;
 use animesh_core::domain::settings::SettingsRepository;
 use animesh_core::domain::subtitle_translations::{
     SubtitleTranslationRecord, SubtitleTranslationRepository,
@@ -29,18 +30,6 @@ pub fn trace_log(msg: &str) {
     log::info!("[TRACE] {}", msg);
 }
 
-pub struct SearchTracker {
-    pub handles: Mutex<HashMap<String, tokio::task::AbortHandle>>,
-}
-
-impl Default for SearchTracker {
-    fn default() -> Self {
-        Self {
-            handles: Mutex::new(HashMap::new()),
-        }
-    }
-}
-
 pub struct AddMagnetTracker {
     pub handles: Mutex<HashMap<String, tokio::task::AbortHandle>>,
 }
@@ -49,92 +38,6 @@ impl Default for AddMagnetTracker {
     fn default() -> Self {
         Self {
             handles: Mutex::new(HashMap::new()),
-        }
-    }
-}
-
-#[tauri::command]
-async fn cancel_search(
-    trace_id: String,
-    tracker: tauri::State<'_, SearchTracker>,
-) -> Result<(), CoreError> {
-    trace_log(&format!(
-        "Entering cancel_search command, trace_id: {}",
-        trace_id
-    ));
-    if let Ok(mut handles) = tracker.handles.lock() {
-        if let Some(handle) = handles.remove(&trace_id) {
-            handle.abort();
-            trace_log(&format!(
-                "Successfully aborted search for trace_id: {}",
-                trace_id
-            ));
-        } else {
-            trace_log(&format!(
-                "No active search found to abort for trace_id: {}",
-                trace_id
-            ));
-        }
-    }
-    Ok(())
-}
-
-#[tauri::command]
-async fn search_torrents(
-    trace_id: String,
-    keyword: &str,
-    engine: &str,
-    search_use_case: tauri::State<'_, Arc<SearchUseCase>>,
-    tracker: tauri::State<'_, SearchTracker>,
-) -> Result<Vec<SearchResultItem>, CoreError> {
-    trace_log(&format!(
-        "Entering search_torrents command, trace_id: {}, keyword: {}, engine: {}",
-        trace_id, keyword, engine
-    ));
-
-    let use_case_clone = search_use_case.inner().clone();
-    let keyword_string = keyword.to_string();
-    let engine_string = engine.to_string();
-
-    let task = tokio::spawn(async move {
-        use_case_clone
-            .execute(&engine_string, &keyword_string)
-            .await
-    });
-
-    let abort_handle = task.abort_handle();
-    if let Ok(mut handles) = tracker.handles.lock() {
-        handles.insert(trace_id.clone(), abort_handle);
-    }
-
-    let res = task.await;
-
-    if let Ok(mut handles) = tracker.handles.lock() {
-        handles.remove(&trace_id);
-    }
-
-    match res {
-        Ok(inner_res) => {
-            match &inner_res {
-                Ok(items) => trace_log(&format!(
-                    "search_torrents completed successfully, found {} items",
-                    items.len()
-                )),
-                Err(e) => trace_log(&format!("search_torrents failed with error: {}", e)),
-            }
-            inner_res
-        }
-        Err(join_err) => {
-            if join_err.is_cancelled() {
-                trace_log(&format!(
-                    "search_torrents was cancelled, trace_id: {}",
-                    trace_id
-                ));
-                Err(CoreError::Message("Search cancelled".to_string()))
-            } else {
-                trace_log(&format!("search_torrents task panicked: {:?}", join_err));
-                Err(CoreError::Message("Search task panicked".to_string()))
-            }
         }
     }
 }
@@ -462,6 +365,14 @@ async fn settings_set_max_upload_speed(
 }
 
 #[tauri::command]
+async fn settings_set_translation_config(
+    config: Option<TranslationConfig>,
+    settings_service: tauri::State<'_, Arc<SettingsService>>,
+) -> Result<(), CoreError> {
+    settings_service.set_translation_config(config).await
+}
+
+#[tauri::command]
 async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, CoreError> {
     #[cfg(mobile)]
     {
@@ -493,15 +404,6 @@ async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, CoreE
         .map_err(|e| CoreError::Message(e.to_string()))?;
         Ok(path)
     }
-}
-
-#[tauri::command]
-async fn ai_chat_request(
-    endpoint: String,
-    api_key: String,
-    body_json: String,
-) -> Result<String, CoreError> {
-    animesh_core::send_ai_chat_request(&endpoint, &api_key, &body_json).await
 }
 
 #[tauri::command]
@@ -580,6 +482,7 @@ async fn load_or_init_settings(
         ai_configs: None,
         max_download_speed: None,
         max_upload_speed: None,
+        translation: None,
     };
     settings_repo.ensure_initialized(&default_settings).await?;
     log::info!("使用默认设置初始化数据库");
@@ -667,15 +570,27 @@ pub fn run() {
                     SqliteSubjectBindingRepository::new(&db).await,
                 );
 
+                let crawler_repo =
+                    animesh_core::infrastructure::http_crawler::create_crawler_repository();
+                let search_use_case = Arc::new(SearchUseCase::new(crawler_repo, settings_repo.clone()));
+
+                let http_client = Arc::new(animesh_core::infrastructure::http_client::ReqwestHttpClient);
+                let ai_chat_use_case = Arc::new(
+                    animesh_core::application::ai_chat_use_case::AiChatUseCase::new(
+                        http_client,
+                        settings_repo.clone(),
+                    ),
+                );
+
                 let (port, hls_proxy) =
                     animesh_core::infrastructure::stream_server::start_stream_server(
                         torrent_repo.clone(),
+                        search_use_case,
+                        ai_chat_use_case,
                     )
                     .await
                     .context("初始化流媒体服务器失败")?;
 
-                let crawler_repo =
-                    animesh_core::infrastructure::http_crawler::create_crawler_repository();
                 let subtitle_cache: Arc<dyn animesh_core::domain::subtitles::SubtitleCache> =
                     Arc::new(
                         animesh_core::infrastructure::subtitle_cache::InMemorySubtitleCache::new(),
@@ -693,7 +608,6 @@ pub fn run() {
                     torrent_repo.clone(),
                     download_dir_lock.clone(),
                 );
-                let search_use_case = SearchUseCase::new(crawler_repo, settings_repo);
                 let subtitle_service = SubtitleService::new(
                     torrent_repo.clone(),
                     subtitle_cache,
@@ -718,19 +632,15 @@ pub fn run() {
 
                 app.manage(Arc::new(torrent_manager));
                 app.manage(Arc::new(settings_service));
-                app.manage(Arc::new(search_use_case));
                 app.manage(Arc::new(subtitle_service));
                 app.manage(Arc::new(stream_service));
                 app.manage(Arc::new(collection_service));
                 app.manage(subtitle_translation_repo);
-                app.manage(SearchTracker::default());
                 app.manage(AddMagnetTracker::default());
                 Ok(())
             })
         })
         .invoke_handler(tauri::generate_handler![
-            search_torrents,
-            cancel_search,
             torrent_add_magnet,
             cancel_add_magnet,
             get_stream_port,
@@ -753,10 +663,10 @@ pub fn run() {
             settings_set_ai_configs,
             settings_set_max_download_speed,
             settings_set_max_upload_speed,
+            settings_set_translation_config,
             select_directory,
             torrent_get_video_metadata,
             torrent_get_subtitle_vtt,
-            ai_chat_request,
             subtitle_translation_get,
             subtitle_translation_list_by_torrent,
             subtitle_translation_save,

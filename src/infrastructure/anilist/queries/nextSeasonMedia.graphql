@@ -1,0 +1,37 @@
+query Page(
+  $startDateGreater: FuzzyDateInt
+  $startDateLesser: FuzzyDateInt
+  $page: Int
+  $perPage: Int
+) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo {
+      hasNextPage
+    }
+    media(
+      type: ANIME
+      startDate_greater: $startDateGreater
+      startDate_lesser: $startDateLesser
+      sort: FAVOURITES_DESC
+    ) {
+      id
+      title {
+        romaji
+        english
+        native
+        userPreferred
+      }
+      coverImage {
+        large
+        medium
+        color
+      }
+      averageScore
+      startDate {
+        year
+        month
+        day
+      }
+    }
+  }
+}

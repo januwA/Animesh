@@ -1,0 +1,23 @@
+query Media($id: Int!) {
+  Media(id: $id, type: ANIME) {
+    characters(sort: ROLE) {
+      edges {
+        role
+        node {
+          id
+          name {
+            full
+          }
+          image {
+            large
+          }
+        }
+        voiceActors(language: JAPANESE) {
+          name {
+            full
+          }
+        }
+      }
+    }
+  }
+}

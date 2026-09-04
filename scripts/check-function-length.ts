@@ -160,6 +160,67 @@ export function checkCode(
 		}
 	}
 
+	// 收集 body 内所有嵌套函数体/class 体的行区间（0 起始），用于排除外层函数计数
+	function collectNestedBodySpans(node: any, spans: LineSpan[]): void {
+		if (!node || typeof node !== "object") return;
+		if (Array.isArray(node)) {
+			for (const item of node) collectNestedBodySpans(item, spans);
+			return;
+		}
+
+		// ClassBody: 记录其行区间用于排除，同时递归检查内部方法
+		if (node.type === "ClassBody") {
+			const startLine = lineOf(node.start);
+			const endLine = lineOf(node.end);
+			if (endLine > startLine) {
+				spans.push({ startLine, endLine });
+			}
+			for (const key in node) {
+				if (Object.hasOwn(node, key)) {
+					const child = node[key];
+					if (Array.isArray(child)) {
+						for (const item of child) collectNestedBodySpans(item, spans);
+					} else if (child && typeof child === "object") {
+						collectNestedBodySpans(child, spans);
+					}
+				}
+			}
+			return;
+		}
+
+		// 函数节点: 记录其 body 行区间，不递归内部
+		let bodyNode: any = null;
+		if (
+			node.type === "FunctionDeclaration" ||
+			node.type === "ArrowFunctionExpression" ||
+			node.type === "FunctionExpression"
+		) {
+			bodyNode = node.body;
+		} else if (node.type === "MethodDefinition") {
+			bodyNode = node.value?.body;
+		}
+
+		if (bodyNode) {
+			const startLine = lineOf(bodyNode.start);
+			const endLine = lineOf(bodyNode.end);
+			if (endLine > startLine) {
+				spans.push({ startLine, endLine });
+			}
+			return;
+		}
+
+		for (const key in node) {
+			if (Object.hasOwn(node, key)) {
+				const child = node[key];
+				if (Array.isArray(child)) {
+					for (const item of child) collectNestedBodySpans(item, spans);
+				} else if (child && typeof child === "object") {
+					collectNestedBodySpans(child, spans);
+				}
+			}
+		}
+	}
+
 	function offsetToLoc(
 		src: string,
 		offset: number,
@@ -237,12 +298,17 @@ export function checkCode(
 				const sliceEnd = isBlock ? bodyNode.end - 1 : bodyNode.end;
 				const bodyText = code.slice(sliceStart, sliceEnd);
 				const bodyStartLine = lineOf(sliceStart);
-				const spans: LineSpan[] = [];
-				collectDataSpans(bodyNode, spans);
-				const relSpans = spans.map((span) => ({
-					startLine: span.startLine - bodyStartLine,
-					endLine: span.endLine - bodyStartLine,
-				}));
+
+				// 收集纯数据字面量和嵌套函数/class 体的行区间，用于排除
+				const excludeSpans: LineSpan[] = [];
+				collectDataSpans(bodyNode, excludeSpans);
+				collectNestedBodySpans(bodyNode, excludeSpans);
+				const relSpans = excludeSpans
+					.map((span) => ({
+						startLine: span.startLine - bodyStartLine,
+						endLine: span.endLine - bodyStartLine,
+					}))
+					.sort((a, b) => a.startLine - b.startLine);
 				const lineCount = countLogicalLines(bodyText, relSpans);
 
 				if (lineCount > 30) {
@@ -258,6 +324,9 @@ export function checkCode(
 		}
 
 		// 递归遍历子节点
+		// - 遇到函数节点时跳过，避免嵌套函数重复计入外层长度
+		if (isFunctionNode) return;
+
 		for (const key in node) {
 			if (Object.hasOwn(node, key)) {
 				const child = node[key];

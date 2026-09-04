@@ -40,7 +40,7 @@ impl StreamService {
 
     /// 生成种子文件的流式播放地址,自动选择本机最佳局域网 IP。
     pub fn get_stream_url(&self, info_hash_hex: &str, file_id: usize) -> String {
-        let host = get_local_ip().unwrap_or_else(|| "127.0.0.1".to_string());
+        let host = get_local_ip().unwrap_or("127.0.0.1".to_string());
         format!(
             "http://{}:{}/stream/{}/{}",
             host, self.port, info_hash_hex, file_id

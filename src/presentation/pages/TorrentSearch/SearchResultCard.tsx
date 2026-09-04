@@ -1,15 +1,6 @@
-import {
-  Bot,
-  ChevronDown,
-  Clock,
-  Globe,
-  Magnet,
-  Play,
-  Sparkles,
-} from "lucide-react";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
-import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
-import { Badge } from "@/presentation/components/ui/badge";
+import { ChevronDown, Clock, Globe, Magnet, Play } from "lucide-react";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import { TranslatableText } from "@/presentation/components/TranslatableText";
 import { Button } from "@/presentation/components/ui/button";
 import {
   Card,
@@ -23,16 +14,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/presentation/components/ui/collapsible";
-import { sanitizeHtml } from "@/presentation/lib/sanitizeHtml";
-import { cn } from "@/presentation/lib/utils";
 import { formatLocalDate } from "@/utils";
 
 interface SearchResultCardProps {
-  item: AiSearchResultItem;
+  item: SearchResultItem;
   index: number;
   onCopyMagnet: (magnet: string) => void;
   onPlay: (magnet: string) => void;
-  isBestAi?: boolean;
 }
 
 export function SearchResultCard({
@@ -40,37 +28,10 @@ export function SearchResultCard({
   index,
   onCopyMagnet,
   onPlay,
-  isBestAi = false,
 }: SearchResultCardProps) {
   return (
     <Card id={`torrent-item-${index}`} className="ani-card">
       <CardHeader className="p-5 pb-3">
-        {item.ai_score !== undefined && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant="outline"
-              className={cn(
-                "gap-1.5 px-2.5 py-0.5 font-medium",
-                isBestAi
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-secondary text-muted-foreground",
-              )}
-            >
-              {isBestAi ? (
-                <Sparkles className="h-3 w-3" />
-              ) : (
-                <Bot className="h-3 w-3" />
-              )}
-              {isBestAi ? "AI 智能精选推荐" : "AI 评分过滤"}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={cn("gap-1 px-2.5 py-0.5 font-mono font-semibold")}
-            >
-              匹配度: {item.ai_score}分
-            </Badge>
-          </div>
-        )}
         <CardTitle className="text-base font-semibold leading-relaxed group-hover:text-primary transition-colors">
           {item.title}
         </CardTitle>
@@ -80,14 +41,6 @@ export function SearchResultCard({
         </div>
       </CardHeader>
       <CardContent className="px-5 pb-4 pt-0 flex flex-col gap-3">
-        {item.ai_reason && (
-          <Alert variant="default" className="text-xs py-3 px-3">
-            <AlertDescription className="text-xs font-medium">
-              <span className="font-semibold">推荐理由：</span>
-              {item.ai_reason}
-            </AlertDescription>
-          </Alert>
-        )}
         {item.description && (
           <Collapsible
             className="group/desc"
@@ -104,12 +57,12 @@ export function SearchResultCard({
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div
-                className="mt-2 text-xs text-muted-foreground leading-relaxed break-words"
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: 内容已通过 sanitizeHtml 使用 DOMPurify 净化
-                dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(item.description),
-                }}
+              <TranslatableText
+                text={item.description}
+                renderHtml
+                as="div"
+                className="mt-2 text-xs text-muted-foreground leading-relaxed wrap-break-word"
+                toolbarClassName="mt-2"
               />
             </CollapsibleContent>
           </Collapsible>

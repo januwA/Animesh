@@ -1,12 +1,30 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AiSearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import type { SearchResultItem } from "@/domain/torrent/TorrentSchemas";
+import { TranslatableText } from "@/presentation/components/TranslatableText";
 import { SearchResultCard } from "./SearchResultCard";
 
-function makeItem(
-  overrides: Partial<AiSearchResultItem> = {},
-): AiSearchResultItem {
+// 测试替身：按真实组件把 text 当作 HTML 渲染。净化细节由 sanitizeHtml.test.ts 单独覆盖，
+// 这里不再复刻 DOMPurify 行为，只保留折叠展开时文本可见的能力。
+vi.mock(import("@/presentation/components/TranslatableText"), () => ({
+  TranslatableText: vi.fn(({ text, as, className, toolbarClassName }) => {
+    const Tag = as ?? "div";
+    return (
+      <div className={toolbarClassName}>
+        <Tag
+          className={className}
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: 测试替身
+          dangerouslySetInnerHTML={{ __html: text }}
+        />
+      </div>
+    );
+  }),
+}));
+
+const TranslatableTextMock = vi.mocked(TranslatableText);
+
+function makeItem(overrides: Partial<SearchResultItem> = {}): SearchResultItem {
   return {
     title: NonEmptyStringSchema.parse("xxx 第1集"),
     link: NonEmptyStringSchema.parse("http://example.com/1"),
@@ -17,10 +35,7 @@ function makeItem(
   };
 }
 
-const renderCard = (
-  overrides: Partial<AiSearchResultItem> = {},
-  isBestAi = false,
-) => {
+const renderCard = (overrides: Partial<SearchResultItem> = {}) => {
   const onCopyMagnet = vi.fn();
   const onPlay = vi.fn();
   render(
@@ -29,13 +44,16 @@ const renderCard = (
       index={0}
       onCopyMagnet={onCopyMagnet}
       onPlay={onPlay}
-      isBestAi={isBestAi}
     />,
   );
   return { onCopyMagnet, onPlay };
 };
 
 describe("SearchResultCard 搜索结果卡片组件", () => {
+  beforeEach(() => {
+    TranslatableTextMock.mockClear();
+  });
+
   it("应该渲染标题、网页链接与操作按钮", () => {
     renderCard();
 
@@ -90,17 +108,18 @@ describe("SearchResultCard 搜索结果卡片组件", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("渲染 description 时应该剥离 script 等危险标签", () => {
+  it("description 以 renderHtml 方式交给 TranslatableText 净化渲染", () => {
     renderCard({
-      description: NonEmptyStringSchema.parse(
-        "<p>安全描述</p><script>window.__xss_injected = true</script>",
-      ),
+      description: NonEmptyStringSchema.parse("<p>安全描述</p>"),
     });
 
     fireEvent.click(screen.getByTestId("torrent-desc-toggle-0"));
 
-    expect(screen.getByText("安全描述")).toBeInTheDocument();
-    expect((window as any).__xss_injected).toBeUndefined();
+    expect(TranslatableTextMock.mock.calls[0][0]).toMatchObject({
+      text: "<p>安全描述</p>",
+      renderHtml: true,
+      as: "div",
+    });
   });
 
   it("description 为空时不应渲染描述折叠区", () => {
@@ -109,25 +128,5 @@ describe("SearchResultCard 搜索结果卡片组件", () => {
     expect(
       screen.queryByTestId("torrent-desc-toggle-0"),
     ).not.toBeInTheDocument();
-  });
-
-  it("有 ai_score 时渲染评分徽章，isBestAi 时显示 AI 智能精选推荐", () => {
-    renderCard(
-      {
-        ai_score: 95,
-        ai_reason: "匹配 1080p 清晰度与简中字幕",
-      },
-      true,
-    );
-
-    expect(screen.getByText("AI 智能精选推荐")).toBeInTheDocument();
-    expect(screen.getByText("匹配度: 95分")).toBeInTheDocument();
-    expect(screen.getByText("匹配 1080p 清晰度与简中字幕")).toBeInTheDocument();
-  });
-
-  it("非最佳 AI 结果时显示 AI 评分过滤徽章", () => {
-    renderCard({ ai_score: 75 });
-
-    expect(screen.getByText("AI 评分过滤")).toBeInTheDocument();
   });
 });

@@ -1,22 +1,35 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { Context } from "ajanuw-context";
+import type { HttpClient } from "@/domain/http/HttpClient";
 import { commands } from "@/generated/tauri-commands";
 import type { AiClient } from "../../domain/ai/AiClient";
 
-/**
- * Tauri 平台的大模型客户端实现。
- * 通过 Tauri Invoke 调用 Rust 后端，以在桌面端免除浏览器的 CORS 跨域拦截。
- */
 export class TauriAiClient implements AiClient {
+  constructor(private readonly httpClient: HttpClient) {}
+
   async post(
+    ctx: Context,
     endpoint: string,
     apiKey: string,
     payload: unknown,
   ): Promise<unknown> {
-    const responseText = await invoke<string>(commands.ai_chat_request, {
-      endpoint,
-      apiKey,
-      bodyJson: JSON.stringify(payload),
-    });
-    return JSON.parse(responseText);
+    const port = await invoke<number>(commands.get_stream_port);
+
+    const response = await this.httpClient.request(
+      ctx,
+      `http://127.0.0.1:${port}/ai/chat-request`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          endpoint,
+          api_key: apiKey,
+          body_json: JSON.stringify(payload),
+        }),
+      },
+    );
+
+    const text = await response.text();
+    return JSON.parse(text);
   }
 }

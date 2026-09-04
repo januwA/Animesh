@@ -20,11 +20,11 @@ function easeInOut(t: number): number {
  * 全局背景壁纸：使用 PixiJS (WebGL) 渲染 Ken Burns 交叉淡入淡出。
  */
 export function BackgroundWallpaper() {
-  const { getBangumiRankedSubjectsUseCase } = useDI();
+  const { getWallpaperImagesUseCase } = useDI();
 
   const { data: subjects } = useQuery(
-    (ctx) => getBangumiRankedSubjectsUseCase.execute(ctx),
-    [getBangumiRankedSubjectsUseCase],
+    (ctx) => getWallpaperImagesUseCase.execute(ctx),
+    [getWallpaperImagesUseCase],
   );
 
   const rawImages = useMemo(() => {
