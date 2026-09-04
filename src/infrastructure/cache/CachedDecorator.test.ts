@@ -1,6 +1,8 @@
-import { Background } from "ajanuw-context";
+import type { Context } from "ajanuw-context";
+import { Background, WithValue } from "ajanuw-context";
 import { Duration } from "ajanuw-duration";
 import { beforeEach, describe, expect, it, type Mocked, vi } from "vitest";
+import { TRACE_ID } from "@/domain/common/ContextKeys";
 import type { CacheStore } from "@/domain/storage/CacheStore";
 import { Cached } from "./CachedDecorator";
 
@@ -144,6 +146,48 @@ describe("Cached 装饰器", () => {
 
       expect(result).toBe("cached-value");
       expect(store.setItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("带 Context 参数的方法", () => {
+    it("ctx 不参与缓存 key，业务参数相同时应命中缓存", async () => {
+      const makeCtx = () =>
+        WithValue(Background, TRACE_ID, crypto.randomUUID());
+      const backing = new Map<string, unknown>();
+      store = createMockStore({
+        getItem: vi
+          .fn()
+          .mockImplementation(
+            async (_ctx, key: string) => backing.get(key) ?? null,
+          ),
+        setItem: vi
+          .fn()
+          .mockImplementation(async (_ctx, key: string, value: unknown) => {
+            backing.set(key, value);
+          }),
+      });
+
+      class TestService {
+        store: CacheStore = store;
+
+        @Cached({ ttl: new Duration({ minutes: 5 }) })
+        async fetchData(_ctx: Context, id: string): Promise<string> {
+          return `fresh-${id}`;
+        }
+      }
+
+      const service = new TestService();
+      const first = await service.fetchData(makeCtx(), "42");
+      const setItemCallsBefore = store.setItem.mock.calls.length;
+      const second = await service.fetchData(makeCtx(), "42");
+
+      expect(first).toBe("fresh-42");
+      expect(second).toBe("fresh-42");
+      // 两次请求的缓存 key 应一致（ctx 不参与 hash）
+      const keys = store.getItem.mock.calls.map((call) => call[1]);
+      expect(keys[0]).toBe(keys[keys.length - 1]);
+      // 第二次命中缓存并直接返回，不再发生新的写入
+      expect(store.setItem.mock.calls.length).toBe(setItemCallsBefore);
     });
   });
 });

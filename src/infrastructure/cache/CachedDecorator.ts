@@ -21,6 +21,15 @@ interface CacheAwareInstance {
 // biome-ignore lint/suspicious/noExplicitAny: TC39 decorator requires flexible typing to wrap any method signature
 type AnyMethod = (...args: any[]) => Promise<any>;
 
+/**
+ * 将参数训练到缓存 key 序列化前，把 Context 参数替换为稳定占位符。
+ * Context 携带 traceId、取消信号等每次调用都不同的易变状态，若参与 hash
+ * 会导致缓存 key 每次都不同而击穿缓存。其余参数（含对象）仍精确参与 hash。
+ */
+function sanitizeArgsForHash(args: unknown[]): unknown[] {
+  return args.map((arg) => (isContextLike(arg) ? "[ctx]" : arg));
+}
+
 export function Cached(options: CachedOptions) {
   return (
     value: AnyMethod,
@@ -41,7 +50,9 @@ export function Cached(options: CachedOptions) {
         ? args.filter((_, i) => !options.excludeArgs?.includes(i))
         : args;
 
-      const argsHash = fnv1a32(JSON.stringify(filteredArgs));
+      const argsHash = fnv1a32(
+        JSON.stringify(sanitizeArgsForHash(filteredArgs)),
+      );
       const key = options.prefix
         ? `${options.prefix}:${methodName}:${argsHash}`
         : fnv1a32(`${className}:${methodName}:${argsHash}`);
