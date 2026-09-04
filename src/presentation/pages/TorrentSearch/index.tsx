@@ -38,10 +38,10 @@ export default function TorrentSearch() {
 }
 
 function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
-  const { searchTorrentsUseCase } = useDI();
+  const { searchAllTorrentsUseCase } = useDI();
 
   const page = useTorrentSearchPage(keyword, {
-    searchTorrentsUseCase,
+    searchAllTorrentsUseCase,
   });
 
   const StatusPanel = () => {
@@ -64,36 +64,36 @@ function TorrentSearchView({ keyword }: { keyword: string | undefined }) {
       );
     }
 
-    if (page.results.searchResults) {
-      if (page.results.searchResults.length) {
-        return (
-          <SearchResultsList
-            totalCount={page.results.searchResults.length}
-            groupCount={page.results.groups.length}
-            allGroupsCollapsed={page.results.allGroupsCollapsed}
-            onToggleAllGroups={page.results.handleToggleAllGroups}
-            groups={page.results.groups}
-            collapsedGroups={page.results.collapsedGroups}
-            onToggleGroup={page.results.toggleGroup}
-            onCopyMagnet={page.results.handleCopyMagnet}
-            onPlay={page.results.handlePlay}
-          />
-        );
-      } else {
-        return (
-          <Card className="ani-card">
-            <CardContent>
-              <Empty>
-                <EmptyContent>
-                  <EmptyTitle>未找到相关资源</EmptyTitle>
-                  <EmptyDescription>请换个关键词试试</EmptyDescription>
-                </EmptyContent>
-              </Empty>
-            </CardContent>
-          </Card>
-        );
-      }
+    if (!page.results.searchResults) return null;
+
+    if (page.results.searchResults.length) {
+      return (
+        <SearchResultsList
+          totalCount={page.results.searchResults.length}
+          groupCount={page.results.groups.length}
+          allGroupsCollapsed={page.results.allGroupsCollapsed}
+          onToggleAllGroups={page.results.handleToggleAllGroups}
+          groups={page.results.groups}
+          collapsedGroups={page.results.collapsedGroups}
+          onToggleGroup={page.results.toggleGroup}
+          onCopyMagnet={page.results.handleCopyMagnet}
+          onPlay={page.results.handlePlay}
+        />
+      );
     }
+
+    return (
+      <Card className="ani-card">
+        <CardContent>
+          <Empty>
+            <EmptyContent>
+              <EmptyTitle>未找到相关资源</EmptyTitle>
+              <EmptyDescription>请换个关键词试试</EmptyDescription>
+            </EmptyContent>
+          </Empty>
+        </CardContent>
+      </Card>
+    );
   };
 
   return (

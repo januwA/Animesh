@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useShallow } from "zustand/react/shallow";
-import type { SearchTorrentsUseCase } from "@/application/torrent/SearchTorrentsUseCase";
+import type { SearchAllTorrentsUseCase } from "@/application/torrent/SearchAllTorrentsUseCase";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import {
   TORRENT_SEARCH_ENGINES,
@@ -35,46 +35,7 @@ const torrentSearchFormSchema = z.object({
 
 /** useTorrentSearchPage 的依赖，由调用方（页面组合根）注入 */
 export interface UseTorrentSearchPageDeps {
-  searchTorrentsUseCase: Pick<SearchTorrentsUseCase, "execute">;
-}
-
-async function searchMultipleEngines(
-  searchTorrentsUseCase: Pick<SearchTorrentsUseCase, "execute">,
-  ctx: Parameters<SearchTorrentsUseCase["execute"]>[0],
-  keyword: string,
-  engines: TorrentSearchEngine[],
-): Promise<SearchResultItem[]> {
-  const results = await Promise.allSettled(
-    engines.map((engine) =>
-      searchTorrentsUseCase.execute(ctx, {
-        keyword: NonEmptyStringSchema.parse(keyword),
-        engine,
-      }),
-    ),
-  );
-
-  const merged: SearchResultItem[] = [];
-  const seen = new Set<string>();
-
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      for (const item of result.value) {
-        const key = String(item.link);
-        if (!seen.has(key)) {
-          seen.add(key);
-          merged.push(item);
-        }
-      }
-    }
-  }
-
-  const allFailed = results.every((r) => r.status === "rejected");
-  if (allFailed && results.length > 0) {
-    const firstError = results[0] as PromiseRejectedResult;
-    throw firstError.reason;
-  }
-
-  return merged;
+  searchAllTorrentsUseCase: Pick<SearchAllTorrentsUseCase, "execute">;
 }
 
 export function useTorrentSearchPage(
@@ -83,7 +44,7 @@ export function useTorrentSearchPage(
 ) {
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
-  const { searchTorrentsUseCase } = deps;
+  const { searchAllTorrentsUseCase } = deps;
 
   const {
     searchResults,
@@ -120,12 +81,10 @@ export function useTorrentSearchPage(
     { queryText: string; engines: TorrentSearchEngine[] }
   >(
     (ctx, params) =>
-      searchMultipleEngines(
-        searchTorrentsUseCase,
-        ctx,
-        params.queryText,
-        params.engines,
-      ),
+      searchAllTorrentsUseCase.execute(ctx, {
+        keyword: NonEmptyStringSchema.parse(params.queryText),
+        engines: params.engines,
+      }),
     {
       timeout: new Duration({ seconds: 15 }),
       onSuccess: (data) => setSearchResults(data),

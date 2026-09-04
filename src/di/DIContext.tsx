@@ -50,6 +50,7 @@ import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadata
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
 import { ResumeTorrentUseCase } from "../application/torrent/ResumeTorrentUseCase";
+import { SearchAllTorrentsUseCase } from "../application/torrent/SearchAllTorrentsUseCase";
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SetTorrentSubjectUseCase } from "../application/torrent/SetTorrentSubjectUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
@@ -89,7 +90,7 @@ export interface DIContainer {
   addFavoriteUseCase: AddFavoriteUseCase;
   removeFavoriteUseCase: RemoveFavoriteUseCase;
   getFavoriteStatusUseCase: GetFavoriteStatusUseCase;
-  searchTorrentsUseCase: SearchTorrentsUseCase;
+  searchAllTorrentsUseCase: SearchAllTorrentsUseCase;
   subscribeTorrentsUseCase: SubscribeTorrentsUseCase;
   pauseTorrentUseCase: PauseTorrentUseCase;
   resumeTorrentUseCase: ResumeTorrentUseCase;
@@ -184,6 +185,9 @@ export function createDIContainer({
     notificationRepository,
   );
   const searchTorrentsUseCase = new SearchTorrentsUseCase(torrentRepository);
+  const searchAllTorrentsUseCase = new SearchAllTorrentsUseCase(
+    searchTorrentsUseCase,
+  );
 
   const aiClient: AiClient = isTauri
     ? new TauriAiClient(httpClient)
@@ -333,7 +337,7 @@ export function createDIContainer({
     logger,
 
     notifyDownloadCompletionUseCase,
-    searchTorrentsUseCase,
+    searchAllTorrentsUseCase,
     subscribeTorrentsUseCase,
     pauseTorrentUseCase,
     resumeTorrentUseCase,

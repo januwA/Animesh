@@ -54,7 +54,9 @@ export class IndexedDbCacheStore implements CacheStore {
     );
   }
 
-  @Logged()
+  @Logged({
+    excludeArgs: [2],
+  })
   async getItem<T>(
     _ctx: Context,
     key: string,

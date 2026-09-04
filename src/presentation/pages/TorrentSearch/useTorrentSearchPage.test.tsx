@@ -56,7 +56,7 @@ function makeSearchResults(
 const makeDeps = (
   overrides: Partial<UseTorrentSearchPageDeps> = {},
 ): UseTorrentSearchPageDeps => ({
-  searchTorrentsUseCase: {
+  searchAllTorrentsUseCase: {
     execute: vi.fn().mockResolvedValue([]),
   },
   ...overrides,
@@ -73,9 +73,9 @@ const renderPage = async (
   return { result: hook.result, deps, unmount: hook.unmount };
 };
 
-const searchDto = (keyword: string, engine: TorrentSearchEngine) => ({
+const searchDto = (keyword: string, engines: TorrentSearchEngine[]) => ({
   keyword,
-  engine,
+  engines,
 });
 
 describe("useTorrentSearchPage 搜索页面 hook", () => {
@@ -87,7 +87,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     locationRef.current = null;
   });
 
-  it("搜索调用 searchTorrentsUseCase 并携带默认引擎", async () => {
+  it("搜索调用 searchAllTorrentsUseCase 并携带默认引擎", async () => {
     const { result, deps } = await renderPage();
 
     act(() =>
@@ -96,30 +96,26 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
     await waitFor(() => {
       expect(
-        vi.mocked(deps.searchTorrentsUseCase.execute),
+        vi.mocked(deps.searchAllTorrentsUseCase.execute),
       ).toHaveBeenCalledWith(
         expect.any(Object),
-        searchDto("xxx", TORRENT_SEARCH_ENGINES[0]),
+        searchDto("xxx", [TORRENT_SEARCH_ENGINES[0]]),
       );
     });
   });
 
-  it("多引擎搜索时并发调用 searchTorrentsUseCase", async () => {
+  it("多引擎搜索时调用聚合用例并携带全部引擎", async () => {
     const { result, deps } = await renderPage();
     const engines: TorrentSearchEngine[] = ["dmhy", "nyaa"];
 
     act(() => result.current.search.performSearch("xxx", engines));
 
     await waitFor(() => {
-      expect(deps.searchTorrentsUseCase.execute).toHaveBeenCalledTimes(2);
+      expect(deps.searchAllTorrentsUseCase.execute).toHaveBeenCalledTimes(1);
     });
-    expect(deps.searchTorrentsUseCase.execute).toHaveBeenCalledWith(
+    expect(deps.searchAllTorrentsUseCase.execute).toHaveBeenCalledWith(
       expect.any(Object),
-      searchDto("xxx", "dmhy"),
-    );
-    expect(deps.searchTorrentsUseCase.execute).toHaveBeenCalledWith(
-      expect.any(Object),
-      searchDto("xxx", "nyaa"),
+      searchDto("xxx", engines),
     );
   });
 
@@ -134,17 +130,17 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
     await waitFor(() => {
       expect(
-        vi.mocked(deps.searchTorrentsUseCase.execute),
+        vi.mocked(deps.searchAllTorrentsUseCase.execute),
       ).toHaveBeenCalledWith(
         expect.any(Object),
-        searchDto("xxx", TORRENT_SEARCH_ENGINES[0]),
+        searchDto("xxx", [TORRENT_SEARCH_ENGINES[0]]),
       );
     });
   });
 
   it("搜索成功时更新结果与历史记录，失败时清空结果", async () => {
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValueOnce(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValueOnce(
       makeSearchResults({ title: NonEmptyStringSchema.parse("xxx 第1集") }),
     );
 
@@ -157,7 +153,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     });
     expect(result.current.searchHistory.history).toEqual(["xxx"]);
 
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockRejectedValueOnce(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockRejectedValueOnce(
       new Error("boom"),
     );
     act(() =>
@@ -172,7 +168,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
   it("搜索失败后重试应恢复结果并清空错误", async () => {
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute)
+    vi.mocked(deps.searchAllTorrentsUseCase.execute)
       .mockRejectedValueOnce("网络请求超时")
       .mockResolvedValueOnce(
         makeSearchResults({ title: NonEmptyStringSchema.parse("xxx 第1集") }),
@@ -207,10 +203,10 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
     await waitFor(() => {
       expect(
-        vi.mocked(deps.searchTorrentsUseCase.execute),
+        vi.mocked(deps.searchAllTorrentsUseCase.execute),
       ).toHaveBeenCalledWith(
         expect.any(Object),
-        searchDto("xxx", TORRENT_SEARCH_ENGINES[0]),
+        searchDto("xxx", [TORRENT_SEARCH_ENGINES[0]]),
       );
     });
     expect(result.current.search.searchKeyword).toBe("xxx");
@@ -328,7 +324,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     const searchPromise = new Promise<never>(() => {});
     const { result } = await renderPage({
       deps: makeDeps({
-        searchTorrentsUseCase: {
+        searchAllTorrentsUseCase: {
           execute: vi.fn().mockImplementation((ctx) => {
             ctx.done().then(() => {
               isCancelled = true;
@@ -355,7 +351,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     const searchPromise = new Promise<never>(() => {});
     const { result, unmount } = await renderPage({
       deps: makeDeps({
-        searchTorrentsUseCase: {
+        searchAllTorrentsUseCase: {
           execute: vi.fn().mockImplementation((ctx) => {
             ctx.done().then(() => {
               isCancelled = true;
@@ -376,7 +372,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
   it("搜索结果按字幕组数量降序分组，未标注组恒排最后", async () => {
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValue(
       makeSearchResults(
         { title: NonEmptyStringSchema.parse("[GroupB] 某番 01") },
         { title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
@@ -401,7 +397,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
   it("应识别【】形式的中文组前缀与开头多个空格", async () => {
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValue(
       makeSearchResults(
         { title: NonEmptyStringSchema.parse("【字幕组】 某番 01") },
         { title: NonEmptyStringSchema.parse("[ANi]  某番 02") },
@@ -421,7 +417,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
   it("切换组折叠状态", async () => {
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValue(
       makeSearchResults(
         { title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
         { title: NonEmptyStringSchema.parse("[GroupB] 某番 10") },
@@ -442,7 +438,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
   it("全部折叠与全部展开", async () => {
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValue(
       makeSearchResults(
         { title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
         { title: NonEmptyStringSchema.parse("[GroupB] 某番 10") },
@@ -464,7 +460,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
   it("新一次搜索时应重置为全部展开", async () => {
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute)
+    vi.mocked(deps.searchAllTorrentsUseCase.execute)
       .mockResolvedValueOnce(
         makeSearchResults(
           { title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
@@ -496,7 +492,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
   it("卸载重挂后保留搜索结果且不重复请求", async () => {
     const deps = makeDeps();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValue(
       makeSearchResults({ title: NonEmptyStringSchema.parse("xxx 第1集") }),
     );
 
@@ -509,14 +505,14 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     await waitFor(() => {
       expect(first.result.current.results.searchResults).toHaveLength(1);
     });
-    const callsBeforeBack = vi.mocked(deps.searchTorrentsUseCase.execute).mock
-      .calls.length;
+    const callsBeforeBack = vi.mocked(deps.searchAllTorrentsUseCase.execute)
+      .mock.calls.length;
     first.unmount();
 
     const second = await renderPage({ deps });
     expect(second.result.current.results.searchResults).toHaveLength(1);
     expect(
-      vi.mocked(deps.searchTorrentsUseCase.execute).mock.calls.length,
+      vi.mocked(deps.searchAllTorrentsUseCase.execute).mock.calls.length,
     ).toBe(callsBeforeBack);
   });
 
@@ -525,7 +521,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     vi.spyOn(Date, "now").mockReturnValue(NOW);
 
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValue(
       makeSearchResults(
         {
           title: NonEmptyStringSchema.parse("某番 01"),
@@ -557,7 +553,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
     vi.spyOn(Date, "now").mockReturnValue(NOW);
 
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValue(
       makeSearchResults(
         {
           title: NonEmptyStringSchema.parse("[GroupA] 某番 01"),
@@ -590,7 +586,7 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
   it("无过滤条件时显示全部搜索结果", async () => {
     const { result, deps } = await renderPage();
-    vi.mocked(deps.searchTorrentsUseCase.execute).mockResolvedValue(
+    vi.mocked(deps.searchAllTorrentsUseCase.execute).mockResolvedValue(
       makeSearchResults(
         { title: NonEmptyStringSchema.parse("[GroupA] 某番 01") },
         { title: NonEmptyStringSchema.parse("[GroupB] 其他番 01") },
@@ -606,24 +602,5 @@ describe("useTorrentSearchPage 搜索页面 hook", () => {
 
     expect(result.current.results.searchResults).toHaveLength(2);
     expect(result.current.results.groups).toHaveLength(2);
-  });
-
-  it("多引擎搜索结果按 link 去重", async () => {
-    const { result, deps } = await renderPage();
-    const sameItem = makeSearchResults({
-      title: NonEmptyStringSchema.parse("xxx 第1集"),
-    })[0];
-
-    vi.mocked(deps.searchTorrentsUseCase.execute)
-      .mockResolvedValueOnce([sameItem])
-      .mockResolvedValueOnce([
-        { ...sameItem, title: NonEmptyStringSchema.parse("xxx 第1集 (重复)") },
-      ]);
-
-    act(() => result.current.search.performSearch("xxx", ["dmhy", "nyaa"]));
-
-    await waitFor(() => {
-      expect(result.current.results.searchResults).toHaveLength(1);
-    });
   });
 });
