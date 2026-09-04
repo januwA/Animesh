@@ -156,6 +156,7 @@ mod tests {
             id: 0,
             name: "a.mkv".to_string(),
             len: 10,
+            included: true,
         }]
     }
 
@@ -211,6 +212,7 @@ mod tests {
                     id: 0,
                     name: "a.mp4".to_string(),
                     len: 10,
+                    included: true,
                 }]),
             ),
             Arc::new(MockSubtitleCache::default()),

@@ -53,6 +53,7 @@ import { SearchAllTorrentsUseCase } from "../application/torrent/SearchAllTorren
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SetTorrentSubjectUseCase } from "../application/torrent/SetTorrentSubjectUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
+import { UpdateOnlyFilesUseCase } from "../application/torrent/UpdateOnlyFilesUseCase";
 import { TranslateTextUseCase } from "../application/translation/TranslateTextUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
@@ -96,6 +97,7 @@ export interface DIContainer {
   deleteTorrentUseCase: DeleteTorrentUseCase;
   setTorrentSubjectUseCase: SetTorrentSubjectUseCase;
   clearTorrentSubjectUseCase: ClearTorrentSubjectUseCase;
+  updateOnlyFilesUseCase: UpdateOnlyFilesUseCase;
   resolveTorrentUseCase: ResolveTorrentUseCase;
   getSubtitleVttUseCase: GetSubtitleVttUseCase;
   getStreamPortUseCase: GetStreamPortUseCase;
@@ -215,6 +217,7 @@ export function createDIContainer({
   const clearTorrentSubjectUseCase = new ClearTorrentSubjectUseCase(
     torrentRepository,
   );
+  const updateOnlyFilesUseCase = new UpdateOnlyFilesUseCase(torrentRepository);
   const resolveTorrentUseCase = new ResolveTorrentUseCase(torrentRepository);
   const getSubtitleVttUseCase = new GetSubtitleVttUseCase(
     torrentRepository,
@@ -341,6 +344,7 @@ export function createDIContainer({
     deleteTorrentUseCase,
     setTorrentSubjectUseCase,
     clearTorrentSubjectUseCase,
+    updateOnlyFilesUseCase,
     resolveTorrentUseCase,
     getSubtitleVttUseCase,
     getStreamPortUseCase,

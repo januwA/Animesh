@@ -64,7 +64,7 @@ async fn torrent_add_magnet(
     let manager_clone = manager.inner().clone();
     let magnet_string = magnet.to_string();
 
-    let task = tokio::spawn(async move { manager_clone.add_magnet(&magnet_string).await });
+    let task = tokio::spawn(async move { manager_clone.add_magnet(&magnet_string, None).await });
 
     let abort_handle = task.abort_handle();
     if let Ok(mut handles) = tracker.handles.lock() {
@@ -166,6 +166,21 @@ async fn torrent_get_files(
         .get_torrent_files(info_hash)
         .await
         .ok_or(CoreError::TorrentNotFound)
+}
+
+#[tauri::command]
+async fn torrent_update_only_files(
+    info_hash: &str,
+    only_files: Vec<usize>,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<(), CoreError> {
+    trace_log(&format!(
+        "torrent_update_only_files info_hash: {}, only_files: {:?}",
+        info_hash, only_files
+    ));
+    manager
+        .update_only_files(info_hash, only_files.into_iter().collect())
+        .await
 }
 
 #[tauri::command]
@@ -647,6 +662,7 @@ pub fn run() {
             get_local_ip,
             iptv_resolve_stream,
             torrent_get_files,
+            torrent_update_only_files,
             torrent_pause,
             torrent_resume,
             torrent_delete,

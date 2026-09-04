@@ -14,6 +14,7 @@ export const FileDetailsSchema = z.object({
   id: z.number(),
   name: NonEmptyStringSchema,
   len: z.number(),
+  included: z.boolean().optional().default(true),
 });
 
 export const AddTorrentResultSchema = z.object({

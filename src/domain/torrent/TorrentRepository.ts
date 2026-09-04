@@ -24,6 +24,7 @@ export interface TorrentRepository {
     magnet: NonEmptyString,
   ): Promise<AddTorrentResult>;
   getTorrentFiles(infoHash: NonEmptyString): Promise<FileDetails[]>;
+  updateOnlyFiles(infoHash: NonEmptyString, onlyFiles: number[]): Promise<void>;
   getStreamPort(): Promise<number>;
   getLocalIp(): Promise<string>;
   getVideoMetadata(

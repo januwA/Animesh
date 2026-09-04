@@ -294,7 +294,7 @@ async fn torrent_add_magnet_handler(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let res = state
         .torrent_manager
-        .add_magnet(&payload.magnet)
+        .add_magnet(&payload.magnet, None)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(axum::Json(res))

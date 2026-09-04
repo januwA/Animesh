@@ -131,6 +131,20 @@ export class HttpTorrentRepository implements TorrentRepository {
     return result.data;
   }
 
+  async updateOnlyFiles(infoHash: string, onlyFiles: number[]): Promise<void> {
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/torrents/${infoHash}/update_only_files`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ only_files: onlyFiles }),
+      },
+    );
+  }
+
   async getStreamPort(): Promise<number> {
     const raw = await this.httpClient.getJson<unknown>(
       Background,

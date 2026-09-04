@@ -4,6 +4,7 @@ use crate::domain::torrent::{
 use crate::error::CoreError;
 use async_trait::async_trait;
 use librqbit::{AddTorrent, ManagedTorrent, Session};
+use std::collections::HashSet;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
@@ -118,11 +119,16 @@ impl RqbitTorrentRepository {
 
 #[async_trait]
 impl TorrentRepository for RqbitTorrentRepository {
-    async fn add_magnet(&self, magnet: &str) -> Result<AddTorrentResult, CoreError> {
+    async fn add_magnet(
+        &self,
+        magnet: &str,
+        only_files: Option<Vec<usize>>,
+    ) -> Result<AddTorrentResult, CoreError> {
         let output_folder = (self.get_download_dir_fn)();
         let options = librqbit::AddTorrentOptions {
             overwrite: true,
             output_folder: Some(output_folder),
+            only_files: only_files.clone(),
             ..Default::default()
         };
 
@@ -156,6 +162,10 @@ impl TorrentRepository for RqbitTorrentRepository {
                     id,
                     name: fi.relative_filename.to_string_lossy().to_string(),
                     len: fi.len,
+                    included: only_files
+                        .as_ref()
+                        .map(|of| of.contains(&id))
+                        .unwrap_or(true),
                 })
                 .collect::<Vec<_>>()
         })?;
@@ -253,6 +263,7 @@ impl TorrentRepository for RqbitTorrentRepository {
 
     async fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
         let torrent = self.find_torrent_by_hex(info_hash_hex)?;
+        let only_files = torrent.only_files();
         torrent
             .with_metadata(|meta| {
                 meta.file_infos
@@ -262,10 +273,28 @@ impl TorrentRepository for RqbitTorrentRepository {
                         id,
                         name: fi.relative_filename.to_string_lossy().to_string(),
                         len: fi.len,
+                        included: only_files
+                            .as_ref()
+                            .map(|of| of.contains(&id))
+                            .unwrap_or(true),
                     })
                     .collect::<Vec<_>>()
             })
             .ok()
+    }
+
+    async fn update_only_files(
+        &self,
+        info_hash_hex: &str,
+        only_files: HashSet<usize>,
+    ) -> Result<(), CoreError> {
+        let torrent = self
+            .find_torrent_by_hex(info_hash_hex)
+            .ok_or(CoreError::TorrentNotFound)?;
+        self.session
+            .update_only_files(&torrent, &only_files)
+            .await
+            .map_err(CoreError::from)
     }
 
     async fn get_file_reader(

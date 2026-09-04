@@ -20,8 +20,14 @@ describe("ResolveTorrentUseCase 解析种子", () => {
     const ctx = WithValue(Background, TRACE_ID, "test-trace");
     const mockResult = {
       info_hash: NonEmptyStringSchema.parse("123"),
-      name: NonEmptyStringSchema.parse("test magnet torrent"),
-      files: [],
+      files: [
+        {
+          id: 0,
+          name: NonEmptyStringSchema.parse("a.mp4"),
+          len: 100,
+          included: true,
+        },
+      ],
     };
     vi.mocked(mockRepo.addTorrentMagnet).mockResolvedValueOnce(mockResult);
 
@@ -39,7 +45,12 @@ describe("ResolveTorrentUseCase 解析种子", () => {
     const useCase = new ResolveTorrentUseCase(mockRepo);
     const ctx = WithValue(Background, TRACE_ID, "test-trace");
     const mockFiles = [
-      { id: 1, name: NonEmptyStringSchema.parse("file1.mp4"), len: 100 },
+      {
+        id: 1,
+        name: NonEmptyStringSchema.parse("file1.mp4"),
+        len: 100,
+        included: true,
+      },
     ];
     vi.mocked(mockRepo.getTorrentFiles).mockResolvedValueOnce(mockFiles);
 

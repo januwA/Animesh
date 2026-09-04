@@ -15,6 +15,7 @@ use crate::domain::torrent::{
     TorrentRepository, TorrentStatusInfo,
 };
 use crate::error::{CoreError, CoreResult};
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
@@ -34,6 +35,7 @@ pub struct MockTorrentRepository {
     pub add_result: CoreResult<AddTorrentResult>,
     pub max_download_speed_calls: Arc<Mutex<Vec<Option<u32>>>>,
     pub max_upload_speed_calls: Arc<Mutex<Vec<Option<u32>>>>,
+    pub update_only_files_calls: Arc<Mutex<Vec<(String, HashSet<usize>)>>>,
 }
 
 impl Default for MockTorrentRepository {
@@ -44,6 +46,7 @@ impl Default for MockTorrentRepository {
             add_result: Err("未配置".to_string().into()),
             max_download_speed_calls: Arc::new(Mutex::new(vec![])),
             max_upload_speed_calls: Arc::new(Mutex::new(vec![])),
+            update_only_files_calls: Arc::new(Mutex::new(vec![])),
         }
     }
 }
@@ -67,7 +70,11 @@ impl MockTorrentRepository {
 
 #[async_trait::async_trait]
 impl TorrentRepository for MockTorrentRepository {
-    async fn add_magnet(&self, _magnet: &str) -> CoreResult<AddTorrentResult> {
+    async fn add_magnet(
+        &self,
+        _magnet: &str,
+        _only_files: Option<Vec<usize>>,
+    ) -> CoreResult<AddTorrentResult> {
         self.add_result.clone()
     }
     async fn list_torrents(&self) -> Vec<TorrentStatusInfo> {
@@ -84,6 +91,17 @@ impl TorrentRepository for MockTorrentRepository {
     }
     async fn get_torrent_files(&self, _info_hash: &str) -> Option<Vec<FileDetails>> {
         self.files.clone()
+    }
+    async fn update_only_files(
+        &self,
+        info_hash: &str,
+        only_files: HashSet<usize>,
+    ) -> CoreResult<()> {
+        self.update_only_files_calls
+            .lock()
+            .unwrap()
+            .push((info_hash.to_string(), only_files));
+        Ok(())
     }
     async fn get_file_reader(
         &self,

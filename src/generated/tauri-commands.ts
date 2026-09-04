@@ -8,6 +8,7 @@ export const commands = {
   get_local_ip: "get_local_ip",
   iptv_resolve_stream: "iptv_resolve_stream",
   torrent_get_files: "torrent_get_files",
+  torrent_update_only_files: "torrent_update_only_files",
   torrent_get_video_metadata: "torrent_get_video_metadata",
   torrent_get_subtitle_vtt: "torrent_get_subtitle_vtt",
   torrent_pause: "torrent_pause",
