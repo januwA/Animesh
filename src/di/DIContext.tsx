@@ -174,7 +174,7 @@ export function createDIContainer({
     ? new TauriOpenerRepository()
     : new WebOpenerRepository();
   const updateRepository = isTauri
-    ? new GithubUpdateRepository(openerRepository)
+    ? new GithubUpdateRepository(openerRepository, cacheStore)
     : new WebUpdateRepository();
   const subtitleTranslationRepository =
     new TauriSubtitleTranslationRepository();
