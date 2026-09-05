@@ -7,9 +7,14 @@ import type { UpdateOnlyFilesUseCase } from "@/application/torrent/UpdateOnlyFil
 import { type DIContainer, DIContext } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
+import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { useTorrentDetailPage } from "./useTorrentDetailPage";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+vi.mock("@/presentation/context/TorrentStatusContext", () => ({
+  useTorrentStatus: vi.fn().mockReturnValue({ torrents: [], isLoading: false }),
+}));
 
 const mockDIContainer = {
   resolveTorrentUseCase: {
@@ -51,6 +56,10 @@ const renderUseTorrentDetailPage = (
 describe("useTorrentDetailPage 种子详情页面 hook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useTorrentStatus).mockReturnValue({
+      torrents: [],
+      isLoading: false,
+    });
   });
 
   it("应该调用 resolveTorrentUseCase.execute 并返回种子数据", async () => {
@@ -351,5 +360,158 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
     expect(
       mockDIContainer.updateOnlyFilesUseCase.execute,
     ).not.toHaveBeenCalled();
+  });
+
+  it("handleStartPlayback 存在未确认勾选时应先保存再跳转", async () => {
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      files: [
+        {
+          id: 0,
+          name: NonEmptyStringSchema.parse("a.mp4"),
+          len: 100,
+          included: false,
+        },
+      ],
+    };
+    vi.mocked(
+      mockDIContainer.resolveTorrentUseCase.execute,
+    ).mockResolvedValueOnce(mockResult);
+
+    const { result } = renderUseTorrentDetailPage({
+      infoHash: NonEmptyStringSchema.parse("hash123"),
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedIds).toEqual(new Set());
+    });
+
+    act(() => {
+      result.current.toggleFile(0);
+    });
+    expect(result.current.selectedIds).toEqual(new Set([0]));
+
+    await act(async () => {
+      await result.current.handleStartPlayback("hash123", 0, "a.mp4");
+    });
+
+    expect(mockDIContainer.updateOnlyFilesUseCase.execute).toHaveBeenCalledWith(
+      "hash123",
+      [0],
+    );
+    expect(lastNavigation.current?.pathname).toBe("/play/hash123/0");
+  });
+
+  it("handleStartPlayback 选择与后端一致时不应额外保存", async () => {
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      files: [
+        {
+          id: 0,
+          name: NonEmptyStringSchema.parse("a.mp4"),
+          len: 100,
+          included: true,
+        },
+      ],
+    };
+    vi.mocked(
+      mockDIContainer.resolveTorrentUseCase.execute,
+    ).mockResolvedValueOnce(mockResult);
+
+    const { result } = renderUseTorrentDetailPage({
+      infoHash: NonEmptyStringSchema.parse("hash123"),
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedIds).toEqual(new Set([0]));
+    });
+
+    await act(async () => {
+      await result.current.handleStartPlayback("hash123", 0, "a.mp4");
+    });
+
+    expect(
+      mockDIContainer.updateOnlyFilesUseCase.execute,
+    ).not.toHaveBeenCalled();
+    expect(lastNavigation.current?.pathname).toBe("/play/hash123/0");
+  });
+
+  it("handleStartPlayback 保存失败时不应跳转", async () => {
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      files: [
+        {
+          id: 0,
+          name: NonEmptyStringSchema.parse("a.mp4"),
+          len: 100,
+          included: false,
+        },
+      ],
+    };
+    vi.mocked(
+      mockDIContainer.resolveTorrentUseCase.execute,
+    ).mockResolvedValueOnce(mockResult);
+    vi.mocked(
+      mockDIContainer.updateOnlyFilesUseCase.execute,
+    ).mockRejectedValueOnce(new Error("保存失败"));
+
+    const { result } = renderUseTorrentDetailPage({
+      infoHash: NonEmptyStringSchema.parse("hash123"),
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedIds).toEqual(new Set());
+    });
+
+    act(() => {
+      result.current.toggleFile(0);
+    });
+
+    await act(async () => {
+      await result.current.handleStartPlayback("hash123", 0, "a.mp4");
+    });
+
+    expect(toast.error).toHaveBeenCalledWith(
+      expect.stringContaining("更新文件选择失败"),
+    );
+    expect(lastNavigation.current?.pathname).not.toContain("/play/");
+  });
+
+  it("应从状态流中按 info_hash 匹配当前种子的状态", async () => {
+    const mockResult: AddTorrentResult = {
+      info_hash: NonEmptyStringSchema.parse("hash123"),
+      files: [],
+    };
+    vi.mocked(
+      mockDIContainer.resolveTorrentUseCase.execute,
+    ).mockResolvedValueOnce(mockResult);
+    vi.mocked(useTorrentStatus).mockReturnValue({
+      torrents: [
+        {
+          info_hash: NonEmptyStringSchema.parse("hash123"),
+          name: NonEmptyStringSchema.parse("test"),
+          progress_bytes: 500,
+          total_bytes: 1000,
+          finished: false,
+          download_speed_bytes_per_sec: 10,
+          upload_speed_bytes_per_sec: 20,
+          paused: false,
+          peers_connected: 1,
+          peers_total: 3,
+        },
+      ],
+      isLoading: false,
+    });
+
+    const { result } = renderUseTorrentDetailPage({
+      infoHash: NonEmptyStringSchema.parse("hash123"),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.status?.info_hash).toBe("hash123");
+    expect(result.current.downloadProgress).toBe(50);
   });
 });

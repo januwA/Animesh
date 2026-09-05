@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import type { AddTorrentResult } from "@/domain/torrent/TorrentSchemas";
+import type {
+  AddTorrentResult,
+  TorrentStatusInfo,
+} from "@/domain/torrent/TorrentSchemas";
 import { TorrentDetailContent } from "./TorrentDetailContent";
 import { useTorrentDetailPage } from "./useTorrentDetailPage";
 
@@ -29,6 +32,22 @@ const makeTorrent = (): AddTorrentResult => ({
   ],
 });
 
+const makeStatus = (
+  overrides: Partial<TorrentStatusInfo> = {},
+): TorrentStatusInfo => ({
+  info_hash: NonEmptyStringSchema.parse("hash123"),
+  name: NonEmptyStringSchema.parse("test torrent"),
+  progress_bytes: 500,
+  total_bytes: 1000,
+  finished: false,
+  download_speed_bytes_per_sec: 100,
+  upload_speed_bytes_per_sec: 200,
+  paused: false,
+  peers_connected: 2,
+  peers_total: 5,
+  ...overrides,
+});
+
 const defaultHookReturn = () => ({
   torrent: null as AddTorrentResult | null,
   loading: false,
@@ -40,6 +59,8 @@ const defaultHookReturn = () => ({
   toggleAll: vi.fn(),
   confirmSelection: vi.fn(),
   handleStartPlayback: vi.fn(),
+  status: null,
+  downloadProgress: 0,
 });
 
 const renderContent = (
@@ -191,5 +212,38 @@ describe("TorrentDetailContent 种子详情内容组件", () => {
     const confirmBtn = screen.getByRole("button", { name: "确认选择" });
     expect(confirmBtn).toBeDisabled();
     expect(confirmBtn.querySelector(".animate-spin")).toBeInTheDocument();
+  });
+
+  it("有 status 时应渲染下载进度与状态", () => {
+    const torrent = makeTorrent();
+    renderContent({
+      torrent,
+      status: makeStatus(),
+      downloadProgress: 50,
+    });
+
+    expect(screen.getByText(/下载进度: 50.00%/)).toBeInTheDocument();
+    expect(screen.getByText(/下载: 100 B\/s/)).toBeInTheDocument();
+    expect(screen.getByText(/状态: 正在缓存/)).toBeInTheDocument();
+  });
+
+  it("status 为空时应渲染解析占位", () => {
+    const torrent = makeTorrent();
+    renderContent({ torrent });
+
+    expect(
+      screen.getByText(/正在解析种子元数据 \/ 等待任务初始化/),
+    ).toBeInTheDocument();
+  });
+
+  it("status.finished 为 true 时应显示已完成", () => {
+    const torrent = makeTorrent();
+    renderContent({
+      torrent,
+      status: makeStatus({ finished: true }),
+      downloadProgress: 100,
+    });
+
+    expect(screen.getByText(/状态: 已完成/)).toBeInTheDocument();
   });
 });

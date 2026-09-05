@@ -1,4 +1,4 @@
-import { Loader2 } from "lucide-react";
+import { Download, Loader2, Upload } from "lucide-react";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import { ErrorState } from "@/presentation/components/ErrorState";
 import { Button } from "@/presentation/components/ui/button";
@@ -24,6 +24,7 @@ import {
   ItemGroup,
   ItemTitle,
 } from "@/presentation/components/ui/item";
+import { Progress } from "@/presentation/components/ui/progress";
 import { formatBytes } from "@/utils";
 import { useTorrentDetailPage } from "./useTorrentDetailPage";
 
@@ -47,6 +48,8 @@ export function TorrentDetailContent({
     toggleAll,
     confirmSelection,
     handleStartPlayback,
+    status,
+    downloadProgress,
   } = useTorrentDetailPage({ magnet, infoHash });
 
   // 仅首次无数据加载时显示整页加载；刷新（已有数据）时保留列表
@@ -105,6 +108,35 @@ export function TorrentDetailContent({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {status ? (
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/50 p-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between gap-2 text-xs sm:text-sm font-medium">
+              <span className="flex items-center gap-1.5">
+                <Download className="h-3.5 w-3.5 text-primary animate-pulse" />
+                下载进度: {downloadProgress.toFixed(2)}%
+              </span>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Download className="h-3.5 w-3.5 text-emerald-400" />
+                下载: {formatBytes(status.download_speed_bytes_per_sec)}/s
+              </span>
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Upload className="h-3.5 w-3.5 text-info" />
+                上传: {formatBytes(status.upload_speed_bytes_per_sec)}/s ( 连接:{" "}
+                {status.peers_connected}/{status.peers_total})
+              </span>
+            </div>
+            <Progress value={downloadProgress} className="h-2" />
+            <span className="text-xs text-muted-foreground">
+              状态: {status.finished ? "已完成" : "正在缓存..."}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+            正在解析种子元数据 / 等待任务初始化…
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <Checkbox
             checked={
