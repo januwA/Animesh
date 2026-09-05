@@ -135,6 +135,23 @@ mod tests {
 
         let msg = CoreError::Message("内容".to_string());
         assert_eq!(msg.clone().to_string(), "内容");
+
+        assert_eq!(
+            CoreError::TorrentNotFound.clone().to_string(),
+            "Torrent not found"
+        );
+        assert_eq!(
+            CoreError::FileNotFound.clone().to_string(),
+            "File not found"
+        );
+        assert_eq!(
+            CoreError::VideoNotDownloaded.clone().to_string(),
+            "Video file not downloaded or doesn't exist yet"
+        );
+        assert_eq!(
+            CoreError::UnsupportedVideoFormat.clone().to_string(),
+            "Unsupported video format, metadata extraction requires MKV"
+        );
     }
 
     #[test]

@@ -15,7 +15,6 @@ const makeStatus = (): TorrentStatusInfo => ({
   paused: false,
   peers_connected: 0,
   peers_total: 0,
-  trackers: [],
 });
 
 describe("GroupPanel 分组面板组件", () => {

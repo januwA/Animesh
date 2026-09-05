@@ -84,6 +84,10 @@ impl TorrentManager {
         self.torrent_repo.get_torrent_files(info_hash_hex).await
     }
 
+    pub async fn get_trackers(&self, info_hash_hex: &str) -> Option<Vec<String>> {
+        self.torrent_repo.get_trackers(info_hash_hex).await
+    }
+
     pub async fn set_subject_binding(
         &self,
         info_hash: &str,
@@ -223,7 +227,6 @@ mod tests {
                 peers_connected: 0,
                 peers_total: 0,
                 created_at: 0,
-                trackers: vec![],
                 subject_id: None,
                 subject_name: None,
                 subject_platform: None,
@@ -242,6 +245,31 @@ mod tests {
 
     #[tokio::test]
     #[allow(non_snake_case)]
+    async fn 测试_更新文件选择与获取Tracker_委托仓储() {
+        let repo = Arc::new(MockTorrentRepository::default());
+        let update_calls = repo.update_only_files_calls.clone();
+        let manager = TorrentManager::new(
+            repo.clone(),
+            Arc::new(MockSubjectBindingRepository::default()),
+        );
+
+        let mut only_files = HashSet::new();
+        only_files.insert(0);
+        only_files.insert(2);
+        manager
+            .update_only_files("hash1", only_files.clone())
+            .await
+            .expect("更新文件选择应成功");
+        let calls = update_calls.lock().unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0, "hash1");
+        assert_eq!(calls[0].1, only_files);
+
+        assert!(manager.get_trackers("hash1").await.is_none());
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
     async fn 测试_列表回填条目绑定() {
         let repo = Arc::new(
             MockTorrentRepository::default().with_status(TorrentStatusInfo {
@@ -256,7 +284,6 @@ mod tests {
                 peers_connected: 0,
                 peers_total: 0,
                 created_at: 0,
-                trackers: vec![],
                 subject_id: None,
                 subject_name: None,
                 subject_platform: None,

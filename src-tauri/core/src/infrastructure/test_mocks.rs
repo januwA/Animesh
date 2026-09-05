@@ -92,6 +92,9 @@ impl TorrentRepository for MockTorrentRepository {
     async fn get_torrent_files(&self, _info_hash: &str) -> Option<Vec<FileDetails>> {
         self.files.clone()
     }
+    async fn get_trackers(&self, _info_hash: &str) -> Option<Vec<String>> {
+        None
+    }
     async fn update_only_files(
         &self,
         info_hash: &str,

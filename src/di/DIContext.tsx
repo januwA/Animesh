@@ -45,6 +45,7 @@ import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCas
 import { GetLocalIpUseCase } from "../application/torrent/GetLocalIpUseCase";
 import { GetStreamPortUseCase } from "../application/torrent/GetStreamPortUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
+import { GetTorrentTrackersUseCase } from "../application/torrent/GetTorrentTrackersUseCase";
 import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
@@ -103,6 +104,7 @@ export interface DIContainer {
   getStreamPortUseCase: GetStreamPortUseCase;
   getLocalIpUseCase: GetLocalIpUseCase;
   getVideoMetadataUseCase: GetVideoMetadataUseCase;
+  getTorrentTrackersUseCase: GetTorrentTrackersUseCase;
 
   selectDirectoryUseCase: SelectDirectoryUseCase;
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
@@ -228,6 +230,9 @@ export function createDIContainer({
   const getVideoMetadataUseCase = new GetVideoMetadataUseCase(
     torrentRepository,
   );
+  const getTorrentTrackersUseCase = new GetTorrentTrackersUseCase(
+    torrentRepository,
+  );
 
   const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
@@ -350,6 +355,7 @@ export function createDIContainer({
     getStreamPortUseCase,
     getLocalIpUseCase,
     getVideoMetadataUseCase,
+    getTorrentTrackersUseCase,
 
     selectDirectoryUseCase,
     verifyAiConnectionUseCase,

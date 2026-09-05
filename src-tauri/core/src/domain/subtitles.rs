@@ -234,6 +234,13 @@ mod tests {
 
     #[test]
     #[allow(non_snake_case)]
+    fn 测试_解码UTF8BOM编码的字节_应还原为中文() {
+        let utf8_bom = [0xEF, 0xBB, 0xBF, 0xE4, 0xB8, 0xAD, 0xE6, 0x96, 0x87];
+        assert_eq!(decode_subtitle_bytes(&utf8_bom), "中文");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
     fn 测试_解码ShiftJIS编码的字节_应还原为日文() {
         let sjis_konnichiwa = [0x82, 0xB1, 0x82, 0xF1, 0x82, 0xC9, 0x82, 0xBF, 0x82, 0xCD];
         assert_eq!(decode_subtitle_bytes(&sjis_konnichiwa), "こんにちは");

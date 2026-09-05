@@ -36,8 +36,6 @@ pub struct TorrentStatusInfo {
     pub peers_connected: u32,
     pub peers_total: u32,
     pub created_at: u64,
-    #[serde(default)]
-    pub trackers: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subject_id: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -71,6 +69,7 @@ pub trait TorrentRepository: Send + Sync {
     async fn resume_torrent(&self, info_hash: &str) -> Result<(), CoreError>;
     async fn delete_torrent(&self, info_hash: &str, delete_files: bool) -> Result<(), CoreError>;
     async fn get_torrent_files(&self, info_hash: &str) -> Option<Vec<FileDetails>>;
+    async fn get_trackers(&self, info_hash: &str) -> Option<Vec<String>>;
 
     /// 更新种子的文件选择列表。空集合表示不下载任何文件。
     async fn update_only_files(
@@ -177,5 +176,13 @@ mod tests {
         assert!(hex.starts_with("1a"));
         assert!(hex.ends_with("ff"));
         assert_eq!(hex.len(), 40);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn 测试_FileDetails反序列化缺省included字段时默认为true() {
+        let json = r#"{"id":0,"name":"a.mkv","len":1024}"#;
+        let file: FileDetails = serde_json::from_str(json).unwrap();
+        assert!(file.included);
     }
 }

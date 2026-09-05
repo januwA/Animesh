@@ -118,15 +118,17 @@ export function TorrentDetailContent({
         <ItemGroup>
           {torrent.files.map((file) => (
             <Item variant="outline" key={file.id}>
-              <ItemContent>
-                <ItemTitle>{file.name}</ItemTitle>
-                <ItemDescription>{formatBytes(file.len)}</ItemDescription>
-              </ItemContent>
               <ItemActions>
                 <Checkbox
                   checked={selectedIds.has(file.id)}
                   onCheckedChange={() => toggleFile(file.id)}
                 />
+              </ItemActions>
+              <ItemContent>
+                <ItemTitle>{file.name}</ItemTitle>
+                <ItemDescription>{formatBytes(file.len)}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
                 <Button
                   size="sm"
                   disabled={!selectedIds.has(file.id)}

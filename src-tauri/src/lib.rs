@@ -169,6 +169,17 @@ async fn torrent_get_files(
 }
 
 #[tauri::command]
+async fn torrent_get_trackers(
+    info_hash: &str,
+    manager: tauri::State<'_, Arc<TorrentManager>>,
+) -> Result<Vec<String>, CoreError> {
+    manager
+        .get_trackers(info_hash)
+        .await
+        .ok_or(CoreError::TorrentNotFound)
+}
+
+#[tauri::command]
 async fn torrent_update_only_files(
     info_hash: &str,
     only_files: Vec<usize>,
@@ -662,6 +673,7 @@ pub fn run() {
             get_local_ip,
             iptv_resolve_stream,
             torrent_get_files,
+            torrent_get_trackers,
             torrent_update_only_files,
             torrent_pause,
             torrent_resume,

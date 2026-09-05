@@ -202,12 +202,6 @@ impl TorrentRepository for RqbitTorrentRepository {
                 let finished = stats.finished
                     || (is_startup
                         && matches!(stats.state, librqbit::TorrentStatsState::Initializing));
-                let trackers = torrent
-                    .shared()
-                    .trackers
-                    .iter()
-                    .map(|u| u.to_string())
-                    .collect::<Vec<_>>();
                 TorrentStatusInfo {
                     info_hash: hex,
                     name: torrent.name().unwrap_or_default(),
@@ -220,7 +214,6 @@ impl TorrentRepository for RqbitTorrentRepository {
                     peers_connected,
                     peers_total,
                     created_at: 0,
-                    trackers,
                     subject_id: None,
                     subject_name: None,
                     subject_platform: None,
@@ -281,6 +274,18 @@ impl TorrentRepository for RqbitTorrentRepository {
                     .collect::<Vec<_>>()
             })
             .ok()
+    }
+
+    async fn get_trackers(&self, info_hash_hex: &str) -> Option<Vec<String>> {
+        let torrent = self.find_torrent_by_hex(info_hash_hex)?;
+        Some(
+            torrent
+                .shared()
+                .trackers
+                .iter()
+                .map(|u| u.to_string())
+                .collect(),
+        )
     }
 
     async fn update_only_files(
