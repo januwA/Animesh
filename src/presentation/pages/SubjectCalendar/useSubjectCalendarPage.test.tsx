@@ -2,8 +2,6 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { AnimeCalendarItem } from "@/domain/anime/AnimeSchemas";
-import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
-import { resetAppStores } from "@/test/store-reset";
 import type { UseSubjectCalendarPageDeps } from "./useSubjectCalendarPage";
 import { useSubjectCalendarPage } from "./useSubjectCalendarPage";
 
@@ -35,12 +33,7 @@ const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
 
 const renderUseCalendarPage = (deps: UseSubjectCalendarPageDeps) => {
   return renderHook(
-    () =>
-      useSubjectCalendarPage(
-        deps,
-        useBangumiCalendarStore,
-        (id) => `/bangumi/subject/${id}`,
-      ),
+    () => useSubjectCalendarPage(deps, (id) => `/bangumi/subject/${id}`),
     {
       wrapper: RouterWrapper,
     },
@@ -48,10 +41,6 @@ const renderUseCalendarPage = (deps: UseSubjectCalendarPageDeps) => {
 };
 
 describe("useCalendarPage 日历页面 hook", () => {
-  beforeEach(() => {
-    resetAppStores();
-  });
-
   it("应该调用 getCalendarUseCase.execute 并返回日历数据", async () => {
     const mockCalendar = [
       {
@@ -112,7 +101,7 @@ describe("useCalendarPage 日历页面 hook", () => {
       result.current.handleAnimeClick(mockItem as any);
     });
 
-    expect(lastNavigation.current?.pathname).toBeTruthy();
+    expect(lastNavigation.current?.pathname).toBe("/bangumi/subject/123");
     expect(lastNavigation.current?.state).toEqual({
       name: "测试动漫",
       imageUrl: "http://example.com/cover.jpg",
@@ -138,14 +127,14 @@ describe("useCalendarPage 日历页面 hook", () => {
       result.current.handleAnimeClick(mockItem as any);
     });
 
-    expect(lastNavigation.current?.pathname).toBeTruthy();
+    expect(lastNavigation.current?.pathname).toBe("/bangumi/subject/456");
     expect(lastNavigation.current?.state).toEqual({
       name: "Raw Anime",
       imageUrl: "",
     });
   });
 
-  it("日历数据已缓存时应该不重复请求", async () => {
+  it("同一依赖下重渲染时不应该重复请求", async () => {
     const mockCalendar = [
       {
         weekday: { id: 1, en: "Monday", cn: "星期一", ja: "月曜日" },

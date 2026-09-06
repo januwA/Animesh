@@ -19,19 +19,16 @@ import {
   DialogTrigger,
 } from "@/presentation/components/ui/dialog";
 import { useMutation } from "@/presentation/hooks/useMutation";
-import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
 import { useIptvStore } from "@/presentation/store/iptvStore";
 
 export default function CachePage() {
   const { clearCacheUseCase } = useDI();
-  const setCalendar = useBangumiCalendarStore((s) => s.setCalendar);
   const setIptvCountries = useIptvStore((s) => s.setIptvCountries);
   const setIptvChannels = useIptvStore((s) => s.setIptvChannels);
 
   const { execute: handleConfirmClearCache, loading: clearingCache } =
     useMutation((ctx) => clearCacheUseCase.execute(ctx), {
       onSuccess: () => {
-        setCalendar([]);
         setIptvCountries([]);
         setIptvChannels([]);
         toast.success("缓存已清理");

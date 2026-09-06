@@ -5,16 +5,6 @@ import { type DIContainer, DIContext } from "@/di/DIContext";
 import { createStoreMock } from "@/test/storeMock";
 import CachePage from "./CachePage";
 
-vi.mock(import("@/presentation/store/bangumiCalendarStore"), () => ({
-  useBangumiCalendarStore: createStoreMock({
-    calendar: [],
-    calendarActiveDay: null,
-    setCalendar: vi.fn(),
-    setCalendarActiveDay: vi.fn(),
-    reset: vi.fn(),
-  }) as typeof import("@/presentation/store/bangumiCalendarStore").useBangumiCalendarStore,
-}));
-
 vi.mock(import("@/presentation/store/iptvStore"), () => ({
   useIptvStore: createStoreMock({
     iptvCountries: [],
