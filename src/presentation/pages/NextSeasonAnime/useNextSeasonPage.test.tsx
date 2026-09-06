@@ -1,9 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
-import { createNextSeasonStore } from "@/presentation/store/nextSeasonStore";
-import { resetAppStores } from "@/test/store-reset";
 import type { UseNextSeasonPageDeps } from "./useNextSeasonPage";
 import { useNextSeasonPage } from "./useNextSeasonPage";
 
@@ -30,10 +28,15 @@ const makeDeps = (
 });
 
 const lastNavigation: {
-  current: { pathname: string; state: unknown } | null;
+  current: { pathname: string; search: string; state: unknown } | null;
 } = { current: null };
 const LocationTracker = () => {
-  lastNavigation.current = useLocation();
+  const location = useLocation();
+  lastNavigation.current = {
+    pathname: location.pathname,
+    search: location.search,
+    state: location.state,
+  };
   return null;
 };
 
@@ -46,10 +49,12 @@ const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const renderUseNextSeasonPage = (deps: UseNextSeasonPageDeps) => {
-  const store = createNextSeasonStore();
+const renderUseNextSeasonPage = (
+  deps: UseNextSeasonPageDeps,
+  monthParam?: number,
+) => {
   return renderHook(
-    () => useNextSeasonPage(deps, store, (id) => `/bangumi/subject/${id}`),
+    () => useNextSeasonPage(deps, (id) => `/bangumi/subject/${id}`, monthParam),
     {
       wrapper: RouterWrapper,
     },
@@ -57,10 +62,6 @@ const renderUseNextSeasonPage = (deps: UseNextSeasonPageDeps) => {
 };
 
 describe("useNextSeasonPage 下季新番页面 hook", () => {
-  beforeEach(() => {
-    resetAppStores();
-  });
-
   it("应该调用 getNextSeasonUseCase.execute 并返回当前月份数据", async () => {
     const deps = makeDeps();
     const { result } = renderUseNextSeasonPage(deps);
@@ -318,5 +319,113 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
     });
 
     expect(executeMock.mock.calls.length).toBe(callCount);
+  });
+
+  it("loadMore 追加重复 id 条目时应该去重", async () => {
+    const itemA = mockItems[0];
+    const itemB: AnimeSubject = {
+      id: 2,
+      name: "第二条目",
+      image: "",
+      rating: 9,
+      summary: "",
+    };
+    // AniList 分页可能重复返回同一条目
+    const executeMock = vi
+      .fn()
+      .mockResolvedValueOnce({ items: [itemA], hasNextPage: true })
+      .mockResolvedValueOnce({ items: [itemA, itemB], hasNextPage: true });
+
+    const deps = makeDeps({
+      getNextSeasonUseCase: { execute: executeMock },
+    });
+
+    const { result } = renderUseNextSeasonPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual([itemA]);
+    });
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() => {
+      expect(result.current.items).toEqual([itemA, itemB]);
+    });
+    expect(result.current.hasMore).toBe(true);
+  });
+
+  it("loadMore 传入空数组时应该将月份标记为 exhausted", async () => {
+    const executeMock = vi
+      .fn()
+      .mockResolvedValueOnce({ items: mockItems, hasNextPage: true })
+      .mockResolvedValueOnce({ items: [], hasNextPage: false });
+
+    const deps = makeDeps({
+      getNextSeasonUseCase: { execute: executeMock },
+    });
+
+    const { result } = renderUseNextSeasonPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() => {
+      expect(result.current.hasMore).toBe(false);
+    });
+  });
+
+  it("切换选中月份时应该写入 URL 查询参数", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseNextSeasonPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const secondMonth = result.current.tabs[1].month;
+    act(() => {
+      result.current.setActiveMonth(secondMonth);
+    });
+
+    await waitFor(() => {
+      expect(result.current.activeMonth).toBe(secondMonth);
+    });
+    expect(lastNavigation.current?.search).toContain(`month=${secondMonth}`);
+
+    // 重复选择同一月份时不应重复写入 URL
+    act(() => {
+      result.current.setActiveMonth(secondMonth);
+    });
+    expect(result.current.activeMonth).toBe(secondMonth);
+    expect(lastNavigation.current?.search).toContain(`month=${secondMonth}`);
+  });
+
+  it("monthParam 在当季月份列表内时应该作为初始选中月份", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseNextSeasonPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const secondMonth = result.current.tabs[1].month;
+    const { result: result2, unmount } = renderHook(
+      () =>
+        useNextSeasonPage(deps, (id) => `/bangumi/subject/${id}`, secondMonth),
+      { wrapper: RouterWrapper },
+    );
+
+    await waitFor(() => {
+      expect(result2.current.isLoading).toBe(false);
+    });
+    expect(result2.current.activeMonth).toBe(secondMonth);
+    unmount();
   });
 });

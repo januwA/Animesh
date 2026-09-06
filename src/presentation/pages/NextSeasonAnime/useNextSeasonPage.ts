@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type {
   GetNextSeasonAnimeUseCase,
   NextSeasonTabItem,
@@ -9,7 +9,6 @@ import type { NextSeasonSubjectsPage } from "@/domain/anime/AnimeRepository";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { useMutation } from "@/presentation/hooks/useMutation";
 import { useQuery } from "@/presentation/hooks/useQuery";
-import type { NextSeasonStoreState } from "@/presentation/store/nextSeasonStore";
 
 const PAGE_LIMIT = 20;
 
@@ -17,22 +16,78 @@ export interface UseNextSeasonPageDeps {
   getNextSeasonUseCase: Pick<GetNextSeasonAnimeUseCase, "execute">;
 }
 
+export interface NextSeasonMonthData {
+  items: AnimeSubject[];
+  hasNextPage: boolean;
+  /** 后端已无更多数据（当前页返回空数组时置 true） */
+  exhausted: boolean;
+}
+
+/**
+ * 月份数据由基础设施层 @Cached（1 天 TTL）缓存，此处不重复缓存，
+ * monthsData 保存在本地 state（挂载期间跨月份切换保留），
+ * activeMonth 持久化在 URL ?month= 参数中。
+ */
 export function useNextSeasonPage(
   deps: UseNextSeasonPageDeps,
-  useDataStore: <U>(selector: (state: NextSeasonStoreState) => U) => U,
   subjectPath: (id: number) => string,
+  monthParam?: number,
 ) {
   const { getNextSeasonUseCase } = deps;
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const seasonInfo = useMemo(() => getNextSeasonInfo(new Date()), []);
 
-  const storedActiveMonth = useDataStore((s) => s.activeMonth);
-  const setActiveMonthStore = useDataStore((s) => s.setActiveMonth);
-  const monthsData = useDataStore((s) => s.monthsData);
-  const setMonthData = useDataStore((s) => s.setMonthData);
-  const appendMonthItems = useDataStore((s) => s.appendMonthItems);
+  const resolveMonth = useCallback(
+    (month: number | undefined) => {
+      if (month && seasonInfo.months.includes(month)) return month;
+      return seasonInfo.months[0];
+    },
+    [seasonInfo],
+  );
 
-  const activeMonth = storedActiveMonth ?? seasonInfo.months[0];
+  const [activeMonth, setActiveMonthState] = useState(() =>
+    resolveMonth(monthParam),
+  );
+
+  useEffect(() => {
+    setActiveMonthState(resolveMonth(monthParam));
+  }, [monthParam, resolveMonth]);
+
+  const [monthsData, setMonthsData] = useState<
+    Record<number, NextSeasonMonthData>
+  >({});
+
+  const setMonthData = useCallback(
+    (month: number, data: NextSeasonMonthData) => {
+      setMonthsData((prev) => ({ ...prev, [month]: data }));
+    },
+    [],
+  );
+
+  const appendMonthItems = useCallback(
+    (month: number, newItems: AnimeSubject[], hasNextPage: boolean) => {
+      setMonthsData((prev) => {
+        // appendMonthItems 仅由 loadMore 触发，对应月份已完成首次加载，无需空值兜底
+        const current = prev[month];
+        // 按 id 去重，避免 AniList 分页重复返回同一条目
+        const existingIds = new Set(current.items.map((it) => it.id));
+        const uniqueNew = newItems.filter((it) => !existingIds.has(it.id));
+        return {
+          ...prev,
+          [month]: {
+            ...current,
+            items: [...current.items, ...uniqueNew],
+            hasNextPage,
+            // 当本页返回空数组时，说明后端已无更多数据
+            exhausted: current.exhausted || newItems.length === 0,
+          },
+        };
+      });
+    },
+    [],
+  );
+
   const currentMonthData = monthsData[activeMonth];
   const items = currentMonthData?.items ?? [];
   const hasNextPage = currentMonthData?.hasNextPage ?? false;
@@ -83,30 +138,32 @@ export function useNextSeasonPage(
   );
 
   const hasMore = isInitialized && !currentMonthData.exhausted && hasNextPage;
-  const storeRef = useRef({ activeMonth: storedActiveMonth, monthsData });
-  storeRef.current = { activeMonth: storedActiveMonth, monthsData };
-
-  const firstMonth = seasonInfo.months[0];
+  const storeRef = useRef({ activeMonth, monthsData });
+  storeRef.current = { activeMonth, monthsData };
 
   const loadMore = useCallback(() => {
     // v8 ignore next
     if (isInitialLoading) return;
     const { activeMonth: month, monthsData: data } = storeRef.current;
-    const resolvedMonth = month ?? firstMonth;
-    const monthData = data[resolvedMonth];
+    const monthData = data[month];
     if (!monthData?.hasNextPage || monthData.exhausted) return;
     loadMoreMutation.execute({
       year: seasonInfo.year,
-      month: resolvedMonth,
+      month,
       offset: monthData.items.length,
     });
-  }, [isInitialLoading, loadMoreMutation.execute, seasonInfo.year, firstMonth]);
+  }, [isInitialLoading, loadMoreMutation.execute, seasonInfo.year]);
 
   const handleActiveMonthChange = useCallback(
     (month: number) => {
-      setActiveMonthStore(month);
+      setActiveMonthState(month);
+      if (searchParams.get("month") !== String(month)) {
+        const next = new URLSearchParams(searchParams);
+        next.set("month", String(month));
+        setSearchParams(next, { replace: true });
+      }
     },
-    [setActiveMonthStore],
+    [searchParams, setSearchParams],
   );
 
   const handleAnimeClick = useCallback(
