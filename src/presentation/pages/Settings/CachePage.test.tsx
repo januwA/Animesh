@@ -2,26 +2,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { type DIContainer, DIContext } from "@/di/DIContext";
-import { createStoreMock } from "@/test/storeMock";
 import CachePage from "./CachePage";
-
-vi.mock(import("@/presentation/store/iptvStore"), () => ({
-  useIptvStore: createStoreMock({
-    iptvCountries: [],
-    iptvSelectedCountry: "CN",
-    iptvChannels: [],
-    iptvChannelsCountry: null,
-    iptvSelectedCategory: "all",
-    iptvKeyword: "",
-    setIptvCountries: vi.fn(),
-    setIptvSelectedCountry: vi.fn(),
-    setIptvChannels: vi.fn(),
-    setIptvChannelsCountry: vi.fn(),
-    setIptvSelectedCategory: vi.fn(),
-    setIptvKeyword: vi.fn(),
-    reset: vi.fn(),
-  }) as typeof import("@/presentation/store/iptvStore").useIptvStore,
-}));
 
 function makeDI(overrides?: Partial<DIContainer>): DIContainer {
   return {

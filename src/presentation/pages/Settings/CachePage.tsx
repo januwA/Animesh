@@ -19,18 +19,13 @@ import {
   DialogTrigger,
 } from "@/presentation/components/ui/dialog";
 import { useMutation } from "@/presentation/hooks/useMutation";
-import { useIptvStore } from "@/presentation/store/iptvStore";
 
 export default function CachePage() {
   const { clearCacheUseCase } = useDI();
-  const setIptvCountries = useIptvStore((s) => s.setIptvCountries);
-  const setIptvChannels = useIptvStore((s) => s.setIptvChannels);
 
   const { execute: handleConfirmClearCache, loading: clearingCache } =
     useMutation((ctx) => clearCacheUseCase.execute(ctx), {
       onSuccess: () => {
-        setIptvCountries([]);
-        setIptvChannels([]);
         toast.success("缓存已清理");
       },
       onError: (err) => toast.error(`清理缓存失败: ${err.message}`),

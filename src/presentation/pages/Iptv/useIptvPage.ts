@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { GetIptvChannelsUseCase } from "@/application/iptv/GetIptvChannelsUseCase";
 import type { GetIptvCountriesUseCase } from "@/application/iptv/GetIptvCountriesUseCase";
 import type { IptvChannel } from "@/domain/iptv/IptvSchemas";
 import type { Logger } from "@/domain/logger/logger";
 import { useQuery } from "@/presentation/hooks/useQuery";
 import { formatError } from "@/utils";
-import { DEFAULT_IPTV_CATEGORY, useIptvStore } from "../../store/iptvStore";
+
+export const DEFAULT_IPTV_COUNTRY = "CN";
+export const DEFAULT_IPTV_CATEGORY = "all";
 
 const DEFAULT_COUNTRY_FALLBACK = {
   name: "中国",
@@ -20,67 +22,73 @@ export interface UseIptvPageParams {
   logger: Pick<Logger, "withCategory">;
 }
 
-export function useIptvPage(deps: UseIptvPageParams) {
+/**
+ * 国家/频道数据由基础设施层 @Cached（30 天 / 7 天 TTL）缓存，此处不重复全局缓存：
+ * - countries 使用 useQuery 本地状态；
+ * - channels 按国家缓存在本地 state（挂载期间跨国家切换保留）；
+ * - selectedCountry 持久化在 URL ?country= 参数中。
+ */
+export function useIptvPage(deps: UseIptvPageParams, countryParam?: string) {
   const { getIptvCountriesUseCase, getIptvChannelsUseCase, logger } = deps;
   const navigate = useNavigate();
-  const iptvCountries = useIptvStore((s) => s.iptvCountries);
-  const setIptvCountries = useIptvStore((s) => s.setIptvCountries);
-  const iptvSelectedCountry = useIptvStore((s) => s.iptvSelectedCountry);
-  const setIptvSelectedCountry = useIptvStore((s) => s.setIptvSelectedCountry);
-  const iptvChannels = useIptvStore((s) => s.iptvChannels);
-  const setIptvChannels = useIptvStore((s) => s.setIptvChannels);
-  const iptvChannelsCountry = useIptvStore((s) => s.iptvChannelsCountry);
-  const setIptvChannelsCountry = useIptvStore((s) => s.setIptvChannelsCountry);
-  const iptvSelectedCategory = useIptvStore((s) => s.iptvSelectedCategory);
-  const setIptvSelectedCategory = useIptvStore(
-    (s) => s.setIptvSelectedCategory,
-  );
-  const iptvKeyword = useIptvStore((s) => s.iptvKeyword);
-  const setIptvKeyword = useIptvStore((s) => s.setIptvKeyword);
+  const [searchParams, setSearchParams] = useSearchParams();
   const iptvLogger = useMemo(() => logger.withCategory("Iptv"), [logger]);
 
-  const [error, setError] = useState<string | null>(null);
+  const [selectedCountryState, setSelectedCountryState] = useState(
+    () => countryParam?.toUpperCase() ?? DEFAULT_IPTV_COUNTRY,
+  );
 
-  useQuery(
+  useEffect(() => {
+    setSelectedCountryState(
+      countryParam?.toUpperCase() ?? DEFAULT_IPTV_COUNTRY,
+    );
+  }, [countryParam]);
+
+  const iptvSelectedCountry = selectedCountryState;
+
+  const { data: countriesData } = useQuery(
     (ctx) => getIptvCountriesUseCase.execute(ctx),
-    [
-      getIptvCountriesUseCase,
-      iptvCountries.length,
-      iptvLogger,
-      setIptvCountries,
-    ],
+    [getIptvCountriesUseCase, iptvLogger],
     {
-      enabled: iptvCountries.length === 0,
-      onSuccess: (data) => setIptvCountries(data),
       onError: (err) => {
         iptvLogger.warn("Failed to fetch IPTV countries:", err);
       },
     },
   );
+  const iptvCountries = countriesData ?? [];
 
-  const channelsNeedsFetch = iptvChannelsCountry !== iptvSelectedCountry;
-  const { loading: isLoading } = useQuery(
+  const [channelsCache, setChannelsCache] = useState<
+    Record<string, IptvChannel[]>
+  >({});
+  const cachedChannels = channelsCache[iptvSelectedCountry];
+
+  const [error, setError] = useState<string | null>(null);
+
+  const { loading: channelsLoading } = useQuery(
     (ctx) => getIptvChannelsUseCase.execute(ctx, iptvSelectedCountry),
-    [
-      getIptvChannelsUseCase,
-      iptvSelectedCountry,
-      iptvChannelsCountry,
-      setIptvChannels,
-      setIptvSelectedCategory,
-      setIptvChannelsCountry,
-    ],
+    [getIptvChannelsUseCase, iptvSelectedCountry],
     {
-      enabled: channelsNeedsFetch,
+      enabled: cachedChannels === undefined,
       onSuccess: (data) => {
         setError(null);
-        setIptvChannels(data);
-        setIptvChannelsCountry(iptvSelectedCountry);
+        setChannelsCache((prev) => ({
+          ...prev,
+          [iptvSelectedCountry]: data,
+        }));
       },
       onError: (err) => {
         setError(`获取频道列表失败，请检查网络或重试: ${formatError(err)}`);
       },
     },
   );
+
+  const iptvChannels = cachedChannels ?? [];
+  const isLoading = cachedChannels === undefined && channelsLoading;
+
+  const [iptvSelectedCategory, setSelectedCategory] = useState(
+    DEFAULT_IPTV_CATEGORY,
+  );
+  const [iptvKeyword, setIptvKeyword] = useState("");
 
   const selectCountries = useMemo(() => {
     if (iptvCountries.some((country) => country.code === iptvSelectedCountry)) {
@@ -119,27 +127,36 @@ export function useIptvPage(deps: UseIptvPageParams) {
     });
   }, [iptvChannels, iptvSelectedCategory, iptvKeyword]);
 
-  const handleCountryChange = (value: string) => {
-    setIptvSelectedCountry(value);
-    if (iptvChannelsCountry !== value) {
-      setIptvChannels([]);
-      setIptvSelectedCategory(DEFAULT_IPTV_CATEGORY);
-    }
-  };
+  const handleCountryChange = useCallback(
+    (value: string) => {
+      if (value === iptvSelectedCountry) return;
+      // 切换国家时重置分类并清掉上一个国家的错误提示
+      setSelectedCountryState(value);
+      setSelectedCategory(DEFAULT_IPTV_CATEGORY);
+      setError(null);
+      const next = new URLSearchParams(searchParams);
+      next.set("country", value);
+      setSearchParams(next, { replace: true });
+    },
+    [iptvSelectedCountry, searchParams, setSearchParams],
+  );
 
-  const handleCategoryChange = (value: string) => {
-    setIptvSelectedCategory(value || DEFAULT_IPTV_CATEGORY);
-  };
+  const handleCategoryChange = useCallback((value: string) => {
+    setSelectedCategory(value || DEFAULT_IPTV_CATEGORY);
+  }, []);
 
-  const handleChannelClick = (channel: IptvChannel) => {
-    const params = new URLSearchParams({
-      url: channel.url,
-      name: channel.name,
-      logo: channel.logo ?? "",
-      category: channel.category ?? "",
-    });
-    navigate(`/live/play?${params.toString()}`);
-  };
+  const handleChannelClick = useCallback(
+    (channel: IptvChannel) => {
+      const params = new URLSearchParams({
+        url: channel.url,
+        name: channel.name,
+        logo: channel.logo ?? "",
+        category: channel.category ?? "",
+      });
+      navigate(`/live/play?${params.toString()}`);
+    },
+    [navigate],
+  );
 
   return {
     iptvSelectedCountry,

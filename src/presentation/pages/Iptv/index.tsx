@@ -1,5 +1,8 @@
+import { useSearchParams } from "react-router-dom";
+import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import { ErrorBanner } from "@/presentation/components/AppComponents";
+import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { Card, CardContent } from "@/presentation/components/ui/card";
 import {
   Empty,
@@ -12,7 +15,27 @@ import { ChannelGridSkeleton } from "./ChannelGridSkeleton";
 import { IptvFilters } from "./IptvFilters";
 import { useIptvPage } from "./useIptvPage";
 
+const iptvParamsSchema = z.object({
+  country: z
+    .string()
+    .regex(/^[A-Za-z]{2}$/, "无效的国家代码")
+    .optional(),
+});
+
 export default function Iptv() {
+  const [searchParams] = useSearchParams();
+  const parsed = iptvParamsSchema.safeParse({
+    country: searchParams.get("country") ?? undefined,
+  });
+
+  if (!parsed.success) {
+    return <InvalidParamsView title="无效的 IPTV 参数" error={parsed.error} />;
+  }
+
+  return <IptvView countryParam={parsed.data.country} />;
+}
+
+function IptvView({ countryParam }: { countryParam?: string }) {
   const { getIptvCountriesUseCase, getIptvChannelsUseCase, logger } = useDI();
 
   const {
@@ -29,7 +52,10 @@ export default function Iptv() {
     handleCountryChange,
     handleCategoryChange,
     handleChannelClick,
-  } = useIptvPage({ getIptvCountriesUseCase, getIptvChannelsUseCase, logger });
+  } = useIptvPage(
+    { getIptvCountriesUseCase, getIptvChannelsUseCase, logger },
+    countryParam,
+  );
 
   return (
     <div className="w-full flex flex-col gap-4">
