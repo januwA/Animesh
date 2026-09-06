@@ -383,8 +383,9 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.selectedIds).toEqual(new Set());
+      expect(result.current.loading).toBe(false);
     });
+    expect(result.current.torrent).not.toBeNull();
 
     act(() => {
       result.current.toggleFile(0);
@@ -460,8 +461,10 @@ describe("useTorrentDetailPage 种子详情页面 hook", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.selectedIds).toEqual(new Set());
+      expect(result.current.loading).toBe(false);
     });
+    expect(result.current.torrent).not.toBeNull();
+    expect(result.current.selectedIds).toEqual(new Set());
 
     act(() => {
       result.current.toggleFile(0);

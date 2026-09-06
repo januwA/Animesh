@@ -145,7 +145,7 @@ describe("useSubjectEpisodes 剧集分页 hook", () => {
       expect(result.current.episodes).toHaveLength(2);
     });
     act(() => result.current.handleEpisodeClick(makeEpisode(1)));
-    expect(locationRef.current?.pathname).toBe("/");
+    expect(locationRef.current?.pathname).toBe("/torrent_search");
     expect(locationRef.current?.search).toBe(
       `?keyword=${encodeURIComponent("测试动漫 01")}`,
     );

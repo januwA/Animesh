@@ -71,11 +71,12 @@ export function useSubjectEpisodes(
   }, []);
 
   const handleEpisodeClick = (episode: AnimeEpisode) => {
-    /* v8 ignore start */
+    /* v8 ignore next */
     if (!subject) return;
     const epNum = String(episode.sort).padStart(2, "0");
-    navigate(`/?keyword=${encodeURIComponent(`${subject.name} ${epNum}`)}`);
-    /* v8 ignore stop */
+    navigate(
+      `/torrent_search?keyword=${encodeURIComponent(`${subject.name} ${epNum}`)}`,
+    );
   };
 
   const changePage = (nextPage: number) => {
