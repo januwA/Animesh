@@ -10,6 +10,7 @@ import { GetAnimeEpisodesUseCase } from "../application/anime/GetAnimeEpisodesUs
 import { GetAnimePersonsUseCase } from "../application/anime/GetAnimePersonsUseCase";
 import { GetAnimeSubjectUseCase } from "../application/anime/GetAnimeSubjectUseCase";
 import { GetNextSeasonAnimeUseCase } from "../application/anime/GetNextSeasonAnimeUseCase";
+import { GetRelatedSubjectsUseCase } from "../application/anime/GetRelatedSubjectsUseCase";
 import { GetWallpaperImagesUseCase } from "../application/anime/GetWallpaperImagesUseCase";
 import { SearchAnimeSubjectsUseCase } from "../application/anime/SearchAnimeSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
@@ -142,6 +143,8 @@ export interface DIContainer {
   getAnilistEpisodesUseCase: GetAnimeEpisodesUseCase;
   getAnilistPersonsUseCase: GetAnimePersonsUseCase;
   getAnilistCharactersUseCase: GetAnimeCharactersUseCase;
+  getBangumiRelatedSubjectsUseCase: GetRelatedSubjectsUseCase;
+  getAnilistRelatedSubjectsUseCase: GetRelatedSubjectsUseCase;
   getIptvCountriesUseCase: GetIptvCountriesUseCase;
   getIptvChannelsUseCase: GetIptvChannelsUseCase;
   resolvePlayableStreamUrlUseCase: ResolvePlayableStreamUrlUseCase;
@@ -315,6 +318,12 @@ export function createDIContainer({
   const getAnilistNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
     anilistRepository,
   );
+  const getBangumiRelatedSubjectsUseCase = new GetRelatedSubjectsUseCase(
+    bangumiRepository,
+  );
+  const getAnilistRelatedSubjectsUseCase = new GetRelatedSubjectsUseCase(
+    anilistRepository,
+  );
   const iptvRepository = new HttpIptvRepository(httpClient, cacheStore);
   const getIptvCountriesUseCase = new GetIptvCountriesUseCase(iptvRepository);
   const getIptvChannelsUseCase = new GetIptvChannelsUseCase(iptvRepository);
@@ -393,6 +402,8 @@ export function createDIContainer({
     getAnilistEpisodesUseCase,
     getAnilistPersonsUseCase,
     getAnilistCharactersUseCase,
+    getBangumiRelatedSubjectsUseCase,
+    getAnilistRelatedSubjectsUseCase,
     getIptvCountriesUseCase,
     getIptvChannelsUseCase,
     resolvePlayableStreamUrlUseCase,

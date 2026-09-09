@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import type { GetAnimeCharactersUseCase } from "@/application/anime/GetAnimeCharactersUseCase";
+import type { GetRelatedSubjectsUseCase } from "@/application/anime/GetRelatedSubjectsUseCase";
 import { type DIContainer, useDI } from "@/di/DIContext";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
@@ -16,6 +17,7 @@ import {
 import { useTorrentStatus } from "@/presentation/context/TorrentStatusContext";
 import { CharactersSection } from "@/presentation/pages/SubjectDetail/CharactersSection";
 import { EpisodesSection } from "@/presentation/pages/SubjectDetail/EpisodesSection";
+import { RelatedSubjectsSection } from "@/presentation/pages/SubjectDetail/RelatedSubjectsSection";
 import { StaffSection } from "@/presentation/pages/SubjectDetail/StaffSection";
 import { SubjectInfoCard } from "@/presentation/pages/SubjectDetail/SubjectInfoCard";
 import { SubjectResourcesTab } from "@/presentation/pages/SubjectDetail/SubjectResourcesTab";
@@ -44,6 +46,7 @@ function buildSectionDeps(
   platform: AnimePlatform,
 ): {
   getCharactersUseCase: GetAnimeCharactersUseCase;
+  getRelatedSubjectsUseCase: GetRelatedSubjectsUseCase;
   infoDeps: UseSubjectInfoDeps;
   episodesDeps: UseSubjectEpisodesDeps;
   staffDeps: UseSubjectStaffDeps;
@@ -56,16 +59,19 @@ function buildSectionDeps(
           getEpisodesUseCase: di.getBangumiEpisodesUseCase,
           getPersonsUseCase: di.getBangumiPersonsUseCase,
           getCharactersUseCase: di.getBangumiCharactersUseCase,
+          getRelatedSubjectsUseCase: di.getBangumiRelatedSubjectsUseCase,
         }
       : {
           getSubjectUseCase: di.getAnilistSubjectUseCase,
           getEpisodesUseCase: di.getAnilistEpisodesUseCase,
           getPersonsUseCase: di.getAnilistPersonsUseCase,
           getCharactersUseCase: di.getAnilistCharactersUseCase,
+          getRelatedSubjectsUseCase: di.getAnilistRelatedSubjectsUseCase,
         };
 
   return {
     getCharactersUseCase: animeDeps.getCharactersUseCase,
+    getRelatedSubjectsUseCase: animeDeps.getRelatedSubjectsUseCase,
     infoDeps: {
       getSubjectUseCase: animeDeps.getSubjectUseCase,
       openUrlUseCase: di.openUrlUseCase,
@@ -178,6 +184,7 @@ function SubjectDetailView({
           <TabsTrigger value="summary">简介</TabsTrigger>
           <TabsTrigger value="characters">角色</TabsTrigger>
           <TabsTrigger value="staff">制作人员</TabsTrigger>
+          <TabsTrigger value="related">相关</TabsTrigger>
           <TabsTrigger value="resources">资源</TabsTrigger>
         </TabsList>
 
@@ -200,6 +207,18 @@ function SubjectDetailView({
           <Card className="ani-card">
             <CardContent>
               <StaffSection subjectId={subjectId} deps={deps.staffDeps} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="related" className="pt-4">
+          <Card className="ani-card">
+            <CardContent>
+              <RelatedSubjectsSection
+                subjectId={subjectId}
+                platform={platform}
+                getRelatedSubjectsUseCase={deps.getRelatedSubjectsUseCase}
+              />
             </CardContent>
           </Card>
         </TabsContent>
