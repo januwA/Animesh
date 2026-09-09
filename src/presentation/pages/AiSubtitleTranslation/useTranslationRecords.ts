@@ -1,9 +1,6 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import type { DeleteSubtitleTranslationUseCase } from "@/application/subtitle/DeleteSubtitleTranslationUseCase";
-import type { GetSubtitleTranslationByIdUseCase } from "@/application/subtitle/GetSubtitleTranslationByIdUseCase";
-import type { GetSubtitleTranslationsUseCase } from "@/application/subtitle/GetSubtitleTranslationsUseCase";
-import type { SaveSubtitleTranslationUseCase } from "@/application/subtitle/SaveSubtitleTranslationUseCase";
+import { useDI } from "@/di/DIContext";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { SubtitleTranslationRecord } from "@/domain/subtitle/SubtitleTranslationSchemas";
@@ -14,25 +11,6 @@ import { formatError } from "@/utils";
 export interface UseTranslationRecordsParams {
   infoHash: NonEmptyString;
   fileId: number;
-}
-
-export interface UseTranslationRecordsDeps {
-  getSubtitleTranslationsUseCase: Pick<
-    GetSubtitleTranslationsUseCase,
-    "execute"
-  >;
-  deleteSubtitleTranslationUseCase: Pick<
-    DeleteSubtitleTranslationUseCase,
-    "execute"
-  >;
-  saveSubtitleTranslationUseCase: Pick<
-    SaveSubtitleTranslationUseCase,
-    "execute"
-  >;
-  getSubtitleTranslationByIdUseCase: Pick<
-    GetSubtitleTranslationByIdUseCase,
-    "execute"
-  >;
 }
 
 export interface UseTranslationRecordsResult {
@@ -54,7 +32,6 @@ export interface UseTranslationRecordsResult {
 
 export function useTranslationRecords(
   params: UseTranslationRecordsParams,
-  deps: UseTranslationRecordsDeps,
 ): UseTranslationRecordsResult {
   const { infoHash, fileId } = params;
   const {
@@ -62,7 +39,7 @@ export function useTranslationRecords(
     deleteSubtitleTranslationUseCase,
     saveSubtitleTranslationUseCase,
     getSubtitleTranslationByIdUseCase,
-  } = deps;
+  } = useDI();
 
   const [editingRecord, setEditingRecord] =
     useState<SubtitleTranslationRecord | null>(null);

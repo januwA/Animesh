@@ -10,6 +10,7 @@ import { GetAnimeEpisodesUseCase } from "../application/anime/GetAnimeEpisodesUs
 import { GetAnimePersonsUseCase } from "../application/anime/GetAnimePersonsUseCase";
 import { GetAnimeSubjectUseCase } from "../application/anime/GetAnimeSubjectUseCase";
 import { GetNextSeasonAnimeUseCase } from "../application/anime/GetNextSeasonAnimeUseCase";
+import { GetRelatedSubjectsUseCase } from "../application/anime/GetRelatedSubjectsUseCase";
 import { GetWallpaperImagesUseCase } from "../application/anime/GetWallpaperImagesUseCase";
 import { SearchAnimeSubjectsUseCase } from "../application/anime/SearchAnimeSubjectsUseCase";
 import { ClearCacheUseCase } from "../application/cache/ClearCacheUseCase";
@@ -25,7 +26,6 @@ import { OpenUrlUseCase } from "../application/opener/OpenUrlUseCase";
 import { GetAiConfigsUseCase } from "../application/settings/GetAiConfigsUseCase";
 import { GetDownloadDirUseCase } from "../application/settings/GetDownloadDirUseCase";
 import { GetProxyUseCase } from "../application/settings/GetProxyUseCase";
-import { GetSettingsUseCase } from "../application/settings/GetSettingsUseCase";
 import { GetSpeedLimitsUseCase } from "../application/settings/GetSpeedLimitsUseCase";
 import { GetTranslationConfigUseCase } from "../application/settings/GetTranslationConfigUseCase";
 import { SelectDirectoryUseCase } from "../application/settings/SelectDirectoryUseCase";
@@ -46,6 +46,7 @@ import { DeleteTorrentUseCase } from "../application/torrent/DeleteTorrentUseCas
 import { GetLocalIpUseCase } from "../application/torrent/GetLocalIpUseCase";
 import { GetStreamPortUseCase } from "../application/torrent/GetStreamPortUseCase";
 import { GetSubtitleVttUseCase } from "../application/torrent/GetSubtitleVttUseCase";
+import { GetTorrentTrackersUseCase } from "../application/torrent/GetTorrentTrackersUseCase";
 import { GetVideoMetadataUseCase } from "../application/torrent/GetVideoMetadataUseCase";
 import { PauseTorrentUseCase } from "../application/torrent/PauseTorrentUseCase";
 import { ResolveTorrentUseCase } from "../application/torrent/ResolveTorrentUseCase";
@@ -54,6 +55,7 @@ import { SearchAllTorrentsUseCase } from "../application/torrent/SearchAllTorren
 import { SearchTorrentsUseCase } from "../application/torrent/SearchTorrentsUseCase";
 import { SetTorrentSubjectUseCase } from "../application/torrent/SetTorrentSubjectUseCase";
 import { SubscribeTorrentsUseCase } from "../application/torrent/SubscribeTorrentsUseCase";
+import { UpdateOnlyFilesUseCase } from "../application/torrent/UpdateOnlyFilesUseCase";
 import { TranslateTextUseCase } from "../application/translation/TranslateTextUseCase";
 import { CheckUpdateUseCase } from "../application/update/CheckUpdateUseCase";
 import { GetCurrentVersionUseCase } from "../application/update/GetCurrentVersionUseCase";
@@ -97,13 +99,14 @@ export interface DIContainer {
   deleteTorrentUseCase: DeleteTorrentUseCase;
   setTorrentSubjectUseCase: SetTorrentSubjectUseCase;
   clearTorrentSubjectUseCase: ClearTorrentSubjectUseCase;
+  updateOnlyFilesUseCase: UpdateOnlyFilesUseCase;
   resolveTorrentUseCase: ResolveTorrentUseCase;
   getSubtitleVttUseCase: GetSubtitleVttUseCase;
   getStreamPortUseCase: GetStreamPortUseCase;
   getLocalIpUseCase: GetLocalIpUseCase;
   getVideoMetadataUseCase: GetVideoMetadataUseCase;
+  getTorrentTrackersUseCase: GetTorrentTrackersUseCase;
 
-  getSettingsUseCase: GetSettingsUseCase;
   selectDirectoryUseCase: SelectDirectoryUseCase;
   verifyAiConnectionUseCase: VerifyAiConnectionUseCase;
   setThemeUseCase: SetThemeUseCase;
@@ -140,6 +143,8 @@ export interface DIContainer {
   getAnilistEpisodesUseCase: GetAnimeEpisodesUseCase;
   getAnilistPersonsUseCase: GetAnimePersonsUseCase;
   getAnilistCharactersUseCase: GetAnimeCharactersUseCase;
+  getBangumiRelatedSubjectsUseCase: GetRelatedSubjectsUseCase;
+  getAnilistRelatedSubjectsUseCase: GetRelatedSubjectsUseCase;
   getIptvCountriesUseCase: GetIptvCountriesUseCase;
   getIptvChannelsUseCase: GetIptvChannelsUseCase;
   resolvePlayableStreamUrlUseCase: ResolvePlayableStreamUrlUseCase;
@@ -163,7 +168,7 @@ export function createDIContainer({
     ? new TauriTorrentRepository(httpClient, cacheStore)
     : new HttpTorrentRepository(httpClient, cacheStore);
   const settingsRepository = isTauri
-    ? new TauriSettingsRepository()
+    ? new TauriSettingsRepository(cacheStore)
     : new HttpSettingsRepository(httpClient);
   const bangumiRepository = new HttpBangumiRepository(httpClient, cacheStore);
   const collectionRepository = isTauri
@@ -176,7 +181,7 @@ export function createDIContainer({
     ? new TauriOpenerRepository()
     : new WebOpenerRepository();
   const updateRepository = isTauri
-    ? new GithubUpdateRepository(openerRepository)
+    ? new GithubUpdateRepository(openerRepository, cacheStore)
     : new WebUpdateRepository();
   const subtitleTranslationRepository =
     new TauriSubtitleTranslationRepository();
@@ -217,6 +222,7 @@ export function createDIContainer({
   const clearTorrentSubjectUseCase = new ClearTorrentSubjectUseCase(
     torrentRepository,
   );
+  const updateOnlyFilesUseCase = new UpdateOnlyFilesUseCase(torrentRepository);
   const resolveTorrentUseCase = new ResolveTorrentUseCase(torrentRepository);
   const getSubtitleVttUseCase = new GetSubtitleVttUseCase(
     torrentRepository,
@@ -227,8 +233,10 @@ export function createDIContainer({
   const getVideoMetadataUseCase = new GetVideoMetadataUseCase(
     torrentRepository,
   );
+  const getTorrentTrackersUseCase = new GetTorrentTrackersUseCase(
+    torrentRepository,
+  );
 
-  const getSettingsUseCase = new GetSettingsUseCase(settingsRepository);
   const selectDirectoryUseCase = new SelectDirectoryUseCase(settingsRepository);
   const verifyAiConnectionUseCase = new VerifyAiConnectionUseCase(aiClient);
   const setThemeUseCase = new SetThemeUseCase(settingsRepository);
@@ -310,6 +318,12 @@ export function createDIContainer({
   const getAnilistNextSeasonUseCase = new GetNextSeasonAnimeUseCase(
     anilistRepository,
   );
+  const getBangumiRelatedSubjectsUseCase = new GetRelatedSubjectsUseCase(
+    bangumiRepository,
+  );
+  const getAnilistRelatedSubjectsUseCase = new GetRelatedSubjectsUseCase(
+    anilistRepository,
+  );
   const iptvRepository = new HttpIptvRepository(httpClient, cacheStore);
   const getIptvCountriesUseCase = new GetIptvCountriesUseCase(iptvRepository);
   const getIptvChannelsUseCase = new GetIptvChannelsUseCase(iptvRepository);
@@ -344,13 +358,14 @@ export function createDIContainer({
     deleteTorrentUseCase,
     setTorrentSubjectUseCase,
     clearTorrentSubjectUseCase,
+    updateOnlyFilesUseCase,
     resolveTorrentUseCase,
     getSubtitleVttUseCase,
     getStreamPortUseCase,
     getLocalIpUseCase,
     getVideoMetadataUseCase,
+    getTorrentTrackersUseCase,
 
-    getSettingsUseCase,
     selectDirectoryUseCase,
     verifyAiConnectionUseCase,
     setThemeUseCase,
@@ -387,6 +402,8 @@ export function createDIContainer({
     getAnilistEpisodesUseCase,
     getAnilistPersonsUseCase,
     getAnilistCharactersUseCase,
+    getBangumiRelatedSubjectsUseCase,
+    getAnilistRelatedSubjectsUseCase,
     getIptvCountriesUseCase,
     getIptvChannelsUseCase,
     resolvePlayableStreamUrlUseCase,

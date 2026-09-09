@@ -5,6 +5,7 @@ import type {
   AnimeCharacter,
   AnimeEpisodesPage,
   AnimePerson,
+  AnimeRelatedSubject,
   AnimeSubject,
   AnimeSubjectSearchParams,
   AnimeSubjectSearchResult,
@@ -59,6 +60,10 @@ export interface AnimeRepository {
     ctx: Context,
     params: AnimeSubjectSearchParams,
   ): Promise<AnimeSubjectSearchResult>;
+  getRelatedSubjects(
+    ctx: Context,
+    subjectId: NonEmptyString,
+  ): Promise<AnimeRelatedSubject[]>;
   /** 获取指定年月的下季度新番条目（分页） */
   getNextSeasonSubjects(
     ctx: Context,

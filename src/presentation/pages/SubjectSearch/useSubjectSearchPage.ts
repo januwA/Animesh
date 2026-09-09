@@ -1,5 +1,5 @@
 import type { SubmitEvent } from "react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import type { SearchAnimeSubjectsUseCase } from "@/application/anime/SearchAnimeSubjectsUseCase";
 import type {
@@ -11,45 +11,29 @@ import { useMutation } from "@/presentation/hooks/useMutation";
 
 const SEARCH_LIMIT = 20;
 
-interface SearchStoreState {
-  keyword: string;
-  searchedKeyword: string;
-  results: AnimeSubject[];
-  total: number;
-  hasSearched: boolean;
-  setKeyword: (val: string) => void;
-  setSearchedKeyword: (val: string) => void;
-  setResults: (val: AnimeSubject[]) => void;
-  appendResults: (val: AnimeSubject[]) => void;
-  setTotal: (val: number) => void;
-  setHasSearched: (val: boolean) => void;
-}
-
 export interface UseSubjectSearchPageDeps {
   searchSubjectsUseCase: Pick<SearchAnimeSubjectsUseCase, "execute">;
 }
 
+/**
+ * 搜索结果由基础设施层 @Cached（12 小时 TTL）缓存，此处不重复缓存，
+ * 搜索状态保存在本地 state，关键词持久化在 URL ?keyword= 参数中，
+ * 重新挂载（如从详情页返回）时通过参数自动重新搜索恢复结果。
+ */
 export function useSubjectSearchPage(
   keywordParam: string | undefined,
   deps: UseSubjectSearchPageDeps,
-  useSearchStore: <U>(selector: (state: SearchStoreState) => U) => U,
   subjectPath: (id: number) => string,
 ) {
   const navigate = useNavigate();
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { searchSubjectsUseCase } = deps;
 
-  const keyword = useSearchStore((s) => s.keyword);
-  const setKeyword = useSearchStore((s) => s.setKeyword);
-  const results = useSearchStore((s) => s.results);
-  const setResults = useSearchStore((s) => s.setResults);
-  const appendResults = useSearchStore((s) => s.appendResults);
-  const total = useSearchStore((s) => s.total);
-  const setTotal = useSearchStore((s) => s.setTotal);
-  const hasSearched = useSearchStore((s) => s.hasSearched);
-  const setHasSearched = useSearchStore((s) => s.setHasSearched);
-  const searchedKeyword = useSearchStore((s) => s.searchedKeyword);
-  const setSearchedKeyword = useSearchStore((s) => s.setSearchedKeyword);
+  const [keyword, setKeyword] = useState(keywordParam ?? "");
+  const [searchedKeyword, setSearchedKeyword] = useState("");
+  const [results, setResults] = useState<AnimeSubject[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const searchMutation = useMutation<
     AnimeSubjectSearchResult,
@@ -89,7 +73,7 @@ export function useSubjectSearchPage(
       onSuccess: (data, params) => {
         /* v8 ignore next -- 竞态防护：正常流程中 performSearch 总会先 cancel 该 mutation，此分支不可达 */
         if (params.queryText !== searchedKeyword) return;
-        appendResults(data);
+        setResults((prev) => [...prev, ...data]);
       },
     },
   );
@@ -98,18 +82,37 @@ export function useSubjectSearchPage(
 
   const performSearch = useCallback(
     (queryText: string) => {
+      setKeyword(queryText);
       setSearchedKeyword(queryText);
       setHasSearched(true);
       loadMoreMutation.cancel();
       searchMutation.execute({ queryText });
+
+      if (searchParams.get("keyword") !== queryText) {
+        const next = new URLSearchParams(searchParams);
+        next.set("keyword", queryText);
+        setSearchParams(next);
+      }
     },
     [
-      setSearchedKeyword,
-      setHasSearched,
       loadMoreMutation.cancel,
       searchMutation.execute,
+      searchParams,
+      setSearchParams,
     ],
   );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 仅在 URL 关键词变化时自动触发搜索，searchedKeyword 是防重复搜索的守卫条件
+  useEffect(() => {
+    if (keywordParam && keywordParam !== searchedKeyword) {
+      performSearch(keywordParam);
+    }
+  }, [keywordParam]);
+
+  const handleSearch = (e: SubmitEvent) => {
+    e.preventDefault();
+    performSearch(keyword.trim());
+  };
 
   const loadMore = useCallback(() => {
     if (loadMoreMutation.loading || !hasMore || !searchedKeyword) return;
@@ -124,19 +127,6 @@ export function useSubjectSearchPage(
     results.length,
     loadMoreMutation.execute,
   ]);
-
-  useEffect(() => {
-    if (keywordParam) {
-      setKeyword(keywordParam);
-      setSearchParams({}, { replace: true });
-      performSearch(keywordParam);
-    }
-  }, [keywordParam, setSearchParams, performSearch, setKeyword]);
-
-  const handleSearch = (e: SubmitEvent) => {
-    e.preventDefault();
-    performSearch(keyword.trim());
-  };
 
   const handleSubjectClick = useCallback(
     (item: AnimeSubject) => {

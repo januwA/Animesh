@@ -214,3 +214,22 @@ export const BangumiCharacterSchema = z
 
 export const BangumiPersonsResponseSchema = z.array(BangumiPersonSchema);
 export const BangumiCharactersResponseSchema = z.array(BangumiCharacterSchema);
+
+const BangumiRelatedSubjectSchema = z
+  .object({
+    id: z.number(),
+    name: z.string(),
+    name_cn: z.string(),
+    images: BangumiImagesSchema,
+    relation: z.string(),
+  })
+  .transform((dto) => ({
+    id: dto.id,
+    name: dto.name_cn || dto.name,
+    image: transformImagesObj(dto.images),
+    relation: dto.relation,
+  }));
+
+export const BangumiRelatedSubjectsResponseSchema = z.array(
+  BangumiRelatedSubjectSchema,
+);

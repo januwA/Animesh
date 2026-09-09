@@ -8,8 +8,6 @@ import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { SubjectSearchForm } from "@/presentation/pages/SubjectSearch/SubjectSearchForm";
 import { SubjectSearchLoading } from "@/presentation/pages/SubjectSearch/SubjectSearchLoading";
 import { SubjectSearchResults } from "@/presentation/pages/SubjectSearch/SubjectSearchResults";
-import { useAnilistSearchStore } from "@/presentation/store/anilistSearchStore";
-import { useBangumiSearchStore } from "@/presentation/store/bangumiSearchStore";
 import { useSubjectSearchPage } from "./useSubjectSearchPage";
 
 const keywordParamSchema = z
@@ -23,14 +21,12 @@ const platformConfigs = {
     title: "搜索 Bangumi 动漫条目",
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.searchBangumiSubjectsUseCase,
-    useStore: useBangumiSearchStore,
     subjectPath: (id: number) => `/anime/subject/${id}?platform=bangumi`,
   },
   anilist: {
     title: "搜索 AniList 动漫条目",
     getUseCase: (di: ReturnType<typeof useDI>) =>
       di.searchAnilistSubjectsUseCase,
-    useStore: useAnilistSearchStore,
     subjectPath: (id: number) => `/anime/subject/${id}?platform=anilist`,
   },
 } as const;
@@ -79,7 +75,6 @@ function SubjectSearchView({
   const page = useSubjectSearchPage(
     keywordParam,
     { searchSubjectsUseCase: config.getUseCase(di) },
-    config.useStore,
     config.subjectPath,
   );
 

@@ -1,6 +1,5 @@
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
-import { useDI } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import { InvalidParamsView } from "@/presentation/components/InvalidParamsView";
 import { AiSubtitleHeader } from "./AiSubtitleHeader";
@@ -48,36 +47,13 @@ function AiSubtitleTranslationView({
   fileId,
   fileName,
 }: ContentProps) {
-  const {
-    getSubtitleTranslationsUseCase,
-    translateSubtitleUseCase,
-    deleteSubtitleTranslationUseCase,
-    saveSubtitleTranslationUseCase,
-    getSubtitleTranslationByIdUseCase,
-    getSettingsUseCase,
-    getVideoMetadataUseCase,
-    getSubtitleVttUseCase,
-  } = useDI();
+  const records = useTranslationRecords({ infoHash, fileId });
 
-  const records = useTranslationRecords(
-    { infoHash, fileId },
-    {
-      getSubtitleTranslationsUseCase,
-      deleteSubtitleTranslationUseCase,
-      saveSubtitleTranslationUseCase,
-      getSubtitleTranslationByIdUseCase,
-    },
-  );
-
-  const form = useAiTranslationForm(
-    { infoHash, fileId, onTranslateSuccess: records.refetch },
-    {
-      getSettingsUseCase,
-      getVideoMetadataUseCase,
-      getSubtitleVttUseCase,
-      translateSubtitleUseCase,
-    },
-  );
+  const form = useAiTranslationForm({
+    infoHash,
+    fileId,
+    onTranslateSuccess: records.refetch,
+  });
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">

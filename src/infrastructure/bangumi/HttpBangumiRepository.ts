@@ -5,6 +5,7 @@ import type {
   AnimeCharacter,
   AnimeEpisodesPage,
   AnimePerson,
+  AnimeRelatedSubject,
   AnimeSubject,
   AnimeSubjectSearchParams,
   AnimeSubjectSearchResult,
@@ -24,6 +25,7 @@ import {
   BangumiEpisodesResponseSchema,
   BangumiPersonsResponseSchema,
   BangumiRankedSubjectsResponseSchema,
+  BangumiRelatedSubjectsResponseSchema,
   BangumiSubjectSchema,
   BangumiSubjectSearchResponseSchema,
 } from "./BangumiSchemas";
@@ -159,6 +161,27 @@ export class HttpBangumiRepository implements AnimeRepository {
     const result = BangumiCharactersResponseSchema.safeParse(data);
     if (!result.success) {
       throw new Error("Characters API response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+  })
+  async getRelatedSubjects(
+    ctx: Context,
+    subjectId: string,
+  ): Promise<AnimeRelatedSubject[]> {
+    const data = await this.client.getJson<unknown>(
+      ctx,
+      `https://api.bgm.tv/v0/subjects/${subjectId}/subjects`,
+    );
+
+    const result = BangumiRelatedSubjectsResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("Related subjects API response structure mismatch", {
         cause: result.error,
       });
     }

@@ -131,6 +131,34 @@ export class HttpTorrentRepository implements TorrentRepository {
     return result.data;
   }
 
+  async getTrackers(infoHash: string): Promise<string[]> {
+    const raw = await this.httpClient.getJson<unknown>(
+      Background,
+      `${baseUrl}/torrents/${infoHash}/trackers`,
+    );
+    const result = z.array(z.string()).safeParse(raw);
+    if (!result.success) {
+      throw new Error("torrent_get_trackers API structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  async updateOnlyFiles(infoHash: string, onlyFiles: number[]): Promise<void> {
+    await this.httpClient.request(
+      Background,
+      `${baseUrl}/torrents/${infoHash}/update_only_files`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ only_files: onlyFiles }),
+      },
+    );
+  }
+
   async getStreamPort(): Promise<number> {
     const raw = await this.httpClient.getJson<unknown>(
       Background,

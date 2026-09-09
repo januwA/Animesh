@@ -3,8 +3,6 @@ import type { ReactNode, SubmitEvent } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
-import { useBangumiSearchStore } from "@/presentation/store/bangumiSearchStore";
-import { resetAppStores } from "@/test/store-reset";
 import type { UseSubjectSearchPageDeps } from "./useSubjectSearchPage";
 import { useSubjectSearchPage } from "./useSubjectSearchPage";
 
@@ -15,9 +13,15 @@ function LocationCapture() {
   locationRef.current = useLocation();
   return null;
 }
-function RouterWrapper({ children }: { children: ReactNode }) {
+function RouterWrapper({
+  children,
+  initialEntry,
+}: {
+  children: ReactNode;
+  initialEntry: string;
+}) {
   return (
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <LocationCapture />
       {children}
     </MemoryRouter>
@@ -56,15 +60,16 @@ const renderPage = async (
 ) => {
   const deps = options.deps ?? makeDeps();
   const subjectPath = options.subjectPath ?? ((id) => `/bangumi/subject/${id}`);
+  const initialEntry = options.keyword
+    ? `/?keyword=${encodeURIComponent(options.keyword)}`
+    : "/";
   const hook = renderHook(
-    () =>
-      useSubjectSearchPage(
-        options.keyword,
-        deps,
-        useBangumiSearchStore,
-        subjectPath,
+    () => useSubjectSearchPage(options.keyword, deps, subjectPath),
+    {
+      wrapper: ({ children }) => (
+        <RouterWrapper initialEntry={initialEntry}>{children}</RouterWrapper>
       ),
-    { wrapper: RouterWrapper },
+    },
   );
   await act(async () => {});
   return { result: hook.result, deps, unmount: hook.unmount };
@@ -78,7 +83,6 @@ const searchParams = (keyword: string) => ({
 
 describe("useSubjectSearchPage 通用搜索 hook", () => {
   beforeEach(() => {
-    resetAppStores();
     vi.clearAllMocks();
     locationRef.current = null;
   });
@@ -127,7 +131,7 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
     );
   });
 
-  it("URL 携带关键词时自动搜索并清理 searchParams", async () => {
+  it("URL 携带关键词时挂载自动搜索并保留参数", async () => {
     const deps = makeDeps();
     const { result } = await renderPage({ deps, keyword: "柯南" });
 
@@ -140,7 +144,7 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
       searchParams("柯南"),
     );
     expect(result.current.search.keyword).toBe("柯南");
-    expect(locationRef.current?.search).toBe("");
+    expect(locationRef.current?.search).toBe("?keyword=%E6%9F%AF%E5%8D%97");
   });
 
   it("搜索失败时清空结果并记录错误", async () => {
@@ -184,7 +188,7 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
     expect(locationRef.current?.pathname).toBe("/anilist/subject/1");
   });
 
-  it("从详情页返回（重新挂载）后应保留搜索结果", async () => {
+  it("从详情页返回（重新挂载）后应通过 URL 参数重新搜索恢复结果", async () => {
     const subject = makeSubject();
     const deps = makeDeps();
     vi.mocked(deps.searchSubjectsUseCase.execute).mockResolvedValue({
@@ -200,7 +204,11 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
     });
     first.unmount();
 
-    const second = await renderPage({ deps });
+    const second = await renderPage({ deps, keyword: "间谍过家家" });
+    await waitFor(() => {
+      expect(second.result.current.status.loading).toBe(false);
+    });
+    expect(deps.searchSubjectsUseCase.execute).toHaveBeenCalledTimes(2);
     expect(second.result.current.results.items).toEqual([subject]);
     expect(second.result.current.search.keyword).toBe("间谍过家家");
     expect(second.result.current.status.hasSearched).toBe(true);
@@ -294,7 +302,7 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
     );
   });
 
-  it("加载更多进行中离开页面后返回，不应卡在加载中且能继续加载", async () => {
+  it("加载更多进行中离开页面后返回，通过 URL 恢复搜索且能继续加载", async () => {
     const subject = makeSubject();
     const deps = makeDeps();
     vi.mocked(deps.searchSubjectsUseCase.execute).mockResolvedValue({
@@ -302,9 +310,7 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
       total: 40,
     });
 
-    const first = await renderPage({ deps });
-    act(() => first.result.current.search.setKeyword("柯南"));
-    act(() => first.result.current.search.performSearch("柯南"));
+    const first = await renderPage({ deps, keyword: "柯南" });
     await waitFor(() => {
       expect(first.result.current.status.loading).toBe(false);
     });
@@ -322,7 +328,10 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
     first.unmount();
     resolveLoadMore!({ items: [makeSubject({ id: 99 })], total: 40 });
 
-    const second = await renderPage({ deps });
+    const second = await renderPage({ deps, keyword: "柯南" });
+    await waitFor(() => {
+      expect(second.result.current.status.loading).toBe(false);
+    });
     expect(second.result.current.status.loadingMore).toBe(false);
 
     act(() => second.result.current.results.onLoadMore());

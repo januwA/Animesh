@@ -11,6 +11,7 @@ import type {
   AnimeCharacter,
   AnimeEpisodesPage,
   AnimePerson,
+  AnimeRelatedSubject,
   AnimeSubject,
   AnimeSubjectSearchParams,
   AnimeSubjectSearchResult,
@@ -24,6 +25,7 @@ import {
   AnilistEpisodesResponseSchema,
   AnilistNextSeasonResponseSchema,
   AnilistRankedResponseSchema,
+  AnilistRelatedSubjectsResponseSchema,
   AnilistResponseSchema,
   AnilistSearchResponseSchema,
   AnilistStaffResponseSchema,
@@ -33,6 +35,7 @@ import AIRING_SCHEDULE_QUERY from "./queries/airingSchedule.graphql?raw";
 import MEDIA_CHARACTERS_QUERY from "./queries/mediaCharacters.graphql?raw";
 import MEDIA_DETAIL_QUERY from "./queries/mediaDetail.graphql?raw";
 import MEDIA_EPISODES_QUERY from "./queries/mediaEpisodes.graphql?raw";
+import MEDIA_RELATIONS_QUERY from "./queries/mediaRelations.graphql?raw";
 import MEDIA_STAFF_QUERY from "./queries/mediaStaff.graphql?raw";
 import NEXT_SEASON_MEDIA_QUERY from "./queries/nextSeasonMedia.graphql?raw";
 import RANKED_MEDIA_QUERY from "./queries/rankedMedia.graphql?raw";
@@ -258,6 +261,25 @@ export class HttpAnilistRepository implements AnimeRepository {
     const result = AnilistCharactersResponseSchema.safeParse(data);
     if (!result.success) {
       throw new Error("AniList characters response structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  @Cached({
+    ttl: new Duration({ days: 30 }),
+  })
+  async getRelatedSubjects(
+    ctx: Context,
+    subjectId: string,
+  ): Promise<AnimeRelatedSubject[]> {
+    const data = await this.graphqlRequest(ctx, MEDIA_RELATIONS_QUERY, {
+      id: Number(subjectId),
+    });
+    const result = AnilistRelatedSubjectsResponseSchema.safeParse(data);
+    if (!result.success) {
+      throw new Error("AniList related subjects response structure mismatch", {
         cause: result.error,
       });
     }

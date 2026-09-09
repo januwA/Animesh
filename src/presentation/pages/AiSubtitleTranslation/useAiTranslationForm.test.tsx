@@ -1,10 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type DIContainer, DIContext } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type { VideoMetadata } from "@/domain/torrent/TorrentSchemas";
-import type { UseAiTranslationFormDeps } from "./useAiTranslationForm";
 import { useAiTranslationForm } from "./useAiTranslationForm";
 
 const makeHash = (value: string) => NonEmptyStringSchema.parse(value);
@@ -40,30 +41,34 @@ const makeParams = (onTranslateSuccess: () => void = vi.fn()) => ({
   onTranslateSuccess,
 });
 
-const makeDeps = (
-  overrides: Partial<UseAiTranslationFormDeps> = {},
-): UseAiTranslationFormDeps => ({
-  getSettingsUseCase: {
-    execute: vi.fn().mockResolvedValue({
-      download_dir: "/mock",
-      ai_configs: [makeAiConfig()],
-    }),
-  },
-  getVideoMetadataUseCase: {
-    execute: vi.fn().mockResolvedValue(makeMetadata()),
-  },
-  getSubtitleVttUseCase: {
-    execute: vi
-      .fn()
-      .mockResolvedValue(
-        "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
-      ),
-  },
-  translateSubtitleUseCase: {
-    execute: vi.fn().mockResolvedValue("rec-uuid-1234"),
-  },
-  ...overrides,
-});
+const makeDI = (overrides: Record<string, unknown> = {}): DIContainer =>
+  ({
+    getAiConfigsUseCase: {
+      execute: vi.fn().mockResolvedValue({
+        aiConfigs: [makeAiConfig()],
+      }),
+    },
+    getVideoMetadataUseCase: {
+      execute: vi.fn().mockResolvedValue(makeMetadata()),
+    },
+    getSubtitleVttUseCase: {
+      execute: vi
+        .fn()
+        .mockResolvedValue(
+          "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n",
+        ),
+    },
+    translateSubtitleUseCase: {
+      execute: vi.fn().mockResolvedValue("rec-uuid-1234"),
+    },
+    ...overrides,
+  }) as unknown as DIContainer;
+
+function createWrapper(mockDI: DIContainer) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <DIContext value={mockDI}>{children}</DIContext>;
+  };
+}
 
 const makeVtt = () =>
   "WEBVTT\n\n1\n00:00:01.000 --> 00:00:03.000\nHello World\n";
@@ -75,8 +80,10 @@ describe("useAiTranslationForm 翻译表单 hook", () => {
 
   it("应该从设置与元数据查询中加载 AI 配置与原始轨道", async () => {
     const params = makeParams();
-    const deps = makeDeps();
-    const { result } = renderHook(() => useAiTranslationForm(params, deps));
+    const mockDI = makeDI();
+    const { result } = renderHook(() => useAiTranslationForm(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.aiConfigs).toHaveLength(1);
@@ -87,15 +94,17 @@ describe("useAiTranslationForm 翻译表单 hook", () => {
 
   it("当设置或元数据查询失败时，应该回退为空数组", async () => {
     const params = makeParams();
-    const deps = makeDeps({
-      getSettingsUseCase: {
+    const mockDI = makeDI({
+      getAiConfigsUseCase: {
         execute: vi.fn().mockRejectedValue(new Error("加载设置失败")),
       },
       getVideoMetadataUseCase: {
         execute: vi.fn().mockRejectedValue(new Error("加载元数据失败")),
       },
     });
-    const { result } = renderHook(() => useAiTranslationForm(params, deps));
+    const { result } = renderHook(() => useAiTranslationForm(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.aiConfigs).toEqual([]);
@@ -108,11 +117,13 @@ describe("useAiTranslationForm 翻译表单 hook", () => {
     const params = makeParams(onTranslateSuccess);
     const getSubtitleVttExecute = vi.fn().mockResolvedValue(makeVtt());
     const translateExecute = vi.fn().mockResolvedValue("rec-uuid-1234");
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleVttUseCase: { execute: getSubtitleVttExecute },
       translateSubtitleUseCase: { execute: translateExecute },
     });
-    const { result } = renderHook(() => useAiTranslationForm(params, deps));
+    const { result } = renderHook(() => useAiTranslationForm(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.aiConfigs).toHaveLength(1);
@@ -157,10 +168,12 @@ describe("useAiTranslationForm 翻译表单 hook", () => {
     const translateExecute = vi
       .fn()
       .mockRejectedValue(new Error("API limit exceeded"));
-    const deps = makeDeps({
+    const mockDI = makeDI({
       translateSubtitleUseCase: { execute: translateExecute },
     });
-    const { result } = renderHook(() => useAiTranslationForm(params, deps));
+    const { result } = renderHook(() => useAiTranslationForm(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.aiConfigs).toHaveLength(1);
@@ -203,10 +216,12 @@ describe("useAiTranslationForm 翻译表单 hook", () => {
         },
       );
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       translateSubtitleUseCase: { execute: translateExecute },
     });
-    const { result } = renderHook(() => useAiTranslationForm(params, deps));
+    const { result } = renderHook(() => useAiTranslationForm(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.aiConfigs).toHaveLength(1);
@@ -244,11 +259,10 @@ describe("useAiTranslationForm 翻译表单 hook", () => {
   it("切换 AI 配置时，应该使用选中的配置", async () => {
     const translateExecute = vi.fn().mockResolvedValue("rec-1");
     const params = makeParams();
-    const deps = makeDeps({
-      getSettingsUseCase: {
+    const mockDI = makeDI({
+      getAiConfigsUseCase: {
         execute: vi.fn().mockResolvedValue({
-          download_dir: "/mock",
-          ai_configs: [
+          aiConfigs: [
             makeAiConfig(),
             makeAiConfig({
               alias: makeBranded("Claude 3.5 Sonnet"),
@@ -263,7 +277,9 @@ describe("useAiTranslationForm 翻译表单 hook", () => {
       },
       translateSubtitleUseCase: { execute: translateExecute },
     });
-    const { result } = renderHook(() => useAiTranslationForm(params, deps));
+    const { result } = renderHook(() => useAiTranslationForm(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.aiConfigs).toHaveLength(2);

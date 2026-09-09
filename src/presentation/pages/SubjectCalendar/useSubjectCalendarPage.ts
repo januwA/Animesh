@@ -11,35 +11,31 @@ export interface UseSubjectCalendarPageDeps {
   getCalendarUseCase: Pick<GetAnimeCalendarUseCase, "execute">;
 }
 
+/**
+ * 日历数据由基础设施层 @Cached（7 天 TTL）缓存，此处不重复缓存，
+ * 直接使用 useQuery 的本地状态即可。
+ */
 export function useSubjectCalendarPage(
   deps: UseSubjectCalendarPageDeps,
-  useCalendarStore: <U>(
-    selector: (state: {
-      calendar: AnimeCalendarDay[];
-      setCalendar: (val: AnimeCalendarDay[]) => void;
-    }) => U,
-  ) => U,
   subjectPath: (id: number) => string,
-) {
+): {
+  calendar: AnimeCalendarDay[];
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => void;
+  handleAnimeClick: (item: AnimeCalendarItem) => void;
+} {
   const { getCalendarUseCase } = deps;
   const navigate = useNavigate();
-  const calendar = useCalendarStore((s) => s.calendar);
-  const setCalendar = useCalendarStore((s) => s.setCalendar);
 
   const {
+    data,
     loading: isLoading,
     error,
     refetch,
-  } = useQuery(
-    (ctx) => getCalendarUseCase.execute(ctx),
-    [getCalendarUseCase, calendar.length, setCalendar],
-    {
-      enabled: calendar.length === 0,
-      onSuccess: (data) => {
-        setCalendar(data);
-      },
-    },
-  );
+  } = useQuery((ctx) => getCalendarUseCase.execute(ctx), [getCalendarUseCase]);
+
+  const calendar = data ?? [];
 
   const handleAnimeClick = useCallback(
     (item: AnimeCalendarItem) => {
@@ -57,7 +53,7 @@ export function useSubjectCalendarPage(
   return {
     calendar,
     isLoading,
-    error,
+    error: error?.message ?? null,
     refetch,
     handleAnimeClick,
   };

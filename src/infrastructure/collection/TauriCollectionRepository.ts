@@ -48,13 +48,13 @@ export class TauriCollectionRepository implements CollectionRepository {
   }
 
   async add(ctx: Context, item: Omit<FavoriteItem, "addedAt">): Promise<void> {
-    invoke<void>(commands.collection_add, {
+    await invoke<void>(commands.collection_add, {
       subjectId: item.subjectId,
       platform: item.platform,
       name: item.name,
       imageUrl: item.imageUrl,
     });
-    this.store.clearByPrefix(ctx, COLLECTION_CACHE_PREFIX);
+    await this.store.clearByPrefix(ctx, COLLECTION_CACHE_PREFIX);
   }
 
   async remove(
@@ -62,7 +62,7 @@ export class TauriCollectionRepository implements CollectionRepository {
     subjectId: number,
     platform: AnimePlatform,
   ): Promise<void> {
-    invoke<void>(commands.collection_remove, { subjectId, platform });
-    this.store.clearByPrefix(ctx, COLLECTION_CACHE_PREFIX);
+    await invoke<void>(commands.collection_remove, { subjectId, platform });
+    await this.store.clearByPrefix(ctx, COLLECTION_CACHE_PREFIX);
   }
 }

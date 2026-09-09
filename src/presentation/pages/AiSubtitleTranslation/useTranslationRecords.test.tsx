@@ -1,9 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type DIContainer, DIContext } from "@/di/DIContext";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
 import type { SubtitleTranslationRecord } from "@/domain/subtitle/SubtitleTranslationSchemas";
-import type { UseTranslationRecordsDeps } from "./useTranslationRecords";
 import { useTranslationRecords } from "./useTranslationRecords";
 
 const makeHash = (value: string) => NonEmptyStringSchema.parse(value);
@@ -28,23 +29,28 @@ const makeParams = () => ({
   fileId: 0,
 });
 
-const makeDeps = (
-  overrides: Partial<UseTranslationRecordsDeps> = {},
-): UseTranslationRecordsDeps => ({
-  getSubtitleTranslationsUseCase: {
-    execute: vi.fn().mockResolvedValue([makeRecord()]),
-  },
-  deleteSubtitleTranslationUseCase: {
-    execute: vi.fn().mockResolvedValue(true),
-  },
-  saveSubtitleTranslationUseCase: {
-    execute: vi.fn().mockResolvedValue(undefined),
-  },
-  getSubtitleTranslationByIdUseCase: {
-    execute: vi.fn().mockResolvedValue(makeRecord()),
-  },
-  ...overrides,
-});
+const makeDI = (overrides: Record<string, unknown> = {}): DIContainer =>
+  ({
+    getSubtitleTranslationsUseCase: {
+      execute: vi.fn().mockResolvedValue([makeRecord()]),
+    },
+    deleteSubtitleTranslationUseCase: {
+      execute: vi.fn().mockResolvedValue(true),
+    },
+    saveSubtitleTranslationUseCase: {
+      execute: vi.fn().mockResolvedValue(undefined),
+    },
+    getSubtitleTranslationByIdUseCase: {
+      execute: vi.fn().mockResolvedValue(makeRecord()),
+    },
+    ...overrides,
+  }) as unknown as DIContainer;
+
+function createWrapper(mockDI: DIContainer) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <DIContext value={mockDI}>{children}</DIContext>;
+  };
+}
 
 if (typeof URL.createObjectURL === "undefined") {
   URL.createObjectURL = vi.fn().mockReturnValue("blob:mock-vtt-url");
@@ -60,8 +66,10 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
 
   it("应该从查询中加载翻译记录", async () => {
     const params = makeParams();
-    const deps = makeDeps();
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const mockDI = makeDI();
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.records).toHaveLength(1);
@@ -72,12 +80,14 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
 
   it("当记录查询失败时，应该回退为空数组", async () => {
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationsUseCase: {
         execute: vi.fn().mockRejectedValue(new Error("加载记录失败")),
       },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.records).toEqual([]);
@@ -88,10 +98,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
     const getByIdExecute = vi.fn();
     const record = makeRecord();
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationByIdUseCase: { execute: getByIdExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleOpenEdit(record);
@@ -108,10 +120,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
     const getByIdExecute = vi.fn().mockResolvedValue(fullRecord);
     const partialRecord = makeRecord({ vtt_content: "" });
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationByIdUseCase: { execute: getByIdExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleOpenEdit(partialRecord);
@@ -124,10 +138,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
   it("打开编辑对话框时，如果 getById 返回 null，editVttContent 应为空字符串", async () => {
     const getByIdExecute = vi.fn().mockResolvedValue(null);
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationByIdUseCase: { execute: getByIdExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleOpenEdit(makeRecord({ vtt_content: "" }));
@@ -141,10 +157,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
       .fn()
       .mockRejectedValue(new Error("Load VTT failed"));
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationByIdUseCase: { execute: getByIdExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleOpenEdit(makeRecord({ vtt_content: "" }));
@@ -157,11 +175,13 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
     const getTranslationsExecute = vi.fn().mockResolvedValue([makeRecord()]);
     const saveExecute = vi.fn().mockResolvedValue(undefined);
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationsUseCase: { execute: getTranslationsExecute },
       saveSubtitleTranslationUseCase: { execute: saveExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.records).toHaveLength(1);
@@ -199,10 +219,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
       .fn()
       .mockRejectedValue(new Error("Database write failed"));
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       saveSubtitleTranslationUseCase: { execute: saveExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleOpenEdit(makeRecord());
@@ -223,11 +245,13 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
     const getTranslationsExecute = vi.fn().mockResolvedValue([makeRecord()]);
     const deleteExecute = vi.fn().mockResolvedValue(true);
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationsUseCase: { execute: getTranslationsExecute },
       deleteSubtitleTranslationUseCase: { execute: deleteExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await waitFor(() => {
       expect(result.current.records).toHaveLength(1);
@@ -249,10 +273,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
       .fn()
       .mockRejectedValue(new Error("Delete record failed"));
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       deleteSubtitleTranslationUseCase: { execute: deleteExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       result.current.handleDelete("rec-uuid-1234");
@@ -272,10 +298,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
     });
     const deleteExecute = vi.fn().mockImplementation(() => deletePromise);
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       deleteSubtitleTranslationUseCase: { execute: deleteExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     act(() => {
       result.current.handleDelete("rec-uuid-1234");
@@ -297,10 +325,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
     const getByIdExecute = vi.fn();
     const record = makeRecord();
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationByIdUseCase: { execute: getByIdExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleDownload(record);
@@ -316,10 +346,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
     const fullRecord = makeRecord();
     const getByIdExecute = vi.fn().mockResolvedValue(fullRecord);
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationByIdUseCase: { execute: getByIdExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleDownload(makeRecord({ vtt_content: "" }));
@@ -334,10 +366,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
   it("下载无内容且 getById 返回 null 时，应该提示内容为空", async () => {
     const getByIdExecute = vi.fn().mockResolvedValue(null);
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationByIdUseCase: { execute: getByIdExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleDownload(makeRecord({ vtt_content: "" }));
@@ -353,10 +387,12 @@ describe("useTranslationRecords 翻译记录管理 hook", () => {
       .fn()
       .mockRejectedValue(new Error("Network error"));
     const params = makeParams();
-    const deps = makeDeps({
+    const mockDI = makeDI({
       getSubtitleTranslationByIdUseCase: { execute: getByIdExecute },
     });
-    const { result } = renderHook(() => useTranslationRecords(params, deps));
+    const { result } = renderHook(() => useTranslationRecords(params), {
+      wrapper: createWrapper(mockDI),
+    });
 
     await act(async () => {
       await result.current.handleDownload(makeRecord({ vtt_content: "" }));

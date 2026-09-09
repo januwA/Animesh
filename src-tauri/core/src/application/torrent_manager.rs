@@ -3,6 +3,7 @@ use crate::domain::torrent::{
     TorrentStatusInfo,
 };
 use crate::error::CoreResult;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 /// 种子下载领域用例。
@@ -25,8 +26,22 @@ impl TorrentManager {
         }
     }
 
-    pub async fn add_magnet(&self, magnet: &str) -> CoreResult<AddTorrentResult> {
-        self.torrent_repo.add_magnet(magnet).await
+    pub async fn add_magnet(
+        &self,
+        magnet: &str,
+        only_files: Option<Vec<usize>>,
+    ) -> CoreResult<AddTorrentResult> {
+        self.torrent_repo.add_magnet(magnet, only_files).await
+    }
+
+    pub async fn update_only_files(
+        &self,
+        info_hash_hex: &str,
+        only_files: HashSet<usize>,
+    ) -> CoreResult<()> {
+        self.torrent_repo
+            .update_only_files(info_hash_hex, only_files)
+            .await
     }
 
     pub async fn pause_torrent(&self, info_hash_hex: &str) -> CoreResult<()> {
@@ -67,6 +82,10 @@ impl TorrentManager {
 
     pub async fn get_torrent_files(&self, info_hash_hex: &str) -> Option<Vec<FileDetails>> {
         self.torrent_repo.get_torrent_files(info_hash_hex).await
+    }
+
+    pub async fn get_trackers(&self, info_hash_hex: &str) -> Option<Vec<String>> {
+        self.torrent_repo.get_trackers(info_hash_hex).await
     }
 
     pub async fn set_subject_binding(
@@ -132,6 +151,7 @@ mod tests {
                 id: 0,
                 name: "a.mkv".to_string(),
                 len: 1024,
+                included: true,
             }],
         }));
         let manager = TorrentManager::new(
@@ -139,7 +159,7 @@ mod tests {
             Arc::new(MockSubjectBindingRepository::default()),
         );
 
-        let res = manager.add_magnet("magnet:?xt=urn:btih:abc").await;
+        let res = manager.add_magnet("magnet:?xt=urn:btih:abc", None).await;
         let res = res.expect("添加应成功");
         assert_eq!(res.info_hash, "abc123");
         assert_eq!(res.files.len(), 1);
@@ -150,7 +170,7 @@ mod tests {
             Arc::new(repo_err),
             Arc::new(MockSubjectBindingRepository::default()),
         );
-        assert!(manager_err.add_magnet("magnet").await.is_err());
+        assert!(manager_err.add_magnet("magnet", None).await.is_err());
     }
 
     #[tokio::test]
@@ -207,7 +227,6 @@ mod tests {
                 peers_connected: 0,
                 peers_total: 0,
                 created_at: 0,
-                trackers: vec![],
                 subject_id: None,
                 subject_name: None,
                 subject_platform: None,
@@ -226,6 +245,31 @@ mod tests {
 
     #[tokio::test]
     #[allow(non_snake_case)]
+    async fn 测试_更新文件选择与获取Tracker_委托仓储() {
+        let repo = Arc::new(MockTorrentRepository::default());
+        let update_calls = repo.update_only_files_calls.clone();
+        let manager = TorrentManager::new(
+            repo.clone(),
+            Arc::new(MockSubjectBindingRepository::default()),
+        );
+
+        let mut only_files = HashSet::new();
+        only_files.insert(0);
+        only_files.insert(2);
+        manager
+            .update_only_files("hash1", only_files.clone())
+            .await
+            .expect("更新文件选择应成功");
+        let calls = update_calls.lock().unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0, "hash1");
+        assert_eq!(calls[0].1, only_files);
+
+        assert!(manager.get_trackers("hash1").await.is_none());
+    }
+
+    #[tokio::test]
+    #[allow(non_snake_case)]
     async fn 测试_列表回填条目绑定() {
         let repo = Arc::new(
             MockTorrentRepository::default().with_status(TorrentStatusInfo {
@@ -240,7 +284,6 @@ mod tests {
                 peers_connected: 0,
                 peers_total: 0,
                 created_at: 0,
-                trackers: vec![],
                 subject_id: None,
                 subject_name: None,
                 subject_platform: None,

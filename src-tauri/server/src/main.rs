@@ -182,6 +182,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/torrents", post(torrent_add_magnet_handler))
         .route("/torrents/subscribe", get(torrent_subscribe_handler))
         .route("/torrents/:hash/files", get(torrent_get_files_handler))
+        .route(
+            "/torrents/:hash/trackers",
+            get(torrent_get_trackers_handler),
+        )
         .route("/stream-port", get(stream_port_handler))
         .route("/torrents/:hash/pause", post(torrent_pause_handler))
         .route("/torrents/:hash/resume", post(torrent_resume_handler))
@@ -294,7 +298,7 @@ async fn torrent_add_magnet_handler(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let res = state
         .torrent_manager
-        .add_magnet(&payload.magnet)
+        .add_magnet(&payload.magnet, None)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(axum::Json(res))
@@ -329,6 +333,18 @@ async fn torrent_get_files_handler(
         .await
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
     Ok(axum::Json(files))
+}
+
+async fn torrent_get_trackers_handler(
+    State(state): State<Arc<AppState>>,
+    Path(info_hash): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let trackers = state
+        .torrent_manager
+        .get_trackers(&info_hash)
+        .await
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Torrent not found".to_string()))?;
+    Ok(axum::Json(trackers))
 }
 
 async fn stream_port_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {

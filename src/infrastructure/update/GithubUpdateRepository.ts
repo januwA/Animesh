@@ -1,12 +1,18 @@
 import { getVersion } from "@tauri-apps/api/app";
+import { Duration } from "ajanuw-duration";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
+import type { CacheStore } from "@/domain/storage/CacheStore";
 import type { OpenerRepository } from "../../domain/opener/OpenerRepository";
 import type { UpdateInfo } from "../../domain/update/UpdateInfo";
 import type { UpdateRepository } from "../../domain/update/UpdateRepository";
+import { Cached } from "../cache/CachedDecorator";
 import { type GithubRelease, GithubReleaseSchema } from "./UpdateSchemas";
 
 export class GithubUpdateRepository implements UpdateRepository {
-  constructor(private readonly openerRepository: OpenerRepository) {}
+  constructor(
+    private readonly openerRepository: OpenerRepository,
+    public readonly store: CacheStore,
+  ) {}
   private readonly githubApiUrl =
     "https://api.github.com/repos/januwA/Animesh/releases/latest";
 
@@ -48,6 +54,9 @@ export class GithubUpdateRepository implements UpdateRepository {
     return asset?.browser_download_url;
   }
 
+  @Cached({
+    ttl: new Duration({ minutes: 30 }),
+  })
   async getLatestRelease(): Promise<UpdateInfo> {
     try {
       const data = await this.fetchLatestReleaseData();

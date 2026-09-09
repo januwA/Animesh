@@ -23,7 +23,6 @@ describe("NotifyDownloadCompletionUseCase 下载完成通知业务编排", () =>
       paused: false,
       peers_connected: 0,
       peers_total: 0,
-      trackers: [],
       ...overrides,
     };
   }

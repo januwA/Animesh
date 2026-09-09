@@ -98,6 +98,26 @@ export class TauriTorrentRepository implements TorrentRepository {
     return result.data;
   }
 
+  async getTrackers(infoHash: string): Promise<string[]> {
+    const raw = await invoke<unknown>(commands.torrent_get_trackers, {
+      infoHash,
+    });
+    const result = z.array(z.string()).safeParse(raw);
+    if (!result.success) {
+      throw new Error("torrent_get_trackers API structure mismatch", {
+        cause: result.error,
+      });
+    }
+    return result.data;
+  }
+
+  async updateOnlyFiles(infoHash: string, onlyFiles: number[]): Promise<void> {
+    return invoke<void>(commands.torrent_update_only_files, {
+      infoHash,
+      onlyFiles,
+    });
+  }
+
   async getStreamPort(): Promise<number> {
     return invoke<number>(commands.get_stream_port);
   }

@@ -1,35 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DIContainer } from "@/di/DIContext";
-import { DIContext } from "@/di/DIContext";
 import type { AnimeSubject } from "@/domain/anime/AnimeSchemas";
 import { SubjectInfoCard } from "@/presentation/pages/SubjectDetail/SubjectInfoCard";
 import { resetAppStores } from "@/test/store-reset";
 
-const mockSettings = {
-  download_dir: "/downloads",
-  proxy: null,
-  ai_configs: null,
-  max_download_speed: null,
-  max_upload_speed: null,
-  translation: {
-    target_lang: "zh-CN",
-    provider: "google" as const,
-    ai_config_alias: null,
-  },
-};
-
-function createMockDI(): DIContainer {
-  return {
-    getSettingsUseCase: {
-      execute: vi.fn().mockResolvedValue(mockSettings),
-    },
-    translateTextUseCase: {
-      execute: vi.fn().mockResolvedValue("翻译后的文本"),
-    },
-    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-  } as unknown as DIContainer;
-}
+// TranslatableText 内部依赖深层 HOOK/DI 链，测试不关心其翻译行为，直接 mock
+// 组件隔离依赖，只验证它被按规则渲染。
+vi.mock(import("@/presentation/components/TranslatableText"), () => ({
+  TranslatableText: vi.fn(({ text }: { text: string }) => <span>{text}</span>),
+}));
 
 const makeSubject = (overrides: Partial<AnimeSubject> = {}): AnimeSubject => ({
   id: 123,
@@ -54,25 +33,22 @@ const renderCard = async (
     onRetry: () => {},
   },
 ) => {
-  const mockDI = createMockDI();
   const result = render(
-    <DIContext value={mockDI}>
-      <SubjectInfoCard
-        subject={subject}
-        subjectId={123}
-        platform="bangumi"
-        displayName={options.displayName ?? "测试动漫标题"}
-        imageUrl={options.imageUrl}
-        error={options.error}
-        onRetry={options.onRetry}
-        onOpenUrl={vi.fn()}
-        getFavoriteStatusUseCase={{ execute: vi.fn().mockResolvedValue(false) }}
-        addFavoriteUseCase={{ execute: vi.fn().mockResolvedValue(undefined) }}
-        removeFavoriteUseCase={{
-          execute: vi.fn().mockResolvedValue(undefined),
-        }}
-      />
-    </DIContext>,
+    <SubjectInfoCard
+      subject={subject}
+      subjectId={123}
+      platform="bangumi"
+      displayName={options.displayName ?? "测试动漫标题"}
+      imageUrl={options.imageUrl}
+      error={options.error}
+      onRetry={options.onRetry}
+      onOpenUrl={vi.fn()}
+      getFavoriteStatusUseCase={{ execute: vi.fn().mockResolvedValue(false) }}
+      addFavoriteUseCase={{ execute: vi.fn().mockResolvedValue(undefined) }}
+      removeFavoriteUseCase={{
+        execute: vi.fn().mockResolvedValue(undefined),
+      }}
+    />,
   );
   if (subject) {
     await waitFor(() => {

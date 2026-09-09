@@ -157,7 +157,7 @@ function PlayerView({
         />
 
         {/* Tracker 列表 */}
-        <TrackerSection trackers={torrentStatus?.trackers ?? []} />
+        <TrackerSection infoHash={infoHash} />
 
         {/* Chapters */}
         <ChaptersSection chapters={chapters} />

@@ -45,7 +45,6 @@ const makeTorrent = (
   paused: false,
   peers_connected: 0,
   peers_total: 0,
-  trackers: [],
   ...overrides,
 });
 

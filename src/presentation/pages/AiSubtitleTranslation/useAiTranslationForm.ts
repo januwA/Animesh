@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import type { GetSettingsUseCase } from "@/application/settings/GetSettingsUseCase";
-import type { TranslateSubtitleUseCase } from "@/application/subtitle/TranslateSubtitleUseCase";
-import type { GetSubtitleVttUseCase } from "@/application/torrent/GetSubtitleVttUseCase";
-import type { GetVideoMetadataUseCase } from "@/application/torrent/GetVideoMetadataUseCase";
+import { useDI } from "@/di/DIContext";
 import type { NonEmptyString } from "@/domain/common/NonEmptyString";
 import type { AiConfig } from "@/domain/settings/SettingsSchemas";
 import type { SubtitleTrackInfo } from "@/domain/torrent/TorrentSchemas";
@@ -15,13 +12,6 @@ export interface UseAiTranslationFormParams {
   infoHash: NonEmptyString;
   fileId: number;
   onTranslateSuccess: () => void;
-}
-
-export interface UseAiTranslationFormDeps {
-  getSettingsUseCase: Pick<GetSettingsUseCase, "execute">;
-  getVideoMetadataUseCase: Pick<GetVideoMetadataUseCase, "execute">;
-  getSubtitleVttUseCase: Pick<GetSubtitleVttUseCase, "execute">;
-  translateSubtitleUseCase: Pick<TranslateSubtitleUseCase, "execute">;
 }
 
 export interface UseAiTranslationFormResult {
@@ -42,15 +32,14 @@ export interface UseAiTranslationFormResult {
 
 export function useAiTranslationForm(
   params: UseAiTranslationFormParams,
-  deps: UseAiTranslationFormDeps,
 ): UseAiTranslationFormResult {
   const { infoHash, fileId, onTranslateSuccess } = params;
   const {
-    getSettingsUseCase,
+    getAiConfigsUseCase,
     getVideoMetadataUseCase,
     getSubtitleVttUseCase,
     translateSubtitleUseCase,
-  } = deps;
+  } = useDI();
 
   const [sourceLang, setSourceLang] = useState("");
   const [targetLang, setTargetLang] = useState("");
@@ -61,11 +50,11 @@ export function useAiTranslationForm(
     total: number;
   } | null>(null);
 
-  const settingsQuery = useQuery(
-    () => getSettingsUseCase.execute(),
-    [getSettingsUseCase],
+  const aiConfigsQuery = useQuery(
+    () => getAiConfigsUseCase.execute(),
+    [getAiConfigsUseCase],
   );
-  const aiConfigs: AiConfig[] = settingsQuery.data?.ai_configs ?? [];
+  const aiConfigs: AiConfig[] = aiConfigsQuery.data?.aiConfigs ?? [];
 
   const metadataQuery = useQuery(
     (_ctx) => getVideoMetadataUseCase.execute(infoHash, fileId),

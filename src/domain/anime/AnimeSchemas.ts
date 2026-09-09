@@ -66,5 +66,12 @@ export interface AnimeSubjectSearchResult {
   total: number;
 }
 
+export interface AnimeRelatedSubject {
+  id: number;
+  name: string;
+  image: string;
+  relation: string;
+}
+
 export const AnimePlatformSchema = z.enum(["bangumi", "anilist"]);
 export type AnimePlatform = z.infer<typeof AnimePlatformSchema>;

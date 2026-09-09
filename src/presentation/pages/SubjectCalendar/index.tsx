@@ -1,4 +1,6 @@
+import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
 import { AnimePlatformSchema } from "@/domain/anime/AnimeSchemas";
@@ -12,53 +14,81 @@ import {
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
 import { WeeklyCalendar } from "@/presentation/pages/SubjectCalendar/WeeklyCalendar";
-import { useAnilistCalendarStore } from "@/presentation/store/anilistCalendarStore";
-import { useBangumiCalendarStore } from "@/presentation/store/bangumiCalendarStore";
 import { useSubjectCalendarPage } from "./useSubjectCalendarPage";
+
+const subjectCalendarParamsSchema = z.object({
+  platform: AnimePlatformSchema,
+  day: z.preprocess(
+    (value) =>
+      typeof value === "string" && value !== "" ? Number(value) : undefined,
+    z
+      .number()
+      .int()
+      .min(1, "无效的星期参数")
+      .max(7, "无效的星期参数")
+      .optional(),
+  ),
+});
 
 const platformConfigs = {
   bangumi: {
     title: "Bangumi 周放送",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getBangumiCalendarUseCase,
-    useStore: useBangumiCalendarStore,
     subjectPath: (id: number) => `/anime/subject/${id}?platform=bangumi`,
   },
   anilist: {
     title: "AniList 周放送",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getAnilistCalendarUseCase,
-    useStore: useAnilistCalendarStore,
     subjectPath: (id: number) => `/anime/subject/${id}?platform=anilist`,
   },
 } as const;
 
 export default function SubjectCalendar() {
   const [searchParams] = useSearchParams();
-  const platformResult = AnimePlatformSchema.safeParse(
-    searchParams.get("platform"),
-  );
+  const parsed = subjectCalendarParamsSchema.safeParse({
+    platform: searchParams.get("platform"),
+    day: searchParams.get("day") ?? undefined,
+  });
 
-  if (!platformResult.success) {
-    return (
-      <InvalidParamsView
-        title="缺少 platform 参数"
-        error={platformResult.error}
-      />
-    );
+  if (!parsed.success) {
+    return <InvalidParamsView title="无效的日历参数" error={parsed.error} />;
   }
 
-  return <SubjectCalendarView platform={platformResult.data} />;
+  return (
+    <SubjectCalendarView
+      platform={parsed.data.platform}
+      day={parsed.data.day}
+    />
+  );
 }
 
-function SubjectCalendarView({ platform }: { platform: AnimePlatform }) {
+function SubjectCalendarView({
+  platform,
+  day,
+}: {
+  platform: AnimePlatform;
+  day?: number;
+}) {
   const di = useDI();
+  const [searchParams, setSearchParams] = useSearchParams();
   const config = platformConfigs[platform];
-  const calendarActiveDay = config.useStore((s) => s.calendarActiveDay);
-  const setCalendarActiveDay = config.useStore((s) => s.setCalendarActiveDay);
+
+  const handleActiveDayChange = useCallback(
+    (dayId: number | null) => {
+      const next = new URLSearchParams(searchParams);
+      if (dayId === null) {
+        next.delete("day");
+      } else {
+        next.set("day", String(dayId));
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   const { calendar, isLoading, error, refetch, handleAnimeClick } =
     useSubjectCalendarPage(
       { getCalendarUseCase: config.getUseCase(di) },
-      config.useStore,
       config.subjectPath,
     );
 
@@ -85,8 +115,8 @@ function SubjectCalendarView({ platform }: { platform: AnimePlatform }) {
       ) : (
         <WeeklyCalendar
           calendar={calendar}
-          calendarActiveDay={calendarActiveDay}
-          onActiveDayChange={setCalendarActiveDay}
+          calendarActiveDay={day ?? null}
+          onActiveDayChange={handleActiveDayChange}
           onAnimeClick={handleAnimeClick}
         />
       )}

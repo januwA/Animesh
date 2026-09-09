@@ -9,7 +9,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/presentation/components/ui/toggle-group";
-import { DEFAULT_IPTV_CATEGORY } from "../../store/iptvStore";
+import { DEFAULT_IPTV_CATEGORY } from "./useIptvPage";
 
 const ALL_CATEGORY_LABEL = "全部";
 

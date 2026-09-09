@@ -63,11 +63,32 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       globals: true,
-      environment: "happy-dom",
-      setupFiles: "./src/test/setup.ts",
       reporters: ["minimal"], // minimal,dot
       maxWorkers: "50%",
       silent: "passed-only",
+      // 双环境 projects：领域层/应用层是纯逻辑测试，不需要 DOM，
+      // 用 node 环境避免 happy-dom 实例化开销；表现层保留 happy-dom。
+      // Vitest 5 起内联 project 默认 extends: true，继承根级 plugins/alias/globals，
+      // 各 project 只需声明差异项（environment/setupFiles/include）。
+      projects: [
+        {
+          test: {
+            name: "node",
+            environment: "node",
+            setupFiles: "./src/test/setup.node.ts",
+            include: ["src/{domain,application}/**/*.test.{ts,tsx}"],
+          },
+        },
+        {
+          test: {
+            name: "dom",
+            environment: "happy-dom",
+            setupFiles: "./src/test/setup.ts",
+            include: ["src/**/*.test.{ts,tsx}"],
+            exclude: ["src/{domain,application}/**/*.test.{ts,tsx}"],
+          },
+        },
+      ],
       coverage: {
         provider: "v8",
         reporter: ["text"],

@@ -2,7 +2,6 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { IptvChannel } from "@/domain/iptv/IptvSchemas";
-import { resetAppStores } from "@/test/store-reset";
 import type { UseIptvPageParams } from "./useIptvPage";
 import { useIptvPage } from "./useIptvPage";
 
@@ -57,25 +56,37 @@ const LocationTracker = () => {
   return null;
 };
 
-const RouterWrapper = ({ children }: { children: React.ReactNode }) => {
+const RouterWrapper = ({
+  children,
+  initialEntry,
+}: {
+  children: React.ReactNode;
+  initialEntry: string;
+}) => {
   return (
-    <MemoryRouter initialEntries={["/"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <LocationTracker />
       {children}
     </MemoryRouter>
   );
 };
 
-const renderUseIptvPage = (deps: UseIptvPageParams) => {
-  return renderHook(() => useIptvPage(deps), {
-    wrapper: RouterWrapper,
+const renderUseIptvPage = (
+  deps: UseIptvPageParams,
+  options: { countryParam?: string; initialEntry?: string } = {},
+) => {
+  const initialEntry = options.initialEntry ?? "/";
+  return renderHook(() => useIptvPage(deps, options.countryParam), {
+    wrapper: ({ children }) => (
+      <RouterWrapper initialEntry={initialEntry}>{children}</RouterWrapper>
+    ),
   });
 };
 
 describe("useIptvPage IPTV 页面 hook", () => {
   beforeEach(() => {
-    resetAppStores();
     vi.clearAllMocks();
+    lastNavigation.current = null;
   });
 
   it("应该加载国家和频道数据", async () => {
@@ -170,6 +181,76 @@ describe("useIptvPage IPTV 页面 hook", () => {
     await waitFor(() => {
       expect(result.current.iptvSelectedCountry).toBe("CN");
     });
+    expect(result.current.iptvChannels).toEqual(mockChannels);
+    expect(lastNavigation.current?.search).toBe("");
+  });
+
+  it("handleCountryChange 切换国家时应该写入 URL 查询参数", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.handleCountryChange("JP");
+    });
+
+    await waitFor(() => {
+      expect(result.current.iptvSelectedCountry).toBe("JP");
+    });
+    expect(lastNavigation.current?.search).toContain("country=JP");
+  });
+
+  it("国家间来回切换时应该命中本地缓存而不重复请求", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps);
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(deps.getIptvChannelsUseCase.execute).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.handleCountryChange("JP");
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.iptvSelectedCountry).toBe("JP");
+    });
+    expect(deps.getIptvChannelsUseCase.execute).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      result.current.handleCountryChange("CN");
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.iptvSelectedCountry).toBe("CN");
+    });
+    // CN 的频道数据在挂载期间被本地缓存，不应重新请求
+    expect(deps.getIptvChannelsUseCase.execute).toHaveBeenCalledTimes(2);
+    expect(result.current.iptvChannels).toEqual(mockChannels);
+  });
+
+  it("countryParam 合法时应该作为初始选中国家", async () => {
+    const deps = makeDeps();
+    const { result } = renderUseIptvPage(deps, {
+      countryParam: "jp",
+      initialEntry: "/?country=jp",
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.iptvSelectedCountry).toBe("JP");
+    expect(deps.getIptvChannelsUseCase.execute).toHaveBeenCalledWith(
+      expect.anything(),
+      "JP",
+    );
   });
 
   it("handleCategoryChange 应该更新选中的分类", async () => {

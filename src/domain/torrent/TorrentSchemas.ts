@@ -14,6 +14,7 @@ export const FileDetailsSchema = z.object({
   id: z.number(),
   name: NonEmptyStringSchema,
   len: z.number(),
+  included: z.boolean().optional().default(true),
 });
 
 export const AddTorrentResultSchema = z.object({
@@ -33,7 +34,6 @@ export const TorrentStatusInfoSchema = z.object({
   peers_connected: z.number(),
   peers_total: z.number(),
   created_at: z.number().optional(),
-  trackers: z.array(z.string()).default([]),
   subject_id: z.number().optional(),
   subject_name: NonEmptyStringSchema.optional(),
   subject_platform: AnimePlatformSchema.optional(),

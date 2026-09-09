@@ -359,3 +359,33 @@ export const AnilistNextSeasonResponseSchema = z
       };
     }),
   }));
+
+// ── Related Subjects → AnimeRelatedSubject[] (getRelatedSubjects) ──────────
+
+const AnilistRelationEdgeSchema = z.object({
+  relationType: z.string(),
+  node: z.object({
+    id: z.number(),
+    title: AnilistTitleSchema,
+    coverImage: AnilistCoverImageSchema,
+  }),
+});
+
+export const AnilistRelatedSubjectsResponseSchema = z
+  .object({
+    data: z.object({
+      Media: z.object({
+        relations: z.object({
+          edges: z.array(AnilistRelationEdgeSchema),
+        }),
+      }),
+    }),
+  })
+  .transform((dto) => {
+    return dto.data.Media.relations.edges.map((edge) => ({
+      id: edge.node.id,
+      name: pickTitle(edge.node.title),
+      image: pickCoverImage(edge.node.coverImage),
+      relation: edge.relationType,
+    }));
+  });
