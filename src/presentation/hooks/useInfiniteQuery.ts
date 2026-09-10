@@ -169,6 +169,7 @@ export function useInfiniteQuery<TPage, TParams = void>(
           return updated;
         });
         setIsFetchingNextPage(false);
+        setError(null);
       },
       (err: unknown) => {
         if (ctx.err() === Canceled) return;
