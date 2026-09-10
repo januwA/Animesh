@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { useDI } from "@/di/DIContext";
 import type { AnimePlatform } from "@/domain/anime/AnimeSchemas";
@@ -13,8 +13,8 @@ import {
   EmptyDescription,
   EmptyTitle,
 } from "@/presentation/components/ui/empty";
+import { useQuery } from "@/presentation/hooks/useQuery";
 import { WeeklyCalendar } from "@/presentation/pages/SubjectCalendar/WeeklyCalendar";
-import { useSubjectCalendarPage } from "./useSubjectCalendarPage";
 
 const subjectCalendarParamsSchema = z.object({
   platform: AnimePlatformSchema,
@@ -34,12 +34,10 @@ const platformConfigs = {
   bangumi: {
     title: "Bangumi 周放送",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getBangumiCalendarUseCase,
-    subjectPath: (id: number) => `/anime/subject/${id}?platform=bangumi`,
   },
   anilist: {
     title: "AniList 周放送",
     getUseCase: (di: ReturnType<typeof useDI>) => di.getAnilistCalendarUseCase,
-    subjectPath: (id: number) => `/anime/subject/${id}?platform=anilist`,
   },
 } as const;
 
@@ -70,8 +68,19 @@ function SubjectCalendarView({
   day?: number;
 }) {
   const di = useDI();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const config = platformConfigs[platform];
+
+  const {
+    data: calendar,
+    loading: isLoading,
+    error,
+    refetch,
+  } = useQuery(
+    (ctx) => config.getUseCase(di).execute(ctx),
+    [config.getUseCase(di)],
+  );
 
   const handleActiveDayChange = useCallback(
     (dayId: number | null) => {
@@ -86,11 +95,20 @@ function SubjectCalendarView({
     [searchParams, setSearchParams],
   );
 
-  const { calendar, isLoading, error, refetch, handleAnimeClick } =
-    useSubjectCalendarPage(
-      { getCalendarUseCase: config.getUseCase(di) },
-      config.subjectPath,
-    );
+  const handleAnimeClick = useCallback(
+    (item: { id: number; name: string; image: string }) => {
+      navigate(`/anime/subject/${item.id}?platform=${platform}`, {
+        viewTransition: true,
+        state: {
+          name: item.name,
+          imageUrl: item.image,
+        },
+      });
+    },
+    [navigate, platform],
+  );
+
+  const calendarDays = calendar ?? [];
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -102,10 +120,10 @@ function SubjectCalendarView({
       ) : error ? (
         <ErrorState
           title="获取新番日历失败"
-          message={error}
+          message={error.message}
           onRetry={refetch}
         />
-      ) : calendar.length === 0 ? (
+      ) : calendarDays.length === 0 ? (
         <Empty>
           <EmptyContent>
             <EmptyTitle>未找到新番数据</EmptyTitle>
@@ -114,7 +132,7 @@ function SubjectCalendarView({
         </Empty>
       ) : (
         <WeeklyCalendar
-          calendar={calendar}
+          calendar={calendarDays}
           calendarActiveDay={day ?? null}
           onActiveDayChange={handleActiveDayChange}
           onAnimeClick={handleAnimeClick}
