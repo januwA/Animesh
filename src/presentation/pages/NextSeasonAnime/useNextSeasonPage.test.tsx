@@ -143,7 +143,7 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
 
     expect(executeMock).toHaveBeenCalledTimes(2);
 
-    // 切换回第一个月不应重新发起请求
+    // 切换回第一个月会重新发起请求（月份作为 queryKey 的一部分）
     const firstMonth = result.current.tabs[0].month;
     act(() => {
       result.current.setActiveMonth(firstMonth);
@@ -154,7 +154,7 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
       expect(result.current.items[0]?.name).toBe(`${firstMonth}月新番`);
     });
 
-    expect(executeMock).toHaveBeenCalledTimes(2);
+    expect(executeMock).toHaveBeenCalledTimes(3);
   });
 
   it("loadMore 应该加载下一页并追加条目", async () => {
@@ -254,15 +254,18 @@ describe("useNextSeasonPage 下季新番页面 hook", () => {
       result.current.setActiveMonth(secondMonth);
     });
 
+    // 切换月份会重置分页，等待月份 B 的首页加载完成
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.activeMonth).toBe(secondMonth);
+      expect(result.current.items).toHaveLength(1);
     });
 
     act(() => {
       result.current.loadMore();
     });
 
+    // 月份 B 的首页已加载（offset=0），loadMore 时 offset=1
     expect(executeMock).toHaveBeenCalledTimes(4);
     expect(executeMock).toHaveBeenLastCalledWith(
       expect.anything(),

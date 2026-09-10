@@ -7,7 +7,10 @@ import type {
   AnimeSubjectSearchResult,
 } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import { useInfiniteQuery } from "@/presentation/hooks/useInfiniteQuery";
+import {
+  getNextPageOffset,
+  useInfiniteQuery,
+} from "@/presentation/hooks/useInfiniteQuery";
 
 const SEARCH_LIMIT = 20;
 
@@ -46,8 +49,8 @@ export function useSubjectSearchPage(
       }),
     getItems: (page) => page.items,
     getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
-      return loaded < lastPage.total ? loaded : undefined;
+      const offset = getNextPageOffset(allPages, (p) => p.items);
+      return offset < lastPage.total ? offset : undefined;
     },
     params: { queryText: searchedKeyword },
   });

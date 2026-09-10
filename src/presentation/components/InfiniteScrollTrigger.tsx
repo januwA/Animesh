@@ -15,25 +15,31 @@ export function InfiniteScrollTrigger({
   const ref = useRef<HTMLDivElement>(null);
   const stateRef = useRef({ hasMore, loading, onLoadMore });
   stateRef.current = { hasMore, loading, onLoadMore };
+  const lastLoadTimeRef = useRef(0);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
+    observerRef.current?.disconnect();
     const el = ref.current;
-    if (!el || !hasMore || loading) return;
+    if (!el || !hasMore) return;
     // v8 ignore start
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
         const state = stateRef.current;
-        if (state.hasMore && !state.loading) {
-          state.onLoadMore();
-        }
+        if (!state.hasMore || state.loading) return;
+        const now = Date.now();
+        if (now - lastLoadTimeRef.current < 300) return;
+        lastLoadTimeRef.current = now;
+        state.onLoadMore();
       },
       { rootMargin: "200px" },
     );
     // v8 ignore end
+    observerRef.current = observer;
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasMore, loading]);
+  }, [hasMore]);
 
   return (
     <div

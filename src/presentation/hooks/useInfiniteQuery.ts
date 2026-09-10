@@ -199,3 +199,20 @@ export function useInfiniteQuery<TPage, TParams = void>(
     refetch,
   };
 }
+
+/**
+ * 计算所有已加载页的累计偏移量（即 items 总数），
+ * 用于 getNextPageParam 中确定下一次请求的 pageParam。
+ *
+ * @example
+ * getNextPageParam: (lastPage, allPages) => {
+ *   const offset = getNextPageOffset(allPages, getItems);
+ *   return offset < lastPage.total ? offset : undefined;
+ * },
+ */
+export function getNextPageOffset<TPage>(
+  allPages: TPage[],
+  getItems: (page: TPage) => unknown[],
+): number {
+  return allPages.reduce((sum, page) => sum + getItems(page).length, 0);
+}
