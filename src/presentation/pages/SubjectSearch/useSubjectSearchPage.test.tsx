@@ -161,7 +161,7 @@ describe("useSubjectSearchPage 通用搜索 hook", () => {
     });
 
     expect(result.current.results.items).toEqual([]);
-    expect(result.current.status.error).toEqual(new Error("网络错误"));
+    expect(result.current.status.error).toBe("网络错误");
     expect(result.current.status.hasSearched).toBe(true);
   });
 

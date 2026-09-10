@@ -92,7 +92,7 @@ function SubjectSearchView({
       />
 
       {page.status.loading ? (
-        <SubjectSearchLoading onCancel={page.status.handleCancel} />
+        <SubjectSearchLoading />
       ) : page.status.error ? (
         <ErrorState
           title="搜索失败"

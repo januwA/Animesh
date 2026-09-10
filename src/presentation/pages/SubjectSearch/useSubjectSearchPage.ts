@@ -7,7 +7,7 @@ import type {
   AnimeSubjectSearchResult,
 } from "@/domain/anime/AnimeSchemas";
 import { NonEmptyStringSchema } from "@/domain/common/NonEmptyString";
-import { useMutation } from "@/presentation/hooks/useMutation";
+import { useInfiniteQuery } from "@/presentation/hooks/useInfiniteQuery";
 
 const SEARCH_LIMIT = 20;
 
@@ -15,11 +15,6 @@ export interface UseSubjectSearchPageDeps {
   searchSubjectsUseCase: Pick<SearchAnimeSubjectsUseCase, "execute">;
 }
 
-/**
- * 搜索结果由基础设施层 @Cached（12 小时 TTL）缓存，此处不重复缓存，
- * 搜索状态保存在本地 state，关键词持久化在 URL ?keyword= 参数中，
- * 重新挂载（如从详情页返回）时通过参数自动重新搜索恢复结果。
- */
 export function useSubjectSearchPage(
   keywordParam: string | undefined,
   deps: UseSubjectSearchPageDeps,
@@ -31,62 +26,37 @@ export function useSubjectSearchPage(
 
   const [keyword, setKeyword] = useState(keywordParam ?? "");
   const [searchedKeyword, setSearchedKeyword] = useState("");
-  const [results, setResults] = useState<AnimeSubject[]>([]);
-  const [total, setTotal] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const searchMutation = useMutation<
-    AnimeSubjectSearchResult,
-    { queryText: string }
-  >(
-    (ctx, { queryText }) =>
+  const {
+    items: results,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    error,
+    fetchNextPage,
+  } = useInfiniteQuery<AnimeSubjectSearchResult, { queryText: string }>({
+    queryKey: [searchedKeyword],
+    enabled: searchedKeyword !== "",
+    queryFn: (ctx, { queryText }, pageParam) =>
       searchSubjectsUseCase.execute(ctx, {
         keyword: NonEmptyStringSchema.parse(queryText),
         limit: SEARCH_LIMIT,
-        offset: 0,
+        offset: pageParam,
       }),
-    {
-      onSuccess: (data) => {
-        setResults(data.items);
-        setTotal(data.total);
-      },
-      onError: () => {
-        setResults([]);
-        setTotal(0);
-      },
+    getItems: (page) => page.items,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
     },
-  );
-
-  const loadMoreMutation = useMutation<
-    AnimeSubject[],
-    { queryText: string; offset: number }
-  >(
-    (ctx, { queryText, offset }) =>
-      searchSubjectsUseCase
-        .execute(ctx, {
-          keyword: NonEmptyStringSchema.parse(queryText),
-          limit: SEARCH_LIMIT,
-          offset,
-        })
-        .then((page) => page.items),
-    {
-      onSuccess: (data, params) => {
-        /* v8 ignore next -- 竞态防护：正常流程中 performSearch 总会先 cancel 该 mutation，此分支不可达 */
-        if (params.queryText !== searchedKeyword) return;
-        setResults((prev) => [...prev, ...data]);
-      },
-    },
-  );
-
-  const hasMore = results.length < total;
+    params: { queryText: searchedKeyword },
+  });
 
   const performSearch = useCallback(
     (queryText: string) => {
       setKeyword(queryText);
       setSearchedKeyword(queryText);
       setHasSearched(true);
-      loadMoreMutation.cancel();
-      searchMutation.execute({ queryText });
 
       if (searchParams.get("keyword") !== queryText) {
         const next = new URLSearchParams(searchParams);
@@ -94,12 +64,7 @@ export function useSubjectSearchPage(
         setSearchParams(next);
       }
     },
-    [
-      loadMoreMutation.cancel,
-      searchMutation.execute,
-      searchParams,
-      setSearchParams,
-    ],
+    [searchParams, setSearchParams],
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅在 URL 关键词变化时自动触发搜索，searchedKeyword 是防重复搜索的守卫条件
@@ -115,18 +80,9 @@ export function useSubjectSearchPage(
   };
 
   const loadMore = useCallback(() => {
-    if (loadMoreMutation.loading || !hasMore || !searchedKeyword) return;
-    loadMoreMutation.execute({
-      queryText: searchedKeyword,
-      offset: results.length,
-    });
-  }, [
-    loadMoreMutation.loading,
-    hasMore,
-    searchedKeyword,
-    results.length,
-    loadMoreMutation.execute,
-  ]);
+    if (isFetchingNextPage || !hasNextPage || !searchedKeyword) return;
+    fetchNextPage();
+  }, [isFetchingNextPage, hasNextPage, searchedKeyword, fetchNextPage]);
 
   const handleSubjectClick = useCallback(
     (item: AnimeSubject) => {
@@ -146,17 +102,16 @@ export function useSubjectSearchPage(
       performSearch,
     },
     results: {
-      items: results,
+      items: results as AnimeSubject[],
       handleSubjectClick,
       onLoadMore: loadMore,
     },
     status: {
-      loading: searchMutation.loading,
-      error: searchMutation.error,
+      loading: isFetching,
+      error: error?.message ?? null,
       hasSearched,
-      hasMore,
-      loadingMore: loadMoreMutation.loading,
-      handleCancel: searchMutation.cancel,
+      hasMore: hasNextPage,
+      loadingMore: isFetchingNextPage,
     },
   };
 }
