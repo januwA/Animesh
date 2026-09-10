@@ -78,6 +78,37 @@ function SubjectSearchView({
     config.subjectPath,
   );
 
+  function renderResults() {
+    if (page.status.loading) {
+      return <SubjectSearchLoading />;
+    }
+
+    if (page.status.error && page.results.items.length === 0) {
+      return (
+        <ErrorState
+          title="搜索失败"
+          message={page.status.error}
+          onRetry={() => page.search.performSearch(page.search.keyword)}
+        />
+      );
+    }
+
+    if (page.status.hasSearched) {
+      return (
+        <SubjectSearchResults
+          items={page.results.items}
+          onSubjectClick={page.results.handleSubjectClick}
+          hasMore={page.status.hasMore}
+          loadingMore={page.status.loadingMore}
+          onLoadMore={page.results.onLoadMore}
+          error={page.status.error}
+        />
+      );
+    }
+
+    return null;
+  }
+
   return (
     <div className="w-full flex flex-col gap-6 animate-in fade-in duration-300">
       <div className="flex flex-col gap-1">
@@ -91,23 +122,7 @@ function SubjectSearchView({
         onSubmit={page.search.handleSearch}
       />
 
-      {page.status.loading ? (
-        <SubjectSearchLoading />
-      ) : page.status.error ? (
-        <ErrorState
-          title="搜索失败"
-          message={page.status.error}
-          onRetry={() => page.search.performSearch(page.search.keyword)}
-        />
-      ) : page.status.hasSearched ? (
-        <SubjectSearchResults
-          items={page.results.items}
-          onSubjectClick={page.results.handleSubjectClick}
-          hasMore={page.status.hasMore}
-          loadingMore={page.status.loadingMore}
-          onLoadMore={page.results.onLoadMore}
-        />
-      ) : null}
+      {renderResults()}
     </div>
   );
 }
