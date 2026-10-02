@@ -79,6 +79,33 @@ describe("SubjectSearchResults 搜索结果列表", () => {
     expect(screen.getByText("上滑加载更多")).toBeInTheDocument();
   });
 
+  it("传入 error 时渲染错误提示文本", () => {
+    render(
+      <SubjectSearchResults
+        items={[makeSubject()]}
+        onSubjectClick={() => {}}
+        hasMore={false}
+        loadingMore={false}
+        onLoadMore={() => {}}
+        error="请求失败，请稍后重试"
+      />,
+    );
+    expect(screen.getByText("请求失败，请稍后重试")).toBeInTheDocument();
+  });
+
+  it("未传入 error 时不渲染错误提示", () => {
+    render(
+      <SubjectSearchResults
+        items={[makeSubject()]}
+        onSubjectClick={() => {}}
+        hasMore={false}
+        loadingMore={false}
+        onLoadMore={() => {}}
+      />,
+    );
+    expect(screen.queryByText("请求失败，请稍后重试")).not.toBeInTheDocument();
+  });
+
   it("加载更多中时展示加载提示", () => {
     render(
       <SubjectSearchResults

@@ -14,6 +14,7 @@ interface SubjectSearchResultsProps {
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
+  error?: string | null;
   emptyTitle?: string;
   emptyDescription?: string;
 }
@@ -24,6 +25,7 @@ export function SubjectSearchResults({
   hasMore,
   loadingMore,
   onLoadMore,
+  error,
   emptyTitle = "未找到相关条目",
   emptyDescription = "换个关键词试试",
 }: SubjectSearchResultsProps) {
@@ -52,6 +54,9 @@ export function SubjectSearchResults({
           />
         ))}
       </div>
+      {error && (
+        <p className="text-sm text-destructive text-center py-2">{error}</p>
+      )}
       <InfiniteScrollTrigger
         hasMore={hasMore}
         loading={loadingMore}

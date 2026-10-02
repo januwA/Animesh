@@ -38,6 +38,60 @@ export function MonthCalendar({
   onLoadMore,
   onAnimeClick,
 }: MonthCalendarProps) {
+  function renderContent() {
+    if (isLoading) {
+      return <CalendarSkeleton showWeekDay={false} />;
+    }
+
+    if (error && items.length === 0) {
+      return (
+        <ErrorState
+          title="获取下季新番失败"
+          message={error}
+          onRetry={onRetry}
+        />
+      );
+    }
+
+    if (items.length === 0) {
+      return (
+        <Empty>
+          <EmptyContent>
+            <EmptyTitle>暂无数据</EmptyTitle>
+          </EmptyContent>
+        </Empty>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        <div
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+          style={{ transform: "translate3d(0, 0, 0)" }}
+        >
+          {items.map((item) => (
+            <MediaCard
+              key={item.id}
+              id={item.id}
+              imageSrc={item.image}
+              title={item.name}
+              rating={item.rating}
+              onClick={() => onAnimeClick(item)}
+            />
+          ))}
+        </div>
+        {error && (
+          <p className="text-sm text-destructive text-center py-2">{error}</p>
+        )}
+        <InfiniteScrollTrigger
+          hasMore={hasMore}
+          loading={loadingMore}
+          onLoadMore={onLoadMore}
+        />
+      </div>
+    );
+  }
+
   return (
     <section className="w-full flex flex-col">
       <div className="sticky-safe-top z-10 bg-background/85 backdrop-blur-md pt-2 pb-2 -mx-4 px-4">
@@ -59,46 +113,7 @@ export function MonthCalendar({
         </Tabs>
       </div>
 
-      <div className="mt-4">
-        {isLoading ? (
-          <CalendarSkeleton showWeekDay={false} />
-        ) : error ? (
-          <ErrorState
-            title="获取下季新番失败"
-            message={error}
-            onRetry={onRetry}
-          />
-        ) : items.length === 0 ? (
-          <Empty>
-            <EmptyContent>
-              <EmptyTitle>暂无数据</EmptyTitle>
-            </EmptyContent>
-          </Empty>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <div
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
-              style={{ transform: "translate3d(0, 0, 0)" }}
-            >
-              {items.map((item) => (
-                <MediaCard
-                  key={item.id}
-                  id={item.id}
-                  imageSrc={item.image}
-                  title={item.name}
-                  rating={item.rating}
-                  onClick={() => onAnimeClick(item)}
-                />
-              ))}
-            </div>
-            <InfiniteScrollTrigger
-              hasMore={hasMore}
-              loading={loadingMore}
-              onLoadMore={onLoadMore}
-            />
-          </div>
-        )}
-      </div>
+      <div className="mt-4">{renderContent()}</div>
     </section>
   );
 }

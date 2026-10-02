@@ -105,4 +105,13 @@ describe("MonthCalendar 月份日历组件", () => {
     expect(screen.getByTestId("infinite-scroll-trigger")).toBeInTheDocument();
     expect(screen.getByText("上滑加载更多")).toBeInTheDocument();
   });
+
+  it("加载更多失败时应该显示行内错误而不替换内容", () => {
+    renderMonthCalendar({ error: "加载更多失败", items: mockItems });
+    expect(screen.getByText("十月动漫A")).toBeInTheDocument();
+    expect(screen.getByText("加载更多失败")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "重试" }),
+    ).not.toBeInTheDocument();
+  });
 });

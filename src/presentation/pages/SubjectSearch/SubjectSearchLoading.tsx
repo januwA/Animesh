@@ -1,17 +1,12 @@
 import { Loader2 } from "lucide-react";
-import { Button } from "@/presentation/components/ui/button";
 import { Skeleton } from "@/presentation/components/ui/skeleton";
 
 interface SubjectSearchLoadingProps {
-  onCancel: () => void;
   loadingText?: string;
-  cancelText?: string;
 }
 
 export function SubjectSearchLoading({
-  onCancel,
   loadingText = "正在搜索条目...",
-  cancelText = "取消搜索",
 }: SubjectSearchLoadingProps) {
   return (
     <div className="flex flex-col gap-4" data-testid="subject-search-loading">
@@ -32,16 +27,6 @@ export function SubjectSearchLoading({
       <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         {loadingText}
-      </div>
-      <div className="flex justify-center">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onCancel}
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          {cancelText}
-        </Button>
       </div>
     </div>
   );

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import type { GetAnimeCharactersUseCase } from "@/application/anime/GetAnimeCharactersUseCase";
@@ -144,7 +143,16 @@ function SubjectDetailView({
 }) {
   const di = useDI();
   const { torrents } = useTorrentStatus();
-  const [activeTab, setActiveTab] = useState("summary");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "summary";
+  const setActiveTab = (tab: string) =>
+    setSearchParams(
+      (prev) => {
+        prev.set("tab", tab);
+        return prev;
+      },
+      { replace: true },
+    );
 
   const deps = buildSectionDeps(di, platform);
   const info = useSubjectInfo({ subjectId, platform }, deps.infoDeps);
