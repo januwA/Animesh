@@ -7,25 +7,23 @@ const BangumiWeekdaySchema = z.object({
   id: z.number(),
 });
 
-const BangumiImagesSchema = z.object({
-  large: z.string().optional(),
-  common: z.string().optional(),
-  medium: z.string().optional(),
-  small: z.string().optional(),
-  grid: z.string().optional(),
-});
-
-function transformImagesObj(
-  imagesObject: z.infer<typeof BangumiImagesSchema>,
-): string {
-  return (
-    imagesObject.common ||
-    imagesObject.medium ||
-    imagesObject.large ||
-    imagesObject.small ||
-    ""
+/**
+ * 图片对象：bgm.tv 对尚无封面图的新条目会返回 `images: null`，
+ * 各尺寸 URL 也可能为空串，统一归一化为表现层直接可用的单个 URL。
+ */
+const BangumiImagesSchema = z
+  .object({
+    large: z.string().optional(),
+    common: z.string().optional(),
+    medium: z.string().optional(),
+    small: z.string().optional(),
+    grid: z.string().optional(),
+  })
+  .nullable()
+  .transform(
+    (images) =>
+      images?.common || images?.medium || images?.large || images?.small || "",
   );
-}
 
 const BangumiSubjectRatingSchema = z.object({
   total: z.number(),
@@ -47,7 +45,7 @@ const BangumiCalendarItemSchema = z
   .transform((dto) => ({
     id: dto.id,
     name: dto.name_cn || dto.name,
-    image: transformImagesObj(dto.images),
+    image: dto.images,
     rating: dto.rating?.score || 0,
   }));
 
@@ -88,7 +86,7 @@ export const BangumiSubjectSchema = z
       ...other,
       name: dto.name_cn || dto.name,
       summary: dto.summary || "",
-      image: transformImagesObj(dto.images),
+      image: images,
       rating: dto.rating?.score || 0,
     };
   });
@@ -168,7 +166,7 @@ export const BangumiPersonSchema = z
     const { images, career, type, ...other } = dto;
     return {
       ...other,
-      image: transformImagesObj(images),
+      image: images,
     };
   });
 
@@ -207,7 +205,7 @@ export const BangumiCharacterSchema = z
     const { images, summary, type, ...other } = dto;
     return {
       ...other,
-      image: transformImagesObj(images),
+      image: images,
       actors: dto.actors,
     };
   });
@@ -226,7 +224,7 @@ const BangumiRelatedSubjectSchema = z
   .transform((dto) => ({
     id: dto.id,
     name: dto.name_cn || dto.name,
-    image: transformImagesObj(dto.images),
+    image: dto.images,
     relation: dto.relation,
   }));
 
